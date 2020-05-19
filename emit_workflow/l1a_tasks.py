@@ -80,14 +80,13 @@ class L1AReassembleRaw(luigi.Task):
     def output(self):
 
         fm = FileManager(self.acquisition_id, self.config_path)
-        #return luigi.LocalTarget(fm.l1a["raw_img"])
-        return ENVITarget(fm.l1a["raw_img"])
+        return ENVITarget(fm.paths["raw_img"])
 
     def run(self):
 
         fm = FileManager(self.acquisition_id, self.config_path)
-        os.system(" ".join(["touch", fm.l1a["raw_img"]]))
-        os.system(" ".join(["touch", fm.l1a["raw_hdr"]]))
+        fm.touch_path(fm.paths["raw_img"])
+        fm.touch_path(fm.paths["raw_hdr"])
 
 # TODO: Full implementation TBD
 class L1APEP(luigi.Task):

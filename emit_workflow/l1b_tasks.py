@@ -23,18 +23,18 @@ class L1BCalibrate(luigi.Task):
 
     def requires(self):
 
-        return L1AReassembleRaw(self.acquisition_id)
+        return L1AReassembleRaw(self.acquisition_id, self.config_path)
 
     def output(self):
 
         fm = FileManager(self.acquisition_id, self.config_path)
-        return ENVITarget(fm.l1b["rdn_img"])
+        return ENVITarget(fm.paths["rdn_img"])
 
     def run(self):
 
         fm = FileManager(self.acquisition_id, self.config_path)
-        os.system(" ".join(["touch", fm.l1b["rdn_img"]]))
-        os.system(" ".join(["touch", fm.l1b["rdn_hdr"]]))
+        fm.touch_path(fm.paths["rdn_img"])
+        fm.touch_path(fm.paths["rdn_hdr"])
 
 # TODO: Full implementation TBD
 class L1BGeolocate(luigi.Task):
