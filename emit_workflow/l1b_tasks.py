@@ -18,21 +18,21 @@ class L1BCalibrate(luigi.Task):
     :returns: Spectrally calibrated radiance
     """
     task_namespace = "emit"
-    acquisition = luigi.Parameter()
+    acquisition_id = luigi.Parameter()
     config_path = luigi.Parameter()
 
     def requires(self):
 
-        return L1AReassembleRaw(self.acquisition)
+        return L1AReassembleRaw(self.acquisition_id)
 
     def output(self):
 
-        fm = FileManager(self.acquisition, self.config_path)
+        fm = FileManager(self.acquisition_id, self.config_path)
         return ENVITarget(fm.l1b["rdn_img"])
 
     def run(self):
 
-        fm = FileManager(self.acquisition, self.config_path)
+        fm = FileManager(self.acquisition_id, self.config_path)
         os.system(" ".join(["touch", fm.l1b["rdn_img"]]))
         os.system(" ".join(["touch", fm.l1b["rdn_hdr"]]))
 

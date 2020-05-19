@@ -69,7 +69,7 @@ class L1AReassembleRaw(luigi.Task):
     :returns: Uncompressed raw acquisitions in binary cube format (ENVI compatible)
     """
     task_namespace = "emit"
-    acquisition = luigi.Parameter()
+    acquisition_id = luigi.Parameter()
     config_path = luigi.Parameter()
 
     def requires(self):
@@ -79,13 +79,13 @@ class L1AReassembleRaw(luigi.Task):
 
     def output(self):
 
-        fm = FileManager(self.acquisition, self.config_path)
+        fm = FileManager(self.acquisition_id, self.config_path)
         #return luigi.LocalTarget(fm.l1a["raw_img"])
         return ENVITarget(fm.l1a["raw_img"])
 
     def run(self):
 
-        fm = FileManager(self.acquisition, self.config_path)
+        fm = FileManager(self.acquisition_id, self.config_path)
         os.system(" ".join(["touch", fm.l1a["raw_img"]]))
         os.system(" ".join(["touch", fm.l1a["raw_hdr"]]))
 

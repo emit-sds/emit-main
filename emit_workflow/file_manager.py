@@ -9,43 +9,49 @@ import os
 
 class FileManager:
 
-    def __init__(self, acquisition=None, config_path="config.json"):
+    def __init__(self, acquisition_id=None, config_path="config.json"):
+        """
+        :param acquisition_id: The name of the acquisition with timestamp (eg. "emit20200519t140035")
+        :param config_path: Path to config file containing environment settings
         """
 
-        :param config_path:
-        """
-
-        self.acquisition = acquisition
+        self.acquisition_id = acquisition_id
 
         # Read config.json for environment specific paths
         with open(config_path, "r") as f:
             self.__dict__.update(json.load(f))
 
-        env_dir = os.path.join(self.local_store_path, self.instrument, self.env)
-        data_dir = os.path.join(env_dir, "data")
-        if not os.path.exists(data_dir):
-            os.makedirs(data_dir)
+        # Create mappings to track directories and paths for an acquisition
+        self.dirs = {}
+        self.paths = {}
 
+        self.dirs["environment"] = os.path.join(self.local_store_path, self.instrument, self.environment)
+        self.dirs["data"] = os.path.join(self.dirs["environment"], "data")
+        if not os.path.exists(self.dirs["data"]):
+            os.makedirs(self.dirs["data"])
+
+        # Get build number and processing version
+        # TODO: Where do I get build_num?  processing_version can probably come from config
         if "build_num" not in self.__dict__.keys():
             self.build_num = 1
         if "processing_version" not in self.__dict__.keys():
             self.processing_version = 1
 
         # If we have an acquisition id, create acquisition paths
-        if self.acquisition is not None:
+        if self.acquisition_id is not None:
             # Get date from acquisition string
-            date_str = self.acquisition[len(self.instrument):(8 + len(self.instrument))]
-            date_dir = os.path.join(data_dir, date_str)
+            self.date_str = self.acquisition_id[len(self.instrument):(8 + len(self.instrument))]
+            self.dirs["date"] = os.path.join(self.dirs["data"], self.date_str)
 
             # TODO: Set orbit and scene
             self.orbit_num = 1
             self.scene_num = 1
 
-            acquisition_dir = os.path.join(date_dir, self.acquisition)
-            product_paths = self._build_acquisition_paths(acquisition_dir)
-            self.__dict__.update(product_paths)
+            self.dirs["acquisition"] = os.path.join(self.dirs["date"], self.acquisition_id)
+            acquisition_paths = self._build_acquisition_paths()
+            self.__dict__.update(acquisition_paths)
 
-    def _build_acquisition_paths(self, acquisition_base_path):
+    def _build_acquisition_paths(self):
         product_map = {
             "l1a": {
                 "raw": ["img", "hdr"],
@@ -63,13 +69,13 @@ class FileManager:
         paths = {}
         for level, prod_map in product_map.items():
             paths[level] = {}
-            acquisition_level_path = os.path.join(acquisition_base_path, level)
+            acquisition_level_path = os.path.join(self.dirs["acquisition"], level)
             if not os.path.exists(acquisition_level_path):
                 os.makedirs(acquisition_level_path)
             for prod, formats in prod_map.items():
                 for format in formats:
                     prod_key = prod + "_" + format
-                    prod_prefix = "_".join([self.acquisition,
+                    prod_prefix = "_".join([self.acquisition_id,
                                             "o" + str(self.orbit_num).zfill(5),
                                             "s" + str(self.scene_num).zfill(3),
                                             level,
@@ -77,7 +83,7 @@ class FileManager:
                                             "b" + str(self.build_num).zfill(3),
                                             "v" + str(self.processing_version).zfill(2)])
                     prod_name = prod_prefix + "." + format
-                    prod_path = os.path.join(acquisition_base_path, level, prod_name)
+                    prod_path = os.path.join(self.dirs["acquisition"], level, prod_name)
                     paths[level][prod_key] = prod_path
         return paths
 

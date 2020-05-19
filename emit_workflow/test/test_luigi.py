@@ -10,7 +10,7 @@ from emit_workflow import l1b_tasks
 def test_luigi_build():
 
     success = luigi.build(
-        [l1b_tasks.L1BCalibrate(acquisition="emit20200515t110600",
+        [l1b_tasks.L1BCalibrate(acquisition_id="emit20200515t110600",
                       config_path="test_config.json")],
         workers=2,
         local_scheduler=True,

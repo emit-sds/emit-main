@@ -19,7 +19,7 @@ def main():
     parser = argparse.ArgumentParser()
 
     luigi.build(
-        [L1BCalibrate(acquisition="emit20200515t110600")],
+        [L1BCalibrate(acquisition_id="emit20200515t110600")],
         workers=2,
         local_scheduler=True,
         log_level="DEBUG")

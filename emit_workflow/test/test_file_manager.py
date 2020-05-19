@@ -2,7 +2,7 @@ from emit_workflow import file_manager
 
 def test_file_manager():
     fm = file_manager.FileManager(
-        acquisition="emit20200101t000000",
+        acquisition_id="emit20200101t000000",
         config_path="test_config.json"
     )
 
