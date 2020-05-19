@@ -7,6 +7,7 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 import json
 import os
 
+
 class FileManager:
 
     def __init__(self, acquisition_id=None, config_path="config.json"):
@@ -27,8 +28,6 @@ class FileManager:
 
         self.dirs["environment"] = os.path.join(self.local_store_path, self.instrument, self.environment)
         self.dirs["data"] = os.path.join(self.dirs["environment"], "data")
-        if not os.path.exists(self.dirs["data"]):
-            os.makedirs(self.dirs["data"])
 
         # Get build number and processing version
         # TODO: Where do I get build_num?  processing_version can probably come from config
@@ -48,8 +47,13 @@ class FileManager:
             self.scene_num = 1
 
             self.dirs["acquisition"] = os.path.join(self.dirs["date"], self.acquisition_id)
-            acquisition_paths = self._build_acquisition_paths()
-            self.__dict__.update(acquisition_paths)
+
+            self.paths = self._build_acquisition_paths()
+
+        # Make directories if they don't exist
+        for d in self.dirs.values():
+            if not os.path.exists(d):
+                os.makedirs(d)
 
     def _build_acquisition_paths(self):
         product_map = {
@@ -68,10 +72,7 @@ class FileManager:
         }
         paths = {}
         for level, prod_map in product_map.items():
-            paths[level] = {}
-            acquisition_level_path = os.path.join(self.dirs["acquisition"], level)
-            if not os.path.exists(acquisition_level_path):
-                os.makedirs(acquisition_level_path)
+            self.dirs[level] = os.path.join(self.dirs["acquisition"], level)
             for prod, formats in prod_map.items():
                 for format in formats:
                     prod_key = prod + "_" + format
@@ -84,7 +85,7 @@ class FileManager:
                                             "v" + str(self.processing_version).zfill(2)])
                     prod_name = prod_prefix + "." + format
                     prod_path = os.path.join(self.dirs["acquisition"], level, prod_name)
-                    paths[level][prod_key] = prod_path
+                    paths[prod_key] = prod_path
         return paths
 
     def path_exists(self, path):
@@ -92,6 +93,9 @@ class FileManager:
 
     def touch_path(self, path):
         os.system(" ".join(["touch", path]))
+
+    def remove_dir(self, path):
+        os.system(" ".join(["rm", "-rf", path]))
 
     def remove_path(self, path):
         os.system(" ".join(["rm", "-f", path]))
