@@ -5,6 +5,7 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
 import datetime
+import logging
 import luigi
 
 from file_manager import FileManager
