@@ -5,10 +5,16 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
 import json
+import logging.config
 import os
 import shutil
+import sys
 
-from emit_workflow import file_manager
+sys.path.insert(0,"../")
+import file_manager
+
+logging.config.fileConfig(fname="../logging.conf")
+logger = logging.getLogger("emit-workflow")
 
 def test_file_manager():
 
@@ -21,7 +27,11 @@ def test_file_manager():
         config["instrument"],
         config["environment"])
 
-    shutil.rmtree(test_env_path)
+    logger.info("In test_file_manager")
+
+    if os.path.exists((test_env_path)):
+        shutil.rmtree(test_env_path)
+        logger.info("Removed %s" % test_env_path)
 
     fm = file_manager.FileManager(
         acquisition_id="emit20200101t000000",

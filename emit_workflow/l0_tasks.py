@@ -7,7 +7,9 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 import datetime
 import luigi
 
-from emit_workflow.file_manager import FileManager
+from file_manager import FileManager
+
+logger = logging.getLogger("emit-workflow")
 
 # TODO: Full implementation TBD
 class L0StripEthernet(luigi.Task):

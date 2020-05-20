@@ -1,6 +1,6 @@
 {
   "instrument": "emit",
-  "environment": "ops",
+  "environment": "dev",
   "local_store_path": "/Users/winstono/dev/beegfs/store/",
   "local_scratch_path": "/Users/winstono/dev/beegfs/scratch/"
 }

@@ -5,12 +5,14 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
 import datetime
+import logging
 import luigi
-import os
 
-from emit_workflow.envi_target import ENVITarget
-from emit_workflow.file_manager import FileManager
-from emit_workflow.l0_tasks import L0StripEthernet
+from envi_target import ENVITarget
+from file_manager import FileManager
+from l0_tasks import L0StripEthernet
+
+logger = logging.getLogger("emit-workflow")
 
 # TODO: Full implementation TBD
 class L1ADepacketize(luigi.Task):

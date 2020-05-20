@@ -4,5 +4,7 @@
 # Ignore folders
 __pycache__
 
-# Ignore specific files
+# Ignore specific file types
+*.log
 *ign.py
+

@@ -4,10 +4,16 @@ This code contains test functions for luigi
 Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
+import logging.config
 import luigi
+import sys
 
-from emit_workflow import file_manager
-from emit_workflow import l1b_tasks
+sys.path.insert(0,"../")
+import file_manager
+import l1b_tasks
+
+logging.config.fileConfig(fname="../logging.conf")
+logger = logging.getLogger("emit-workflow")
 
 def test_luigi_build():
 
@@ -15,11 +21,14 @@ def test_luigi_build():
     fm.remove_dir(fm.dirs["l1a"])
     fm.remove_dir(fm.dirs["l1b"])
 
+    logger.info("Message 1")
     success = luigi.build(
         [l1b_tasks.L1BCalibrate(acquisition_id="emit20200101t000000", config_path="test_config.json")],
         workers=2,
         local_scheduler=True,
-        log_level="DEBUG")
+        log_level="INFO")
+
+    logger.info("Message 2")
 
     assert success
 
