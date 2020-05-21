@@ -109,7 +109,7 @@ class SlurmJobTask(luigi.Task):
         base_tmp_dir = "/beegfs/scratch/tmp/"
         timestamp = datetime.datetime.now().strftime("%Y%m%dt%H%M%S")
 #        timestamp = datetime.datetime.now().strftime('%Y%m%dt%H%M%S_%f') # Use this for microseconds
-        folder_name = self.prod_id + "_" + self.task_family + "_v" + timestamp
+        folder_name = self.acquisition_id + "_" + self.task_family + "_v" + timestamp
 
         for b,a in [(' ',''),('(','_'),(')','_'),(',','_'),('/','_')]:
           folder_name = folder_name.replace(b,a)
@@ -118,6 +118,9 @@ class SlurmJobTask(luigi.Task):
         self.tmp_dir = self.tmp_dir[:max_filename_length]
         logging.info("Created tmp dir: %s", self.tmp_dir)
         os.makedirs(self.tmp_dir)
+
+        # Copy config file to tmp dir
+        shutil.copy(self.config_path, self.tmp_dir)
 
         # Dump the code to be run into a pickle file
         logging.debug("Dumping pickled class")
@@ -142,7 +145,7 @@ class SlurmJobTask(luigi.Task):
         # Submit the job and grab job ID
         output = subprocess.check_output("sbatch " + sbatch_script, shell=True)
         self.job_id = int(output.decode("utf-8").split(" ")[-1])
-        logging.info("%s %s submitted with job id %i" % (self.prod_id, self.task_family, self.job_id))
+        logging.info("%s %s submitted with job id %i" % (self.acquisition_id, self.task_family, self.job_id))
 
         self._track_job()
 
@@ -163,18 +166,18 @@ class SlurmJobTask(luigi.Task):
             logging.debug("squeue_out is\n %s" % squeue_out)
             slurm_status = _parse_squeue_state(squeue_out, self.job_id)
             if slurm_status == "PD":
-                logging.info("%s %s with job id %i is PENDING..." % (self.prod_id, self.task_family, self.job_id))
+                logging.info("%s %s with job id %i is PENDING..." % (self.acquisition_id, self.task_family, self.job_id))
             if slurm_status == "R":
-                logging.info("%s %s with job id %i is RUNNING..." % (self.prod_id, self.task_family, self.job_id))
+                logging.info("%s %s with job id %i is RUNNING..." % (self.acquisition_id, self.task_family, self.job_id))
             if slurm_status == "S":
-                logging.info("%s %s with job id %i is SUSPENDED..." % (self.prod_id, self.task_family, self.job_id))
+                logging.info("%s %s with job id %i is SUSPENDED..." % (self.acquisition_id, self.task_family, self.job_id))
             if slurm_status == "u":
                 errors = _get_sbatch_errors(self.errfile)
                 # If no errors, then must be finished
                 if not errors:
-                    logging.info("%s %s with job id %i has COMPLETED WITH NO ERRORS " % (self.prod_id, self.task_family, self.job_id))
+                    logging.info("%s %s with job id %i has COMPLETED WITH NO ERRORS " % (self.acquisition_id, self.task_family, self.job_id))
                 else: # then we have completed with errors
-                    logging.info("%s %s with job id %i has COMPLETED WITH ERRORS/WARNINGS:\n%s" % (self.prod_id, self.task_family, self.job_id, errors))
+                    logging.info("%s %s with job id %i has COMPLETED WITH ERRORS/WARNINGS:\n%s" % (self.acquisition_id, self.task_family, self.job_id, errors))
                 break
             #TODO: Add the rest of the states from https://slurm.schedmd.com/squeue.html
 

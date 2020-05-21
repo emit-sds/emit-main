@@ -3,7 +3,13 @@ try:
 except ImportError:
     import pickle
 
-from test.nemo_ang import *
+import logging
+import os
+import sys
+
+from l0_tasks import *
+from l1a_tasks import *
+from l1b_tasks import *
 
 def _do_work_on_compute_node(work_dir):
 

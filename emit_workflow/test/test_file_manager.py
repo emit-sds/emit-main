@@ -28,14 +28,16 @@ def test_file_manager():
         config["instrument"],
         config["environment"])
 
-    if os.path.exists((test_env_path)):
-        shutil.rmtree(test_env_path)
-        logger.debug("Removed %s" % test_env_path)
+    # This might be too inadvertently destructive
+    # if os.path.exists((test_env_path)):
+    #     shutil.rmtree(test_env_path)
+    #     logger.debug("Removed %s" % test_env_path)
 
     fm = file_manager.FileManager(
         acquisition_id="emit20200101t000000",
         config_path="test_config.json"
     )
+    fm.remove_path(fm.paths["raw_img"])
     fm.touch_path(fm.paths["raw_img"])
     assert fm.path_exists(fm.paths["raw_img"])
 

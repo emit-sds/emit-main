@@ -1,1 +1,3 @@
-luigid --background --logdir /lustre/shared/logs/
+#!/usr/bin/env bash
+
+luigid --background --logdir /beegfs/store/shared/logs/
