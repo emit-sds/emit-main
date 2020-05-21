@@ -13,7 +13,7 @@ import sys
 sys.path.insert(0,"../")
 import file_manager
 
-logging.config.fileConfig(fname="../logging.conf")
+logging.config.fileConfig(fname="test_logging.conf")
 logger = logging.getLogger("emit-workflow")
 
 def test_file_manager():

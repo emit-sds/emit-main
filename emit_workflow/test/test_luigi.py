@@ -12,7 +12,7 @@ sys.path.insert(0,"../")
 import file_manager
 import l1b_tasks
 
-logging.config.fileConfig(fname="../logging.conf")
+logging.config.fileConfig(fname="test_logging.conf")
 logger = logging.getLogger("emit-workflow")
 
 def test_luigi_build():

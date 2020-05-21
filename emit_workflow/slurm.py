@@ -129,7 +129,11 @@ class SlurmJobTask(luigi.Task):
     def _run_job(self):
 
         # Build an sbatch script  that will run slurm_runner.py on the directory we've specified
-        runner_path = os.path.join(os.path.abspath(os.getcwd()), "slurm_runner.py")
+        cwd = os.getcwd()
+        # Remove "test" directory if this is a unit test run
+        if os.path.basename(cwd) == "test":
+            cwd = os.path.dirname(cwd)
+        runner_path = os.path.join(os.path.abspath(cwd), "slurm_runner.py")
         # enclose tmp_dir in quotes to protect from special escape chars
         job_str = 'python {0} "{1}"'.format(runner_path, self.tmp_dir)
 
