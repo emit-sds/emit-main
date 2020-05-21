@@ -5,24 +5,32 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
 import argparse
-
 import luigi
 import logging
 import logging.config
+
 from l0_tasks import *
 from l1a_tasks import *
 from l1b_tasks import *
+from slurm import SlurmJobTask
 
 logging.config.fileConfig(fname="logging.conf")
 logger = logging.getLogger("emit-workflow")
 
-@luigi.Task.event_handler(luigi.Event.SUCCESS)
-def celebrate_success(task):
+
+#@luigi.Task.event_handler(luigi.Event.SUCCESS)
+@SlurmJobTask.event_handler(luigi.Event.SUCCESS)
+def task_success(task):
     logger.info("SUCCESS: %s" % task)
 
-@luigi.Task.event_handler(luigi.Event.FAILURE)
-def wallow_in_failure(task, e):
+
+#@luigi.Task.event_handler(luigi.Event.FAILURE)
+@SlurmJobTask.event_handler(luigi.Event.FAILURE)
+def task_failure(task, e):
     logger.error("FAILURE: %s failed with exception %s" % (task, str(e)), exc_info=True)
+
+    # Clean up tmp directories for failed try or move them to an "tmp/errors" subfolder
+
 
 def main():
     """
@@ -35,6 +43,7 @@ def main():
         workers=2,
         local_scheduler=True,
         logging_conf_file="luigi/logging.conf")
+
 
 if __name__ == '__main__':
     main()

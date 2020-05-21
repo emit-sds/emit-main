@@ -11,12 +11,13 @@ import sys
 from envi_target import ENVITarget
 from file_manager import FileManager
 from l1a_tasks import L1AReassembleRaw
+from slurm import SlurmJobTask
 
 logger = logging.getLogger("emit-workflow")
 
 
 # TODO: Full implementation TBD
-class L1BCalibrate(luigi.Task):
+class L1BCalibrate(SlurmJobTask):
     """
     Performs calibration of raw data to produce radiance
     :returns: Spectrally calibrated radiance
@@ -28,24 +29,24 @@ class L1BCalibrate(luigi.Task):
     def requires(self):
 
         logger.debug(self.task_family + " requires")
-        return L1AReassembleRaw(self.acquisition_id, self.config_path)
+        return L1AReassembleRaw(acquisition_id=self.acquisition_id, config_path=self.config_path)
 
     def output(self):
 
         logger.debug(self.task_family + " output")
-        fm = FileManager(self.acquisition_id, self.config_path)
+        fm = FileManager(acquisition_id=self.acquisition_id, config_path=self.config_path)
         return ENVITarget(fm.paths["rdn_img"])
 
     def run(self):
 
-        fm = FileManager(self.acquisition_id, self.config_path)
+        fm = FileManager(acquisition_id=self.acquisition_id, config_path=self.config_path)
         fm.touch_path(fm.paths["rdn_img"])
         fm.touch_path(fm.paths["rdn_hdr"])
         logger.debug(self.task_family + " run")
 
 
 # TODO: Full implementation TBD
-class L1BGeolocate(luigi.Task):
+class L1BGeolocate(SlurmJobTask):
     """
     Performs geolocation using BAD telemetry and counter-OS time pair file
     :returns: Geolocation files including GLT, OBS, LOC, corrected attitude and ephemeris

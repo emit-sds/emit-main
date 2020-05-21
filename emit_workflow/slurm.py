@@ -9,8 +9,8 @@ import time
 
 import luigi
 
-FORMAT = "%(asctime)s %(levelname)s [%(module)s]: %(message)s" 
-logging.basicConfig(level=logging.INFO, format=FORMAT)
+FORMAT = "format=%(levelname)s [%(module)s]: %(message)s"
+logging.basicConfig(level=logging.DEBUG, format=FORMAT)
 
 def _build_sbatch_script(tmp_dir, cmd, job_name, outfile, errfile, conda_env):
     """Create shell script to submit to Slurm queue via `sbatch`
@@ -86,9 +86,7 @@ def _get_sbatch_errors(errfile):
 
 class SlurmJobTask(luigi.Task):
 
-    shared_tmp_dir = luigi.Parameter(default="/beegfs/scratch/tmp/", significant=False)
-    n_cpu = luigi.IntParameter(default=1, significant=False)
-    parallel_env = luigi.Parameter(default='orte', significant=False)
+    # TODO: Make this dynamic
     conda_env = "/shared/anaconda3/envs/isat-dev"
 
     def _dump(self, out_dir=''):
@@ -101,7 +99,8 @@ class SlurmJobTask(luigi.Task):
     def _init_local(self):
 
         # Create tmp folder
-        base_tmp_dir = self.shared_tmp_dir
+        #base_tmp_dir = self.shared_tmp_dir
+        base_tmp_dir = "/beegfs/scratch/tmp/"
         timestamp = datetime.datetime.now().strftime("%Y%m%dt%H%M%S")
 #        timestamp = datetime.datetime.now().strftime('%Y%m%dt%H%M%S_%f') # Use this for microseconds
         folder_name = self.prod_id + "_" + self.task_family + "_v" + timestamp
@@ -128,6 +127,7 @@ class SlurmJobTask(luigi.Task):
         # Build sbatch script
         self.outfile = os.path.join(self.tmp_dir, 'job.out')
         self.errfile = os.path.join(self.tmp_dir, 'job.err')
+        #TODO: Get conda_env from config or create parameter? May need to change with environment.
         logging.debug("### self.conda_env is %s" % self.conda_env)
         sbatch_script = _build_sbatch_script(self.tmp_dir, job_str, self.task_family, self.outfile,
                                          self.errfile, self.conda_env)
@@ -174,11 +174,15 @@ class SlurmJobTask(luigi.Task):
 
     def run(self):
 
-        # Run the job
-        logging.debug("Running SlurmJobTask: %s" % self.task_family)
-
-        self._init_local() 
-        self._run_job()
+        if self.local_scheduler:
+            # Run job locally without Slurm scheduler
+            logging.debug("Running task locally: %s" % self.task_family)
+            self.work()
+        else:
+            # Run the job
+            logging.debug("Running task with Slurm: %s" % self.task_family)
+            self._init_local()
+            self._run_job()
 
     def work(self):
         """Override this method, rather than ``run()``,  for your actual work."""

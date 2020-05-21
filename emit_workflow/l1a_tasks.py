@@ -11,11 +11,13 @@ import luigi
 from envi_target import ENVITarget
 from file_manager import FileManager
 from l0_tasks import L0StripEthernet
+from slurm import SlurmJobTask
 
 logger = logging.getLogger("emit-workflow")
 
+
 # TODO: Full implementation TBD
-class L1ADepacketize(luigi.Task):
+class L1ADepacketize(SlurmJobTask):
     """
     Depacketizes CCSDS packet streams
     :returns: Reconstituted science frames, engineering data, or BAD telemetry depending on APID
@@ -39,8 +41,9 @@ class L1ADepacketize(luigi.Task):
 
         pass
 
+
 # TODO: Full implementation TBD
-class L1APrepFrames(luigi.Task):
+class L1APrepFrames(SlurmJobTask):
     """
     Orders compressed frames and checks for a complete set for a given DCID
     :returns: Folder containing a complete set of compressed frames
@@ -64,8 +67,9 @@ class L1APrepFrames(luigi.Task):
 
         pass
 
+
 # TODO: Full implementation TBD
-class L1AReassembleRaw(luigi.Task):
+class L1AReassembleRaw(SlurmJobTask):
     """
     Decompresses science frames and assembles them into time-ordered acquisitions
     :returns: Uncompressed raw acquisitions in binary cube format (ENVI compatible)
@@ -81,17 +85,18 @@ class L1AReassembleRaw(luigi.Task):
 
     def output(self):
 
-        fm = FileManager(self.acquisition_id, self.config_path)
+        fm = FileManager(acquisition_id=self.acquisition_id, config_path=self.config_path)
         return ENVITarget(fm.paths["raw_img"])
 
     def run(self):
 
-        fm = FileManager(self.acquisition_id, self.config_path)
+        fm = FileManager(acquisition_id=self.acquisition_id, config_path=self.config_path)
         fm.touch_path(fm.paths["raw_img"])
         fm.touch_path(fm.paths["raw_hdr"])
 
+
 # TODO: Full implementation TBD
-class L1APEP(luigi.Task):
+class L1APEP(SlurmJobTask):
     """
     Performs performance evaluation of raw data
     :returns: Perfomance evaluation report

@@ -9,11 +9,12 @@ import logging
 import luigi
 
 from file_manager import FileManager
+from slurm import SlurmJobTask
 
 logger = logging.getLogger("emit-workflow")
 
 # TODO: Full implementation TBD
-class L0StripEthernet(luigi.Task):
+class L0StripEthernet(SlurmJobTask):
     """
     Strips HOSC ethernet headers from raw data in ingest folder
     :returns Ordered APID specific packet stream
