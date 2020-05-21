@@ -18,6 +18,7 @@ logger = logging.getLogger("emit-workflow")
 
 def test_file_manager():
 
+    logger.debug("Running test_file_manager")
     config = {}
     with open("test_config.json", "r") as f:
         config = json.load(f)
@@ -27,11 +28,9 @@ def test_file_manager():
         config["instrument"],
         config["environment"])
 
-    logger.info("In test_file_manager")
-
     if os.path.exists((test_env_path)):
         shutil.rmtree(test_env_path)
-        logger.info("Removed %s" % test_env_path)
+        logger.debug("Removed %s" % test_env_path)
 
     fm = file_manager.FileManager(
         acquisition_id="emit20200101t000000",

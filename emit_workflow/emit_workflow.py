@@ -18,9 +18,11 @@ logger = logging.getLogger("emit-workflow")
 
 @luigi.Task.event_handler(luigi.Event.SUCCESS)
 def celebrate_success(task):
-    logger.debug("SUCCESS")
-    logger.debug(task)
-    logger.debug(task.acquisition_id)
+    logger.info("SUCCESS: %s" % task)
+
+@luigi.Task.event_handler(luigi.Event.FAILURE)
+def wallow_in_failure(task, e):
+    logger.error("FAILURE: %s failed with exception %s" % (task, str(e)), exc_info=True)
 
 def main():
     """

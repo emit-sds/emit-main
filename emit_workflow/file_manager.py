@@ -95,7 +95,9 @@ class FileManager:
         os.system(" ".join(["touch", path]))
 
     def remove_dir(self, path):
-        os.system(" ".join(["rm", "-rf", path]))
+        if os.path.exists(path):
+            os.system(" ".join(["rm", "-rf", path]))
 
     def remove_path(self, path):
-        os.system(" ".join(["rm", "-f", path]))
+        if os.path.exists((path)):
+            os.system(" ".join(["rm", "-f", path]))

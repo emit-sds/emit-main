@@ -17,18 +17,17 @@ logger = logging.getLogger("emit-workflow")
 
 def test_luigi_build():
 
+    logger.debug("Running test_luigi_build")
+
     fm = file_manager.FileManager(acquisition_id="emit20200101t000000", config_path="test_config.json")
     fm.remove_dir(fm.dirs["l1a"])
     fm.remove_dir(fm.dirs["l1b"])
 
-    logger.info("Message 1")
     success = luigi.build(
         [l1b_tasks.L1BCalibrate(acquisition_id="emit20200101t000000", config_path="test_config.json")],
         workers=2,
         local_scheduler=True,
         logging_conf_file="../luigi/logging.conf")
-
-    logger.info("Message 2")
 
     assert success
 
