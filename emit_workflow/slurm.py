@@ -9,8 +9,12 @@ import time
 
 import luigi
 
+from file_manager import FileManager
+
 FORMAT = "format=%(levelname)s [%(module)s]: %(message)s"
 logging.basicConfig(level=logging.DEBUG, format=FORMAT)
+
+logger = logging.getLogger("emit-workflow")
 
 def _build_sbatch_script(tmp_dir, cmd, job_name, outfile, errfile, conda_env):
     """Create shell script to submit to Slurm queue via `sbatch`
@@ -85,6 +89,8 @@ def _get_sbatch_errors(errfile):
     return errors
 
 class SlurmJobTask(luigi.Task):
+
+    config_path = luigi.Parameter()
 
     # TODO: Make this dynamic
     conda_env = "/shared/anaconda3/envs/isat-dev"
@@ -174,13 +180,15 @@ class SlurmJobTask(luigi.Task):
 
     def run(self):
 
-        if self.local_scheduler:
+        fm = FileManager(config_path=self.config_path)
+
+        if fm.luigi_local_scheduler:
             # Run job locally without Slurm scheduler
-            logging.debug("Running task locally: %s" % self.task_family)
+            logger.debug("Running task locally: %s" % self.task_family)
             self.work()
         else:
             # Run the job
-            logging.debug("Running task with Slurm: %s" % self.task_family)
+            logger.debug("Running task with Slurm: %s" % self.task_family)
             self._init_local()
             self._run_job()
 

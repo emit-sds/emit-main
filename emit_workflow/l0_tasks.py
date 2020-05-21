@@ -35,6 +35,6 @@ class L0StripEthernet(SlurmJobTask):
         fm = FileManager()
         return luigi.LocalTarget("ccsds_path")
 
-    def run(self):
+    def work(self):
 
         pass

@@ -37,7 +37,7 @@ class L1BCalibrate(SlurmJobTask):
         fm = FileManager(acquisition_id=self.acquisition_id, config_path=self.config_path)
         return ENVITarget(fm.paths["rdn_img"])
 
-    def run(self):
+    def work(self):
 
         fm = FileManager(acquisition_id=self.acquisition_id, config_path=self.config_path)
         fm.touch_path(fm.paths["rdn_img"])
@@ -62,7 +62,7 @@ class L1BGeolocate(SlurmJobTask):
 
         return luigi.LocalTarget("raw_file")
 
-    def run(self):
+    def work(self):
 
         pass
 

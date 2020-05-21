@@ -37,7 +37,7 @@ class L1ADepacketize(SlurmJobTask):
 
         return luigi.LocalTarget("depacketized_directory_by_apid")
 
-    def run(self):
+    def work(self):
 
         pass
 
@@ -63,7 +63,7 @@ class L1APrepFrames(SlurmJobTask):
 
         return luigi.LocalTarget("depacketized_directory_by_apid")
 
-    def run(self):
+    def work(self):
 
         pass
 
@@ -88,7 +88,7 @@ class L1AReassembleRaw(SlurmJobTask):
         fm = FileManager(acquisition_id=self.acquisition_id, config_path=self.config_path)
         return ENVITarget(fm.paths["raw_img"])
 
-    def run(self):
+    def work(self):
 
         fm = FileManager(acquisition_id=self.acquisition_id, config_path=self.config_path)
         fm.touch_path(fm.paths["raw_img"])
@@ -112,6 +112,6 @@ class L1APEP(SlurmJobTask):
 
         return luigi.LocalTarget("pep_path")
 
-    def run(self):
+    def work(self):
 
         pass
