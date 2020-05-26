@@ -32,7 +32,7 @@ def test_database_manager():
 
     acquisitions = dm.db.acquisitions
 
-    acquisitions.delete_one(acquisition)
+    acquisitions.delete_one({"_id": "emit20200101t000000"})
 
     acquisition_id = acquisitions.insert_one(acquisition).inserted_id
 

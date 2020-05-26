@@ -8,6 +8,7 @@ import json
 
 from pymongo import MongoClient
 
+
 class DatabaseManager:
 
     def __init__(self, config_path, acquisition_id=None):
