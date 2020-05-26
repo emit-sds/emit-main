@@ -39,7 +39,7 @@ def main():
     parser = argparse.ArgumentParser()
 
     luigi.build(
-        [L1BCalibrate("config/dev_local_config.json", acquisition_id="emit20200101t000000")],
+        [L1BCalibrate("config/dev_config.json", acquisition_id="emit20200101t000000")],
         workers=2,
         local_scheduler=True,
         logging_conf_file="luigi/logging.conf")

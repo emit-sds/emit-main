@@ -6,6 +6,7 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 
 import json
 
+from pymongo import MongoClient
 
 class DatabaseManager:
 
@@ -22,3 +23,5 @@ class DatabaseManager:
             self.__dict__.update(json.load(f))
 
         # TODO: Check if db exists and create it if needed
+        self.client = MongoClient(self.mongodb_host, self.mongodb_port)
+        self.db = self.client[self.mongodb_db_name]

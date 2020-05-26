@@ -1,7 +1,10 @@
 {
   "instrument": "emit",
-  "environment": "test",
+  "environment": "dev",
   "local_store_path": "/Users/winstono/dev/beegfs/store/",
   "local_scratch_path": "/Users/winstono/dev/beegfs/scratch/",
-  "luigi_local_scheduler": true
+  "luigi_local_scheduler": true,
+  "mongodb_host": "localhost",
+  "mongodb_port": 27017,
+  "mongodb_db_name": "emitDevDB"
 }
