@@ -1,5 +1,5 @@
 """
-This code contains the FileManager class that handles file naming and lookups
+This code contains the FileManager class that handles filesystem paths
 
 Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
@@ -12,13 +12,13 @@ class FileManager:
 
     def __init__(self, config_path, acquisition_id=None):
         """
-        :param acquisition_id: The name of the acquisition with timestamp (eg. "emit20200519t140035")
         :param config_path: Path to config file containing environment settings
+        :param acquisition_id: The name of the acquisition with timestamp (eg. "emit20200519t140035")
         """
 
         self.acquisition_id = acquisition_id
 
-        # Read dev_local_config.json for environment specific paths
+        # Read config file for environment specific paths
         with open(config_path, "r") as f:
             self.__dict__.update(json.load(f))
 
