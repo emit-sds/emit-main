@@ -187,7 +187,7 @@ class SlurmJobTask(luigi.Task):
 
     def run(self):
 
-        fm = FileManager(config_path=self.config_path)
+        fm = FileManager(self.config_path)
 
         if fm.luigi_local_scheduler:
             # Run job locally without Slurm scheduler

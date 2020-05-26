@@ -1,6 +1,6 @@
 {
   "instrument": "emit",
-  "environment": "dev",
+  "environment": "test",
   "local_store_path": "/Users/winstono/dev/beegfs/store/",
   "local_scratch_path": "/Users/winstono/dev/beegfs/scratch/",
   "luigi_local_scheduler": true

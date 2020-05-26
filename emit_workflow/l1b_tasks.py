@@ -22,24 +22,26 @@ class L1BCalibrate(SlurmJobTask):
     Performs calibration of raw data to produce radiance
     :returns: Spectrally calibrated radiance
     """
-    task_namespace = "emit"
-    acquisition_id = luigi.Parameter()
+
     config_path = luigi.Parameter()
+    acquisition_id = luigi.Parameter()
+
+    task_namespace = "emit"
 
     def requires(self):
 
         logger.debug(self.task_family + " requires")
-        return L1AReassembleRaw(acquisition_id=self.acquisition_id, config_path=self.config_path)
+        return L1AReassembleRaw(self.config_path, acquisition_id=self.acquisition_id)
 
     def output(self):
 
         logger.debug(self.task_family + " output")
-        fm = FileManager(acquisition_id=self.acquisition_id, config_path=self.config_path)
+        fm = FileManager(self.config_path, acquisition_id=self.acquisition_id)
         return ENVITarget(fm.paths["rdn_img"])
 
     def work(self):
 
-        fm = FileManager(acquisition_id=self.acquisition_id, config_path=self.config_path)
+        fm = FileManager(self.config_path, acquisition_id=self.acquisition_id)
         fm.touch_path(fm.paths["rdn_img"])
         fm.touch_path(fm.paths["rdn_hdr"])
         logger.debug(self.task_family + " run")
@@ -51,6 +53,8 @@ class L1BGeolocate(SlurmJobTask):
     Performs geolocation using BAD telemetry and counter-OS time pair file
     :returns: Geolocation files including GLT, OBS, LOC, corrected attitude and ephemeris
     """
+
+    config_path = luigi.Parameter()
 
     task_namespace = "emit"
 

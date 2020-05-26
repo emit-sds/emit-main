@@ -20,6 +20,7 @@ class L0StripEthernet(SlurmJobTask):
     :returns Ordered APID specific packet stream
     """
 
+    config_path = luigi.Parameter()
     apid = luigi.Parameter()
     start_time = luigi.DateSecondParameter(default=datetime.date.today() - datetime.timedelta(7))
     end_time = luigi.DateSecondParameter(default=datetime.date.today())
@@ -32,7 +33,7 @@ class L0StripEthernet(SlurmJobTask):
 
     def output(self):
 
-        fm = FileManager()
+        fm = FileManager(self.config_path)
         return luigi.LocalTarget("ccsds_path")
 
     def work(self):

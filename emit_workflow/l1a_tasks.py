@@ -23,6 +23,7 @@ class L1ADepacketize(SlurmJobTask):
     :returns: Reconstituted science frames, engineering data, or BAD telemetry depending on APID
     """
 
+    config_path = luigi.Parameter()
     apid = luigi.Parameter()
     start_time = luigi.DateSecondParameter(default=datetime.date.today() - datetime.timedelta(7))
     end_time = luigi.DateSecondParameter(default=datetime.date.today())
@@ -49,6 +50,7 @@ class L1APrepFrames(SlurmJobTask):
     :returns: Folder containing a complete set of compressed frames
     """
 
+    config_path = luigi.Parameter()
     apid = luigi.Parameter()
     start_time = luigi.DateSecondParameter(default=datetime.date.today() - datetime.timedelta(7))
     end_time = luigi.DateSecondParameter(default=datetime.date.today())
@@ -74,9 +76,11 @@ class L1AReassembleRaw(SlurmJobTask):
     Decompresses science frames and assembles them into time-ordered acquisitions
     :returns: Uncompressed raw acquisitions in binary cube format (ENVI compatible)
     """
-    task_namespace = "emit"
-    acquisition_id = luigi.Parameter()
+
     config_path = luigi.Parameter()
+    acquisition_id = luigi.Parameter()
+
+    task_namespace = "emit"
 
     def requires(self):
 
@@ -85,12 +89,12 @@ class L1AReassembleRaw(SlurmJobTask):
 
     def output(self):
 
-        fm = FileManager(acquisition_id=self.acquisition_id, config_path=self.config_path)
+        fm = FileManager(self.config_path, acquisition_id=self.acquisition_id)
         return ENVITarget(fm.paths["raw_img"])
 
     def work(self):
 
-        fm = FileManager(acquisition_id=self.acquisition_id, config_path=self.config_path)
+        fm = FileManager(self.config_path, acquisition_id=self.acquisition_id)
         fm.touch_path(fm.paths["raw_img"])
         fm.touch_path(fm.paths["raw_hdr"])
 
@@ -101,6 +105,8 @@ class L1APEP(SlurmJobTask):
     Performs performance evaluation of raw data
     :returns: Perfomance evaluation report
     """
+
+    config_path = luigi.Parameter()
 
     task_namespace = "emit"
 
