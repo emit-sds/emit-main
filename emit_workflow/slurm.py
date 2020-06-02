@@ -119,9 +119,12 @@ class SlurmJobTask(luigi.Task):
         logging.info("Created tmp dir: %s", self.tmp_dir)
         os.makedirs(self.tmp_dir)
 
-        # Copy config file to tmp dir
-        tmp_config_dir = os.path.join(self.tmp_dir, "config")
-        shutil.copy(self.config_path, tmp_config_dir)
+        # If config file is relative path, copy config file to tmp dir
+        if not self.config_path.startswith("/"):
+            rel_config_dir = os.path.dirname(self.config_path)
+            tmp_config_dir = os.path.join(self.tmp_dir, rel_config_dir)
+            os.makedirs(tmp_config_dir)
+            shutil.copy(self.config_path, tmp_config_dir)
 
         # Dump the code to be run into a pickle file
         logging.debug("Dumping pickled class")
