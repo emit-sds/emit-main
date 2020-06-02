@@ -93,7 +93,7 @@ class SlurmJobTask(luigi.Task):
     config_path = luigi.Parameter()
 
     # TODO: Make this dynamic
-    conda_env = "/shared/anaconda3/envs/isat-dev"
+    conda_env = "/shared/anaconda3/envs/emit_workflow"
 
     def _dump(self, out_dir=''):
         """Dump instance to file."""
@@ -120,7 +120,8 @@ class SlurmJobTask(luigi.Task):
         os.makedirs(self.tmp_dir)
 
         # Copy config file to tmp dir
-        shutil.copy(self.config_path, self.tmp_dir)
+        tmp_config_dir = os.path.join(self.tmp_dir, "config")
+        shutil.copy(self.config_path, tmp_config_dir)
 
         # Dump the code to be run into a pickle file
         logging.debug("Dumping pickled class")
