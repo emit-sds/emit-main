@@ -8,8 +8,8 @@ import datetime
 import logging
 import luigi
 
-from file_manager import FileManager
-from slurm import SlurmJobTask
+from emit_workflow.file_manager import FileManager
+from emit_workflow.slurm import SlurmJobTask
 
 logger = logging.getLogger("emit-workflow")
 

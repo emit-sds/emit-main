@@ -8,8 +8,8 @@ import datetime
 import logging.config
 import sys
 
-sys.path.insert(0,"../")
-import database_manager
+#sys.path.insert(0,"../")
+from emit_workflow.database_manager import DatabaseManager
 
 logging.config.fileConfig(fname="test_logging.conf")
 logger = logging.getLogger("emit-workflow")
@@ -19,7 +19,7 @@ def test_database_manager():
 
     logger.debug("Running test_database_manager")
 
-    dm = database_manager.DatabaseManager("../config/test_config.json", acquisition_id="emit20200101t000000")
+    dm = DatabaseManager("../config/test_config.json", acquisition_id="emit20200101t000000")
 
     acquisition = {
         "_id": "emit20200101t000000",
