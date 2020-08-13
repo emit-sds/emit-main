@@ -9,7 +9,7 @@ import time
 
 import luigi
 
-from emit_workflow.file_manager import FileManager
+from file_manager import FileManager
 
 FORMAT = "format=%(levelname)s [%(module)s]: %(message)s"
 logging.basicConfig(level=logging.DEBUG, format=FORMAT)
