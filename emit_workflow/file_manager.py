@@ -102,7 +102,7 @@ class FileManager:
                     paths[prod_key] = prod_path
         return paths
 
-    def build_pges(self):
+    def build_runtime_environment(self):
         for pge in self.pges.values():
             pge.build()
             if pge.repo_name == "emit-main" and pge.repo_dir not in os.getcwd():

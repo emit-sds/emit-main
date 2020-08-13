@@ -38,6 +38,9 @@ def main():
     """
     parser = argparse.ArgumentParser()
 
+    fm = FileManager("config/dev_config.json")
+    fm.build_runtime_environment()
+
     luigi.build(
         [L1BCalibrate("config/dev_config.json", acquisition_id="emit20200101t000000")],
         workers=2,

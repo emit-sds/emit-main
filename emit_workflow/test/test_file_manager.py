@@ -22,13 +22,13 @@ def test_acquisition_paths():
     fm.touch_path(fm.paths["raw_img"])
     assert fm.path_exists(fm.paths["raw_img"])
 
-def test_pge_build():
+def test_build_runtime_environment():
 
     logger.debug("Running test_pge_build")
 
     fm = FileManager("../config/test_config.json")
-    fm.build_pges()
+    fm.build_runtime_environment()
 
 
 test_acquisition_paths()
-test_pge_build()
+test_build_runtime_environment()
