@@ -49,7 +49,7 @@ class PGE:
 
     def _clone_repo(self):
         cmd = ["git", "clone", "-b", self.version_tag, self.repo_url, self.repo_dir]
-        logging.info("Cloning repo with cmd: %s" % " ".join(cmd))
+        logger.info("Cloning repo with cmd: %s" % " ".join(cmd))
         output = subprocess.run(cmd)
         print(str(output))
         print(output.returncode)
@@ -68,7 +68,7 @@ class PGE:
         conda_env_yml_path = os.path.join(self.repo_dir, "environment.yml")
         if os.path.exists(conda_env_yml_path):
             cmd = ["conda", "env", "create", "-f", conda_env_yml_path, "-n", self.conda_env_name]
-            logging.info("Creating conda env with cmd: %s" % " ".join(cmd))
+            logger.info("Creating conda env with cmd: %s" % " ".join(cmd))
             output = subprocess.run(cmd)
             if output.returncode != 0:
                 raise RuntimeError("Failed to create conda env with cmd: %s" % str(cmd))
@@ -79,7 +79,7 @@ class PGE:
         if os.path.exists(install_script_path):
             cmd = ["source", self.conda_sh_path, "&&", "conda", "activate", self.conda_env_dir,
                    "&&", "cd", self.repo_dir, "&&", "./install.sh", "&&", "conda", "deactivate"]
-            logging.info("Installing repo with cmd: %s" % " ".join(cmd))
+            logger.info("Installing repo with cmd: %s" % " ".join(cmd))
             output = subprocess.run(" ".join(cmd), shell=True)
             if output.returncode != 0:
                 raise RuntimeError("Failed to install repo with cmd: %s" % str(cmd))
@@ -92,7 +92,7 @@ class PGE:
                     self._create_conda_env()
                 self._install_repo()
         except RuntimeError as e:
-            logging.info("Cleaning up directories and conda environments after running into a problem.")
+            logger.info("Cleaning up directories and conda environments after running into a problem.")
             rm_dir_cmd = ["rm", "-rf", self.repo_dir]
             subprocess.run(rm_dir_cmd)
             if self._conda_env_exists():
