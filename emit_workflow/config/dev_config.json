@@ -1,10 +1,28 @@
 {
-  "instrument": "emit",
-  "environment": "dev",
-  "local_store_path": "/Users/winstono/dev/beegfs/store/",
-  "local_scratch_path": "/Users/winstono/dev/beegfs/scratch/",
-  "luigi_local_scheduler": true,
-  "mongodb_host": "localhost",
-  "mongodb_port": 27017,
-  "mongodb_db_name": "emitDevDB"
+  "general_config": {
+    "instrument": "emit",
+    "environment": "dev",
+    "processing_version": "01",
+    "luigi_local_scheduler": true
+  },
+
+  "filesystem_config": {
+    "local_store_dir": "/Users/winstono/dev/beegfs/store/",
+    "local_scratch_dir": "/Users/winstono/dev/beegfs/scratch/"
+  },
+
+  "database_config": {
+    "mongodb_host": "localhost",
+    "mongodb_port": 27017,
+    "mongodb_db_name": "emitDevDB"
+  },
+
+  "build_config": {
+    "build_num": "001",
+    "conda_base_dir": "/Users/winstono/opt/anaconda3/",
+    "repositories": {
+      "url": "git@github.jpl.nasa.gov:emit-sds/emit-main.git",
+      "tag": "conda-envs"
+    }
+  }
 }

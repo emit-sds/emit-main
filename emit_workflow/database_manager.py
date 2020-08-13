@@ -21,7 +21,7 @@ class DatabaseManager:
 
         # Read config file for environment specific paths
         with open(config_path, "r") as f:
-            self.__dict__.update(json.load(f))
+            self.__dict__.update(json.load(f)["database_config"])
 
         # TODO: Check if db exists and create it if needed
         self.client = MongoClient(self.mongodb_host, self.mongodb_port)
