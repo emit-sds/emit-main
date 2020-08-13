@@ -1,0 +1,7 @@
+name: emit_main
+channels:
+  - defaults
+dependencies:
+  - python=3.7.7
+  - luigi=2.8.10
+  - pymongo=3.9.0

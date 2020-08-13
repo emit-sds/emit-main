@@ -5,7 +5,12 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
 import json
+import logging
 import os
+
+from emit_workflow.pge import PGE
+
+logger = logging.getLogger("emit-workflow")
 
 
 class FileManager:
@@ -51,7 +56,18 @@ class FileManager:
             if not os.path.exists(d):
                 os.makedirs(d)
 
-
+        # Create repository paths and PGEs based on build config
+        self.dirs["repos"] = os.path.join(self.dirs["environment"], "repos")
+        self.pges = {}
+        for repo in self.repositories:
+            pge = PGE(
+                conda_base=self.conda_base_dir,
+                pge_base=self.dirs["repos"],
+                repo_url=repo["url"],
+                version_tag=repo["tag"]
+            )
+            self.dirs[pge.repo_name] = os.path.join(self.dirs["repos"], pge.versioned_repo_name)
+            self.pges[pge.repo_name] = pge
 
     def _build_acquisition_paths(self):
         product_map = {
@@ -85,6 +101,13 @@ class FileManager:
                     prod_path = os.path.join(self.dirs["acquisition"], level, prod_name)
                     paths[prod_key] = prod_path
         return paths
+
+    def build_pges(self):
+        for pge in self.pges.values():
+            pge.build()
+            if pge.repo_name == "emit-main" and pge.repo_dir not in os.getcwd():
+                logger.warning("The \"emit-main\" code should be executing inside repository %s to ensure that the "
+                                "correct version is running" % pge.repo_dir)
 
     def path_exists(self, path):
         return os.path.exists(path)

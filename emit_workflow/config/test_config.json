@@ -20,9 +20,9 @@
   "build_config": {
     "build_num": "001",
     "conda_base_dir": "/Users/winstono/opt/anaconda3/",
-    "repositories": {
+    "repositories": [{
       "url": "git@github.jpl.nasa.gov:emit-sds/emit-main.git",
       "tag": "conda-envs"
-    }
+    }]
   }
 }
