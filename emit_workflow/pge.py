@@ -117,7 +117,7 @@ class PGE:
                 subprocess.run(rm_conda_env_cmd)
             print(e)
 
-    def run(self, cmd):
+    def run_old(self, cmd):
         activate_cmd = ["source", self.conda_sh_path, "&&", "conda", "activate", self.conda_env_name, "&&"]
         deactivate_cmd = ["&&", "conda", "deactivate"]
         exec_cmd = " ".join(activate_cmd + cmd + deactivate_cmd)
@@ -125,3 +125,11 @@ class PGE:
         if output.returncode !=0:
             raise RuntimeError("Output of run command: %s" % str(output))
 
+    def run(self, cmd, cwd=None):
+        cwd_args = []
+        if cwd:
+            cwd_args = ["--cwd", cwd]
+        conda_run_cmd = " ".join([self.conda_exe, "run", "-n", self.conda_env_name] + cwd_args + cmd)
+        output = subprocess.run(conda_run_cmd, shell=True, capture_output=True)
+        if output.returncode != 0:
+            raise RuntimeError("Output of run command: %s" % str(output))
