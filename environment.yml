@@ -5,3 +5,4 @@ dependencies:
   - python=3.7.7
   - luigi=2.8.10
   - pymongo=3.9.0
+  - gdal=2.3.3

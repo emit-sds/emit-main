@@ -60,11 +60,20 @@ class FileManager:
         self.dirs["repos"] = os.path.join(self.dirs["environment"], "repos")
         self.pges = {}
         for repo in self.repositories:
+            if "conda_env" in repo and len(repo["conda_env"]) > 0:
+                conda_env = repo["conda_env"]
+            else:
+                conda_env = None
+            if "tag" in repo and len(repo["tag"]) > 0:
+                version_tag = repo["tag"]
+            else:
+                version_tag = None
             pge = PGE(
                 conda_base=self.conda_base_dir,
+                conda_env=conda_env,
                 pge_base=self.dirs["repos"],
                 repo_url=repo["url"],
-                version_tag=repo["tag"]
+                version_tag=version_tag
             )
             self.dirs[pge.repo_name] = os.path.join(self.dirs["repos"], pge.versioned_repo_name)
             self.pges[pge.repo_name] = pge

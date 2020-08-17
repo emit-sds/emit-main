@@ -20,9 +20,39 @@
   "build_config": {
     "build_num": "001",
     "conda_base_dir": "/Users/winstono/opt/anaconda3/",
-    "repositories": [{
-      "url": "git@github.jpl.nasa.gov:emit-sds/emit-main.git",
-      "tag": "conda-envs"
-    }]
+    "repositories": [
+      {
+        "url": "git@github.jpl.nasa.gov:emit-sds/emit-main.git",
+        "tag": "conda-envs"
+      },
+      {
+        "url": "git@github.jpl.nasa.gov:emit-sds/emit-utils.git",
+        "tag": "master"
+      },
+      {
+        "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l1a.git",
+        "tag": "master"
+      },
+      {
+        "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l1b.git",
+        "tag": "master"
+      },
+      {
+        "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l2a.git",
+        "tag": "master"
+      },
+      {
+        "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l2b.git",
+        "tag": "master"
+      },
+      {
+        "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l3.git",
+        "tag": "master"
+      },
+      {
+        "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l4.git",
+        "tag": "master"
+      }
+    ]
   }
 }

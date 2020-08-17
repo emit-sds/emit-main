@@ -13,10 +13,11 @@ logger = logging.getLogger("emit-workflow")
 
 class PGE:
 
-    def __init__(self, conda_base, pge_base, repo_url, version_tag=None):
+    def __init__(self, conda_base, conda_env, pge_base, repo_url, version_tag):
         # conda_env_base is the top level "envs" folder, e.g. ~/anaconda3/envs
         self.conda_env_base = os.path.join(conda_base, "envs")
         self.conda_sh_path = os.path.join(conda_base, "etc/profile.d/conda.sh")
+        self.conda_exe = os.path.join(conda_base, "bin/conda")
         self.pge_base = pge_base
         self.repo_url = repo_url
         if version_tag is None:
@@ -28,11 +29,16 @@ class PGE:
             self.version = self.version_tag[1:]
         else:
             self.version = self.version_tag
+
         self.repo_account = self._get_repo_account()
         self.repo_name = self.repo_url.split("/")[-1].replace(".git","")
         self.versioned_repo_name = self.repo_name + "-" + self.version
         self.repo_dir = os.path.join(self.pge_base, self.versioned_repo_name, "")
-        self.conda_env_name = self.versioned_repo_name
+
+        if conda_env is None:
+            self.conda_env_name = self.repo_name
+        else:
+            self.conda_env_name = conda_env
         self.conda_env_dir = os.path.join(self.conda_env_base, self.conda_env_name)
 
     def _get_version_tag(self):
@@ -57,7 +63,7 @@ class PGE:
             raise RuntimeError("Failed to clone repo with cmd: %s" % str(cmd))
 
     def _conda_env_exists(self):
-        cmd = ["conda", "env", "list", "|", "grep", self.conda_env_name]
+        cmd = [self.conda_exe, "env", "list", "|", "grep", self.conda_env_dir]
         output = subprocess.run(" ".join(cmd), shell=True)
         if output.returncode == 0:
             return True
@@ -67,7 +73,7 @@ class PGE:
     def _create_conda_env(self):
         conda_env_yml_path = os.path.join(self.repo_dir, "environment.yml")
         if os.path.exists(conda_env_yml_path):
-            cmd = ["conda", "env", "create", "-f", conda_env_yml_path, "-n", self.conda_env_name]
+            cmd = [self.conda_exe, "env", "create", "-f", conda_env_yml_path, "-n", self.conda_env_name]
             logger.info("Creating conda env with cmd: %s" % " ".join(cmd))
             output = subprocess.run(cmd)
             if output.returncode != 0:
@@ -83,6 +89,17 @@ class PGE:
             output = subprocess.run(" ".join(cmd), shell=True)
             if output.returncode != 0:
                 raise RuntimeError("Failed to install repo with cmd: %s" % str(cmd))
+
+    def _add_imports(self):
+        for repo in self.imports:
+            # Run pip install for imported package
+            repo_dir = os.path.join(self.pge_base, repo)
+            cmd = ["source", self.conda_sh_path, "&&", "conda", "activate", self.conda_env_dir,
+                   "&&", "cd", repo_dir, "&&", "pip install -e .", "&&", "conda", "deactivate"]
+            logger.info("Adding package %s to conda env %s" % (repo_dir, self.conda_env_dir))
+            output = subprocess.run(" ".join(cmd), shell=True)
+            if output.returncode != 0:
+                raise RuntimeError("Failed to import repo with cmd: %s" % str(cmd))
 
     def build(self):
         try:
