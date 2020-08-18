@@ -1,7 +1,7 @@
 {
   "general_config": {
     "instrument": "emit",
-    "environment": "dev",
+    "environment": "test",
     "processing_version": "01",
     "luigi_local_scheduler": true
   },
@@ -14,7 +14,7 @@
   "database_config": {
     "mongodb_host": "localhost",
     "mongodb_port": 27017,
-    "mongodb_db_name": "emitDevDB"
+    "mongodb_db_name": "emitTestDB"
   },
 
   "build_config": {

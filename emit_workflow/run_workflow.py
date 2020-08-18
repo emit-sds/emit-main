@@ -27,7 +27,8 @@ def task_success(task):
 #@luigi.Task.event_handler(luigi.Event.FAILURE)
 @SlurmJobTask.event_handler(luigi.Event.FAILURE)
 def task_failure(task, e):
-    logger.error("FAILURE: %s failed with exception %s" % (task, str(e)), exc_info=True)
+    # TODO: If additional debugging is needed, change exc_info to True
+    logger.error("FAILURE: %s failed with exception %s" % (task, str(e)), exc_info=False)
 
     # Clean up tmp directories for failed try or move them to an "tmp/errors" subfolder
 
@@ -42,7 +43,7 @@ def main():
     fm.build_runtime_environment()
 
     luigi.build(
-        [L1BCalibrate("config/dev_config.json", acquisition_id="emit20200101t000000")],
+        [L1BCalibrate(config_path="config/dev_config.json", acquisition_id="emit20200101t000000")],
         workers=2,
         local_scheduler=True,
         logging_conf_file="luigi/logging.conf")

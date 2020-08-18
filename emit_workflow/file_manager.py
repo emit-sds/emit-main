@@ -36,6 +36,8 @@ class FileManager:
 
         self.dirs["environment"] = os.path.join(self.local_store_dir, self.instrument, self.environment)
         self.dirs["data"] = os.path.join(self.dirs["environment"], "data")
+        self.dirs["repos"] = os.path.join(self.dirs["environment"], "repos")
+        self.dirs["tmp"] = os.path.join(self.local_scratch_dir, self.instrument, self.environment, "tmp")
 
         # If we have an acquisition id, create acquisition paths
         if self.acquisition_id is not None:
@@ -57,7 +59,6 @@ class FileManager:
                 os.makedirs(d)
 
         # Create repository paths and PGEs based on build config
-        self.dirs["repos"] = os.path.join(self.dirs["environment"], "repos")
         self.pges = {}
         for repo in self.repositories:
             if "conda_env" in repo and len(repo["conda_env"]) > 0:
@@ -77,6 +78,10 @@ class FileManager:
             )
             self.dirs[pge.repo_name] = os.path.join(self.dirs["repos"], pge.versioned_repo_name)
             self.pges[pge.repo_name] = pge
+
+        # Add repo specific paths
+        # emit-sds-l1b paths
+        self.paths["emitrdn_exe"] = os.path.join(self.dirs["emit-sds-l1b"], "emitrdn.py")
 
     def _build_acquisition_paths(self):
         product_map = {

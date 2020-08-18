@@ -19,7 +19,7 @@ def test_database_manager():
 
     logger.debug("Running test_database_manager")
 
-    dm = DatabaseManager("../config/test_config.json", acquisition_id="emit20200101t000000")
+    dm = DatabaseManager("config/test_config.json", acquisition_id="emit20200101t000000")
 
     acquisition = {
         "_id": "emit20200101t000000",
