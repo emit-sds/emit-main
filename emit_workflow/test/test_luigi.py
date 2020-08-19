@@ -21,8 +21,8 @@ def test_luigi_build():
     logger.debug("Running test_luigi_build")
 
     fm = FileManager("config/test_config.json", acquisition_id="emit20200101t000000")
-    fm.remove_dir(fm.dirs["l1a"])
-    fm.remove_dir(fm.dirs["l1b"])
+    fm.remove_dir(fm.l1a_data_dir)
+    fm.remove_dir(fm.l1b_data_dir)
 
     success = luigi.build(
         [L1BCalibrate(config_path="config/test_config.json", acquisition_id="emit20200101t000000")],

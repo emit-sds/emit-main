@@ -78,13 +78,12 @@ class FileManager:
                 repo_url=repo["url"],
                 version_tag=version_tag
             )
-#            self.dirs[pge.repo_name] = os.path.join(self.dirs["repos"], pge.versioned_repo_name)
             self.pges[pge.repo_name] = pge
 
         # Add repo specific paths
         # emit-sds-l1b paths
-#        self.paths["emitrdn_exe"] = os.path.join(self.dirs["emit-sds-l1b"], "emitrdn.py")
-        self.emitrdn_exe = os.path.join("emit-sds-l1b", "emitrdn.py")
+        self.emit_sds_l1b_repo_dir = self.pges["emit-sds-l1b"].repo_dir
+        self.emitrdn_exe = os.path.join(self.emit_sds_l1b_repo_dir, "emitrdn.py")
 
     def _build_acquisition_paths(self):
         product_map = {

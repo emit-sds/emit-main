@@ -19,9 +19,10 @@ def test_acquisition_paths():
     logger.debug("Running test_acquisition_paths")
 
     fm = FileManager("config/test_config.json", acquisition_id="emit20200101t000000")
-    fm.remove_path(fm.paths["raw_img"])
-    fm.touch_path(fm.paths["raw_img"])
-    assert fm.path_exists(fm.paths["raw_img"])
+    fm.remove_path(fm.raw_img_path)
+    fm.touch_path(fm.raw_img_path)
+    assert fm.path_exists(fm.raw_img_path)
+
 
 def test_build_runtime_environment():
 

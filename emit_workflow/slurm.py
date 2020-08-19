@@ -116,7 +116,7 @@ class SlurmJobTask(luigi.Task):
 
         fm = FileManager(self.config_path)
         # Create tmp folder
-        base_tmp_dir = fm.dirs["tmp"]
+        base_tmp_dir = fm.scratch_tmp_dir
         timestamp = datetime.datetime.now().strftime("%Y%m%dt%H%M%S")
 #        timestamp = datetime.datetime.now().strftime('%Y%m%dt%H%M%S_%f') # Use this for microseconds
         folder_name = self.acquisition_id + "_" + self.task_family + "_v" + timestamp

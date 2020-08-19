@@ -38,4 +38,5 @@ def test_database_manager():
 
     assert acquisition_id == "emit20200101t000000"
 
+
 test_database_manager()
