@@ -8,6 +8,7 @@ import json
 import logging
 import os
 
+from database_manager import DatabaseManager
 from pge import PGE
 
 logger = logging.getLogger("emit-workflow")
@@ -50,8 +51,10 @@ class FileManager:
             self.dirs.extend([self.date_dir, self.acquisition_dir])
 
             # TODO: Set orbit and scene
-            self.orbit_num = "00001"
-            self.scene_num = "001"
+            dm = DatabaseManager(config_path)
+            acquisition = dm.find_acquisition(self.acquisition_id)
+            self.orbit_num = acquisition["orbit"]
+            self.scene_num = acquisition["scene"]
 
             self.__dict__.update(self._build_acquisition_paths())
 

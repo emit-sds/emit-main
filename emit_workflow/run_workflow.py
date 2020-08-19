@@ -51,7 +51,8 @@ def get_tasks_from_args(args):
     }
 
     prod_task_map = {
-        "l1araw": L1AReassembleRaw(**acquisition_kwargs)
+        "l1araw": L1AReassembleRaw(**acquisition_kwargs),
+        "l1bcal": L1BCalibrate(**acquisition_kwargs)
     }
 
     tasks = []

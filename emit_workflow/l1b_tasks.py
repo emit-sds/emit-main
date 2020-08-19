@@ -46,20 +46,15 @@ class L1BCalibrate(SlurmJobTask):
 
         logger.debug(self.task_family + " run")
 
-        # Placeholder: PGE creates files on filesystem
-        #        fm = FileManager(self.config_path, acquisition_id=self.acquisition_id)
-        #        fm.touch_path(fm.paths["rdn_img"])
-        #        fm.touch_path(fm.paths["rdn_hdr"])
-
         fm = FileManager(self.config_path, acquisition_id=self.acquisition_id)
         pge = fm.pges["emit-sds-l1b"]
-        cmd = ["python", fm.emitrdn_exe]
-        pge.run(cmd)
+#        cmd = ["python", fm.emitrdn_exe]
+#        pge.run(cmd)
 
         cmd = ["touch", fm.rdn_img_path]
-#        pge.run(cmd)
+        pge.run(cmd)
         cmd = ["touch", fm.rdn_hdr_path]
-#        pge.run(cmd)
+        pge.run(cmd)
 
         # Placeholder: PGE writes metadata to db
         metadata = {
