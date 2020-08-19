@@ -1,4 +1,4 @@
-name: emit_main
+name: emit-main
 channels:
   - defaults
 dependencies:
