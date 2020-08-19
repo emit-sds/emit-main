@@ -4,17 +4,14 @@ import os
 import pickle
 import shutil
 import subprocess
-import sys
 import time
 
 import luigi
 
 from file_manager import FileManager
 
-#FORMAT = "format=%(levelname)s [%(module)s]: %(message)s"
-#logging.basicConfig(level=logging.DEBUG, format=FORMAT)
-
 logger = logging.getLogger("emit-workflow")
+
 
 def _build_sbatch_script(tmp_dir, cmd, job_name, outfile, errfile, n_nodes, n_tasks, n_cores, n_mb_memory):
     """Create shell script to submit to Slurm queue via `sbatch`
@@ -53,6 +50,7 @@ def _build_sbatch_script(tmp_dir, cmd, job_name, outfile, errfile, n_nodes, n_ta
             )
     return sbatch_script
 
+
 def _parse_squeue_state(squeue_out, job_id):
     """Parse "state" column from squeue output for given job_id
 
@@ -79,6 +77,7 @@ def _parse_squeue_state(squeue_out, job_id):
             return state
 
     return "u"
+
 
 def _get_sbatch_errors(errfile):
     """Checks error file for errors and returns result
