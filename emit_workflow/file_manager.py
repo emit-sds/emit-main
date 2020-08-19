@@ -31,7 +31,7 @@ class FileManager:
             self.__dict__.update(config["build_config"])
 
         # Create mappings to track directories and paths for an acquisition
-        self.dirs = {}
+        self.dirs = []
         self.paths = {}
 
         self.dirs["environment"] = os.path.join(self.local_store_dir, self.instrument, self.environment)
@@ -39,19 +39,33 @@ class FileManager:
         self.dirs["repos"] = os.path.join(self.dirs["environment"], "repos")
         self.dirs["tmp"] = os.path.join(self.local_scratch_dir, self.instrument, self.environment, "tmp")
 
+        # Create base directories and add to list
+        dirs = []
+        self.instrument_dir = os.path.join(self.local_store_dir, self.instrument)
+        self.environment_dir = os.path.join(self.instrument_dir, self.environment)
+        self.data_dir = os.path.join(self.environment_dir, "data")
+        self.repo_dir = os.path.join(self.environment_dir, "repos")
+        self.scratch_tmp_dir = os.path.join(self.local_scratch_dir, self.instrument, self.environment, "tmp")
+        self.scratch_error_dir = os.path.join(self.local_scratch_dir, self.instrument, self.environment, "errors")
+        dirs.extend([self.instrument_dir, self.environment_dir, self.data_dir, self.repo_dir,
+                     self.scratch_tmp_dir, self.scratch_error_dir])
+
         # If we have an acquisition id, create acquisition paths
         if self.acquisition_id is not None:
             # Get date from acquisition string
             self.date_str = self.acquisition_id[len(self.instrument):(8 + len(self.instrument))]
             self.dirs["date"] = os.path.join(self.dirs["data"], self.date_str)
+            self.date_dir = os.path.join(self.data_dir, self.date_str)
 
             # TODO: Set orbit and scene
             self.orbit_num = "00001"
             self.scene_num = "001"
 
             self.dirs["acquisition"] = os.path.join(self.dirs["date"], self.acquisition_id)
+            self.acquisition_dir = os.path.join(self.date_dir, self.acquisition_id)
 
             self.paths = self._build_acquisition_paths()
+            dirs.extend([self.date_dir, self.acquisition_dir])
 
         # Make directories if they don't exist
         for d in self.dirs.values():
