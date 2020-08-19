@@ -30,45 +30,33 @@ class FileManager:
             self.__dict__.update(config["filesystem_config"])
             self.__dict__.update(config["build_config"])
 
-        # Create mappings to track directories and paths for an acquisition
+        # Create base directories and add to list to create directories later
         self.dirs = []
-        self.paths = {}
-
-        self.dirs["environment"] = os.path.join(self.local_store_dir, self.instrument, self.environment)
-        self.dirs["data"] = os.path.join(self.dirs["environment"], "data")
-        self.dirs["repos"] = os.path.join(self.dirs["environment"], "repos")
-        self.dirs["tmp"] = os.path.join(self.local_scratch_dir, self.instrument, self.environment, "tmp")
-
-        # Create base directories and add to list
-        dirs = []
         self.instrument_dir = os.path.join(self.local_store_dir, self.instrument)
         self.environment_dir = os.path.join(self.instrument_dir, self.environment)
         self.data_dir = os.path.join(self.environment_dir, "data")
         self.repo_dir = os.path.join(self.environment_dir, "repos")
         self.scratch_tmp_dir = os.path.join(self.local_scratch_dir, self.instrument, self.environment, "tmp")
         self.scratch_error_dir = os.path.join(self.local_scratch_dir, self.instrument, self.environment, "errors")
-        dirs.extend([self.instrument_dir, self.environment_dir, self.data_dir, self.repo_dir,
+        self.dirs.extend([self.instrument_dir, self.environment_dir, self.data_dir, self.repo_dir,
                      self.scratch_tmp_dir, self.scratch_error_dir])
 
         # If we have an acquisition id, create acquisition paths
         if self.acquisition_id is not None:
             # Get date from acquisition string
             self.date_str = self.acquisition_id[len(self.instrument):(8 + len(self.instrument))]
-            self.dirs["date"] = os.path.join(self.dirs["data"], self.date_str)
             self.date_dir = os.path.join(self.data_dir, self.date_str)
+            self.acquisition_dir = os.path.join(self.date_dir, self.acquisition_id)
+            self.dirs.extend([self.date_dir, self.acquisition_dir])
 
             # TODO: Set orbit and scene
             self.orbit_num = "00001"
             self.scene_num = "001"
 
-            self.dirs["acquisition"] = os.path.join(self.dirs["date"], self.acquisition_id)
-            self.acquisition_dir = os.path.join(self.date_dir, self.acquisition_id)
-
-            self.paths = self._build_acquisition_paths()
-            dirs.extend([self.date_dir, self.acquisition_dir])
+            self.__dict__.update(self._build_acquisition_paths())
 
         # Make directories if they don't exist
-        for d in self.dirs.values():
+        for d in self.dirs:
             if not os.path.exists(d):
                 os.makedirs(d)
 
@@ -86,16 +74,17 @@ class FileManager:
             pge = PGE(
                 conda_base=self.conda_base_dir,
                 conda_env=conda_env,
-                pge_base=self.dirs["repos"],
+                pge_base=self.repo_dir,
                 repo_url=repo["url"],
                 version_tag=version_tag
             )
-            self.dirs[pge.repo_name] = os.path.join(self.dirs["repos"], pge.versioned_repo_name)
+#            self.dirs[pge.repo_name] = os.path.join(self.dirs["repos"], pge.versioned_repo_name)
             self.pges[pge.repo_name] = pge
 
         # Add repo specific paths
         # emit-sds-l1b paths
-        self.paths["emitrdn_exe"] = os.path.join(self.dirs["emit-sds-l1b"], "emitrdn.py")
+#        self.paths["emitrdn_exe"] = os.path.join(self.dirs["emit-sds-l1b"], "emitrdn.py")
+        self.emitrdn_exe = os.path.join("emit-sds-l1b", "emitrdn.py")
 
     def _build_acquisition_paths(self):
         product_map = {
@@ -114,10 +103,12 @@ class FileManager:
         }
         paths = {}
         for level, prod_map in product_map.items():
-            self.dirs[level] = os.path.join(self.dirs["acquisition"], level)
+            level_data_dir = os.path.join(self.acquisition_dir, level)
+            self.__dict__.update({level + "_data_dir": level_data_dir})
+            self.dirs.append(level_data_dir)
             for prod, formats in prod_map.items():
                 for format in formats:
-                    prod_key = prod + "_" + format
+                    prod_key = prod + "_" + format + "_path"
                     prod_prefix = "_".join([self.acquisition_id,
                                             "o" + self.orbit_num,
                                             "s" + self.scene_num,
@@ -126,7 +117,7 @@ class FileManager:
                                             "b" + self.build_num,
                                             "v" + self.processing_version])
                     prod_name = prod_prefix + "." + format
-                    prod_path = os.path.join(self.dirs["acquisition"], level, prod_name)
+                    prod_path = os.path.join(self.acquisition_dir, level, prod_name)
                     paths[prod_key] = prod_path
         return paths
 
