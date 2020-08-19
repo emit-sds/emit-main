@@ -3,7 +3,9 @@
     "instrument": "emit",
     "environment": "dev",
     "processing_version": "01",
-    "luigi_local_scheduler": true
+    "luigi_local_scheduler": true,
+    "luigi_logging_conf": "luigi/logging.conf",
+    "workers": 2
   },
 
   "filesystem_config": {
