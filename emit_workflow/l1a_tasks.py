@@ -8,10 +8,10 @@ import datetime
 import logging
 import luigi
 
-from emit_workflow.envi_target import ENVITarget
-from emit_workflow.file_manager import FileManager
-from emit_workflow.l0_tasks import L0StripEthernet
-from emit_workflow.slurm import SlurmJobTask
+from envi_target import ENVITarget
+from file_manager import FileManager
+from l0_tasks import L0StripEthernet
+from slurm import SlurmJobTask
 
 logger = logging.getLogger("emit-workflow")
 

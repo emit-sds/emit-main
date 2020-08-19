@@ -5,7 +5,12 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
 import json
+import logging
 import os
+
+from pge import PGE
+
+logger = logging.getLogger("emit-workflow")
 
 
 class FileManager:
@@ -20,21 +25,19 @@ class FileManager:
 
         # Read config file for environment specific paths
         with open(config_path, "r") as f:
-            self.__dict__.update(json.load(f))
+            config = json.load(f)
+            self.__dict__.update(config["general_config"])
+            self.__dict__.update(config["filesystem_config"])
+            self.__dict__.update(config["build_config"])
 
         # Create mappings to track directories and paths for an acquisition
         self.dirs = {}
         self.paths = {}
 
-        self.dirs["environment"] = os.path.join(self.local_store_path, self.instrument, self.environment)
+        self.dirs["environment"] = os.path.join(self.local_store_dir, self.instrument, self.environment)
         self.dirs["data"] = os.path.join(self.dirs["environment"], "data")
-
-        # Get build number and processing version
-        # TODO: Where do I get build_num?  processing_version can probably come from config
-        if "build_num" not in self.__dict__.keys():
-            self.build_num = 1
-        if "processing_version" not in self.__dict__.keys():
-            self.processing_version = 1
+        self.dirs["repos"] = os.path.join(self.dirs["environment"], "repos")
+        self.dirs["tmp"] = os.path.join(self.local_scratch_dir, self.instrument, self.environment, "tmp")
 
         # If we have an acquisition id, create acquisition paths
         if self.acquisition_id is not None:
@@ -43,8 +46,8 @@ class FileManager:
             self.dirs["date"] = os.path.join(self.dirs["data"], self.date_str)
 
             # TODO: Set orbit and scene
-            self.orbit_num = 1
-            self.scene_num = 1
+            self.orbit_num = "00001"
+            self.scene_num = "001"
 
             self.dirs["acquisition"] = os.path.join(self.dirs["date"], self.acquisition_id)
 
@@ -54,6 +57,31 @@ class FileManager:
         for d in self.dirs.values():
             if not os.path.exists(d):
                 os.makedirs(d)
+
+        # Create repository paths and PGEs based on build config
+        self.pges = {}
+        for repo in self.repositories:
+            if "conda_env" in repo and len(repo["conda_env"]) > 0:
+                conda_env = repo["conda_env"]
+            else:
+                conda_env = None
+            if "tag" in repo and len(repo["tag"]) > 0:
+                version_tag = repo["tag"]
+            else:
+                version_tag = None
+            pge = PGE(
+                conda_base=self.conda_base_dir,
+                conda_env=conda_env,
+                pge_base=self.dirs["repos"],
+                repo_url=repo["url"],
+                version_tag=version_tag
+            )
+            self.dirs[pge.repo_name] = os.path.join(self.dirs["repos"], pge.versioned_repo_name)
+            self.pges[pge.repo_name] = pge
+
+        # Add repo specific paths
+        # emit-sds-l1b paths
+        self.paths["emitrdn_exe"] = os.path.join(self.dirs["emit-sds-l1b"], "emitrdn.py")
 
     def _build_acquisition_paths(self):
         product_map = {
@@ -77,16 +105,23 @@ class FileManager:
                 for format in formats:
                     prod_key = prod + "_" + format
                     prod_prefix = "_".join([self.acquisition_id,
-                                            "o" + str(self.orbit_num).zfill(5),
-                                            "s" + str(self.scene_num).zfill(3),
+                                            "o" + self.orbit_num,
+                                            "s" + self.scene_num,
                                             level,
                                             prod,
-                                            "b" + str(self.build_num).zfill(3),
-                                            "v" + str(self.processing_version).zfill(2)])
+                                            "b" + self.build_num,
+                                            "v" + self.processing_version])
                     prod_name = prod_prefix + "." + format
                     prod_path = os.path.join(self.dirs["acquisition"], level, prod_name)
                     paths[prod_key] = prod_path
         return paths
+
+    def build_runtime_environment(self):
+        for pge in self.pges.values():
+            pge.build()
+            if pge.repo_name == "emit-main" and pge.repo_dir not in os.getcwd():
+                logger.warning("The \"emit-main\" code should be executing inside repository %s to ensure that the "
+                                "correct version is running" % pge.repo_dir)
 
     def path_exists(self, path):
         return os.path.exists(path)

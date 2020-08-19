@@ -4,36 +4,34 @@ import os
 import pickle
 import shutil
 import subprocess
-import sys
 import time
 
 import luigi
 
-from emit_workflow.file_manager import FileManager
-
-FORMAT = "format=%(levelname)s [%(module)s]: %(message)s"
-logging.basicConfig(level=logging.DEBUG, format=FORMAT)
+from file_manager import FileManager
 
 logger = logging.getLogger("emit-workflow")
 
-def _build_sbatch_script(tmp_dir, cmd, job_name, outfile, errfile, conda_env):
+
+def _build_sbatch_script(tmp_dir, cmd, job_name, outfile, errfile, n_nodes, n_tasks, n_cores, n_mb_memory):
     """Create shell script to submit to Slurm queue via `sbatch`
 
     Returns path to sbatch script
 
     """
 
-    conda_init_script="/shared/anaconda3/etc/profile.d/conda.sh"
+    conda_exe = os.getenv("CONDA_EXE")
+    conda_env = os.getenv("CONDA_DEFAULT_ENV")
 
     sbatch_template = """#!/bin/bash
 #SBATCH -J {job_name}
 #SBATCH --output={outfile}
 #SBATCH --error={errfile}
-#SBATCH -n1
-#SBATCH --ntasks-per-node=1
-source {conda_init_script}
-conda activate {conda_env}
-{cmd}
+#SBATCH -N{n_nodes}
+#SBATCH -n{n_tasks}
+#SBATCH --cpus-per-task={n_cores}
+#SBATCH --mem={n_mb_memory}
+{conda_exe} run -n {conda_env} {cmd}
     """
     sbatch_script = os.path.join(tmp_dir, job_name+".sh")
     with open(sbatch_script, "w") as f:
@@ -43,10 +41,15 @@ conda activate {conda_env}
                 job_name=job_name, 
                 outfile=outfile, 
                 errfile=errfile,
-                conda_init_script=conda_init_script,
+                n_nodes=n_nodes,
+                n_tasks=n_tasks,
+                n_cores=n_cores,
+                n_mb_memory=n_mb_memory,
+                conda_exe=conda_exe,
                 conda_env=conda_env)
             )
     return sbatch_script
+
 
 def _parse_squeue_state(squeue_out, job_id):
     """Parse "state" column from squeue output for given job_id
@@ -70,10 +73,11 @@ def _parse_squeue_state(squeue_out, job_id):
         else:
             returned_id = line.split()[0]
             state = line.split()[4]
-            logging.debug("Squeue for job %i returned ID: %s, State: %s" % (job_id, returned_id, state))
+            logger.debug("Squeue for job %i returned ID: %s, State: %s" % (job_id, returned_id, state))
             return state
 
     return "u"
+
 
 def _get_sbatch_errors(errfile):
     """Checks error file for errors and returns result
@@ -83,30 +87,36 @@ def _get_sbatch_errors(errfile):
     """
     errors = ""
     if not os.path.exists(errfile):
-        logging.info("No error file found at %s" % errfile)
+        logger.info("No error file found at %s" % errfile)
     with open(errfile, "r") as f:
         errors = f.read()
     return errors
 
+
 class SlurmJobTask(luigi.Task):
 
     config_path = luigi.Parameter()
+    acquisition_id = luigi.Parameter()
 
-    # TODO: Make this dynamic
-    conda_env = "/shared/anaconda3/envs/emit_workflow"
+    n_nodes = luigi.IntParameter(default=1)
+    n_tasks = luigi.IntParameter(default=1)
+    n_cores = luigi.IntParameter(default=1)
+    n_mb_memory = luigi.IntParameter(default=4000)
+
+    tmp_dir = ""
 
     def _dump(self, out_dir=''):
         """Dump instance to file."""
         with self.no_unpicklable_properties():
             self.job_file = os.path.join(out_dir, 'job-instance.pickle')
-            logging.debug("Pickling to file: %s" % self.job_file)
+            logger.debug("Pickling to file: %s" % self.job_file)
             pickle.dump(self, open(self.job_file, "wb"), protocol=2)
 
     def _init_local(self):
 
+        fm = FileManager(self.config_path)
         # Create tmp folder
-        #base_tmp_dir = self.shared_tmp_dir
-        base_tmp_dir = "/beegfs/scratch/tmp/"
+        base_tmp_dir = fm.dirs["tmp"]
         timestamp = datetime.datetime.now().strftime("%Y%m%dt%H%M%S")
 #        timestamp = datetime.datetime.now().strftime('%Y%m%dt%H%M%S_%f') # Use this for microseconds
         folder_name = self.acquisition_id + "_" + self.task_family + "_v" + timestamp
@@ -116,7 +126,7 @@ class SlurmJobTask(luigi.Task):
         self.tmp_dir = os.path.join(base_tmp_dir, folder_name)
         max_filename_length = os.fstatvfs(0).f_namemax
         self.tmp_dir = self.tmp_dir[:max_filename_length]
-        logging.info("Created tmp dir: %s", self.tmp_dir)
+        logger.info("Created tmp dir: %s", self.tmp_dir)
         os.makedirs(self.tmp_dir)
 
         # If config file is relative path, copy config file to tmp dir
@@ -127,7 +137,7 @@ class SlurmJobTask(luigi.Task):
             shutil.copy(self.config_path, tmp_config_dir)
 
         # Dump the code to be run into a pickle file
-        logging.debug("Dumping pickled class")
+        logger.debug("Dumping pickled class")
         self._dump(self.tmp_dir)
 
     def _run_job(self):
@@ -144,16 +154,14 @@ class SlurmJobTask(luigi.Task):
         # Build sbatch script
         self.outfile = os.path.join(self.tmp_dir, 'job.out')
         self.errfile = os.path.join(self.tmp_dir, 'job.err')
-        #TODO: Get conda_env from config or create parameter? May need to change with environment.
-        logging.debug("### self.conda_env is %s" % self.conda_env)
-        sbatch_script = _build_sbatch_script(self.tmp_dir, job_str, self.task_family, self.outfile,
-                                         self.errfile, self.conda_env)
-        logging.debug('sbatch script: ' + sbatch_script)
+        sbatch_script = _build_sbatch_script(self.tmp_dir, job_str, self.task_family,  self.outfile, self.errfile,
+                                             self.n_nodes, self.n_tasks, self.n_cores, self.n_mb_memory)
+        logger.debug('sbatch script: ' + sbatch_script)
 
         # Submit the job and grab job ID
         output = subprocess.check_output("sbatch " + sbatch_script, shell=True)
         self.job_id = int(output.decode("utf-8").split(" ")[-1])
-        logging.info("%s %s submitted with job id %i" % (self.acquisition_id, self.task_family, self.job_id))
+        logger.info("%s %s submitted with job id %i" % (self.acquisition_id, self.task_family, self.job_id))
 
         self._track_job()
 
@@ -169,23 +177,23 @@ class SlurmJobTask(luigi.Task):
             time.sleep(30)
 
             # See what the job's up to
-            logging.info("Checking status of job %i..." % self.job_id)
+            logger.info("Checking status of job %i..." % self.job_id)
             squeue_out = subprocess.check_output(["squeue", "-j", str(self.job_id)]).decode("utf-8")
-            logging.debug("squeue_out is\n %s" % squeue_out)
+            logger.debug("squeue_out is\n %s" % squeue_out)
             slurm_status = _parse_squeue_state(squeue_out, self.job_id)
             if slurm_status == "PD":
-                logging.info("%s %s with job id %i is PENDING..." % (self.acquisition_id, self.task_family, self.job_id))
+                logger.info("%s %s with job id %i is PENDING..." % (self.acquisition_id, self.task_family, self.job_id))
             if slurm_status == "R":
-                logging.info("%s %s with job id %i is RUNNING..." % (self.acquisition_id, self.task_family, self.job_id))
+                logger.info("%s %s with job id %i is RUNNING..." % (self.acquisition_id, self.task_family, self.job_id))
             if slurm_status == "S":
-                logging.info("%s %s with job id %i is SUSPENDED..." % (self.acquisition_id, self.task_family, self.job_id))
+                logger.info("%s %s with job id %i is SUSPENDED..." % (self.acquisition_id, self.task_family, self.job_id))
             if slurm_status == "u":
                 errors = _get_sbatch_errors(self.errfile)
                 # If no errors, then must be finished
                 if not errors:
-                    logging.info("%s %s with job id %i has COMPLETED WITH NO ERRORS " % (self.acquisition_id, self.task_family, self.job_id))
+                    logger.info("%s %s with job id %i has COMPLETED WITH NO ERRORS " % (self.acquisition_id, self.task_family, self.job_id))
                 else: # then we have completed with errors
-                    logging.info("%s %s with job id %i has COMPLETED WITH ERRORS/WARNINGS:\n%s" % (self.acquisition_id, self.task_family, self.job_id, errors))
+                    logger.info("%s %s with job id %i has COMPLETED WITH ERRORS/WARNINGS:\n%s" % (self.acquisition_id, self.task_family, self.job_id, errors))
                 break
             #TODO: Add the rest of the states from https://slurm.schedmd.com/squeue.html
 

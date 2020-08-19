@@ -9,12 +9,13 @@ import logging
 import luigi
 import sys
 
-from emit_workflow.acquisition import Acquisition
-from emit_workflow.database_manager import DatabaseManager
-from emit_workflow.envi_target import ENVITarget
-from emit_workflow.file_manager import FileManager
-from emit_workflow.l1a_tasks import L1AReassembleRaw
-from emit_workflow.slurm import SlurmJobTask
+from acquisition import Acquisition
+from database_manager import DatabaseManager
+from envi_target import ENVITarget
+from file_manager import FileManager
+from l1a_tasks import L1AReassembleRaw
+from pge import PGE
+from slurm import SlurmJobTask
 
 logger = logging.getLogger("emit-workflow")
 
@@ -34,7 +35,7 @@ class L1BCalibrate(SlurmJobTask):
     def requires(self):
 
         logger.debug(self.task_family + " requires")
-        return L1AReassembleRaw(self.config_path, acquisition_id=self.acquisition_id)
+        return L1AReassembleRaw(config_path=self.config_path, acquisition_id=self.acquisition_id)
 
     def output(self):
 
@@ -47,9 +48,19 @@ class L1BCalibrate(SlurmJobTask):
         logger.debug(self.task_family + " run")
 
         # Placeholder: PGE creates files on filesystem
+        #        fm = FileManager(self.config_path, acquisition_id=self.acquisition_id)
+        #        fm.touch_path(fm.paths["rdn_img"])
+        #        fm.touch_path(fm.paths["rdn_hdr"])
+
         fm = FileManager(self.config_path, acquisition_id=self.acquisition_id)
-        fm.touch_path(fm.paths["rdn_img"])
-        fm.touch_path(fm.paths["rdn_hdr"])
+        pge = fm.pges["emit-sds-l1b"]
+        cmd = ["python", fm.paths["emitrdn_exe"]]
+        pge.run(cmd)
+
+        cmd = ["touch", fm.paths["rdn_img"]]
+#        pge.run(cmd)
+        cmd = ["touch", fm.paths["rdn_hdr"]]
+#        pge.run(cmd)
 
         # Placeholder: PGE writes metadata to db
         metadata = {
