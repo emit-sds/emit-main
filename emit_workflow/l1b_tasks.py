@@ -56,25 +56,27 @@ class L1BCalibrate(SlurmJobTask):
         cmd = ["touch", fm.rdn_hdr_path]
         pge.run(cmd)
 
-        # Placeholder: PGE writes metadata to db
-        metadata = {
-            "lines": 5500,
-            "bands": 324,
-            "samples": 1280,
-            "start_time": datetime.datetime.utcnow(),
-            "end_time": datetime.datetime.utcnow() + datetime.timedelta(minutes=11)
-        }
-        acquisition = Acquisition(self.acquisition_id, metadata)
-
-        dm = DatabaseManager(self.config_path)
-        acquisitions = dm.db.acquisitions
-        query = {"_id": self.acquisition_id}
-
-        acquisitions.delete_one(query)
-
-        acquisition_id = acquisitions.insert_one(acquisition.__dict__).inserted_id
-
-        #acquisitions.update(query, acquisition.__dict__, upsert=True)
+        # # Placeholder: PGE writes metadata to db
+        # metadata = {
+        #     "lines": 5500,
+        #     "bands": 324,
+        #     "samples": 1280,
+        #     "start_time": datetime.datetime.utcnow(),
+        #     "end_time": datetime.datetime.utcnow() + datetime.timedelta(minutes=11),
+        #     "orbit": "00001",
+        #     "scene": "001"
+        # }
+        # acquisition = Acquisition(self.acquisition_id, metadata)
+        #
+        # dm = DatabaseManager(self.config_path)
+        # acquisitions = dm.db.acquisitions
+        # query = {"_id": self.acquisition_id}
+        #
+        # acquisitions.delete_one(query)
+        #
+        # acquisition_id = acquisitions.insert_one(acquisition.__dict__).inserted_id
+        #
+        # #acquisitions.update(query, acquisition.__dict__, upsert=True)
 
 
 # TODO: Full implementation TBD
