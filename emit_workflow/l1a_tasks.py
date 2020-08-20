@@ -90,13 +90,13 @@ class L1AReassembleRaw(SlurmJobTask):
     def output(self):
 
         fm = FileManager(self.config_path, acquisition_id=self.acquisition_id)
-        return ENVITarget(fm.paths["raw_img"])
+        return ENVITarget(fm.raw_img_path)
 
     def work(self):
 
         fm = FileManager(self.config_path, acquisition_id=self.acquisition_id)
-        fm.touch_path(fm.paths["raw_img"])
-        fm.touch_path(fm.paths["raw_hdr"])
+        fm.touch_path(fm.raw_img_path)
+        fm.touch_path(fm.raw_hdr_path)
 
 
 # TODO: Full implementation TBD

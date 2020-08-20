@@ -7,7 +7,6 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 import datetime
 import logging
 import luigi
-import sys
 
 from acquisition import Acquisition
 from database_manager import DatabaseManager
@@ -41,26 +40,21 @@ class L1BCalibrate(SlurmJobTask):
 
         logger.debug(self.task_family + " output")
         fm = FileManager(self.config_path, acquisition_id=self.acquisition_id)
-        return ENVITarget(fm.paths["rdn_img"])
+        return ENVITarget(fm.rdn_img_path)
 
     def work(self):
 
         logger.debug(self.task_family + " run")
 
-        # Placeholder: PGE creates files on filesystem
-        #        fm = FileManager(self.config_path, acquisition_id=self.acquisition_id)
-        #        fm.touch_path(fm.paths["rdn_img"])
-        #        fm.touch_path(fm.paths["rdn_hdr"])
-
         fm = FileManager(self.config_path, acquisition_id=self.acquisition_id)
         pge = fm.pges["emit-sds-l1b"]
-        cmd = ["python", fm.paths["emitrdn_exe"]]
-        pge.run(cmd)
+#        cmd = ["python", fm.emitrdn_exe]
+#        pge.run(cmd)
 
-        cmd = ["touch", fm.paths["rdn_img"]]
-#        pge.run(cmd)
-        cmd = ["touch", fm.paths["rdn_hdr"]]
-#        pge.run(cmd)
+        cmd = ["touch", fm.rdn_img_path]
+        pge.run(cmd)
+        cmd = ["touch", fm.rdn_hdr_path]
+        pge.run(cmd)
 
         # Placeholder: PGE writes metadata to db
         metadata = {
