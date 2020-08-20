@@ -16,7 +16,7 @@
   "database_config": {
     "mongodb_host": "localhost",
     "mongodb_port": 27017,
-    "mongodb_db_name": "emitWinstonoDB"
+    "mongodb_db_name": "emitDevDB"
   },
 
   "build_config": {

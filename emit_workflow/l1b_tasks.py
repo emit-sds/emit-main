@@ -85,20 +85,39 @@ class L1BGeolocate(SlurmJobTask):
     """
 
     config_path = luigi.Parameter()
+    acquisition_id = luigi.Parameter()
 
     task_namespace = "emit"
 
     def requires(self):
 
-        return L1BCalibrate()
+        logger.debug(self.task_family + " requires")
+        return L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id)
 
     def output(self):
 
+        logger.debug(self.task_family + " output")
+        fm = FileManager(self.config_path, acquisition_id=self.acquisition_id)
         return (ENVITarget(fm.loc_img_path),
                 ENVITarget(fm.obs_img_path),
                 ENVITarget(fm.glt_img_path))
 
     def work(self):
 
-        pass
+        logger.debug(self.task_family + " run")
+
+        fm = FileManager(self.config_path, acquisition_id=self.acquisition_id)
+        pge = fm.pges["emit-sds-l1b"]
+        cmd = ["touch", fm.loc_img_path]
+        pge.run(cmd)
+        cmd = ["touch", fm.loc_hdr_path]
+        pge.run(cmd)
+        cmd = ["touch", fm.obs_img_path]
+        pge.run(cmd)
+        cmd = ["touch", fm.obs_hdr_path]
+        pge.run(cmd)
+        cmd = ["touch", fm.glt_img_path]
+        pge.run(cmd)
+        cmd = ["touch", fm.glt_hdr_path]
+        pge.run(cmd)
 

@@ -43,7 +43,7 @@ class L2AReflectance(SlurmJobTask):
         fm = FileManager(self.config_path, acquisition_id=self.acquisition_id)
         return (ENVITarget(fm.rfl_img_path),
                 ENVITarget(fm.uncert_img_path),
-                ENVITarget(fm.mask_img_path),)
+                ENVITarget(fm.mask_img_path))
 
     def work(self):
 
@@ -51,30 +51,9 @@ class L2AReflectance(SlurmJobTask):
 
         fm = FileManager(self.config_path, acquisition_id=self.acquisition_id)
         pge = fm.pges["isofit"]
+        logger.debug("isofit version is %s" % pge.version)
 #        cmd = ["python", fm.emitrdn_exe]
 #        pge.run(cmd)
 
 
-# TODO: Full implementation TBD
-class L1BGeolocate(SlurmJobTask):
-    """
-    Performs geolocation using BAD telemetry and counter-OS time pair file
-    :returns: Geolocation files including GLT, OBS, LOC, corrected attitude and ephemeris
-    """
-
-    config_path = luigi.Parameter()
-
-    task_namespace = "emit"
-
-    def requires(self):
-
-        return L1BCalibrate()
-
-    def output(self):
-
-        return luigi.LocalTarget("raw_file")
-
-    def work(self):
-
-        pass
 

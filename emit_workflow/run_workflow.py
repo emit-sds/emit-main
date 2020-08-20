@@ -20,7 +20,7 @@ logger = logging.getLogger("emit-workflow")
 
 
 def parse_args():
-    product_choices = ["l1araw", "l1bcal"]
+    product_choices = ["l1araw", "l1bcal", "l2arefl"]
     parser = argparse.ArgumentParser()
     parser.add_argument("-a", "--acquisition",
                         help="Acquisition ID")
@@ -53,7 +53,8 @@ def get_tasks_from_args(args):
 
     prod_task_map = {
         "l1araw": L1AReassembleRaw(**acquisition_kwargs),
-        "l1bcal": L1BCalibrate(**acquisition_kwargs)
+        "l1bcal": L1BCalibrate(**acquisition_kwargs),
+        "l2arefl": L2AReflectance(**acquisition_kwargs)
     }
 
     tasks = []
