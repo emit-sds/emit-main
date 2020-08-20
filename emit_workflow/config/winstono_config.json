@@ -1,9 +1,11 @@
 {
   "general_config": {
     "instrument": "emit",
-    "environment": "test",
+    "environment": "winstono",
     "processing_version": "01",
-    "luigi_local_scheduler": true
+    "luigi_local_scheduler": true,
+    "luigi_logging_conf": "luigi/logging.conf",
+    "workers": 2
   },
 
   "filesystem_config": {
@@ -14,7 +16,7 @@
   "database_config": {
     "mongodb_host": "localhost",
     "mongodb_port": 27017,
-    "mongodb_db_name": "emitTestDB"
+    "mongodb_db_name": "emitWinstonoDB"
   },
 
   "build_config": {
@@ -23,7 +25,7 @@
     "repositories": [
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-main.git",
-        "tag": "fm-update"
+        "tag": "l2a-draft"
       },
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-utils.git",
@@ -42,6 +44,10 @@
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l2a.git",
         "tag": "master"
+      },
+      {
+        "url": "git@github.com:isofit/isofit.git",
+        "tag": "v2.5.0"
       },
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l2b.git",

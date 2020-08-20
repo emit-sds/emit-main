@@ -13,7 +13,7 @@ from file_manager import FileManager
 logger = logging.getLogger("emit-workflow")
 
 
-def _build_sbatch_script(tmp_dir, cmd, job_name, outfile, errfile, n_nodes, n_tasks, n_cores, n_mb_memory):
+def _build_sbatch_script(tmp_dir, cmd, job_name, outfile, errfile, n_nodes, n_tasks, n_cores, memory):
     """Create shell script to submit to Slurm queue via `sbatch`
 
     Returns path to sbatch script
@@ -30,7 +30,7 @@ def _build_sbatch_script(tmp_dir, cmd, job_name, outfile, errfile, n_nodes, n_ta
 #SBATCH -N{n_nodes}
 #SBATCH -n{n_tasks}
 #SBATCH --cpus-per-task={n_cores}
-#SBATCH --mem={n_mb_memory}
+#SBATCH --mem={memory}
 {conda_exe} run -n {conda_env} {cmd}
     """
     sbatch_script = os.path.join(tmp_dir, job_name+".sh")
@@ -44,7 +44,7 @@ def _build_sbatch_script(tmp_dir, cmd, job_name, outfile, errfile, n_nodes, n_ta
                 n_nodes=n_nodes,
                 n_tasks=n_tasks,
                 n_cores=n_cores,
-                n_mb_memory=n_mb_memory,
+                memory=memory,
                 conda_exe=conda_exe,
                 conda_env=conda_env)
             )
@@ -101,7 +101,7 @@ class SlurmJobTask(luigi.Task):
     n_nodes = luigi.IntParameter(default=1)
     n_tasks = luigi.IntParameter(default=1)
     n_cores = luigi.IntParameter(default=1)
-    n_mb_memory = luigi.IntParameter(default=4000)
+    memory = luigi.IntParameter(default=4000)
 
     tmp_dir = ""
 
@@ -154,8 +154,8 @@ class SlurmJobTask(luigi.Task):
         # Build sbatch script
         self.outfile = os.path.join(self.tmp_dir, 'job.out')
         self.errfile = os.path.join(self.tmp_dir, 'job.err')
-        sbatch_script = _build_sbatch_script(self.tmp_dir, job_str, self.task_family,  self.outfile, self.errfile,
-                                             self.n_nodes, self.n_tasks, self.n_cores, self.n_mb_memory)
+        sbatch_script = _build_sbatch_script(self.tmp_dir, job_str, self.task_family, self.outfile, self.errfile,
+                                             self.n_nodes, self.n_tasks, self.n_cores, self.memory)
         logger.debug('sbatch script: ' + sbatch_script)
 
         # Submit the job and grab job ID

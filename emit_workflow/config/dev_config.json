@@ -25,7 +25,7 @@
     "repositories": [
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-main.git",
-        "tag": "fm-update"
+        "tag": "master"
       },
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-utils.git",
@@ -44,6 +44,10 @@
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l2a.git",
         "tag": "master"
+      },
+      {
+        "url": "git@github.com:isofit/isofit.git",
+        "tag": "v2.5.0"
       },
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l2b.git",

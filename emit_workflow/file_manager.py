@@ -101,6 +101,11 @@ class FileManager:
                 "glt": ["img", "hdr"],
                 "att": ["nc"],
                 "geoqa": ["txt"]
+            },
+            "l2a": {
+                "rfl": ["img", "hdr"],
+                "uncert": ["img", "hdr"],
+                "mask": ["img", "hdr"]
             }
         }
         paths = {}

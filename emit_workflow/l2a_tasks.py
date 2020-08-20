@@ -1,5 +1,5 @@
 """
-This code contains tasks for executing EMIT Level 1B PGEs and helper utilities.
+This code contains tasks for executing EMIT Level 2A PGEs and helper utilities.
 
 Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
@@ -12,7 +12,7 @@ from acquisition import Acquisition
 from database_manager import DatabaseManager
 from envi_target import ENVITarget
 from file_manager import FileManager
-from l1a_tasks import L1AReassembleRaw
+from l1b_tasks import L1BCalibrate, L1BGeolocate
 from pge import PGE
 from slurm import SlurmJobTask
 
@@ -20,10 +20,10 @@ logger = logging.getLogger("emit-workflow")
 
 
 # TODO: Full implementation TBD
-class L1BCalibrate(SlurmJobTask):
+class L2AReflectance(SlurmJobTask):
     """
-    Performs calibration of raw data to produce radiance
-    :returns: Spectrally calibrated radiance
+    Performs atmospheric correction on radiance
+    :returns: Surface reflectance and uncertainties
     """
 
     config_path = luigi.Parameter()
@@ -34,47 +34,25 @@ class L1BCalibrate(SlurmJobTask):
     def requires(self):
 
         logger.debug(self.task_family + " requires")
-        return L1AReassembleRaw(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return (L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id),
+                L1BGeolocate(config_path=self.config_path, acquisition_id=self.acquisition_id))
 
     def output(self):
 
         logger.debug(self.task_family + " output")
         fm = FileManager(self.config_path, acquisition_id=self.acquisition_id)
-        return ENVITarget(fm.rdn_img_path)
+        return (ENVITarget(fm.rfl_img_path),
+                ENVITarget(fm.uncert_img_path),
+                ENVITarget(fm.mask_img_path),)
 
     def work(self):
 
         logger.debug(self.task_family + " run")
 
         fm = FileManager(self.config_path, acquisition_id=self.acquisition_id)
-        pge = fm.pges["emit-sds-l1b"]
+        pge = fm.pges["isofit"]
 #        cmd = ["python", fm.emitrdn_exe]
 #        pge.run(cmd)
-
-        cmd = ["touch", fm.rdn_img_path]
-        pge.run(cmd)
-        cmd = ["touch", fm.rdn_hdr_path]
-        pge.run(cmd)
-
-        # Placeholder: PGE writes metadata to db
-        metadata = {
-            "lines": 5500,
-            "bands": 324,
-            "samples": 1280,
-            "start_time": datetime.datetime.utcnow(),
-            "end_time": datetime.datetime.utcnow() + datetime.timedelta(minutes=11)
-        }
-        acquisition = Acquisition(self.acquisition_id, metadata)
-
-        dm = DatabaseManager(self.config_path)
-        acquisitions = dm.db.acquisitions
-        query = {"_id": self.acquisition_id}
-
-        acquisitions.delete_one(query)
-
-        acquisition_id = acquisitions.insert_one(acquisition.__dict__).inserted_id
-
-        #acquisitions.update(query, acquisition.__dict__, upsert=True)
 
 
 # TODO: Full implementation TBD
@@ -94,9 +72,7 @@ class L1BGeolocate(SlurmJobTask):
 
     def output(self):
 
-        return (ENVITarget(fm.loc_img_path),
-                ENVITarget(fm.obs_img_path),
-                ENVITarget(fm.glt_img_path))
+        return luigi.LocalTarget("raw_file")
 
     def work(self):
 

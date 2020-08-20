@@ -6,12 +6,13 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 
 import argparse
 import luigi
-import logging
+import logging.config
 import sys
 
 from l0_tasks import *
 from l1a_tasks import *
 from l1b_tasks import *
+from l2a_tasks import *
 from slurm import SlurmJobTask
 
 logging.config.fileConfig(fname="logging.conf")
