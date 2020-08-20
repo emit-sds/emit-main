@@ -52,8 +52,8 @@ class L2AReflectance(SlurmJobTask):
         fm = FileManager(self.config_path, acquisition_id=self.acquisition_id)
         pge = fm.pges["isofit"]
         logger.debug("isofit version is %s" % pge.version)
-#        cmd = ["python", fm.emitrdn_exe]
-#        pge.run(cmd)
+        cmd = ["python", fm.apply_oe_exe]
+        pge.run(cmd)
 
 
 

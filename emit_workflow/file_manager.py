@@ -90,6 +90,11 @@ class FileManager:
         self.emit_sds_l1b_repo_dir = self.pges["emit-sds-l1b"].repo_dir
         self.emitrdn_exe = os.path.join(self.emit_sds_l1b_repo_dir, "emitrdn.py")
 
+        # isofit paths
+        self.isofit_repo_dir = self.pges["isofit"].repo_dir
+        self.apply_oe_exe = os.path.join(self.isofit_repo_dir, "isofit/utils/apply_oe.py")
+
+
     def _build_acquisition_paths(self):
         product_map = {
             "l1a": {
