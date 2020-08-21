@@ -8,13 +8,12 @@ import datetime
 import logging
 import luigi
 
-from acquisition import Acquisition
-from database_manager import DatabaseManager
-from envi_target import ENVITarget
-from file_manager import FileManager
-from l1a_tasks import L1AReassembleRaw
-from pge import PGE
-from slurm import SlurmJobTask
+from emit_workflow.acquisition import Acquisition
+from emit_workflow.database_manager import DatabaseManager
+from emit_workflow.envi_target import ENVITarget
+from emit_workflow.file_manager import FileManager
+from emit_workflow.l1a_tasks import L1AReassembleRaw
+from emit_workflow.slurm import SlurmJobTask
 
 logger = logging.getLogger("emit-workflow")
 

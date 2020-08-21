@@ -8,9 +8,9 @@ import logging.config
 import luigi
 import sys
 
-sys.path.insert(0,"../")
-from file_manager import FileManager
-from l1b_tasks import L1BCalibrate
+#sys.path.insert(0,"../")
+from emit_workflow.file_manager import FileManager
+from emit_workflow.l1b_tasks import L1BCalibrate
 
 logging.config.fileConfig(fname="test_logging.conf")
 logger = logging.getLogger("emit-workflow")

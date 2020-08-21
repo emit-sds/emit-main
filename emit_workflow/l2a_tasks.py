@@ -4,17 +4,13 @@ This code contains tasks for executing EMIT Level 2A PGEs and helper utilities.
 Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
-import datetime
 import logging
 import luigi
 
-from acquisition import Acquisition
-from database_manager import DatabaseManager
-from envi_target import ENVITarget
-from file_manager import FileManager
-from l1b_tasks import L1BCalibrate, L1BGeolocate
-from pge import PGE
-from slurm import SlurmJobTask
+from emit_workflow.envi_target import ENVITarget
+from emit_workflow.file_manager import FileManager
+from emit_workflow.l1b_tasks import L1BCalibrate, L1BGeolocate
+from emit_workflow.slurm import SlurmJobTask
 
 logger = logging.getLogger("emit-workflow")
 
