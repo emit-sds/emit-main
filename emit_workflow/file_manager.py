@@ -54,13 +54,17 @@ class FileManager:
             self.acquisition_dir = os.path.join(self.date_dir, self.acquisition_id)
             self.dirs.extend([self.date_dir, self.acquisition_dir])
 
-            # TODO: Set orbit and scene
-            # dm = DatabaseManager(config_path)
-            # acquisition = dm.find_acquisition(self.acquisition_id)
-            # self.orbit_num = acquisition["orbit"]
-            # self.scene_num = acquisition["scene"]
-            self.orbit_num = "00001"
-            self.scene_num = "001"
+            # TODO: Set orbit and scene. Defaults below are for testing only
+            dm = DatabaseManager(config_path)
+            acquisition = dm.find_acquisition(self.acquisition_id)
+            if "orbit" in acquisition.keys():
+                self.orbit_num = acquisition["orbit"]
+            else:
+                self.orbit_num = "00001"
+            if "scene" in acquisition.keys():
+                self.scene_num = acquisition["scene"]
+            else:
+                self.scene_num = "001"
 
             self.__dict__.update(self._build_acquisition_paths())
 

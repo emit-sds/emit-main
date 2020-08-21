@@ -8,6 +8,8 @@ import datetime
 import logging
 import luigi
 
+from emit_workflow.acquisition import Acquisition
+from emit_workflow.database_manager import DatabaseManager
 from emit_workflow.envi_target import ENVITarget
 from emit_workflow.file_manager import FileManager
 from emit_workflow.l0_tasks import L0StripEthernet
@@ -97,6 +99,28 @@ class L1AReassembleRaw(SlurmJobTask):
         fm = FileManager(self.config_path, acquisition_id=self.acquisition_id)
         fm.touch_path(fm.raw_img_path)
         fm.touch_path(fm.raw_hdr_path)
+
+        # Placeholder: PGE writes metadata to db
+        metadata = {
+            "lines": 5500,
+            "bands": 324,
+            "samples": 1280,
+            "start_time": datetime.datetime.utcnow(),
+            "end_time": datetime.datetime.utcnow() + datetime.timedelta(minutes=11),
+            "orbit": "00001",
+            "scene": "001"
+        }
+        acquisition = Acquisition(self.acquisition_id, metadata)
+
+        dm = DatabaseManager(self.config_path)
+        acquisitions = dm.db.acquisitions
+        query = {"_id": self.acquisition_id}
+
+        acquisitions.delete_one(query)
+
+        acquisition_id = acquisitions.insert_one(acquisition.__dict__).inserted_id
+        #
+        # #acquisitions.update(query, acquisition.__dict__, upsert=True)
 
 
 # TODO: Full implementation TBD
