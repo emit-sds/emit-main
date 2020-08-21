@@ -22,9 +22,9 @@ logger = logging.getLogger("emit-workflow")
 def parse_args():
     product_choices = ["l1araw", "l1bcal", "l2arefl"]
     parser = argparse.ArgumentParser()
-    parser.add_argument("-a", "--acquisition",
+    parser.add_argument("-a", "--acquisition_id",
                         help="Acquisition ID")
-    parser.add_argument("-c", "--config",
+    parser.add_argument("-c", "--config_path",
                         help="Path to config file")
     parser.add_argument("-p", "--products",
                         help=("Comma delimited list of products to create (no spaces). \
@@ -44,11 +44,11 @@ def parse_args():
 
 
 def get_tasks_from_args(args):
-    fm = FileManager(args.config)
+    fm = FileManager(args.config_path)
     products = args.products.split(",")
     acquisition_kwargs = {
-        "config_path": args.config,
-        "acquisition_id": args.acquisition
+        "config_path": args.config_path,
+        "acquisition_id": args.acquisition_id
     }
 
     prod_task_map = {
@@ -85,13 +85,13 @@ def main():
     args = parse_args()
     tasks = get_tasks_from_args(args)
 
-    fm = FileManager(args.config)
+    fm = FileManager(args.config_path)
     fm.build_runtime_environment()
 
     if args.workers:
         workers = args.workers
     else:
-        workers = fm.num_workers
+        workers = fm.luigi_workers
 
     luigi.build(tasks, workers=workers, local_scheduler=fm.luigi_local_scheduler,
                 logging_conf_file=fm.luigi_logging_conf)
