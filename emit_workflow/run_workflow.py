@@ -6,12 +6,13 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 
 import argparse
 import luigi
-import logging
+import logging.config
 import sys
 
 from l0_tasks import *
 from l1a_tasks import *
 from l1b_tasks import *
+from l2a_tasks import *
 from slurm import SlurmJobTask
 
 logging.config.fileConfig(fname="logging.conf")
@@ -19,11 +20,11 @@ logger = logging.getLogger("emit-workflow")
 
 
 def parse_args():
-    product_choices = ["l1araw", "l1bcal"]
+    product_choices = ["l1araw", "l1bcal", "l2arefl"]
     parser = argparse.ArgumentParser()
-    parser.add_argument("-a", "--acquisition",
+    parser.add_argument("-a", "--acquisition_id",
                         help="Acquisition ID")
-    parser.add_argument("-c", "--config",
+    parser.add_argument("-c", "--config_path",
                         help="Path to config file")
     parser.add_argument("-p", "--products",
                         help=("Comma delimited list of products to create (no spaces). \
@@ -43,16 +44,17 @@ def parse_args():
 
 
 def get_tasks_from_args(args):
-    fm = FileManager(args.config)
+    fm = FileManager(args.config_path)
     products = args.products.split(",")
     acquisition_kwargs = {
-        "config_path": args.config,
-        "acquisition_id": args.acquisition
+        "config_path": args.config_path,
+        "acquisition_id": args.acquisition_id
     }
 
     prod_task_map = {
         "l1araw": L1AReassembleRaw(**acquisition_kwargs),
-        "l1bcal": L1BCalibrate(**acquisition_kwargs)
+        "l1bcal": L1BCalibrate(**acquisition_kwargs),
+        "l2arefl": L2AReflectance(**acquisition_kwargs)
     }
 
     tasks = []
@@ -83,13 +85,13 @@ def main():
     args = parse_args()
     tasks = get_tasks_from_args(args)
 
-    fm = FileManager(args.config)
+    fm = FileManager(args.config_path)
     fm.build_runtime_environment()
 
     if args.workers:
         workers = args.workers
     else:
-        workers = fm.num_workers
+        workers = fm.luigi_workers
 
     luigi.build(tasks, workers=workers, local_scheduler=fm.luigi_local_scheduler,
                 logging_conf_file=fm.luigi_logging_conf)

@@ -1,7 +1,7 @@
 {
   "general_config": {
     "instrument": "emit",
-    "environment": "dev",
+    "environment": "winstono",
     "processing_version": "01",
     "luigi_local_scheduler": true,
     "luigi_logging_conf": "luigi/logging.conf",
@@ -25,7 +25,7 @@
     "repositories": [
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-main.git",
-        "tag": "master"
+        "tag": "l2a-draft"
       },
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-utils.git",
@@ -47,7 +47,8 @@
       },
       {
         "url": "git@github.com:isofit/isofit.git",
-        "tag": "v2.5.0"
+        "tag": "v2.5.0",
+        "conda_env": "emit-main"
       },
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l2b.git",

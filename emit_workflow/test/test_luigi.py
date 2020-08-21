@@ -26,9 +26,9 @@ def test_luigi_build():
 
     success = luigi.build(
         [L1BCalibrate(config_path="config/test_config.json", acquisition_id="emit20200101t000000")],
-        workers=2,
+        workers=fm.luigi_workers,
         local_scheduler=fm.luigi_local_scheduler,
-        logging_conf_file="../luigi/logging.conf")
+        logging_conf_file=fm.luigi_logging_conf)
 
     assert success
 

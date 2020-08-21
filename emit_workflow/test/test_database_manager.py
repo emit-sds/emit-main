@@ -19,7 +19,7 @@ def test_database_manager():
 
     logger.debug("Running test_database_manager")
 
-    dm = DatabaseManager("config/test_config.json", acquisition_id="emit20200101t000000")
+    dm = DatabaseManager("config/test_config.json")
 
     acquisition = {
         "_id": "emit20200101t000000",
@@ -27,15 +27,14 @@ def test_database_manager():
         "bands": 324,
         "samples": 1280,
         "start_time": datetime.datetime(2020, 1, 1, 0, 0, 0),
-        "end_time": datetime.datetime(2020, 1, 1, 0, 11, 26)
+        "end_time": datetime.datetime(2020, 1, 1, 0, 11, 26),
+        "orbit": "00001",
+        "scene": "001"
     }
 
     acquisitions = dm.db.acquisitions
-
     acquisitions.delete_one({"_id": "emit20200101t000000"})
-
     acquisition_id = acquisitions.insert_one(acquisition).inserted_id
-
     assert acquisition_id == "emit20200101t000000"
 
 

@@ -44,17 +44,23 @@ class FileManager:
 
         # If we have an acquisition id, create acquisition paths
         if self.acquisition_id is not None:
+            # Check for instrument again based on filename
+            instrument_prefix = self.instrument
+            if self.acquisition_id.startswith("ang"):
+                instrument_prefix = "ang"
             # Get date from acquisition string
-            self.date_str = self.acquisition_id[len(self.instrument):(8 + len(self.instrument))]
+            self.date_str = self.acquisition_id[len(instrument_prefix):(8 + len(instrument_prefix))]
             self.date_dir = os.path.join(self.data_dir, self.date_str)
             self.acquisition_dir = os.path.join(self.date_dir, self.acquisition_id)
             self.dirs.extend([self.date_dir, self.acquisition_dir])
 
             # TODO: Set orbit and scene
-            dm = DatabaseManager(config_path)
-            acquisition = dm.find_acquisition(self.acquisition_id)
-            self.orbit_num = acquisition["orbit"]
-            self.scene_num = acquisition["scene"]
+            # dm = DatabaseManager(config_path)
+            # acquisition = dm.find_acquisition(self.acquisition_id)
+            # self.orbit_num = acquisition["orbit"]
+            # self.scene_num = acquisition["scene"]
+            self.orbit_num = "00001"
+            self.scene_num = "001"
 
             self.__dict__.update(self._build_acquisition_paths())
 
@@ -88,6 +94,10 @@ class FileManager:
         self.emit_sds_l1b_repo_dir = self.pges["emit-sds-l1b"].repo_dir
         self.emitrdn_exe = os.path.join(self.emit_sds_l1b_repo_dir, "emitrdn.py")
 
+        # isofit paths
+        self.isofit_repo_dir = self.pges["isofit"].repo_dir
+        self.apply_oe_exe = os.path.join(self.isofit_repo_dir, "isofit/utils/apply_oe.py")
+
     def _build_acquisition_paths(self):
         product_map = {
             "l1a": {
@@ -101,6 +111,11 @@ class FileManager:
                 "glt": ["img", "hdr"],
                 "att": ["nc"],
                 "geoqa": ["txt"]
+            },
+            "l2a": {
+                "rfl": ["img", "hdr"],
+                "uncert": ["img", "hdr"],
+                "mask": ["img", "hdr"]
             }
         }
         paths = {}
