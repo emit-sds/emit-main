@@ -119,13 +119,13 @@ class SlurmJobTask(luigi.Task):
         base_tmp_dir = fm.scratch_tmp_dir
         timestamp = datetime.datetime.now().strftime("%Y%m%dt%H%M%S")
 #        timestamp = datetime.datetime.now().strftime('%Y%m%dt%H%M%S_%f') # Use this for microseconds
-        folder_name = self.acquisition_id + "_" + self.task_family + "_v" + timestamp
+        folder_name = self.acquisition_id + "_" + self.task_family + "_" + timestamp
 
         for b,a in [(' ',''),('(','_'),(')','_'),(',','_'),('/','_')]:
           folder_name = folder_name.replace(b,a)
         self.tmp_dir = os.path.join(base_tmp_dir, folder_name)
-        max_filename_length = os.fstatvfs(0).f_namemax
-        self.tmp_dir = self.tmp_dir[:max_filename_length]
+#        max_filename_length = os.fstatvfs(0).f_namemax
+#        self.tmp_dir = self.tmp_dir[:max_filename_length]
         logger.info("Created tmp dir: %s", self.tmp_dir)
         os.makedirs(self.tmp_dir)
 
@@ -204,6 +204,7 @@ class SlurmJobTask(luigi.Task):
         if fm.luigi_local_scheduler:
             # Run job locally without Slurm scheduler
             logger.debug("Running task locally: %s" % self.task_family)
+            self._init_local()
             self.work()
         else:
             # Run the job
