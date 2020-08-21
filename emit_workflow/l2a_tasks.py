@@ -29,6 +29,8 @@ class L2AReflectance(SlurmJobTask):
     config_path = luigi.Parameter()
     acquisition_id = luigi.Parameter()
 
+    n_cores = 40
+    memory = 180000
     task_namespace = "emit"
 
     def requires(self):
