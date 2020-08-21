@@ -44,8 +44,12 @@ class FileManager:
 
         # If we have an acquisition id, create acquisition paths
         if self.acquisition_id is not None:
+            # Check for instrument again based on filename
+            instrument_prefix = self.instrument
+            if self.acquisition_id.startswith("ang"):
+                instrument_prefix = "ang"
             # Get date from acquisition string
-            self.date_str = self.acquisition_id[len(self.instrument):(8 + len(self.instrument))]
+            self.date_str = self.acquisition_id[len(instrument_prefix):(8 + len(instrument_prefix))]
             self.date_dir = os.path.join(self.data_dir, self.date_str)
             self.acquisition_dir = os.path.join(self.date_dir, self.acquisition_id)
             self.dirs.extend([self.date_dir, self.acquisition_dir])
