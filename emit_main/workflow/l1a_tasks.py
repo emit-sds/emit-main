@@ -8,8 +8,6 @@ import datetime
 import logging
 import luigi
 
-
-
 from emit_main.workflow.acquisition import Acquisition
 from emit_main.database.database_manager import DatabaseManager
 from emit_main.workflow.envi_target import ENVITarget
@@ -93,14 +91,15 @@ class L1AReassembleRaw(SlurmJobTask):
 
     def output(self):
 
-        wm = WorkflowManager(self.config_path, acquisition_id=self.acquisition_id)
-        return ENVITarget(wm.raw_img_path)
+        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return ENVITarget(acq.raw_img_path)
 
     def work(self):
 
         wm = WorkflowManager(self.config_path, acquisition_id=self.acquisition_id)
-        wm.touch_path(wm.raw_img_path)
-        wm.touch_path(wm.raw_hdr_path)
+        acq = wm.acquisition
+        wm.touch_path(acq.raw_img_path)
+        wm.touch_path(acq.raw_hdr_path)
 
         # Placeholder: PGE writes metadata to db
         metadata = {

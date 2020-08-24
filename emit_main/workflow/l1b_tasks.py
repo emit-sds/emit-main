@@ -7,6 +7,7 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 import logging
 import luigi
 
+from emit_main.workflow.acquisition import Acquisition
 from emit_main.workflow.envi_target import ENVITarget
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.l1a_tasks import L1AReassembleRaw
@@ -35,8 +36,8 @@ class L1BCalibrate(SlurmJobTask):
     def output(self):
 
         logger.debug(self.task_family + " output")
-        wm = WorkflowManager(self.config_path, acquisition_id=self.acquisition_id)
-        return ENVITarget(wm.rdn_img_path)
+        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return ENVITarget(acq.rdn_img_path)
 
     def work(self):
 
@@ -74,27 +75,29 @@ class L1BGeolocate(SlurmJobTask):
     def output(self):
 
         logger.debug(self.task_family + " output")
-        wm = WorkflowManager(self.config_path, acquisition_id=self.acquisition_id)
-        return (ENVITarget(wm.loc_img_path),
-                ENVITarget(wm.obs_img_path),
-                ENVITarget(wm.glt_img_path))
+        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return (ENVITarget(acq.loc_img_path),
+                ENVITarget(acq.obs_img_path),
+                ENVITarget(acq.glt_img_path))
 
     def work(self):
 
         logger.debug(self.task_family + " run")
 
         wm = WorkflowManager(self.config_path, acquisition_id=self.acquisition_id)
+        acq = wm.acquisition
         pge = wm.pges["emit-sds-l1b"]
-        cmd = ["touch", wm.loc_img_path]
+
+        cmd = ["touch", acq.loc_img_path]
         pge.run(cmd)
-        cmd = ["touch", wm.loc_hdr_path]
+        cmd = ["touch", acq.loc_hdr_path]
         pge.run(cmd)
-        cmd = ["touch", wm.obs_img_path]
+        cmd = ["touch", acq.obs_img_path]
         pge.run(cmd)
-        cmd = ["touch", wm.obs_hdr_path]
+        cmd = ["touch", acq.obs_hdr_path]
         pge.run(cmd)
-        cmd = ["touch", wm.glt_img_path]
+        cmd = ["touch", acq.glt_img_path]
         pge.run(cmd)
-        cmd = ["touch", wm.glt_hdr_path]
+        cmd = ["touch", acq.glt_hdr_path]
         pge.run(cmd)
 

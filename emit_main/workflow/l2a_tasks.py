@@ -52,6 +52,7 @@ class L2AReflectance(SlurmJobTask):
         wm = WorkflowManager(self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
         pge = wm.pges["isofit"]
+
         cmd = ["python", wm.apply_oe_exe, acq.rdn_img_path, acq.loc_img_path, acq.obs_img_path, self.tmp_dir, "ang",
                "--presolve=0", "--empirical_line=1", "--copy_input_files=0"
                "--surface_path=/beegfs/scratch/brodrick/emit/sonoran_desert/support/basic_surface.mat",
