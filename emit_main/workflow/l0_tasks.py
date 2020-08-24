@@ -8,10 +8,10 @@ import datetime
 import logging
 import luigi
 
-from emit_main.workflow_manager import FileManager
-from emit_main.slurm import SlurmJobTask
+from emit_main.workflow.workflow_manager import WorkflowManager
+from emit_main.workflow.slurm import SlurmJobTask
 
-logger = logging.getLogger("emit-workflow")
+logger = logging.getLogger("emit-main")
 
 # TODO: Full implementation TBD
 class L0StripEthernet(SlurmJobTask):
@@ -33,7 +33,7 @@ class L0StripEthernet(SlurmJobTask):
 
     def output(self):
 
-        fm = FileManager(self.config_path)
+        wm = WorkflowManager(self.config_path)
         return luigi.LocalTarget("ccsds_path")
 
     def work(self):

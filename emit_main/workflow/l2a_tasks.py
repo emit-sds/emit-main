@@ -7,12 +7,12 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 import logging
 import luigi
 
-from emit_main.envi_target import ENVITarget
-from emit_main.workflow_manager import FileManager
-from emit_main.l1b_tasks import L1BCalibrate, L1BGeolocate
-from emit_main.slurm import SlurmJobTask
+from emit_main.workflow.envi_target import ENVITarget
+from emit_main.workflow.workflow_manager import WorkflowManager
+from emit_main.workflow.l1b_tasks import L1BCalibrate, L1BGeolocate
+from emit_main.workflow.slurm import SlurmJobTask
 
-logger = logging.getLogger("emit-workflow")
+logger = logging.getLogger("emit-main")
 
 
 # TODO: Full implementation TBD
@@ -38,20 +38,20 @@ class L2AReflectance(SlurmJobTask):
     def output(self):
 
         logger.debug(self.task_family + " output")
-        fm = FileManager(self.config_path, acquisition_id=self.acquisition_id)
-        return (ENVITarget(fm.rfl_img_path),
-                ENVITarget(fm.uncert_img_path),
-                ENVITarget(fm.mask_img_path))
+        wm = WorkflowManager(self.config_path, acquisition_id=self.acquisition_id)
+        return (ENVITarget(wm.rfl_img_path),
+                ENVITarget(wm.uncert_img_path),
+                ENVITarget(wm.mask_img_path))
 
     def work(self):
 
         logger.debug(self.task_family + " run")
         logger.debug("task tmp_dir is %s" % self.tmp_dir)
 
-        fm = FileManager(self.config_path, acquisition_id=self.acquisition_id)
-        pge = fm.pges["isofit"]
+        wm = WorkflowManager(self.config_path, acquisition_id=self.acquisition_id)
+        pge = wm.pges["isofit"]
         logger.debug("isofit version is %s" % pge.version)
-        cmd = ["python", fm.apply_oe_exe, fm.rdn_img_path, fm.loc_img_path, fm.obs_img_path, self.tmp_dir, "ang",
+        cmd = ["python", wm.apply_oe_exe, wm.rdn_img_path, wm.loc_img_path, wm.obs_img_path, self.tmp_dir, "ang",
                "--presolve=0", "--empirical_line=1", "--copy_input_files=0"
                "--surface_path=/beegfs/scratch/brodrick/emit/sonoran_desert/support/basic_surface.mat",
                "--log_file=" + self.tmp_dir + "/isofit.log",

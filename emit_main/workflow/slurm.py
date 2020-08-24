@@ -8,9 +8,9 @@ import time
 
 import luigi
 
-from emit_main.workflow_manager import FileManager
+from emit_main.workflow.workflow_manager import WorkflowManager
 
-logger = logging.getLogger("emit-workflow")
+logger = logging.getLogger("emit-main")
 
 
 def _build_sbatch_script(tmp_dir, cmd, job_name, outfile, errfile, n_nodes, n_tasks, n_cores, memory):
@@ -114,9 +114,9 @@ class SlurmJobTask(luigi.Task):
 
     def _init_local(self):
 
-        fm = FileManager(self.config_path)
+        wm = WorkflowManager(self.config_path)
         # Create tmp folder
-        base_tmp_dir = fm.scratch_tmp_dir
+        base_tmp_dir = wm.scratch_tmp_dir
         timestamp = datetime.datetime.now().strftime("%Y%m%dt%H%M%S")
 #        timestamp = datetime.datetime.now().strftime('%Y%m%dt%H%M%S_%f') # Use this for microseconds
         folder_name = self.acquisition_id + "_" + self.task_family + "_" + timestamp
@@ -199,9 +199,9 @@ class SlurmJobTask(luigi.Task):
 
     def run(self):
 
-        fm = FileManager(self.config_path)
+        wm = WorkflowManager(self.config_path)
 
-        if fm.luigi_local_scheduler:
+        if wm.luigi_local_scheduler:
             # Run job locally without Slurm scheduler
             logger.debug("Running task locally: %s" % self.task_family)
             self._init_local()

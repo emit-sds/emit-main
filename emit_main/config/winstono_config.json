@@ -4,7 +4,7 @@
     "environment": "winstono",
     "processing_version": "01",
     "luigi_local_scheduler": true,
-    "luigi_logging_conf": "luigi/logging.conf",
+    "luigi_logging_conf": "workflow/luigi/logging.conf",
     "luigi_workers": 2
   },
 

@@ -4,18 +4,15 @@ This code contains tasks for executing EMIT Level 1B PGEs and helper utilities.
 Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
-import datetime
 import logging
 import luigi
 
-from emit_main.acquisition import Acquisition
-from emit_main.database_manager import DatabaseManager
-from emit_main.envi_target import ENVITarget
-from emit_main.workflow_manager import FileManager
-from emit_main.l1a_tasks import L1AReassembleRaw
-from emit_main.slurm import SlurmJobTask
+from emit_main.workflow.envi_target import ENVITarget
+from emit_main.workflow.workflow_manager import WorkflowManager
+from emit_main.workflow.l1a_tasks import L1AReassembleRaw
+from emit_main.workflow.slurm import SlurmJobTask
 
-logger = logging.getLogger("emit-workflow")
+logger = logging.getLogger("emit-main")
 
 
 # TODO: Full implementation TBD
@@ -38,21 +35,21 @@ class L1BCalibrate(SlurmJobTask):
     def output(self):
 
         logger.debug(self.task_family + " output")
-        fm = FileManager(self.config_path, acquisition_id=self.acquisition_id)
-        return ENVITarget(fm.rdn_img_path)
+        wm = WorkflowManager(self.config_path, acquisition_id=self.acquisition_id)
+        return ENVITarget(wm.rdn_img_path)
 
     def work(self):
 
         logger.debug(self.task_family + " run")
 
-        fm = FileManager(self.config_path, acquisition_id=self.acquisition_id)
-        pge = fm.pges["emit-sds-l1b"]
-#        cmd = ["python", fm.emitrdn_exe]
+        wm = WorkflowManager(self.config_path, acquisition_id=self.acquisition_id)
+        pge = wm.pges["emit-sds-l1b"]
+#        cmd = ["python", wm.emitrdn_exe]
 #        pge.run(cmd)
 
-        cmd = ["touch", fm.rdn_img_path]
+        cmd = ["touch", wm.rdn_img_path]
         pge.run(cmd)
-        cmd = ["touch", fm.rdn_hdr_path]
+        cmd = ["touch", wm.rdn_hdr_path]
         pge.run(cmd)
 
         # # Placeholder: PGE writes metadata to db
@@ -98,27 +95,27 @@ class L1BGeolocate(SlurmJobTask):
     def output(self):
 
         logger.debug(self.task_family + " output")
-        fm = FileManager(self.config_path, acquisition_id=self.acquisition_id)
-        return (ENVITarget(fm.loc_img_path),
-                ENVITarget(fm.obs_img_path),
-                ENVITarget(fm.glt_img_path))
+        wm = WorkflowManager(self.config_path, acquisition_id=self.acquisition_id)
+        return (ENVITarget(wm.loc_img_path),
+                ENVITarget(wm.obs_img_path),
+                ENVITarget(wm.glt_img_path))
 
     def work(self):
 
         logger.debug(self.task_family + " run")
 
-        fm = FileManager(self.config_path, acquisition_id=self.acquisition_id)
-        pge = fm.pges["emit-sds-l1b"]
-        cmd = ["touch", fm.loc_img_path]
+        wm = WorkflowManager(self.config_path, acquisition_id=self.acquisition_id)
+        pge = wm.pges["emit-sds-l1b"]
+        cmd = ["touch", wm.loc_img_path]
         pge.run(cmd)
-        cmd = ["touch", fm.loc_hdr_path]
+        cmd = ["touch", wm.loc_hdr_path]
         pge.run(cmd)
-        cmd = ["touch", fm.obs_img_path]
+        cmd = ["touch", wm.obs_img_path]
         pge.run(cmd)
-        cmd = ["touch", fm.obs_hdr_path]
+        cmd = ["touch", wm.obs_hdr_path]
         pge.run(cmd)
-        cmd = ["touch", fm.glt_img_path]
+        cmd = ["touch", wm.glt_img_path]
         pge.run(cmd)
-        cmd = ["touch", fm.glt_hdr_path]
+        cmd = ["touch", wm.glt_hdr_path]
         pge.run(cmd)
 

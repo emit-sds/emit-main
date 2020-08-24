@@ -8,14 +8,16 @@ import datetime
 import logging
 import luigi
 
-from emit_main.acquisition import Acquisition
-from emit_main.database_manager import DatabaseManager
-from emit_main.envi_target import ENVITarget
-from emit_main.workflow_manager import FileManager
-from emit_main.l0_tasks import L0StripEthernet
-from emit_main.slurm import SlurmJobTask
 
-logger = logging.getLogger("emit-workflow")
+
+from emit_main.workflow.acquisition import Acquisition
+from emit_main.database.database_manager import DatabaseManager
+from emit_main.workflow.envi_target import ENVITarget
+from emit_main.workflow.workflow_manager import WorkflowManager
+from emit_main.workflow.l0_tasks import L0StripEthernet
+from emit_main.workflow.slurm import SlurmJobTask
+
+logger = logging.getLogger("emit-main")
 
 
 # TODO: Full implementation TBD
@@ -91,14 +93,14 @@ class L1AReassembleRaw(SlurmJobTask):
 
     def output(self):
 
-        fm = FileManager(self.config_path, acquisition_id=self.acquisition_id)
-        return ENVITarget(fm.raw_img_path)
+        wm = WorkflowManager(self.config_path, acquisition_id=self.acquisition_id)
+        return ENVITarget(wm.raw_img_path)
 
     def work(self):
 
-        fm = FileManager(self.config_path, acquisition_id=self.acquisition_id)
-        fm.touch_path(fm.raw_img_path)
-        fm.touch_path(fm.raw_hdr_path)
+        wm = WorkflowManager(self.config_path, acquisition_id=self.acquisition_id)
+        wm.touch_path(wm.raw_img_path)
+        wm.touch_path(wm.raw_hdr_path)
 
         # Placeholder: PGE writes metadata to db
         metadata = {

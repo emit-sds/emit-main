@@ -1,5 +1,5 @@
 """
-This code contains the FileManager class that handles filesystem paths
+This code contains the WorkflowManager class that handles filesystem paths
 
 Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
@@ -8,13 +8,13 @@ import json
 import logging
 import os
 
-from emit_main.database_manager import DatabaseManager
-from emit_main.pge import PGE
+from emit_main.database.database_manager import DatabaseManager
+from emit_main.workflow.pge import PGE
 
-logger = logging.getLogger("emit-workflow")
+logger = logging.getLogger("emit-main")
 
 
-class FileManager:
+class WorkflowManager:
 
     def __init__(self, config_path, acquisition_id=None):
         """

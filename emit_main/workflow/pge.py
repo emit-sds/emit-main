@@ -8,7 +8,7 @@ import logging
 import os
 import subprocess
 
-logger = logging.getLogger("emit-workflow")
+logger = logging.getLogger("emit-main")
 
 
 class PGE:
