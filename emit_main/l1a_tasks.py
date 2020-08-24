@@ -11,7 +11,7 @@ import luigi
 from emit_main.acquisition import Acquisition
 from emit_main.database_manager import DatabaseManager
 from emit_main.envi_target import ENVITarget
-from emit_main.file_manager import FileManager
+from emit_main.workflow_manager import FileManager
 from emit_main.l0_tasks import L0StripEthernet
 from emit_main.slurm import SlurmJobTask
 

@@ -9,7 +9,7 @@ import luigi
 import sys
 
 #sys.path.insert(0,"../")
-from emit_main.file_manager import FileManager
+from emit_main.workflow_manager import FileManager
 from emit_main.l1b_tasks import L1BCalibrate
 
 logging.config.fileConfig(fname="test_logging.conf")

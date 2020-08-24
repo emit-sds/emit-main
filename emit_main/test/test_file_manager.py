@@ -7,7 +7,7 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 import logging.config
 
 #sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from emit_main.file_manager import FileManager
+from emit_main.workflow_manager import FileManager
 
 logging.config.fileConfig(fname="test_logging.conf")
 logger = logging.getLogger("emit-workflow")
