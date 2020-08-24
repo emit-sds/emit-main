@@ -57,6 +57,7 @@ class FileManager:
             # TODO: Set orbit and scene. Defaults below are for testing only
             dm = DatabaseManager(config_path)
             acquisition = dm.find_acquisition(self.acquisition_id)
+            # Do acquisition = Acquisition(config_path, self.acquisition_id)
             if "orbit" in acquisition.keys():
                 self.orbit_num = acquisition["orbit"]
             else:

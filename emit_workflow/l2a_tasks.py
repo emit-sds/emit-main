@@ -52,11 +52,11 @@ class L2AReflectance(SlurmJobTask):
         pge = fm.pges["isofit"]
         logger.debug("isofit version is %s" % pge.version)
         cmd = ["python", fm.apply_oe_exe, fm.rdn_img_path, fm.loc_img_path, fm.obs_img_path, self.tmp_dir, "ang",
-               "--presolve=1", "--empirical_line=1",
+               "--presolve=0", "--empirical_line=1", "--copy_input_files=0"
                "--surface_path=/beegfs/scratch/brodrick/emit/sonoran_desert/support/basic_surface.mat",
                "--log_file=" + self.tmp_dir + "/isofit.log",
                "--n_cores=40",
                "--channelized_uncertainty=/home/brodrick/src/isofit/data/avirisng_systematic_error.txt",
                "--wavelength_path=/home/brodrick/src/isofit/examples/20171108_Pasadena/remote/20170320_ang20170228_wavelength_fit.txt",
-               "--lut_config_file=/beegfs/scratch/brodrick/emit/sonoran_desert/support/lut_config.json"]
+               "--lut_config_file=/beegfs/scratch/winstono/emit/sonoran_desert/support/lut_config.json"]
         pge.run(cmd)
