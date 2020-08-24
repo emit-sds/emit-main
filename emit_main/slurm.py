@@ -8,7 +8,7 @@ import time
 
 import luigi
 
-from emit_workflow.file_manager import FileManager
+from emit_main.file_manager import FileManager
 
 logger = logging.getLogger("emit-workflow")
 

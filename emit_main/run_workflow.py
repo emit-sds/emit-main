@@ -9,11 +9,11 @@ import luigi
 import logging.config
 import sys
 
-from emit_workflow.l0_tasks import *
-from emit_workflow.l1a_tasks import *
-from emit_workflow.l1b_tasks import *
-from emit_workflow.l2a_tasks import *
-from emit_workflow.slurm import SlurmJobTask
+from emit_main.l0_tasks import *
+from emit_main.l1a_tasks import *
+from emit_main.l1b_tasks import *
+from emit_main.l2a_tasks import *
+from emit_main.slurm import SlurmJobTask
 
 logging.config.fileConfig(fname="logging.conf")
 logger = logging.getLogger("emit-workflow")

@@ -9,7 +9,7 @@ import logging.config
 import sys
 
 #sys.path.insert(0,"../")
-from emit_workflow.database_manager import DatabaseManager
+from emit_main.database_manager import DatabaseManager
 
 logging.config.fileConfig(fname="test_logging.conf")
 logger = logging.getLogger("emit-workflow")

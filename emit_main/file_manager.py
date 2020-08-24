@@ -8,8 +8,8 @@ import json
 import logging
 import os
 
-from emit_workflow.database_manager import DatabaseManager
-from emit_workflow.pge import PGE
+from emit_main.database_manager import DatabaseManager
+from emit_main.pge import PGE
 
 logger = logging.getLogger("emit-workflow")
 

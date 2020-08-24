@@ -7,10 +7,10 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 import logging
 import luigi
 
-from emit_workflow.envi_target import ENVITarget
-from emit_workflow.file_manager import FileManager
-from emit_workflow.l1b_tasks import L1BCalibrate, L1BGeolocate
-from emit_workflow.slurm import SlurmJobTask
+from emit_main.envi_target import ENVITarget
+from emit_main.file_manager import FileManager
+from emit_main.l1b_tasks import L1BCalibrate, L1BGeolocate
+from emit_main.slurm import SlurmJobTask
 
 logger = logging.getLogger("emit-workflow")
 

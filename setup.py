@@ -1,5 +1,5 @@
 """
-This is the setup file for managing the emit_workflow package
+This is the setup file for managing the emit_main package
 
 Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
@@ -10,11 +10,11 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="emit_workflow",
+    name="emit_main",
     version="0.1.0",
     author="Winston Olson-Duvall",
     author_email="winston.olson-duvall@jpl.nasa.gov",
-    description="Workflow code for executing and monitoring processing tasks",
+    description="Workflow and file management code for EMIT data processing",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.jpl.nasa.gov/emit-sds/emit-main",
