@@ -7,6 +7,7 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 import logging
 import luigi
 
+from emit_main.workflow.acquisition import Acquisition
 from emit_main.workflow.envi_target import ENVITarget
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.l1b_tasks import L1BCalibrate, L1BGeolocate
@@ -38,10 +39,10 @@ class L2AReflectance(SlurmJobTask):
     def output(self):
 
         logger.debug(self.task_family + " output")
-        wm = WorkflowManager(self.config_path, acquisition_id=self.acquisition_id)
-        return (ENVITarget(wm.rfl_img_path),
-                ENVITarget(wm.uncert_img_path),
-                ENVITarget(wm.mask_img_path))
+        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return (ENVITarget(acq.rfl_img_path),
+                ENVITarget(acq.uncert_img_path),
+                ENVITarget(acq.mask_img_path))
 
     def work(self):
 
@@ -49,9 +50,9 @@ class L2AReflectance(SlurmJobTask):
         logger.debug("task tmp_dir is %s" % self.tmp_dir)
 
         wm = WorkflowManager(self.config_path, acquisition_id=self.acquisition_id)
+        acq = wm.acquisition
         pge = wm.pges["isofit"]
-        logger.debug("isofit version is %s" % pge.version)
-        cmd = ["python", wm.apply_oe_exe, wm.rdn_img_path, wm.loc_img_path, wm.obs_img_path, self.tmp_dir, "ang",
+        cmd = ["python", wm.apply_oe_exe, acq.rdn_img_path, acq.loc_img_path, acq.obs_img_path, self.tmp_dir, "ang",
                "--presolve=0", "--empirical_line=1", "--copy_input_files=0"
                "--surface_path=/beegfs/scratch/brodrick/emit/sonoran_desert/support/basic_surface.mat",
                "--log_file=" + self.tmp_dir + "/isofit.log",

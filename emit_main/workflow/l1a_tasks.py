@@ -112,7 +112,7 @@ class L1AReassembleRaw(SlurmJobTask):
             "orbit": "00001",
             "scene": "001"
         }
-        acquisition = Acquisition(self.acquisition_id, metadata)
+        acquisition = Acquisition(self.config_path, self.acquisition_id, metadata)
 
         dm = DatabaseManager(self.config_path)
         acquisitions = dm.db.acquisitions
@@ -120,7 +120,7 @@ class L1AReassembleRaw(SlurmJobTask):
 
         acquisitions.delete_one(query)
 
-        acquisition_id = acquisitions.insert_one(acquisition.__dict__).inserted_id
+        acquisition_id = acquisitions.insert_one(acquisition.metadata).inserted_id
         #
         # #acquisitions.update(query, acquisition.__dict__, upsert=True)
 

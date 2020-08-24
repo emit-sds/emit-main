@@ -9,6 +9,7 @@ import logging
 import os
 
 from emit_main.database.database_manager import DatabaseManager
+from emit_main.workflow.acquisition import Acquisition
 from emit_main.workflow.pge import PGE
 
 logger = logging.getLogger("emit-main")
@@ -43,6 +44,9 @@ class WorkflowManager:
                      self.scratch_tmp_dir, self.scratch_error_dir])
 
         # If we have an acquisition id, create acquisition paths
+        if self.acquisition_id is not None:
+            self.acquisition = Acquisition(config_path, acquisition_id=self.acquisition_id)
+
         if self.acquisition_id is not None:
             # Check for instrument again based on filename
             instrument_prefix = self.instrument

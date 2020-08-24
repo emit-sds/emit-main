@@ -43,36 +43,15 @@ class L1BCalibrate(SlurmJobTask):
         logger.debug(self.task_family + " run")
 
         wm = WorkflowManager(self.config_path, acquisition_id=self.acquisition_id)
+        acq = wm.acquisition
         pge = wm.pges["emit-sds-l1b"]
 #        cmd = ["python", wm.emitrdn_exe]
 #        pge.run(cmd)
 
-        cmd = ["touch", wm.rdn_img_path]
+        cmd = ["touch", acq.rdn_img_path]
         pge.run(cmd)
-        cmd = ["touch", wm.rdn_hdr_path]
+        cmd = ["touch", acq.rdn_hdr_path]
         pge.run(cmd)
-
-        # # Placeholder: PGE writes metadata to db
-        # metadata = {
-        #     "lines": 5500,
-        #     "bands": 324,
-        #     "samples": 1280,
-        #     "start_time": datetime.datetime.utcnow(),
-        #     "end_time": datetime.datetime.utcnow() + datetime.timedelta(minutes=11),
-        #     "orbit": "00001",
-        #     "scene": "001"
-        # }
-        # acquisition = Acquisition(self.acquisition_id, metadata)
-        #
-        # dm = DatabaseManager(self.config_path)
-        # acquisitions = dm.db.acquisitions
-        # query = {"_id": self.acquisition_id}
-        #
-        # acquisitions.delete_one(query)
-        #
-        # acquisition_id = acquisitions.insert_one(acquisition.__dict__).inserted_id
-        #
-        # #acquisitions.update(query, acquisition.__dict__, upsert=True)
 
 
 # TODO: Full implementation TBD
