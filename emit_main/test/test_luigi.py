@@ -20,8 +20,9 @@ def test_luigi_build():
     logger.debug("Running test_luigi_build")
 
     wm = WorkflowManager("config/test_config.json", acquisition_id="emit20200101t000000")
-    wm.remove_dir(wm.l1a_data_dir)
-    wm.remove_dir(wm.l1b_data_dir)
+    acq = wm.acquisition
+    wm.remove_dir(acq.l1a_data_dir)
+    wm.remove_dir(acq.l1b_data_dir)
 
     success = luigi.build(
         [L1BCalibrate(config_path="config/test_config.json", acquisition_id="emit20200101t000000")],

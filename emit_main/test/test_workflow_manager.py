@@ -18,9 +18,10 @@ def test_acquisition_paths():
     logger.debug("Running test_acquisition_paths")
 
     wm = WorkflowManager("config/test_config.json", acquisition_id="emit20200101t000000")
-    wm.remove_path(wm.raw_img_path)
-    wm.touch_path(wm.raw_img_path)
-    assert wm.path_exists(wm.raw_img_path)
+    acq = wm.acquisition
+    wm.remove_path(acq.raw_img_path)
+    wm.touch_path(acq.raw_img_path)
+    assert wm.path_exists(acq.raw_img_path)
 
 
 def test_build_runtime_environment():
