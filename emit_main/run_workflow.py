@@ -67,8 +67,8 @@ def get_tasks_from_args(args):
 def task_success(task):
     logger.info("SUCCESS: %s" % task)
 
-    logger.debug("Deleting tmp folder %s" % task.tmp_dir)
-    shutil.rmtree(task.tmp_dir)
+#    logger.debug("Deleting tmp folder %s" % task.tmp_dir)
+#    shutil.rmtree(task.tmp_dir)
 
 
 #@luigi.Task.event_handler(luigi.Event.FAILURE)

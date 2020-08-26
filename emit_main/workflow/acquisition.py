@@ -24,6 +24,7 @@ class Acquisition:
             self.__dict__.update(config["filesystem_config"])
             self.__dict__.update(config["build_config"])
 
+        self.config_path = config_path
         self.acquisition_id = acquisition_id
 
         # TODO: Define and initialize acquisition metadata
@@ -106,3 +107,10 @@ class Acquisition:
                     prod_path = os.path.join(self.acquisition_dir, level, prod_name)
                     paths[prod_key] = prod_path
         return paths
+
+    def save(self):
+        dm = DatabaseManager(self.config_path)
+        acquisitions = dm.db.acquisitions
+        query = {"_id": self.acquisition_id}
+        set_values = {"$set": self.metadata}
+        acquisitions.update_one(query, set_values, upsert=True)

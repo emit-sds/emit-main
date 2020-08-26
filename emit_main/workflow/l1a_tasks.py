@@ -129,6 +129,8 @@ class L1AReassembleRaw(SlurmJobTask):
         for file in glob.glob(os.path.join(raw_dir, "output", "*")):
             shutil.move(file, acq.l1a_data_dir)
 
+#        wm.copy_tmp_dir_and_outputs()
+
         # Placeholder: PGE writes metadata to db
         metadata = {
             "lines": 5500,
@@ -140,14 +142,15 @@ class L1AReassembleRaw(SlurmJobTask):
             "scene": "001"
         }
         acquisition = Acquisition(self.config_path, self.acquisition_id, metadata)
+        acquisition.save()
 
-        dm = DatabaseManager(self.config_path)
-        acquisitions = dm.db.acquisitions
-        query = {"_id": self.acquisition_id}
-
-        acquisitions.delete_one(query)
-
-        acquisition_id = acquisitions.insert_one(acquisition.metadata).inserted_id
+        # dm = DatabaseManager(self.config_path)
+        # acquisitions = dm.db.acquisitions
+        # query = {"_id": self.acquisition_id}
+        #
+        # acquisitions.delete_one(query)
+        #
+        # acquisition_id = acquisitions.insert_one(acquisition.metadata).inserted_id
 
 
 # TODO: Full implementation TBD
