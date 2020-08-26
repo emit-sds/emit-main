@@ -6,6 +6,7 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 
 import argparse
 import logging.config
+import shutil
 import sys
 
 from emit_main.workflow.l0_tasks import *
@@ -43,7 +44,6 @@ def parse_args():
 
 
 def get_tasks_from_args(args):
-    wm = WorkflowManager(args.config_path)
     products = args.products.split(",")
     acquisition_kwargs = {
         "config_path": args.config_path,
@@ -67,6 +67,9 @@ def get_tasks_from_args(args):
 def task_success(task):
     logger.info("SUCCESS: %s" % task)
 
+    logger.debug("Deleting tmp folder %s" % task.tmp_dir)
+    shutil.rmtree(task.tmp_dir)
+
 
 #@luigi.Task.event_handler(luigi.Event.FAILURE)
 @SlurmJobTask.event_handler(luigi.Event.FAILURE)
@@ -74,7 +77,12 @@ def task_failure(task, e):
     # TODO: If additional debugging is needed, change exc_info to True
     logger.error("FAILURE: %s failed with exception %s" % (task, str(e)), exc_info=False)
 
-    # Clean up tmp directories for failed try or move them to an "tmp/errors" subfolder
+    # Move tmp folder to errors folder
+    error_dir = task.tmp_dir.replace("/tmp/", "/error/")
+    logger.error("Moving tmp folder %s to %s" % (task.tmp_dir, error_dir))
+    shutil.move(task.tmp_dir, error_dir)
+
+    # TODO: Clean up DB?
 
 
 def main():

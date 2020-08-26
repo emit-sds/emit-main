@@ -7,6 +7,7 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 import json
 import logging
 import os
+import subprocess
 
 from emit_main.database.database_manager import DatabaseManager
 from emit_main.workflow.acquisition import Acquisition
@@ -32,6 +33,8 @@ class WorkflowManager:
             self.__dict__.update(config["filesystem_config"])
             self.__dict__.update(config["build_config"])
 
+        self.database_manager = DatabaseManager(config_path)
+
         # Create base directories and add to list to create directories later
         dirs = []
         self.instrument_dir = os.path.join(self.local_store_dir, self.instrument)
@@ -39,7 +42,7 @@ class WorkflowManager:
         self.data_dir = os.path.join(self.environment_dir, "data")
         self.repo_dir = os.path.join(self.environment_dir, "repos")
         self.scratch_tmp_dir = os.path.join(self.local_scratch_dir, self.instrument, self.environment, "tmp")
-        self.scratch_error_dir = os.path.join(self.local_scratch_dir, self.instrument, self.environment, "errors")
+        self.scratch_error_dir = os.path.join(self.local_scratch_dir, self.instrument, self.environment, "error")
         dirs.extend([self.instrument_dir, self.environment_dir, self.data_dir, self.repo_dir,
                      self.scratch_tmp_dir, self.scratch_error_dir])
 
@@ -48,9 +51,11 @@ class WorkflowManager:
             if not os.path.exists(d):
                 os.makedirs(d)
 
-        # If we have an acquisition id, create acquisition paths
-        if self.acquisition_id is not None:
+        # If we have an acquisition id and acquisition exists in db, initialize acquisition
+        if self.acquisition_id and self.database_manager.find_acquisition(self.acquisition_id):
             self.acquisition = Acquisition(config_path, acquisition_id=self.acquisition_id)
+        else:
+            self.acquisition = None
 
         # Create repository paths and PGEs based on build config
         self.pges = {}
@@ -97,3 +102,10 @@ class WorkflowManager:
     def remove_path(self, path):
         if os.path.exists((path)):
             os.system(" ".join(["rm", "-f", path]))
+
+    def run(self, cmd):
+        logging.info("Running command: %s" % " ".join(cmd))
+        output = subprocess.run(cmd, shell=True, capture_output=True)
+        if output.returncode != 0:
+            logger.error("WorkflowManager run command failed: %s" % output.args)
+            raise RuntimeError(output.stderr.decode("utf-8"))
