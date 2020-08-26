@@ -33,18 +33,18 @@ class WorkflowManager:
             self.__dict__.update(config["build_config"])
 
         # Create base directories and add to list to create directories later
-        self.dirs = []
+        dirs = []
         self.instrument_dir = os.path.join(self.local_store_dir, self.instrument)
         self.environment_dir = os.path.join(self.instrument_dir, self.environment)
         self.data_dir = os.path.join(self.environment_dir, "data")
         self.repo_dir = os.path.join(self.environment_dir, "repos")
         self.scratch_tmp_dir = os.path.join(self.local_scratch_dir, self.instrument, self.environment, "tmp")
         self.scratch_error_dir = os.path.join(self.local_scratch_dir, self.instrument, self.environment, "errors")
-        self.dirs.extend([self.instrument_dir, self.environment_dir, self.data_dir, self.repo_dir,
+        dirs.extend([self.instrument_dir, self.environment_dir, self.data_dir, self.repo_dir,
                      self.scratch_tmp_dir, self.scratch_error_dir])
 
         # Make directories if they don't exist
-        for d in self.dirs:
+        for d in dirs:
             if not os.path.exists(d):
                 os.makedirs(d)
 
