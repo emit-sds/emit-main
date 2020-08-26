@@ -46,7 +46,7 @@ class L1BCalibrate(SlurmJobTask):
         wm = WorkflowManager(self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
         pge = wm.pges["emit-sds-l1b"]
-#        cmd = ["python", wm.emitrdn_exe]
+        cmd = ["python", pge.emitrdn_exe]
 #        pge.run(cmd)
 
         cmd = ["touch", acq.rdn_img_path]

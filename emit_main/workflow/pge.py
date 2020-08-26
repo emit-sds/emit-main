@@ -13,7 +13,7 @@ logger = logging.getLogger("emit-main")
 
 class PGE:
 
-    def __init__(self, conda_base, conda_env, pge_base, repo_url, version_tag):
+    def __init__(self, conda_base, conda_env, pge_base, repo_url, version_tag, local_paths):
         # conda_env_base is the top level "envs" folder, e.g. ~/anaconda3/envs
         self.conda_env_base = os.path.join(conda_base, "envs")
         self.conda_sh_path = os.path.join(conda_base, "etc/profile.d/conda.sh")
@@ -40,6 +40,12 @@ class PGE:
         else:
             self.conda_env_name = conda_env
         self.conda_env_dir = os.path.join(self.conda_env_base, self.conda_env_name)
+
+        if local_paths is not None:
+            abs_local_paths = {}
+            for k,v in local_paths.items():
+                abs_local_paths[k] = os.path.join(self.repo_dir, v)
+            self.__dict__.update(abs_local_paths)
 
     def _get_version_tag(self):
         # TODO: Get latest release from repo
