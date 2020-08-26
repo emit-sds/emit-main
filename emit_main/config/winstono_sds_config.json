@@ -3,25 +3,25 @@
     "instrument": "emit",
     "environment": "winstono",
     "processing_version": "01",
-    "luigi_local_scheduler": true,
+    "luigi_local_scheduler": false,
     "luigi_logging_conf": "workflow/luigi/logging.conf",
     "luigi_workers": 2
   },
 
   "filesystem_config": {
-    "local_store_dir": "/Users/winstono/dev/beegfs/store/",
-    "local_scratch_dir": "/Users/winstono/dev/beegfs/scratch/"
+    "local_store_dir": "/beegfs/store/",
+    "local_scratch_dir": "/beegfs/scratch/"
   },
 
   "database_config": {
-    "mongodb_host": "localhost",
+    "mongodb_host": "128.149.52.213",
     "mongodb_port": 27017,
     "mongodb_db_name": "emitDevDB"
   },
 
   "build_config": {
     "build_num": "001",
-    "conda_base_dir": "/Users/winstono/opt/anaconda3/",
+    "conda_base_dir": "/home/winstono/anaconda3/",
     "repositories": [
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-main.git",

@@ -1,10 +1,10 @@
 {
   "general_config": {
     "instrument": "emit",
-    "environment": "test",
+    "environment": "winstono",
     "processing_version": "01",
     "luigi_local_scheduler": true,
-    "luigi_logging_conf": "../workflow/luigi/logging.conf",
+    "luigi_logging_conf": "workflow/luigi/logging.conf",
     "luigi_workers": 2
   },
 
@@ -16,7 +16,7 @@
   "database_config": {
     "mongodb_host": "128.149.52.213",
     "mongodb_port": 27017,
-    "mongodb_db_name": "emitTestDB"
+    "mongodb_db_name": "emitDevDB"
   },
 
   "build_config": {

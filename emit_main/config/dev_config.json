@@ -14,7 +14,7 @@
   },
 
   "database_config": {
-    "mongodb_host": "localhost",
+    "mongodb_host": "128.149.52.213",
     "mongodb_port": 27017,
     "mongodb_db_name": "emitDevDB"
   },
