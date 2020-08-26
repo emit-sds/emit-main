@@ -5,18 +5,17 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
 import argparse
-import luigi
 import logging.config
 import sys
 
-from l0_tasks import *
-from l1a_tasks import *
-from l1b_tasks import *
-from l2a_tasks import *
-from slurm import SlurmJobTask
+from emit_main.workflow.l0_tasks import *
+from emit_main.workflow.l1a_tasks import *
+from emit_main.workflow.l1b_tasks import *
+from emit_main.workflow.l2a_tasks import *
+from emit_main.workflow.slurm import SlurmJobTask
 
 logging.config.fileConfig(fname="logging.conf")
-logger = logging.getLogger("emit-workflow")
+logger = logging.getLogger("emit-main")
 
 
 def parse_args():
@@ -44,7 +43,7 @@ def parse_args():
 
 
 def get_tasks_from_args(args):
-    fm = FileManager(args.config_path)
+    wm = WorkflowManager(args.config_path)
     products = args.products.split(",")
     acquisition_kwargs = {
         "config_path": args.config_path,
@@ -85,16 +84,16 @@ def main():
     args = parse_args()
     tasks = get_tasks_from_args(args)
 
-    fm = FileManager(args.config_path)
-    fm.build_runtime_environment()
+    wm = WorkflowManager(args.config_path)
+    wm.build_runtime_environment()
 
     if args.workers:
         workers = args.workers
     else:
-        workers = fm.luigi_workers
+        workers = wm.luigi_workers
 
-    luigi.build(tasks, workers=workers, local_scheduler=fm.luigi_local_scheduler,
-                logging_conf_file=fm.luigi_logging_conf)
+    luigi.build(tasks, workers=workers, local_scheduler=wm.luigi_local_scheduler,
+                logging_conf_file=wm.luigi_logging_conf)
 
 
 if __name__ == '__main__':

@@ -3,13 +3,10 @@ try:
 except ImportError:
     import pickle
 
-import logging
 import os
 import sys
 
-from l0_tasks import *
-from l1a_tasks import *
-from l1b_tasks import *
+from emit_main.workflow.l2a_tasks import *
 
 def _do_work_on_compute_node(work_dir):
 

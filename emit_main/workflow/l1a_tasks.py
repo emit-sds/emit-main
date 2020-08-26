@@ -8,12 +8,14 @@ import datetime
 import logging
 import luigi
 
-from envi_target import ENVITarget
-from file_manager import FileManager
-from l0_tasks import L0StripEthernet
-from slurm import SlurmJobTask
+from emit_main.workflow.acquisition import Acquisition
+from emit_main.database.database_manager import DatabaseManager
+from emit_main.workflow.envi_target import ENVITarget
+from emit_main.workflow.workflow_manager import WorkflowManager
+from emit_main.workflow.l0_tasks import L0StripEthernet
+from emit_main.workflow.slurm import SlurmJobTask
 
-logger = logging.getLogger("emit-workflow")
+logger = logging.getLogger("emit-main")
 
 
 # TODO: Full implementation TBD
@@ -89,14 +91,37 @@ class L1AReassembleRaw(SlurmJobTask):
 
     def output(self):
 
-        fm = FileManager(self.config_path, acquisition_id=self.acquisition_id)
-        return ENVITarget(fm.raw_img_path)
+        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return ENVITarget(acq.raw_img_path)
 
     def work(self):
 
-        fm = FileManager(self.config_path, acquisition_id=self.acquisition_id)
-        fm.touch_path(fm.raw_img_path)
-        fm.touch_path(fm.raw_hdr_path)
+        wm = WorkflowManager(self.config_path, acquisition_id=self.acquisition_id)
+        acq = wm.acquisition
+        wm.touch_path(acq.raw_img_path)
+        wm.touch_path(acq.raw_hdr_path)
+
+        # Placeholder: PGE writes metadata to db
+        metadata = {
+            "lines": 5500,
+            "bands": 324,
+            "samples": 1280,
+            "start_time": datetime.datetime.utcnow(),
+            "end_time": datetime.datetime.utcnow() + datetime.timedelta(minutes=11),
+            "orbit": "00001",
+            "scene": "001"
+        }
+        acquisition = Acquisition(self.config_path, self.acquisition_id, metadata)
+
+        dm = DatabaseManager(self.config_path)
+        acquisitions = dm.db.acquisitions
+        query = {"_id": self.acquisition_id}
+
+        acquisitions.delete_one(query)
+
+        acquisition_id = acquisitions.insert_one(acquisition.metadata).inserted_id
+        #
+        # #acquisitions.update(query, acquisition.__dict__, upsert=True)
 
 
 # TODO: Full implementation TBD

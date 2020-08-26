@@ -3,6 +3,7 @@
 
 # Ignore folders
 __pycache__
+emit_main.egg-info
 
 # Ignore specific file types
 *.log

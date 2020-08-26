@@ -6,13 +6,12 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 
 import datetime
 import logging.config
-import sys
 
-sys.path.insert(0,"../")
-from database_manager import DatabaseManager
+#sys.path.insert(0,"../")
+from emit_main.database.database_manager import DatabaseManager
 
 logging.config.fileConfig(fname="test_logging.conf")
-logger = logging.getLogger("emit-workflow")
+logger = logging.getLogger("emit-main")
 
 
 def test_database_manager():
