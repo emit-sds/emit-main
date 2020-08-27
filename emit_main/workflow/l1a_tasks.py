@@ -7,9 +7,11 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 import datetime
 import glob
 import logging
-import luigi
 import os
 import shutil
+
+import luigi
+import spectral.io.envi as envi
 
 from emit_main.workflow.acquisition import Acquisition
 from emit_main.database.database_manager import DatabaseManager
@@ -116,8 +118,12 @@ class L1AReassembleRaw(SlurmJobTask):
         os.makedirs(tmp_output_dir)
         tmp_raw_img_path = os.path.join(tmp_output_dir, os.path.basename(acq.raw_img_path))
         tmp_raw_hdr_path = os.path.join(tmp_output_dir, os.path.basename(acq.raw_hdr_path))
-        wm.touch_path(tmp_raw_img_path)
-        wm.touch_path(tmp_raw_hdr_path)
+#        wm.touch_path(tmp_raw_img_path)
+#        wm.touch_path(tmp_raw_hdr_path)
+        test_data_raw_img_path = os.path.join(wm.data_dir,os.path.basename(acq.raw_img_path))
+        test_data_raw_hdr_path = os.path.join(wm.data_dir, os.path.basename(acq.raw_hdr_path))
+        shutil.copy(test_data_raw_img_path, tmp_raw_img_path)
+        shutil.copy(test_data_raw_hdr_path, tmp_raw_hdr_path)
 
         # Placeholder: copy tmp folder back to l1a dir and rename?
         raw_dir = os.path.join(acq.l1a_data_dir, os.path.basename(acq.raw_img_path.replace(".img", ".dir")))
@@ -129,7 +135,7 @@ class L1AReassembleRaw(SlurmJobTask):
         for file in glob.glob(os.path.join(raw_dir, "output", "*")):
             shutil.move(file, acq.l1a_data_dir)
 
-#        wm.copy_tmp_dir_and_outputs()
+        # Placeholder: update hdr files
 
         # Placeholder: PGE writes metadata to db
         metadata = {
