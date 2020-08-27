@@ -120,13 +120,13 @@ class L1AReassembleRaw(SlurmJobTask):
         tmp_raw_hdr_path = os.path.join(tmp_output_dir, os.path.basename(acq.raw_hdr_path))
 #        wm.touch_path(tmp_raw_img_path)
 #        wm.touch_path(tmp_raw_hdr_path)
-        test_data_raw_img_path = os.path.join(wm.data_dir,os.path.basename(acq.raw_img_path))
-        test_data_raw_hdr_path = os.path.join(wm.data_dir, os.path.basename(acq.raw_hdr_path))
+        test_data_raw_img_path = os.path.join(wm.data_dir, "test_data", os.path.basename(acq.raw_img_path))
+        test_data_raw_hdr_path = os.path.join(wm.data_dir, "test_data", os.path.basename(acq.raw_hdr_path))
         shutil.copy(test_data_raw_img_path, tmp_raw_img_path)
         shutil.copy(test_data_raw_hdr_path, tmp_raw_hdr_path)
 
         # Placeholder: copy tmp folder back to l1a dir and rename?
-        raw_dir = os.path.join(acq.l1a_data_dir, os.path.basename(acq.raw_img_path.replace(".img", ".dir")))
+        raw_dir = os.path.join(acq.l1a_data_dir, os.path.basename(acq.raw_img_path.replace(".img", "_dir")))
         if os.path.exists(raw_dir):
             shutil.rmtree(raw_dir)
         shutil.copytree(self.tmp_dir, raw_dir)
@@ -136,17 +136,51 @@ class L1AReassembleRaw(SlurmJobTask):
             shutil.move(file, acq.l1a_data_dir)
 
         # Placeholder: update hdr files
+        hdr = envi.read_envi_header(acq.raw_hdr_path)
+        hdr["description"] = "EMIT L1A raw instrument data (units: DN)"
+        hdr["emit acquisition start time"] = datetime.datetime(2020, 1, 1, 0, 0, 0).strftime("%Y-%m-%dT%H:%M:%S")
+        hdr["emit acquisition stop time"] = datetime.datetime(2020, 1, 1, 0, 11, 26).strftime("%Y-%m-%dT%H:%M:%S")
+        hdr["emit pge name"] = pge.repo_name
+        hdr["emit pge version"] = pge.version_tag
+        hdr["emit pge input files"] = [
+            "file1_key = file1_value",
+            "file2_key = file2_value"
+        ]
+        hdr["emit pge run command"] = "python l1a_run.py args"
+        hdr["emit software build version"] = wm.build_num
+        hdr["emit documentation version"] = "v1"
+        creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.raw_img_path))
+        hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S")
+        hdr["emit data product version"] = acq.processing_version
+
+        tmp_hdr = acq.raw_hdr_path.replace("v01", "v01_2")
+
+        envi.write_envi_header(tmp_hdr, hdr)
 
         # Placeholder: PGE writes metadata to db
         metadata = {
-            "lines": 5500,
-            "bands": 324,
-            "samples": 1280,
-            "start_time": datetime.datetime.utcnow(),
-            "end_time": datetime.datetime.utcnow() + datetime.timedelta(minutes=11),
+            "lines": hdr["lines"],
+            "bands": hdr["bands"],
+            "samples": hdr["samples"],
+            "start_time": hdr["emit acquisition start time"],
+            "stop_time": hdr["emit acquisition stop time"],
             "orbit": "00001",
-            "scene": "001"
+            "scene": "001",
+            "day_night_flag": "day",
+            "cloud_cover": 0.25,
+            "processing_log": []
         }
+        l1a_build_dict = {
+            "task": self.task_family,
+            "datetime": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+            "build_num": wm.build_num,
+            "input_granules": [],
+            "products": [
+                acq.raw_img_path,
+                acq.raw_hdr_path
+            ]
+        }
+        metadata["processing_log"].append(l1a_build_dict)
         acquisition = Acquisition(self.config_path, self.acquisition_id, metadata)
         acquisition.save()
 
