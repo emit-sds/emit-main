@@ -172,7 +172,7 @@ class L1AReassembleRaw(SlurmJobTask):
         }
         l1a_build_dict = {
             "task": self.task_family,
-            "datetime": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+            "datetime": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
             "build_num": wm.build_num,
             "input_granules": [],
             "products": [
