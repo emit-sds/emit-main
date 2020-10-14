@@ -24,6 +24,7 @@ class WorkflowManager:
         :param acquisition_id: The name of the acquisition with timestamp (eg. "emit20200519t140035")
         """
 
+        self.config_path = config_path
         self.acquisition_id = acquisition_id
 
         # Read config file for environment specific paths
@@ -52,8 +53,8 @@ class WorkflowManager:
                 os.makedirs(d)
 
         # If we have an acquisition id and acquisition exists in db, initialize acquisition
-        if self.acquisition_id and self.database_manager.find_acquisition(self.acquisition_id):
-            self.acquisition = Acquisition(config_path, acquisition_id=self.acquisition_id)
+        if self.acquisition_id and self.database_manager.find_acquisition_by_id(self.acquisition_id):
+            self.acquisition = Acquisition(config_path, self.acquisition_id)
         else:
             self.acquisition = None
 

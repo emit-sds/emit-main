@@ -86,6 +86,7 @@ class L1AReassembleRaw(SlurmJobTask):
 
     config_path = luigi.Parameter()
     acquisition_id = luigi.Parameter()
+#    frames_dir = luigi.Parameter()
 
     task_namespace = "emit"
 
@@ -93,6 +94,19 @@ class L1AReassembleRaw(SlurmJobTask):
 
         logger.debug(self.task_family + " requires")
         # This task must be triggered once a complete set of frames
+
+        #FIXME: Acquisition insertion should be happening in previous step.  This is temporary for testing.
+        wm = WorkflowManager(self.config_path, acquisition_id=self.acquisition_id)
+        acq_meta = {
+            "acquisition_id": "emit20200101t000000",
+            "build_num": wm.build_num,
+            "processing_version": wm.processing_version,
+            "start_time": datetime.datetime(2020, 1, 1, 0, 0, 0),
+            "end_time": datetime.datetime(2020, 1, 1, 0, 11, 26),
+            "orbit": "00001",
+            "scene": "001"
+        }
+        wm.database_manager.insert_acquisition(acq_meta)
         return None
 
     def output(self):
@@ -101,7 +115,7 @@ class L1AReassembleRaw(SlurmJobTask):
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
         if acq is None:
-            return False
+            return None
         else:
             return ENVITarget(acq.raw_img_path)
 
@@ -126,13 +140,13 @@ class L1AReassembleRaw(SlurmJobTask):
         shutil.copy(test_data_raw_hdr_path, tmp_raw_hdr_path)
 
         # Placeholder: copy tmp folder back to l1a dir and rename?
-        raw_dir = os.path.join(acq.l1a_data_dir, os.path.basename(acq.raw_img_path.replace(".img", "_dir")))
-        if os.path.exists(raw_dir):
-            shutil.rmtree(raw_dir)
-        shutil.copytree(self.tmp_dir, raw_dir)
+        proc_dir = os.path.join(acq.l1a_data_dir, os.path.basename(acq.raw_img_path.replace(".img", "_proc")))
+        if os.path.exists(proc_dir):
+            shutil.rmtree(proc_dir)
+        shutil.copytree(self.tmp_dir, proc_dir)
 
         # Placeholder: move output files to l1a dir
-        for file in glob.glob(os.path.join(raw_dir, "output", "*")):
+        for file in glob.glob(os.path.join(proc_dir, "output", "*")):
             shutil.move(file, acq.l1a_data_dir)
 
         # Placeholder: update hdr files
@@ -143,54 +157,43 @@ class L1AReassembleRaw(SlurmJobTask):
         hdr["emit pge name"] = pge.repo_name
         hdr["emit pge version"] = pge.version_tag
         hdr["emit pge input files"] = [
-            "file1_key = file1_value",
-            "file2_key = file2_value"
+            "file1_key=file1_value",
+            "file2_key=file2_value"
         ]
         hdr["emit pge run command"] = "python l1a_run.py args"
         hdr["emit software build version"] = wm.build_num
         hdr["emit documentation version"] = "v1"
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.raw_img_path))
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S")
-        hdr["emit data product version"] = acq.processing_version
+        hdr["emit data product version"] = "v" + wm.processing_version
 
-        tmp_hdr = acq.raw_hdr_path.replace("v01", "v01_2")
-
-        envi.write_envi_header(tmp_hdr, hdr)
+        envi.write_envi_header(acq.raw_hdr_path, hdr)
 
         # Placeholder: PGE writes metadata to db
         metadata = {
             "lines": hdr["lines"],
             "bands": hdr["bands"],
             "samples": hdr["samples"],
-            "start_time": hdr["emit acquisition start time"],
-            "stop_time": hdr["emit acquisition stop time"],
-            "orbit": "00001",
-            "scene": "001",
-            "day_night_flag": "day",
-            "cloud_cover": 0.25,
-            "processing_log": []
+            "day_night_flag": "day"
         }
-        l1a_build_dict = {
-            "task": self.task_family,
-            "datetime": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
-            "build_num": wm.build_num,
-            "input_granules": [],
-            "products": [
-                acq.raw_img_path,
-                acq.raw_hdr_path
-            ]
-        }
-        metadata["processing_log"].append(l1a_build_dict)
-        acquisition = Acquisition(self.config_path, self.acquisition_id, metadata)
-        acquisition.save()
 
-        # dm = DatabaseManager(self.config_path)
-        # acquisitions = dm.db.acquisitions
-        # query = {"_id": self.acquisition_id}
-        #
-        # acquisitions.delete_one(query)
-        #
-        # acquisition_id = acquisitions.insert_one(acquisition.metadata).inserted_id
+        acq.save_metadata(metadata)
+
+        log_entry = {
+            "task": self.task_family,
+            "timestamp": datetime.datetime.now(),
+            "inputs": {
+                "file1_key": "file1_value",
+                "file2_key": "file2_value",
+            },
+            "completion_status": "SUCCESS",
+            "outputs": {
+                "l1a_raw_path": acq.raw_img_path,
+                "l1a_raw_hdr_path:": acq.raw_hdr_path
+            }
+        }
+
+        acq.save_processing_log_entry(log_entry)
 
 
 # TODO: Full implementation TBD

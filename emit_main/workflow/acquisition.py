@@ -5,14 +5,17 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
 import json
+import logging
 import os
 
 from emit_main.database.database_manager import DatabaseManager
 
+logger = logging.getLogger("emit-main")
+
 
 class Acquisition:
 
-    def __init__(self, config_path, acquisition_id, metadata=None):
+    def __init__(self, config_path, acquisition_id):
         """
         :param acquisition_id: The name of the acquisition with timestamp (eg. "emit20200519t140035")
         """
@@ -24,13 +27,17 @@ class Acquisition:
             self.__dict__.update(config["filesystem_config"])
             self.__dict__.update(config["build_config"])
 
+        self.database_manager = DatabaseManager(config_path)
+
         self.config_path = config_path
         self.acquisition_id = acquisition_id
 
         # TODO: Define and initialize acquisition metadata
-        self.metadata = {"_id": self.acquisition_id}
-        if metadata is not None:
-            self.metadata.update(metadata)
+        # TODO: What to do if entry doesn't exist yet?
+        self.metadata = self._load_metadata()
+#        self.metadata = {"_id": self.acquisition_id}
+#        if metadata is not None:
+#            self.metadata.update(metadata)
 
         # Create base directories and add to list to create directories later
         self.dirs = []
@@ -49,15 +56,13 @@ class Acquisition:
         self.dirs.extend([self.date_dir, self.acquisition_dir])
 
         # TODO: Set orbit and scene. Defaults below are for testing only
-        dm = DatabaseManager(config_path)
-        acquisition = dm.find_acquisition(self.acquisition_id)
-        # Do acquisition = Acquisition(config_path, self.acquisition_id)
-        if "orbit" in acquisition.keys():
-            self.orbit_num = acquisition["orbit"]
+#        acq_meta = self.database_manager.find_acquisition_by_id(self.acquisition_id)
+        if "orbit" in self.metadata.keys():
+            self.orbit_num = self.metadata["orbit"]
         else:
             self.orbit_num = "00001"
-        if "scene" in acquisition.keys():
-            self.scene_num = acquisition["scene"]
+        if "scene" in self.metadata.keys():
+            self.scene_num = self.metadata["scene"]
         else:
             self.scene_num = "001"
 
@@ -108,9 +113,19 @@ class Acquisition:
                     paths[prod_key] = prod_path
         return paths
 
-    def save(self):
-        dm = DatabaseManager(self.config_path)
-        acquisitions = dm.db.acquisitions
-        query = {"_id": self.acquisition_id}
-        set_values = {"$set": self.metadata}
-        acquisitions.update_one(query, set_values, upsert=True)
+    def _load_metadata(self):
+        acquisitions = self.database_manager.db.acquisitions
+        query = {"acquisition_id": self.acquisition_id, "build_num": self.build_num}
+        return acquisitions.find_one(query)
+
+    def save_metadata(self, metadata):
+        acquisitions = self.database_manager.db.acquisitions
+        query = {"acquisition_id": self.acquisition_id, "build_num": self.build_num}
+        set_value = {"$set": metadata}
+        acquisitions.update_one(query, set_value, upsert=True)
+
+    def save_processing_log_entry(self, entry):
+        acquisitions = self.database_manager.db.acquisitions
+        query = {"acquisition_id": self.acquisition_id, "build_num": self.build_num}
+        push_value = {"$push": {"processing_log": entry}}
+        acquisitions.update_one(query, push_value)
