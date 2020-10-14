@@ -14,6 +14,7 @@ from emit_main.workflow.l1a_tasks import *
 from emit_main.workflow.l1b_tasks import *
 from emit_main.workflow.l2a_tasks import *
 from emit_main.workflow.slurm import SlurmJobTask
+from emit_main.workflow.workflow_manager import WorkflowManager
 
 logging.config.fileConfig(fname="logging.conf")
 logger = logging.getLogger("emit-main")
@@ -82,7 +83,25 @@ def task_failure(task, e):
     logger.error("Moving tmp folder %s to %s" % (task.tmp_dir, error_dir))
     shutil.move(task.tmp_dir, error_dir)
 
-    # TODO: Clean up DB?
+    # Update DB processing_log with failure message
+    if task.task_family == "emit.L1AReassembleRaw":
+        wm = WorkflowManager(task.config_path, task.acquisition_id)
+        acq = wm.acquisition
+        pge = wm.pges["emit-sds-l1a"]
+        log_entry = {
+            "task": task.task_family,
+            "pge_name": pge.repo_name,
+            "pge_version": pge.version_tag,
+            "pge_input_files": {
+                "file1_key": "file1_value",
+                "file2_key": "file2_value",
+            },
+            "pge_run_command": "python l1a_run.py args",
+            "log_timestamp": datetime.datetime.now(),
+            "completion_status": "FAILURE",
+            "error_message": str(e)
+        }
+        acq.save_processing_log_entry(log_entry)
 
 
 def main():

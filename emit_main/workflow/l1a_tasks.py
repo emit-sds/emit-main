@@ -13,8 +13,6 @@ import shutil
 import luigi
 import spectral.io.envi as envi
 
-from emit_main.workflow.acquisition import Acquisition
-from emit_main.database.database_manager import DatabaseManager
 from emit_main.workflow.envi_target import ENVITarget
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.l0_tasks import L0StripEthernet
@@ -181,13 +179,17 @@ class L1AReassembleRaw(SlurmJobTask):
 
         log_entry = {
             "task": self.task_family,
-            "timestamp": datetime.datetime.now(),
-            "inputs": {
+            "pge_name": pge.repo_name,
+            "pge_version": pge.version_tag,
+            "pge_input_files": {
                 "file1_key": "file1_value",
                 "file2_key": "file2_value",
             },
+            "pge_run_command": "python l1a_run.py args",
+            "product_creation_time": creation_time,
+            "log_timestamp": datetime.datetime.now(),
             "completion_status": "SUCCESS",
-            "outputs": {
+            "output": {
                 "l1a_raw_path": acq.raw_img_path,
                 "l1a_raw_hdr_path:": acq.raw_hdr_path
             }
