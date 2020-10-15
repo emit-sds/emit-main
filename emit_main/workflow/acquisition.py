@@ -5,14 +5,17 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
 import json
+import logging
 import os
 
 from emit_main.database.database_manager import DatabaseManager
 
+logger = logging.getLogger("emit-main")
+
 
 class Acquisition:
 
-    def __init__(self, config_path, acquisition_id, metadata=None):
+    def __init__(self, config_path, acquisition_id):
         """
         :param acquisition_id: The name of the acquisition with timestamp (eg. "emit20200519t140035")
         """
@@ -24,12 +27,13 @@ class Acquisition:
             self.__dict__.update(config["filesystem_config"])
             self.__dict__.update(config["build_config"])
 
+        self.config_path = config_path
         self.acquisition_id = acquisition_id
 
         # TODO: Define and initialize acquisition metadata
-        self.metadata = {"_id": self.acquisition_id}
-        if metadata is not None:
-            self.metadata.update(metadata)
+        # TODO: What to do if entry doesn't exist yet?
+        dm = DatabaseManager(config_path)
+        self.metadata = dm.find_acquisition_by_id(self.acquisition_id)
 
         # Create base directories and add to list to create directories later
         self.dirs = []
@@ -48,15 +52,13 @@ class Acquisition:
         self.dirs.extend([self.date_dir, self.acquisition_dir])
 
         # TODO: Set orbit and scene. Defaults below are for testing only
-        dm = DatabaseManager(config_path)
-        acquisition = dm.find_acquisition(self.acquisition_id)
-        # Do acquisition = Acquisition(config_path, self.acquisition_id)
-        if "orbit" in acquisition.keys():
-            self.orbit_num = acquisition["orbit"]
+#        acq_meta = self.database_manager.find_acquisition_by_id(self.acquisition_id)
+        if "orbit" in self.metadata.keys():
+            self.orbit_num = self.metadata["orbit"]
         else:
             self.orbit_num = "00001"
-        if "scene" in acquisition.keys():
-            self.scene_num = acquisition["scene"]
+        if "scene" in self.metadata.keys():
+            self.scene_num = self.metadata["scene"]
         else:
             self.scene_num = "001"
 

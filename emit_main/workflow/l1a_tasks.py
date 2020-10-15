@@ -5,11 +5,14 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
 import datetime
+import glob
 import logging
-import luigi
+import os
+import shutil
 
-from emit_main.workflow.acquisition import Acquisition
-from emit_main.database.database_manager import DatabaseManager
+import luigi
+import spectral.io.envi as envi
+
 from emit_main.workflow.envi_target import ENVITarget
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.l0_tasks import L0StripEthernet
@@ -81,47 +84,121 @@ class L1AReassembleRaw(SlurmJobTask):
 
     config_path = luigi.Parameter()
     acquisition_id = luigi.Parameter()
+#    frames_dir = luigi.Parameter()
 
     task_namespace = "emit"
 
     def requires(self):
 
+        logger.debug(self.task_family + " requires")
         # This task must be triggered once a complete set of frames
+
+        #FIXME: Acquisition insertion should be happening in previous step.  This is temporary for testing.
+        wm = WorkflowManager(self.config_path, acquisition_id=self.acquisition_id)
+        acq_meta = {
+            "acquisition_id": "emit20200101t000000",
+            "build_num": wm.build_num,
+            "processing_version": wm.processing_version,
+            "start_time": datetime.datetime(2020, 1, 1, 0, 0, 0),
+            "end_time": datetime.datetime(2020, 1, 1, 0, 11, 26),
+            "orbit": "00001",
+            "scene": "001"
+        }
+        wm.database_manager.insert_acquisition(acq_meta)
         return None
 
     def output(self):
 
-        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return ENVITarget(acq.raw_img_path)
+        logger.debug(self.task_family + " output")
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        acq = wm.acquisition
+        if acq is None:
+            return None
+        else:
+            return ENVITarget(acq.raw_img_path)
 
     def work(self):
 
+        logger.debug(self.task_family + " run")
+
         wm = WorkflowManager(self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
-        wm.touch_path(acq.raw_img_path)
-        wm.touch_path(acq.raw_hdr_path)
+        pge = wm.pges["emit-sds-l1a"]
+
+        # Placeholder: PGE writes to tmp folder
+        tmp_output_dir = os.path.join(self.tmp_dir, "output")
+        os.makedirs(tmp_output_dir)
+        tmp_raw_img_path = os.path.join(tmp_output_dir, os.path.basename(acq.raw_img_path))
+        tmp_raw_hdr_path = os.path.join(tmp_output_dir, os.path.basename(acq.raw_hdr_path))
+#        wm.touch_path(tmp_raw_img_path)
+#        wm.touch_path(tmp_raw_hdr_path)
+        test_data_raw_img_path = os.path.join(wm.data_dir, "test_data", os.path.basename(acq.raw_img_path))
+        test_data_raw_hdr_path = os.path.join(wm.data_dir, "test_data", os.path.basename(acq.raw_hdr_path))
+        shutil.copy(test_data_raw_img_path, tmp_raw_img_path)
+        shutil.copy(test_data_raw_hdr_path, tmp_raw_hdr_path)
+
+        # Placeholder: copy tmp folder back to l1a dir and rename?
+        proc_dir = os.path.join(acq.l1a_data_dir, os.path.basename(acq.raw_img_path.replace(".img", "_proc")))
+        if os.path.exists(proc_dir):
+            shutil.rmtree(proc_dir)
+        shutil.copytree(self.tmp_dir, proc_dir)
+
+        # Placeholder: move output files to l1a dir
+        for file in glob.glob(os.path.join(proc_dir, "output", "*")):
+            shutil.move(file, acq.l1a_data_dir)
+
+        # Placeholder: update hdr files
+        hdr = envi.read_envi_header(acq.raw_hdr_path)
+        hdr["description"] = "EMIT L1A raw instrument data (units: DN)"
+        hdr["emit acquisition start time"] = datetime.datetime(2020, 1, 1, 0, 0, 0).strftime("%Y-%m-%dT%H:%M:%S")
+        hdr["emit acquisition stop time"] = datetime.datetime(2020, 1, 1, 0, 11, 26).strftime("%Y-%m-%dT%H:%M:%S")
+        hdr["emit pge name"] = pge.repo_name
+        hdr["emit pge version"] = pge.version_tag
+        hdr["emit pge input files"] = [
+            "file1_key=file1_value",
+            "file2_key=file2_value"
+        ]
+        hdr["emit pge run command"] = "python l1a_run.py args"
+        hdr["emit software build version"] = wm.build_num
+        hdr["emit documentation version"] = "v1"
+        creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.raw_img_path))
+        hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S")
+        hdr["emit data product version"] = "v" + wm.processing_version
+
+        envi.write_envi_header(acq.raw_hdr_path, hdr)
 
         # Placeholder: PGE writes metadata to db
         metadata = {
-            "lines": 5500,
-            "bands": 324,
-            "samples": 1280,
-            "start_time": datetime.datetime.utcnow(),
-            "end_time": datetime.datetime.utcnow() + datetime.timedelta(minutes=11),
-            "orbit": "00001",
-            "scene": "001"
+            "lines": hdr["lines"],
+            "bands": hdr["bands"],
+            "samples": hdr["samples"],
+            "day_night_flag": "day"
         }
-        acquisition = Acquisition(self.config_path, self.acquisition_id, metadata)
 
-        dm = DatabaseManager(self.config_path)
-        acquisitions = dm.db.acquisitions
-        query = {"_id": self.acquisition_id}
+#        acq.save_metadata(metadata)
+        dm = wm.database_manager
+        dm.update_acquisition_metadata(self.acquisition_id, metadata)
 
-        acquisitions.delete_one(query)
+        log_entry = {
+            "task": self.task_family,
+            "pge_name": pge.repo_name,
+            "pge_version": pge.version_tag,
+            "pge_input_files": {
+                "file1_key": "file1_value",
+                "file2_key": "file2_value",
+            },
+            "pge_run_command": "python l1a_run.py args",
+            "product_creation_time": creation_time,
+            "log_timestamp": datetime.datetime.now(),
+            "completion_status": "SUCCESS",
+            "output": {
+                "l1a_raw_path": acq.raw_img_path,
+                "l1a_raw_hdr_path:": acq.raw_hdr_path
+            }
+        }
 
-        acquisition_id = acquisitions.insert_one(acquisition.metadata).inserted_id
-        #
-        # #acquisitions.update(query, acquisition.__dict__, upsert=True)
+#        acq.save_processing_log_entry(log_entry)
+        dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
 
 
 # TODO: Full implementation TBD
