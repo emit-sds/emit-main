@@ -34,8 +34,6 @@ class WorkflowManager:
             self.__dict__.update(config["filesystem_config"])
             self.__dict__.update(config["build_config"])
 
-        self.database_manager = DatabaseManager(config_path)
-
         # Create base directories and add to list to create directories later
         dirs = []
         self.instrument_dir = os.path.join(self.local_store_dir, self.instrument)
@@ -53,6 +51,7 @@ class WorkflowManager:
                 os.makedirs(d)
 
         # If we have an acquisition id and acquisition exists in db, initialize acquisition
+        self.database_manager = DatabaseManager(config_path)
         if self.acquisition_id and self.database_manager.find_acquisition_by_id(self.acquisition_id):
             self.acquisition = Acquisition(config_path, self.acquisition_id)
         else:

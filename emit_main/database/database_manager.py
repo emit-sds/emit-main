@@ -36,3 +36,16 @@ class DatabaseManager:
         if self.find_acquisition_by_id(acquisition_metadata["acquisition_id"]) is None:
             acquisitions_coll = self.db.acquisitions
             acquisitions_coll.insert_one(acquisition_metadata)
+
+    def update_acquisition_metadata(self, acquisition_id, metadata):
+        acquisitions_coll = self.db.acquisitions
+        query = {"acquisition_id": acquisition_id, "build_num": self.build_num}
+        set_value = {"$set": metadata}
+        acquisitions_coll.update_one(query, set_value, upsert=True)
+
+    def insert_acquisition_log_entry(self, acquisition_id, entry):
+        acquisitions_coll = self.db.acquisitions
+        query = {"acquisition_id": acquisition_id, "build_num": self.build_num}
+        push_value = {"$push": {"processing_log": entry}}
+        acquisitions_coll.update_one(query, push_value)
+

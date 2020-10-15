@@ -175,7 +175,9 @@ class L1AReassembleRaw(SlurmJobTask):
             "day_night_flag": "day"
         }
 
-        acq.save_metadata(metadata)
+#        acq.save_metadata(metadata)
+        dm = wm.database_manager
+        dm.update_acquisition_metadata(self.acquisition_id, metadata)
 
         log_entry = {
             "task": self.task_family,
@@ -195,7 +197,8 @@ class L1AReassembleRaw(SlurmJobTask):
             }
         }
 
-        acq.save_processing_log_entry(log_entry)
+#        acq.save_processing_log_entry(log_entry)
+        dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
 
 
 # TODO: Full implementation TBD

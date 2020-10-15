@@ -21,10 +21,9 @@ def test_database_manager():
     dm = DatabaseManager("config/test_config.json")
 
     acquisition = {
-        "_id": "emit20200101t000000",
-        "lines": 1000,
-        "bands": 324,
-        "samples": 1280,
+        "acquisition_id": "emit20200101t000000",
+        "build_num": "000",
+        "processing_version": "00",
         "start_time": datetime.datetime(2020, 1, 1, 0, 0, 0),
         "end_time": datetime.datetime(2020, 1, 1, 0, 11, 26),
         "orbit": "00001",

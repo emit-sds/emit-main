@@ -27,17 +27,13 @@ class Acquisition:
             self.__dict__.update(config["filesystem_config"])
             self.__dict__.update(config["build_config"])
 
-        self.database_manager = DatabaseManager(config_path)
-
         self.config_path = config_path
         self.acquisition_id = acquisition_id
 
         # TODO: Define and initialize acquisition metadata
         # TODO: What to do if entry doesn't exist yet?
-        self.metadata = self._load_metadata()
-#        self.metadata = {"_id": self.acquisition_id}
-#        if metadata is not None:
-#            self.metadata.update(metadata)
+        dm = DatabaseManager(config_path)
+        self.metadata = dm.find_acquisition_by_id(self.acquisition_id)
 
         # Create base directories and add to list to create directories later
         self.dirs = []
@@ -112,20 +108,3 @@ class Acquisition:
                     prod_path = os.path.join(self.acquisition_dir, level, prod_name)
                     paths[prod_key] = prod_path
         return paths
-
-    def _load_metadata(self):
-        acquisitions = self.database_manager.db.acquisitions
-        query = {"acquisition_id": self.acquisition_id, "build_num": self.build_num}
-        return acquisitions.find_one(query)
-
-    def save_metadata(self, metadata):
-        acquisitions = self.database_manager.db.acquisitions
-        query = {"acquisition_id": self.acquisition_id, "build_num": self.build_num}
-        set_value = {"$set": metadata}
-        acquisitions.update_one(query, set_value, upsert=True)
-
-    def save_processing_log_entry(self, entry):
-        acquisitions = self.database_manager.db.acquisitions
-        query = {"acquisition_id": self.acquisition_id, "build_num": self.build_num}
-        push_value = {"$push": {"processing_log": entry}}
-        acquisitions.update_one(query, push_value)
