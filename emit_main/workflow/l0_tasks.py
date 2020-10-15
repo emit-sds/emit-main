@@ -13,17 +13,19 @@ from emit_main.workflow.slurm import SlurmJobTask
 
 logger = logging.getLogger("emit-main")
 
+
 # TODO: Full implementation TBD
-class L0StripEthernet(SlurmJobTask):
+class L0StripHOSC(SlurmJobTask):
     """
-    Strips HOSC ethernet headers from raw data in ingest folder
+    Strips HOSC ethernet headers from raw data in apid-specific ingest folder
     :returns Ordered APID specific packet stream
     """
 
     config_path = luigi.Parameter()
+    stream_path = luigi.Parameter()
     apid = luigi.Parameter()
-    start_time = luigi.DateSecondParameter(default=datetime.date.today() - datetime.timedelta(7))
-    end_time = luigi.DateSecondParameter(default=datetime.date.today())
+    start_time = luigi.Parameter()
+    stop_time = luigi.Parameter()
 
     task_namespace = "emit"
 
@@ -33,9 +35,10 @@ class L0StripEthernet(SlurmJobTask):
 
     def output(self):
 
-        wm = WorkflowManager(self.config_path)
         return luigi.LocalTarget("ccsds_path")
 
     def work(self):
 
-        pass
+        wm = WorkflowManager(self.config_path)
+        pge_sds_runner = wm.pges["emit-sds-l0"]
+        pge_ios_processer = wm.pges["emit-l0edp"]

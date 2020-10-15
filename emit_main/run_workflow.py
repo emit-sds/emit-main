@@ -21,10 +21,12 @@ logger = logging.getLogger("emit-main")
 
 
 def parse_args():
-    product_choices = ["l1araw", "l1bcal", "l2arefl"]
+    product_choices = ["l0hosc", "l1araw", "l1bcal", "l2arefl"]
     parser = argparse.ArgumentParser()
-    parser.add_argument("-a", "--acquisition_id",
+    parser.add_argument("-a", "--acquisition_id", default="",
                         help="Acquisition ID")
+    parser.add_argument("-ap", "--apid", default="",
+                        help="APID")
     parser.add_argument("-c", "--config_path",
                         help="Path to config file")
     parser.add_argument("-p", "--products",
@@ -46,12 +48,17 @@ def parse_args():
 
 def get_tasks_from_args(args):
     products = args.products.split(",")
+    apid_kwargs = {
+        "config_path": args.config_path,
+        "apid": args.apid
+    }
     acquisition_kwargs = {
         "config_path": args.config_path,
         "acquisition_id": args.acquisition_id
     }
 
     prod_task_map = {
+        "l0hosc": L0StripHOSC(**apid_kwargs),
         "l1araw": L1AReassembleRaw(**acquisition_kwargs),
         "l1bcal": L1BCalibrate(**acquisition_kwargs),
         "l2arefl": L2AReflectance(**acquisition_kwargs)
@@ -68,6 +75,7 @@ def get_tasks_from_args(args):
 def task_success(task):
     logger.info("SUCCESS: %s" % task)
 
+    # TODO: Delete tmp folder
 #    logger.debug("Deleting tmp folder %s" % task.tmp_dir)
 #    shutil.rmtree(task.tmp_dir)
 

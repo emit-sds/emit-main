@@ -15,7 +15,7 @@ import spectral.io.envi as envi
 
 from emit_main.workflow.envi_target import ENVITarget
 from emit_main.workflow.workflow_manager import WorkflowManager
-from emit_main.workflow.l0_tasks import L0StripEthernet
+from emit_main.workflow.l0_tasks import L0StripHOSC
 from emit_main.workflow.slurm import SlurmJobTask
 
 logger = logging.getLogger("emit-main")
@@ -37,7 +37,7 @@ class L1ADepacketize(SlurmJobTask):
 
     def requires(self):
 
-        return L0StripEthernet(apid=self.apid, start_time=self.start_time, end_time=self.end_time)
+        return L0StripHOSC(apid=self.apid, start_time=self.start_time, end_time=self.end_time)
 
     def output(self):
 
@@ -64,7 +64,7 @@ class L1APrepFrames(SlurmJobTask):
 
     def requires(self):
 
-        return L0StripEthernet(apid=self.apid, start_time=self.start_time, end_time=self.end_time)
+        return L0StripHOSC(apid=self.apid, start_time=self.start_time, end_time=self.end_time)
 
     def output(self):
 
