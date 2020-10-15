@@ -25,8 +25,8 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("-a", "--acquisition_id", default="",
                         help="Acquisition ID")
-    parser.add_argument("-ap", "--apid", default="",
-                        help="APID")
+    parser.add_argument("-s", "--stream_path", default="",
+                        help="Path to HOSC or CCSDS stream file")
     parser.add_argument("-c", "--config_path",
                         help="Path to config file")
     parser.add_argument("-p", "--products",
@@ -48,9 +48,9 @@ def parse_args():
 
 def get_tasks_from_args(args):
     products = args.products.split(",")
-    apid_kwargs = {
+    stream_kwargs = {
         "config_path": args.config_path,
-        "apid": args.apid
+        "stream_path": args.stream_path
     }
     acquisition_kwargs = {
         "config_path": args.config_path,
@@ -58,7 +58,7 @@ def get_tasks_from_args(args):
     }
 
     prod_task_map = {
-        "l0hosc": L0StripHOSC(**apid_kwargs),
+        "l0hosc": L0StripHOSC(**stream_kwargs),
         "l1araw": L1AReassembleRaw(**acquisition_kwargs),
         "l1bcal": L1BCalibrate(**acquisition_kwargs),
         "l2arefl": L2AReflectance(**acquisition_kwargs)

@@ -97,7 +97,7 @@ class SlurmJobTask(luigi.Task):
 
     config_path = luigi.Parameter()
     acquisition_id = luigi.Parameter(default="")
-    apid = luigi.Parameter(default="")
+    stream_path = luigi.Parameter(default="")
 
     n_nodes = luigi.IntParameter(default=1)
     n_tasks = luigi.IntParameter(default=1)
@@ -119,7 +119,7 @@ class SlurmJobTask(luigi.Task):
         if len(self.acquisition_id) > 0:
             self.task_tmp_id = self.acquisition_id
         else:
-            self.task_tmp_id = self.apid
+            self.task_tmp_id = os.path.basename(self.stream_path)
         wm = WorkflowManager(self.config_path)
         # Create tmp folder
         base_tmp_dir = wm.scratch_tmp_dir

@@ -23,21 +23,19 @@ class L0StripHOSC(SlurmJobTask):
 
     config_path = luigi.Parameter()
     stream_path = luigi.Parameter()
-    apid = luigi.Parameter()
-    start_time = luigi.Parameter()
-    stop_time = luigi.Parameter()
 
     task_namespace = "emit"
 
     def requires(self):
-
+        logger.debug(self.task_family + " requires")
         return None
 
     def output(self):
-
+        logger.debug(self.task_family + " output")
         return luigi.LocalTarget("ccsds_path")
 
     def work(self):
+        logger.debug(self.task_family + " work")
 
         wm = WorkflowManager(self.config_path)
         pge_sds_runner = wm.pges["emit-sds-l0"]

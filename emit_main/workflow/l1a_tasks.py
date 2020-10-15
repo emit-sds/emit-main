@@ -29,7 +29,7 @@ class L1ADepacketize(SlurmJobTask):
     """
 
     config_path = luigi.Parameter()
-    apid = luigi.Parameter()
+    stream_path = luigi.Parameter()
     start_time = luigi.DateSecondParameter(default=datetime.date.today() - datetime.timedelta(7))
     end_time = luigi.DateSecondParameter(default=datetime.date.today())
 
@@ -56,7 +56,7 @@ class L1APrepFrames(SlurmJobTask):
     """
 
     config_path = luigi.Parameter()
-    apid = luigi.Parameter()
+    stream_path = luigi.Parameter()
     start_time = luigi.DateSecondParameter(default=datetime.date.today() - datetime.timedelta(7))
     end_time = luigi.DateSecondParameter(default=datetime.date.today())
 
