@@ -32,10 +32,10 @@ class DatabaseManager:
         acquisitions_coll = self.db.acquisitions
         return acquisitions_coll.find_one({"acquisition_id": acquisition_id, "build_num": self.build_num})
 
-    def insert_acquisition(self, acquisition_metadata):
-        if self.find_acquisition_by_id(acquisition_metadata["acquisition_id"]) is None:
+    def insert_acquisition(self, metadata):
+        if self.find_acquisition_by_id(metadata["acquisition_id"]) is None:
             acquisitions_coll = self.db.acquisitions
-            acquisitions_coll.insert_one(acquisition_metadata)
+            acquisitions_coll.insert_one(metadata)
 
     def update_acquisition_metadata(self, acquisition_id, metadata):
         acquisitions_coll = self.db.acquisitions
@@ -49,3 +49,18 @@ class DatabaseManager:
         push_value = {"$push": {"processing_log": entry}}
         acquisitions_coll.update_one(query, push_value)
 
+    def find_stream_by_metadata(self, metadata):
+        streams_coll = self.db.streams
+        query = {"apid": metadata["apid"], "start_time": metadata["start_time"], "stop_time": metadata["stop_time"]}
+        return streams_coll.find_one(query)
+
+    def insert_stream(self, metadata):
+        if self.find_stream_by_metadata(metadata) is None:
+            streams_coll = self.db.streams
+            streams_coll.insert_one(metadata)
+
+    def insert_stream_log_entry(self, apid, start_time, stop_time, entry):
+        streams_coll = self.db.streams
+        query = {"apid": apid, "start_time": start_time, "stop_time": stop_time}
+        push_value = {"$push": {"processing_log": entry}}
+        streams_coll.update_one(query, push_value)

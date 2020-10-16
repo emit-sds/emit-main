@@ -28,10 +28,11 @@ class StreamFile:
 
         self.config_path = config_path
         self.path = stream_path
-        self.name = os.path.basename(stream_path)
-        if "hsc.bin" in self.name:
+        file_name = os.path.basename(stream_path)
+        if "hsc.bin" in file_name:
             self.stream_type = "hosc"
-            tokens = self.name.split("_")
+            self.hosc_name = os.path.basename(file_name)
+            tokens = file_name.split("_")
             self.apid = tokens[1]
             # Need to add first two year digits
             self.start_time_str = "20" + tokens[2]
@@ -39,8 +40,9 @@ class StreamFile:
             self.production_time = "20" + tokens[4]
         else:
             self.stream_type = "ccsds"
-            self.apid = self.name[:4]
-            self.start_time_str = datetime.datetime.strptime(self.name[5:24],
+            self.ccsds_name = os.path.basename(file_name)
+            self.apid = file_name[:4]
+            self.start_time_str = datetime.datetime.strptime(file_name[5:24],
                                                              "%Y-%m-%dT%H%M%S").strftime("%Y%m%d%H%M%S")
 
         # Create base directories and add to list to create directories later
