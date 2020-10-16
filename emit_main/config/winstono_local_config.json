@@ -32,6 +32,11 @@
         "tag": "master"
       },
       {
+        "url": "git@github.jpl.nasa.gov:emit/emit-ios.git",
+        "tag": "master",
+        "conda_env": "emit-ios"
+      },
+      {
         "url": "git@github.jpl.nasa.gov:emit/emit-l0edp.git",
         "tag": "master",
         "conda_env": "emit-ios"

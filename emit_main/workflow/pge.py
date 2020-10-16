@@ -131,13 +131,15 @@ class PGE:
         if output.returncode !=0:
             raise RuntimeError("Output of run command: %s" % str(output))
 
-    def run(self, cmd, cwd=None):
+    def run(self, cmd, cwd=None, env=None):
         cwd_args = []
         if cwd:
             cwd_args = ["--cwd", cwd]
+        if env is None:
+            env = os.environ.copy()
         conda_run_cmd = " ".join([self.conda_exe, "run", "-n", self.conda_env_name] + cwd_args + cmd)
         logging.info("Running command: %s" % conda_run_cmd)
-        output = subprocess.run(conda_run_cmd, shell=True, capture_output=True)
+        output = subprocess.run(conda_run_cmd, shell=True, capture_output=True, env=env)
         if output.returncode != 0:
             logger.error("PGE %s run command failed: %s" % (self.repo_name, output.args))
             raise RuntimeError(output.stderr.decode("utf-8"))

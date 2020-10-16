@@ -12,13 +12,14 @@ import subprocess
 from emit_main.database.database_manager import DatabaseManager
 from emit_main.workflow.acquisition import Acquisition
 from emit_main.workflow.pge import PGE
+from emit_main.workflow.stream_file import StreamFile
 
 logger = logging.getLogger("emit-main")
 
 
 class WorkflowManager:
 
-    def __init__(self, config_path, acquisition_id=None):
+    def __init__(self, config_path, acquisition_id=None, stream_path=None):
         """
         :param config_path: Path to config file containing environment settings
         :param acquisition_id: The name of the acquisition with timestamp (eg. "emit20200519t140035")
@@ -26,6 +27,7 @@ class WorkflowManager:
 
         self.config_path = config_path
         self.acquisition_id = acquisition_id
+        self.stream_path = stream_path
 
         # Read config file for environment specific paths
         with open(config_path, "r") as f:
@@ -57,6 +59,10 @@ class WorkflowManager:
             self.acquisition = Acquisition(config_path, self.acquisition_id)
         else:
             self.acquisition = None
+
+        # If we have a stream path, initialize a stream file
+        if self.stream_path:
+            self.stream = StreamFile(self.config_path, self.stream_path)
 
         # Create repository paths and PGEs based on build config
         self.pges = {}

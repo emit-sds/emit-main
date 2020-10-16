@@ -7,6 +7,7 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 import datetime
 import logging
 import luigi
+import os
 
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.slurm import SlurmJobTask
@@ -37,6 +38,25 @@ class L0StripHOSC(SlurmJobTask):
     def work(self):
         logger.debug(self.task_family + " work")
 
-        wm = WorkflowManager(self.config_path)
-        pge_sds_runner = wm.pges["emit-sds-l0"]
-        pge_ios_processer = wm.pges["emit-l0edp"]
+        wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
+        stream = wm.stream
+        pge = wm.pges["emit-sds-l0"]
+
+        sds_l0_exe = os.path.join(pge.repo_dir, "run_l0.sh")
+        sds_packet_count_exe = os.path.join(pge.repo_dir, "packet_cnt_check.py")
+        ios_l0_proc = os.path.join(wm.pges["emit-l0edp"].repo_dir, "target", "release", "emit_l0_proc")
+        tmp_output_dir = os.path.join(self.tmp_dir, "output")
+        tmp_log = os.path.join(tmp_output_dir, stream.name + ".log")
+
+        # Build command and run
+        cmd = [sds_l0_exe, stream.path, tmp_output_dir, tmp_log, sds_packet_count_exe, ios_l0_proc]
+        env = os.environ.copy()
+        env["AIT_ROOT"] = wm.pges["emit-ios"].repo_dir
+        env["AIT_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "config.yaml")
+        env["AIT_ISS_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "sim.yaml")
+        pge.run(cmd, env=env)
+
+        # Copy tmp files back to store
+
+        # Update DB
+
