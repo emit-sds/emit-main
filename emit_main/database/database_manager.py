@@ -49,13 +49,18 @@ class DatabaseManager:
         push_value = {"$push": {"processing_log": entry}}
         acquisitions_coll.update_one(query, push_value)
 
-    def find_stream_by_metadata(self, metadata):
+    def find_stream_by_time_range(self, metadata):
         streams_coll = self.db.streams
         query = {"apid": metadata["apid"], "start_time": metadata["start_time"], "stop_time": metadata["stop_time"]}
         return streams_coll.find_one(query)
 
+    def find_stream_by_hosc_name(self, name):
+        streams_coll = self.db.streams
+        query = {"hosc_name": name}
+        return streams_coll.find_one(query)
+
     def insert_stream(self, metadata):
-        if self.find_stream_by_metadata(metadata) is None:
+        if self.find_stream_by_time_range(metadata) is None:
             streams_coll = self.db.streams
             streams_coll.insert_one(metadata)
 

@@ -35,7 +35,23 @@ class L0StripHOSC(SlurmJobTask):
 
     def output(self):
         logger.debug(self.task_family + " output")
-        return luigi.LocalTarget("ccsds_path")
+        wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
+        dm = wm.database_manager
+        stream = dm.find_stream_by_hosc_name(os.path.basename(self.stream_path))
+        if stream is None:
+            return False
+        output_paths = None
+        for log in reversed(stream["processing_log"]):
+            if log["task"] == self.task_family and log["completion_status"] == "SUCCESS":
+                output_paths = log["output"]
+                break
+        if output_paths:
+            targets = []
+            for path in output_paths.values():
+                targets.append(luigi.LocalTarget(path))
+            return targets
+        else:
+            return False
 
     def work(self):
         logger.debug(self.task_family + " work")
@@ -62,6 +78,9 @@ class L0StripHOSC(SlurmJobTask):
             # Move HOSC file out of ingest folder
             # TODO: Change to shutil.move
             shutil.copy(stream.path, stream.hosc_dir)
+            hosc_path = os.path.join(stream.hosc_dir, stream.hosc_name)
+        else:
+            hosc_path = stream.path
         # Copy scratch files back to store
         for file in glob.glob(os.path.join(tmp_output_dir, stream.apid + "*")):
             shutil.copy(file, stream.ccsds_dir)
@@ -97,6 +116,7 @@ class L0StripHOSC(SlurmJobTask):
             "log_timestamp": datetime.datetime.now(),
             "completion_status": "SUCCESS",
             "output": {
+                "hosc_path": hosc_path,
                 "ccsds_path": ccsds_path,
             }
         }
