@@ -86,24 +86,21 @@ class L0StripHOSC(SlurmJobTask):
         if "ingest" in self.stream_path:
             # Move HOSC file out of ingest folder
             # TODO: Change to shutil.move
-            shutil.copy(self.stream_path, stream.hosc_dir)
-            hosc_path = os.path.join(stream.hosc_dir, stream.hosc_name)
+            shutil.copy(self.stream_path, stream.l0_dir)
+            hosc_path = os.path.join(stream.l0_dir, stream.hosc_name)
         else:
             hosc_path = self.stream_path
         # Copy scratch files back to store
         for file in glob.glob(os.path.join(tmp_output_dir, stream.apid + "*")):
-            shutil.copy(file, stream.ccsds_dir)
+            shutil.copy(file, stream.l0_dir)
         for file in glob.glob(os.path.join(tmp_output_dir, "*.log")):
-            shutil.copy(file, stream.hosc_dir)
+            shutil.copy(file, stream.l0_dir)
         # Get ccsds output filename
         ccsds_name = os.path.basename(glob.glob(os.path.join(tmp_output_dir, stream.apid + "*.bin"))[0])
-        ccsds_path = os.path.join(stream.ccsds_dir, ccsds_name)
+        ccsds_path = os.path.join(stream.l0_dir, ccsds_name)
 
-        # TODO: Add back in and add ccsds_name
         # Update DB
-        # TODO: Do I need build_num?
-#        start_time = datetime.datetime.strptime(stream.start_time_str, "%Y%m%d%H%M%S")
-#        stop_time = datetime.datetime.strptime(stream.stop_time_str, "%Y%m%d%H%M%S")
+        # TODO: Use stream_path for query
         query = {
             "apid": stream.apid,
             "start_time": stream.start_time,

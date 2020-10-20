@@ -12,7 +12,7 @@ import subprocess
 from emit_main.database.database_manager import DatabaseManager
 from emit_main.workflow.acquisition import Acquisition
 from emit_main.workflow.pge import PGE
-from emit_main.workflow.stream_file import StreamFile
+from emit_main.workflow.stream import Stream
 
 logger = logging.getLogger("emit-main")
 
@@ -62,7 +62,7 @@ class WorkflowManager:
 
         # If we have a stream path, initialize a stream file
         if self.stream_path and self.database_manager.find_stream_by_name(os.path.basename(stream_path)):
-            self.stream = StreamFile(self.config_path, self.stream_path)
+            self.stream = Stream(self.config_path, self.stream_path)
         else:
             self.stream = None
 

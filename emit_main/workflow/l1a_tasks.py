@@ -270,3 +270,39 @@ class L1AReformatEDP(SlurmJobTask):
         env["AIT_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "config.yaml")
         env["AIT_ISS_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "sim.yaml")
         pge.run(cmd, env=env)
+
+        # Copy scratch files back to store
+        for file in glob.glob(os.path.join(tmp_output_dir, "*")):
+            shutil.copy(file, stream.l1a_dir)
+        for file in glob.glob(os.path.join(tmp_log_dir, "*")):
+            shutil.copy(file, stream.l1a_dir)
+        # Get edp output filename
+        edp_name = os.path.basename(glob.glob(os.path.join(tmp_output_dir, "*.csv"))[0])
+        edp_path = os.path.join(stream.l1a_dir, edp_name)
+
+        query = {
+            "hosc_name": stream.hosc_name,
+            "build_num": wm.build_num,
+        }
+        metadata = {
+            "edp_name": edp_name
+        }
+        dm = wm.database_manager
+        dm.update_stream_metadata(query, metadata)
+
+        log_entry = {
+            "task": self.task_family,
+            "pge_name": pge.repo_name,
+            "pge_version": pge.version_tag,
+            "pge_input_files": {
+                "ccsds_path": stream.ccsds_path,
+            },
+            "pge_run_command": " ".join(cmd),
+            "product_creation_time": datetime.datetime.fromtimestamp(os.path.getmtime(edp_path)),
+            "log_timestamp": datetime.datetime.now(),
+            "completion_status": "SUCCESS",
+            "output": {
+                "edp_path": edp_path
+            }
+        }
+        dm.insert_stream_log_entry(stream.hosc_name, log_entry)

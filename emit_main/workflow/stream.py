@@ -1,5 +1,5 @@
 """
-This code contains the HOSC class that manages HOSC data
+This code contains the Stream class that manages HOSC and CCSDS data
 
 Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
@@ -14,7 +14,7 @@ from emit_main.database.database_manager import DatabaseManager
 logger = logging.getLogger("emit-main")
 
 
-class StreamFile:
+class Stream:
 
     def __init__(self, config_path, stream_path):
         """
@@ -27,6 +27,10 @@ class StreamFile:
             self.__dict__.update(config["general_config"])
             self.__dict__.update(config["filesystem_config"])
             self.__dict__.update(config["build_config"])
+
+        self.hosc_name = None
+        self.ccsds_name = None
+        self.edp_name = None
 
         # Read metadata from db
         dm = DatabaseManager(config_path)
@@ -54,22 +58,28 @@ class StreamFile:
 
         # Create base directories and add to list to create directories later
         self.dirs = []
+        # TODO: These don't all have to be class variables, do they?
         self.instrument_dir = os.path.join(self.local_store_dir, self.instrument)
         self.environment_dir = os.path.join(self.instrument_dir, self.environment)
         self.data_dir = os.path.join(self.environment_dir, "data")
+        self.streams_dir = os.path.join(self.data_dir, "streams")
+        self.apid_dir = os.path.join(self.streams_dir, self.apid)
         self.ingest_dir = os.path.join(self.environment_dir, "ingest")
 
 #        self.date_str = self.start_time_str[:8]
         self.date_str = self.start_time.strftime("%Y%m%d")
-        self.date_dir = os.path.join(self.data_dir, self.date_str)
+        self.date_dir = os.path.join(self.apid_dir, self.date_str)
         self.l0_dir = os.path.join(self.date_dir, "l0")
-        self.hosc_dir = os.path.join(self.l0_dir, "hosc")
-        self.ccsds_dir = os.path.join(self.l0_dir, "ccsds")
-        self.dirs.extend([self.date_dir, self.l0_dir, self.hosc_dir, self.ccsds_dir])
+        self.l1a_dir = os.path.join(self.date_dir, "l1a")
+        if self.hosc_name:
+            self.hosc_path = os.path.join(self.l0_dir, self.hosc_name)
+        if self.ccsds_name:
+            self.ccsds_path = os.path.join(self.l0_dir, self.ccsds_name)
+        if self.edp_name:
+            self.edp_path = os.path.join(self.l1a_dir, self.edp_name)
+        self.dirs.extend([self.streams_dir, self.apid_dir, self.date_dir, self.l0_dir, self.l1a_dir])
 
         # Make directories if they don't exist
         for d in self.dirs:
             if not os.path.exists(d):
                 os.makedirs(d)
-
-        # TODO: Add hosc_path and ccsds_path
