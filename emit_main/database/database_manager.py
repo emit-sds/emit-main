@@ -75,8 +75,17 @@ class DatabaseManager:
         set_value = {"$set": metadata}
         streams_coll.update_one(query, set_value, upsert=True)
 
-    def insert_stream_log_entry(self, apid, start_time, stop_time, entry):
+    def insert_stream_log_entry(self, name, entry):
         streams_coll = self.db.streams
-        query = {"apid": apid, "start_time": start_time, "stop_time": stop_time, "build_num": self.build_num}
+        if "hsc.bin" in name:
+            query = {"hosc_name": name, "build_num": self.build_num}
+        else:
+            query = {"ccsds_name": name, "build_num": self.build_num}
         push_value = {"$push": {"processing_log": entry}}
         streams_coll.update_one(query, push_value)
+
+#    def insert_stream_log_entry(self, apid, start_time, stop_time, entry):
+#        streams_coll = self.db.streams
+#        query = {"apid": apid, "start_time": start_time, "stop_time": stop_time, "build_num": self.build_num}
+#        push_value = {"$push": {"processing_log": entry}}
+#        streams_coll.update_one(query, push_value)

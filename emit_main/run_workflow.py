@@ -113,6 +113,15 @@ def task_failure(task, e):
             "error_message": str(e)
         }
         acq.save_processing_log_entry(log_entry)
+    if task.task_family in ("emit.L0StripHOSC", "emit.L1AReformatEDP"):
+        log_entry = {
+            "task": task.task_family,
+            "log_timestamp": datetime.datetime.now(),
+            "completion_status": "FAILURE",
+            "error_message": str(e)
+        }
+        dm = WorkflowManager(task.config_path, task.acquisition_id).database_manager
+        dm.insert_stream_log_entry(os.path.basename(task.stream_path), log_entry)
 
 
 def main():

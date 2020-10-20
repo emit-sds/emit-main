@@ -35,6 +35,7 @@ class L0StripHOSC(SlurmJobTask):
         wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
         # TODO: Check for hosc filename and throw exception if incorrect
         # TODO: Maybe check for existing stream first so we don't have to run this every time
+        # TODO: This assumes we only insert one hosc file per two hour window
         hosc_name = os.path.basename(self.stream_path)
         tokens = hosc_name.split("_")
         apid = tokens[1]
@@ -136,4 +137,4 @@ class L0StripHOSC(SlurmJobTask):
                 "ccsds_path": ccsds_path,
             }
         }
-        dm.insert_stream_log_entry(stream.apid, stream.start_time, stream.stop_time, log_entry)
+        dm.insert_stream_log_entry(stream.hosc_name, log_entry)
