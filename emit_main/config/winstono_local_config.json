@@ -49,7 +49,7 @@
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l1a.git",
         "tag": "master",
-        "conda_env": "emit-main"
+        "conda_env": "emit-ios"
       },
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l1b.git",

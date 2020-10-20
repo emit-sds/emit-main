@@ -4,6 +4,7 @@ This code contains the DatabaseManager class that handles database updates
 Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
+import datetime
 import json
 
 from pymongo import MongoClient
@@ -51,21 +52,31 @@ class DatabaseManager:
 
     def find_stream_by_time_range(self, metadata):
         streams_coll = self.db.streams
-        query = {"apid": metadata["apid"], "start_time": metadata["start_time"], "stop_time": metadata["stop_time"]}
+        query = {"apid": metadata["apid"], "start_time": metadata["start_time"], "stop_time": metadata["stop_time"],
+                 "build_num": self.build_num}
         return streams_coll.find_one(query)
 
-    def find_stream_by_hosc_name(self, name):
+    def find_stream_by_name(self, name):
         streams_coll = self.db.streams
-        query = {"hosc_name": name}
+        if "hsc.bin" in name:
+            query = {"hosc_name": name, "build_num": self.build_num}
+        else:
+            query = {"ccsds_name": name, "build_num": self.build_num}
         return streams_coll.find_one(query)
 
-    def insert_stream(self, metadata):
+    def insert_hosc_stream(self, metadata):
         if self.find_stream_by_time_range(metadata) is None:
             streams_coll = self.db.streams
             streams_coll.insert_one(metadata)
 
+    def update_stream_metadata(self, query, metadata):
+        streams_coll = self.db.streams
+#        query = {"apid": metadata["apid"], "start_time": metadata["start_time"], "stop_time": metadata["stop_time"]}
+        set_value = {"$set": metadata}
+        streams_coll.update_one(query, set_value, upsert=True)
+
     def insert_stream_log_entry(self, apid, start_time, stop_time, entry):
         streams_coll = self.db.streams
-        query = {"apid": apid, "start_time": start_time, "stop_time": stop_time}
+        query = {"apid": apid, "start_time": start_time, "stop_time": stop_time, "build_num": self.build_num}
         push_value = {"$push": {"processing_log": entry}}
         streams_coll.update_one(query, push_value)

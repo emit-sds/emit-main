@@ -13,6 +13,7 @@ import shutil
 import luigi
 import spectral.io.envi as envi
 
+from emit_main.workflow.stream_target import StreamTarget
 from emit_main.workflow.envi_target import ENVITarget
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.l0_tasks import L0StripHOSC
@@ -223,3 +224,49 @@ class L1APEP(SlurmJobTask):
     def work(self):
 
         pass
+
+
+# TODO: Full implementation TBD
+class L1AReformatEDP(SlurmJobTask):
+    """
+    Creates reformatted engineering data product from CCSDS packet stream
+    :returns: Reformatted engineering data product
+    """
+
+    config_path = luigi.Parameter()
+    stream_path = luigi.Parameter()
+
+    task_namespace = "emit"
+
+    def requires(self):
+
+        logger.debug(self.task_family + " requires")
+        return L0StripHOSC(config_path=self.config_path, stream_path=self.stream_path)
+
+    def output(self):
+
+        logger.debug(self.task_family + " output")
+        wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
+        return StreamTarget(stream=wm.stream, task_family=self.task_family)
+
+    def work(self):
+
+        logger.debug(self.task_family + " work")
+        wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
+        stream = wm.stream
+        pge = wm.pges["emit-sds-l1a"]
+
+        # Build command and run
+        sds_l1a_eng_exe = os.path.join(pge.repo_dir, "run_l1a_eng.sh")
+        ios_l1_edp_exe = os.path.join(wm.pges["emit-ios"].repo_dir, "emit", "bin", "emit_l1_edp.py")
+        tmp_output_dir = os.path.join(self.tmp_dir, "output")
+        tmp_log_dir = os.path.join(self.tmp_dir, "logs")
+
+        tmp_log = os.path.join(tmp_output_dir, stream.hosc_name + ".log")
+
+        cmd = [sds_l1a_eng_exe, stream.ccsds_path, self.tmp_dir, ios_l1_edp_exe]
+        env = os.environ.copy()
+        env["AIT_ROOT"] = wm.pges["emit-ios"].repo_dir
+        env["AIT_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "config.yaml")
+        env["AIT_ISS_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "sim.yaml")
+        pge.run(cmd, env=env)

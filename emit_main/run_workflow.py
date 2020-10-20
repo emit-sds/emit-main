@@ -21,7 +21,7 @@ logger = logging.getLogger("emit-main")
 
 
 def parse_args():
-    product_choices = ["l0hosc", "l1araw", "l1bcal", "l2arefl"]
+    product_choices = ["l0hosc", "l1aeng", "l1araw", "l1bcal", "l2arefl"]
     parser = argparse.ArgumentParser()
     parser.add_argument("-a", "--acquisition_id", default="",
                         help="Acquisition ID")
@@ -59,6 +59,7 @@ def get_tasks_from_args(args):
 
     prod_task_map = {
         "l0hosc": L0StripHOSC(**stream_kwargs),
+        "l1aeng": L1AReformatEDP(**stream_kwargs),
         "l1araw": L1AReassembleRaw(**acquisition_kwargs),
         "l1bcal": L1BCalibrate(**acquisition_kwargs),
         "l2arefl": L2AReflectance(**acquisition_kwargs)
@@ -78,6 +79,8 @@ def task_success(task):
     # TODO: Delete tmp folder
 #    logger.debug("Deleting tmp folder %s" % task.tmp_dir)
 #    shutil.rmtree(task.tmp_dir)
+
+    # TODO: Trigger higher level tasks?
 
 
 #@luigi.Task.event_handler(luigi.Event.FAILURE)

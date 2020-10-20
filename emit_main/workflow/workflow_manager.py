@@ -28,6 +28,7 @@ class WorkflowManager:
         self.config_path = config_path
         self.acquisition_id = acquisition_id
         self.stream_path = stream_path
+        self.database_manager = DatabaseManager(config_path)
 
         # Read config file for environment specific paths
         with open(config_path, "r") as f:
@@ -54,15 +55,16 @@ class WorkflowManager:
                 os.makedirs(d)
 
         # If we have an acquisition id and acquisition exists in db, initialize acquisition
-        self.database_manager = DatabaseManager(config_path)
         if self.acquisition_id and self.database_manager.find_acquisition_by_id(self.acquisition_id):
             self.acquisition = Acquisition(config_path, self.acquisition_id)
         else:
             self.acquisition = None
 
         # If we have a stream path, initialize a stream file
-        if self.stream_path:
+        if self.stream_path and self.database_manager.find_stream_by_name(os.path.basename(stream_path)):
             self.stream = StreamFile(self.config_path, self.stream_path)
+        else:
+            self.stream = None
 
         # Create repository paths and PGEs based on build config
         self.pges = {}
