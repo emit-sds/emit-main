@@ -8,5 +8,6 @@ dependencies:
   - gdal=2.3.3
   - mongodb=4.0.3
   - pip=20.2.2
+  - watchdog=0.10.3
   - pip:
     - spectral==0.21
