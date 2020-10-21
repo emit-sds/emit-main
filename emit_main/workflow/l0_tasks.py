@@ -57,7 +57,8 @@ class L0StripHOSC(SlurmJobTask):
         sds_packet_count_exe = os.path.join(pge.repo_dir, "packet_cnt_check.py")
         ios_l0_proc = os.path.join(wm.pges["emit-l0edp"].repo_dir, "target", "release", "emit_l0_proc")
         tmp_output_dir = os.path.join(self.tmp_dir, "output")
-        tmp_log = os.path.join(tmp_output_dir, stream.hosc_name + ".log")
+        l0_pge_log_name = stream.hosc_name.replace(".bin", "_l0_pge.log")
+        tmp_log = os.path.join(tmp_output_dir, l0_pge_log_name)
 
         cmd = [sds_l0_exe, self.stream_path, tmp_output_dir, tmp_log, sds_packet_count_exe, ios_l0_proc]
         env = os.environ.copy()
