@@ -50,12 +50,6 @@ class DatabaseManager:
         push_value = {"$push": {"processing_log": entry}}
         acquisitions_coll.update_one(query, push_value)
 
-    def find_stream_by_time_range(self, metadata):
-        streams_coll = self.db.streams
-        query = {"apid": metadata["apid"], "start_time": metadata["start_time"], "stop_time": metadata["stop_time"],
-                 "build_num": self.build_num}
-        return streams_coll.find_one(query)
-
     def find_stream_by_name(self, name):
         streams_coll = self.db.streams
         if "hsc.bin" in name:
@@ -64,8 +58,24 @@ class DatabaseManager:
             query = {"ccsds_name": name, "build_num": self.build_num}
         return streams_coll.find_one(query)
 
-    def insert_hosc_stream(self, metadata):
-        if self.find_stream_by_time_range(metadata) is None:
+    def insert_hosc_stream(self, hosc_name):
+        if self.find_stream_by_name(hosc_name) is None:
+            tokens = hosc_name.split("_")
+            apid = tokens[1]
+            # Need to add first two year digits
+            start_time_str = "20" + tokens[2]
+            stop_time_str = "20" + tokens[3]
+            start_time = datetime.datetime.strptime(start_time_str, "%Y%m%d%H%M%S")
+            stop_time = datetime.datetime.strptime(stop_time_str, "%Y%m%d%H%M%S")
+            metadata = {
+                "apid": apid,
+                "start_time": start_time,
+                "stop_time": stop_time,
+                "build_num": self.build_num,
+                "processing_version": self.processing_version,
+                "hosc_name": hosc_name,
+                "processing_log": []
+            }
             streams_coll = self.db.streams
             streams_coll.insert_one(metadata)
 

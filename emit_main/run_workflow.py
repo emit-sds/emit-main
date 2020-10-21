@@ -101,7 +101,7 @@ def task_failure(task, e):
         pge = wm.pges["emit-sds-l1a"]
         log_entry = {
             "task": task.task_family,
-            "pge_name": pge.repo_name,
+            "pge_name": pge.repo_url,
             "pge_version": pge.version_tag,
             "pge_input_files": {
                 "file1_key": "file1_value",

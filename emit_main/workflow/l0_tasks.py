@@ -32,29 +32,12 @@ class L0StripHOSC(SlurmJobTask):
 
     def requires(self):
         logger.debug(self.task_family + " requires")
-        wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
         # TODO: Check for hosc filename and throw exception if incorrect
-        # TODO: Maybe check for existing stream first so we don't have to run this every time
-        # TODO: This assumes we only insert one hosc file per two hour window
-        hosc_name = os.path.basename(self.stream_path)
-        tokens = hosc_name.split("_")
-        apid = tokens[1]
-        # Need to add first two year digits
-        start_time_str = "20" + tokens[2]
-        stop_time_str = "20" + tokens[3]
-        start_time = datetime.datetime.strptime(start_time_str, "%Y%m%d%H%M%S")
-        stop_time = datetime.datetime.strptime(stop_time_str, "%Y%m%d%H%M%S")
-        metadata = {
-            "apid": apid,
-            "start_time": start_time,
-            "stop_time": stop_time,
-            "build_num": wm.build_num,
-            "processing_version": wm.processing_version,
-            "hosc_name": hosc_name,
-            "processing_log": []
-        }
-        dm = wm.database_manager
-        dm.insert_hosc_stream(metadata)
+        wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
+        if wm.stream is None:
+            # Insert new stream in db
+            dm = wm.database_manager
+            dm.insert_hosc_stream(os.path.basename(self.stream_path))
         return None
 
     def output(self):
@@ -120,10 +103,10 @@ class L0StripHOSC(SlurmJobTask):
 
         log_entry = {
             "task": self.task_family,
-            "pge_name": pge.repo_name,
+            "pge_name": pge.repo_url,
             "pge_version": pge.version_tag,
             "pge_input_files": {
-                "ingested_hosc_file": self.stream_path,
+                "ingested_hosc_path": self.stream_path,
             },
             "pge_run_command": " ".join(cmd),
             "product_creation_time": datetime.datetime.fromtimestamp(os.path.getmtime(ccsds_path)),

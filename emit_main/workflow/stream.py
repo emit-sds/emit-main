@@ -62,7 +62,7 @@ class Stream:
         self.instrument_dir = os.path.join(self.local_store_dir, self.instrument)
         self.environment_dir = os.path.join(self.instrument_dir, self.environment)
         self.data_dir = os.path.join(self.environment_dir, "data")
-        self.streams_dir = os.path.join(self.data_dir, "streams")
+        self.streams_dir = os.path.join(self.data_dir, "stream")
         self.apid_dir = os.path.join(self.streams_dir, self.apid)
         self.ingest_dir = os.path.join(self.environment_dir, "ingest")
 
