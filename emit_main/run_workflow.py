@@ -21,10 +21,12 @@ logger = logging.getLogger("emit-main")
 
 
 def parse_args():
-    product_choices = ["l1araw", "l1bcal", "l2arefl"]
+    product_choices = ["l0hosc", "l1aeng", "l1araw", "l1bcal", "l2arefl"]
     parser = argparse.ArgumentParser()
-    parser.add_argument("-a", "--acquisition_id",
+    parser.add_argument("-a", "--acquisition_id", default="",
                         help="Acquisition ID")
+    parser.add_argument("-s", "--stream_path", default="",
+                        help="Path to HOSC or CCSDS stream file")
     parser.add_argument("-c", "--config_path",
                         help="Path to config file")
     parser.add_argument("-p", "--products",
@@ -46,12 +48,18 @@ def parse_args():
 
 def get_tasks_from_args(args):
     products = args.products.split(",")
+    stream_kwargs = {
+        "config_path": args.config_path,
+        "stream_path": args.stream_path
+    }
     acquisition_kwargs = {
         "config_path": args.config_path,
         "acquisition_id": args.acquisition_id
     }
 
     prod_task_map = {
+        "l0hosc": L0StripHOSC(**stream_kwargs),
+        "l1aeng": L1AReformatEDP(**stream_kwargs),
         "l1araw": L1AReassembleRaw(**acquisition_kwargs),
         "l1bcal": L1BCalibrate(**acquisition_kwargs),
         "l2arefl": L2AReflectance(**acquisition_kwargs)
@@ -68,8 +76,11 @@ def get_tasks_from_args(args):
 def task_success(task):
     logger.info("SUCCESS: %s" % task)
 
+    # TODO: Delete tmp folder
 #    logger.debug("Deleting tmp folder %s" % task.tmp_dir)
 #    shutil.rmtree(task.tmp_dir)
+
+    # TODO: Trigger higher level tasks?
 
 
 #@luigi.Task.event_handler(luigi.Event.FAILURE)
@@ -90,7 +101,7 @@ def task_failure(task, e):
         pge = wm.pges["emit-sds-l1a"]
         log_entry = {
             "task": task.task_family,
-            "pge_name": pge.repo_name,
+            "pge_name": pge.repo_url,
             "pge_version": pge.version_tag,
             "pge_input_files": {
                 "file1_key": "file1_value",
@@ -102,6 +113,15 @@ def task_failure(task, e):
             "error_message": str(e)
         }
         acq.save_processing_log_entry(log_entry)
+    if task.task_family in ("emit.L0StripHOSC", "emit.L1AReformatEDP"):
+        log_entry = {
+            "task": task.task_family,
+            "log_timestamp": datetime.datetime.now(),
+            "completion_status": "FAILURE",
+            "error_message": str(e)
+        }
+        dm = WorkflowManager(task.config_path, task.acquisition_id).database_manager
+        dm.insert_stream_log_entry(os.path.basename(task.stream_path), log_entry)
 
 
 def main():

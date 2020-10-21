@@ -32,9 +32,24 @@
         "tag": "master"
       },
       {
+        "url": "git@github.jpl.nasa.gov:emit/emit-ios.git",
+        "tag": "master",
+        "conda_env": "emit-ios"
+      },
+      {
+        "url": "git@github.jpl.nasa.gov:emit/emit-l0edp.git",
+        "tag": "master",
+        "conda_env": "emit-ios"
+      },
+      {
+        "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l0.git",
+        "tag": "master",
+        "conda_env": "emit-ios"
+      },
+      {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l1a.git",
         "tag": "master",
-        "conda_env": "emit-main"
+        "conda_env": "emit-ios"
       },
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l1b.git",
