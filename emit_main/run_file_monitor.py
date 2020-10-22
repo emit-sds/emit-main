@@ -17,6 +17,10 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--config_path",
                         help="Path to config file")
+    parser.add_argument("--start_time",
+                        help="Start time (YYMMDDhhmmss)")
+    parser.add_argument("--stop_time",
+                        help="Stop time (YYMMDDhhmmss)")
     args = parser.parse_args()
     return args
 
@@ -27,7 +31,10 @@ def main():
     """
     args = parse_args()
     fm = FileMonitor(config_path=args.config_path)
-    fm.run()
+    if args.start_time and args.stop_time:
+        fm.ingest_files_by_time_range(args.start_time, args.stop_time)
+    else:
+        fm.ingest_files()
 
 
 if __name__ == '__main__':

@@ -34,15 +34,33 @@ class FileMonitor:
 
         self.observer = PollingObserver(timeout=15)
 
-    def run(self):
+    def ingest_files(self):
         """
-        Look at all files in ingest folder and run largest file for each time range. Archive duplicates.
+        Process all files in ingest folder
         """
-
         ingest_files = [os.path.basename(path) for path in glob.glob(os.path.join(self.ingest_dir, "*hsc.bin"))]
-        prefix_hash = {}
-        # Group files by prefix to find matching time ranges
+        self._ingest_file_list(ingest_files)
+
+    def ingest_files_by_time_range(self, start_time_str, stop_time_str):
+        """
+        Only process files in ingest folder within a specific datetime range
+        :param start_time_str: Start time in format YYMMDDhhmmss
+        :param stop_time_str: Stop time in format YYMMDDhhmmss
+        """
+        matching_files = []
+        ingest_files = [os.path.basename(path) for path in glob.glob(os.path.join(self.ingest_dir, "*hsc.bin"))]
         for file in ingest_files:
+            tokens = file.split("_")
+            file_start = tokens[2]
+            file_stop = tokens[3]
+            if file_start >= start_time_str and file_stop <= stop_time_str:
+                matching_files.append(file)
+        self._ingest_file_list(matching_files)
+
+    def _ingest_file_list(self, files):
+        # Group files by prefix to find matching time ranges
+        prefix_hash = {}
+        for file in files:
             file_prefix = file[:35]
             if file_prefix not in prefix_hash.keys():
                 prefix_hash[file_prefix] = {file: os.path.getsize(os.path.join(self.ingest_dir, file))}
@@ -60,8 +78,6 @@ class FileMonitor:
                         logger.info("Running workflow on max_file %s" % file)
                     else:
                         logger.info("Archiving duplicate file %s" % file)
-
-        return
 
     def run_observer(self):
         event_handler = IngestHandler()
