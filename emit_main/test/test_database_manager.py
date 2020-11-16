@@ -8,7 +8,7 @@ import datetime
 import logging.config
 
 #sys.path.insert(0,"../")
-from emit_main.database.database_manager import DatabaseManager
+from emit_main.workflow.workflow_manager import WorkflowManager
 
 logging.config.fileConfig(fname="test_logging.conf")
 logger = logging.getLogger("emit-main")
@@ -18,7 +18,8 @@ def test_database_manager():
 
     logger.debug("Running test_database_manager")
 
-    dm = DatabaseManager("config/test_config.json")
+    wm = WorkflowManager("config/jenkins_test_config.json")
+    dm = wm.database_manager
 
     acquisition = {
         "acquisition_id": "emit20200101t000000",
@@ -31,9 +32,14 @@ def test_database_manager():
     }
 
     acquisitions = dm.db.acquisitions
-    acquisitions.delete_one({"_id": "emit20200101t000000"})
-    acquisition_id = acquisitions.insert_one(acquisition).inserted_id
-    assert acquisition_id == "emit20200101t000000"
+    acquisitions.delete_many({
+        "acquisition_id": "emit20200101t000000",
+        "build_num": "000"})
+    acquisitions.insert_one(acquisition)
+    acquisition = acquisitions.find_one({
+        "acquisition_id": "emit20200101t000000",
+        "build_num": "000"})
+    assert acquisition["acquisition_id"] == "emit20200101t000000"
 
 
 test_database_manager()
