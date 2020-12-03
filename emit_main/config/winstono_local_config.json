@@ -25,7 +25,7 @@
     "repositories": [
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-main.git",
-        "tag": "package"
+        "tag": "file-monitor"
       },
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-utils.git",
