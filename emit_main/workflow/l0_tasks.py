@@ -82,6 +82,7 @@ class L0StripHOSC(SlurmJobTask):
         # Get ccsds output filename
         ccsds_name = os.path.basename(glob.glob(os.path.join(tmp_output_dir, stream.apid + "*.bin"))[0])
         ccsds_path = os.path.join(stream.l0_dir, ccsds_name)
+        # TODO: Change log name to match CCSDS name?
 
         # Update DB
         # TODO: Use stream_path for query
