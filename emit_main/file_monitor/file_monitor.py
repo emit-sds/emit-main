@@ -9,7 +9,7 @@ import json
 import logging
 import os
 
-from emit_main.workflow.workflow_manager import WorkflowManager
+from emit_main.workflow.l1a_tasks import *
 
 logger = logging.getLogger("emit-main")
 
@@ -29,6 +29,7 @@ class FileMonitor:
             self.__dict__.update(config["filesystem_config"])
             self.__dict__.update(config["build_config"])
 
+        self.config_path = os.path.abspath(config_path)
         # Build path for ingest folder
         self.ingest_dir = os.path.join(self.local_store_dir, self.instrument, self.environment, "ingest")
 
@@ -64,26 +65,30 @@ class FileMonitor:
                 prefix_hash[file_prefix] = {file: os.path.getsize(os.path.join(self.ingest_dir, file))}
             else:
                 prefix_hash[file_prefix].update({file: os.path.getsize(os.path.join(self.ingest_dir, file))})
-        # Get run command path
-        wm = WorkflowManager(self.config_path)
-#        wm.build_runtime_environment()
-        pge = wm.pges["emit-main"]
-        run_workflow_exe = os.path.join(pge.repo_dir, "emit_main", "run_workflow.py")
-        # TODO: Change "cmd" below based on APID
+        # Find paths to ingest by removing duplicates
+        paths = []
         for group in prefix_hash.values():
             if len(group.items()) == 1:
                 for file in group.keys():
                     # Run workflow
                     path = os.path.join(self.ingest_dir, file)
-                    logger.info("Running workflow on %s" % path)
-                    cmd = ["python", run_workflow_exe, "-c", self.config_path, "-s", path, "-p", "l1aeng"]
-                    pge.run(cmd)
+                    logger.info("Adding ingest path: %s" % path)
+                    paths.append(path)
             else:
                 max_file = [key for (key, value) in group.items() if value == max(group.values())][0]
                 for file in group.keys():
                     if file == max_file:
-                        logger.info("Running workflow on max_file %s" % file)
-                        cmd = ["python", run_workflow_exe, "-c", self.config_path, "-s", file, "-p", "l1aeng"]
-                        pge.run(cmd)
+                        path = os.path.join(self.ingest_dir, file)
+                        logger.info("Adding ingest path (largest file for this two hour window): %s" % path)
+                        paths.append(path)
                     else:
-                        logger.info("Archiving duplicate smaller file %s" % file)
+                        path = os.path.join(self.ingest_dir, file)
+                        logger.info("Archiving ingest path (duplicate smaller file for this two hour window): %s"
+                                    % path)
+
+        # Create luigi tasks and execute
+        tasks = []
+        # TODO: Change task based on APID
+        for p in paths:
+            tasks.append(L1AReformatEDP(config_path=self.config_path, stream_path=p))
+        luigi.build(tasks, workers=4, local_scheduler=self.luigi_local_scheduler, logging_conf_file=self.luigi_logging_conf)
