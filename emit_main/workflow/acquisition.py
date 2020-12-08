@@ -40,7 +40,8 @@ class Acquisition:
         self.instrument_dir = os.path.join(self.local_store_dir, self.instrument)
         self.environment_dir = os.path.join(self.instrument_dir, self.environment)
         self.data_dir = os.path.join(self.environment_dir, "data")
-        self.acqu
+        self.acquisition_dir = os.path.join(self.data_dir, "acquisition")
+
 
         # Check for instrument again based on filename
         instrument_prefix = self.instrument
@@ -48,9 +49,9 @@ class Acquisition:
             instrument_prefix = "ang"
         # Get date from acquisition string
         self.date_str = self.acquisition_id[len(instrument_prefix):(8 + len(instrument_prefix))]
-        self.date_dir = os.path.join(self.data_dir, self.date_str)
-        self.acquisition_dir = os.path.join(self.date_dir, self.acquisition_id)
-        self.dirs.extend([self.date_dir, self.acquisition_dir])
+        self.date_dir = os.path.join(self.acquisition_dir, self.date_str)
+        self.acquisition_id_dir = os.path.join(self.date_dir, self.acquisition_id)
+        self.dirs.extend([self.date_dir, self.acquisition_id_dir])
 
         # TODO: Set orbit and scene. Defaults below are for testing only
 #        acq_meta = self.database_manager.find_acquisition_by_id(self.acquisition_id)
@@ -92,7 +93,7 @@ class Acquisition:
         }
         paths = {}
         for level, prod_map in product_map.items():
-            level_data_dir = os.path.join(self.acquisition_dir, level)
+            level_data_dir = os.path.join(self.acquisition_id_dir, level)
             self.__dict__.update({level + "_data_dir": level_data_dir})
             self.dirs.append(level_data_dir)
             for prod, formats in prod_map.items():
@@ -106,6 +107,6 @@ class Acquisition:
                                             "b" + self.build_num,
                                             "v" + self.processing_version])
                     prod_name = prod_prefix + "." + format
-                    prod_path = os.path.join(self.acquisition_dir, level, prod_name)
+                    prod_path = os.path.join(self.acquisition_id_dir, level, prod_name)
                     paths[prod_key] = prod_path
         return paths

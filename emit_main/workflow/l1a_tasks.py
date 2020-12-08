@@ -94,7 +94,7 @@ class L1AReassembleRaw(SlurmJobTask):
         logger.debug(self.task_family + " requires")
         # This task must be triggered once a complete set of frames
 
-        #FIXME: Acquisition insertion should be happening in previous step.  This is temporary for testing.
+        # FIXME: Acquisition insertion should be happening in previous step.  This is temporary for testing.
         wm = WorkflowManager(self.config_path, acquisition_id=self.acquisition_id)
         acq_meta = {
             "acquisition_id": "emit20200101t000000",
@@ -153,7 +153,7 @@ class L1AReassembleRaw(SlurmJobTask):
         hdr["description"] = "EMIT L1A raw instrument data (units: DN)"
         hdr["emit acquisition start time"] = datetime.datetime(2020, 1, 1, 0, 0, 0).strftime("%Y-%m-%dT%H:%M:%S")
         hdr["emit acquisition stop time"] = datetime.datetime(2020, 1, 1, 0, 11, 26).strftime("%Y-%m-%dT%H:%M:%S")
-        hdr["emit pge name"] = pge.repo_name
+        hdr["emit pge name"] = pge.repo_url
         hdr["emit pge version"] = pge.version_tag
         hdr["emit pge input files"] = [
             "file1_key=file1_value",
