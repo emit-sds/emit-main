@@ -57,8 +57,9 @@ class L1BCalibrate(SlurmJobTask):
         # Placeholder: PGE writes to tmp folder
         tmp_output_dir = os.path.join(self.tmp_dir, "output")
         os.makedirs(tmp_output_dir)
-
         tmp_rdn_img_path = os.path.join(tmp_output_dir, os.path.basename(acq.rdn_img_path))
+        log_name = acq.rdn_img_path.replace(".img", "_pge.log")
+        tmp_log_path = os.path.join(tmp_output_dir, log_name)
         l1b_config_path = os.path.join(pge.repo_dir, "test", "l1b_config_ang.json")
         with open(l1b_config_path, "r") as f:
             config = json.load(f)
@@ -73,7 +74,7 @@ class L1BCalibrate(SlurmJobTask):
             json.dump(config, outfile)
 
         emitrdn_exe = os.path.join(pge.repo_dir, "emitrdn.py")
-        cmd = [emitrdn_exe, tmp_config_path, acq.raw_img_path, tmp_rdn_img_path]
+        cmd = [emitrdn_exe, tmp_config_path, acq.raw_img_path, tmp_rdn_img_path, "--log_file", tmp_log_path]
         pge.run(cmd)
 
         # Placeholder: copy output files to l1b dir
