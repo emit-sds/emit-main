@@ -129,10 +129,9 @@ class L1AReassembleRaw(SlurmJobTask):
         # Placeholder: PGE writes to tmp folder
         tmp_output_dir = os.path.join(self.tmp_dir, "output")
         os.makedirs(tmp_output_dir)
+        # Use test data raw files for now
         tmp_raw_img_path = os.path.join(tmp_output_dir, os.path.basename(acq.raw_img_path))
         tmp_raw_hdr_path = os.path.join(tmp_output_dir, os.path.basename(acq.raw_hdr_path))
-#        wm.touch_path(tmp_raw_img_path)
-#        wm.touch_path(tmp_raw_hdr_path)
         test_data_raw_img_path = os.path.join(wm.data_dir, "test_data", os.path.basename(acq.raw_img_path))
         test_data_raw_hdr_path = os.path.join(wm.data_dir, "test_data", os.path.basename(acq.raw_hdr_path))
         shutil.copy(test_data_raw_img_path, tmp_raw_img_path)
@@ -161,22 +160,25 @@ class L1AReassembleRaw(SlurmJobTask):
         ]
         hdr["emit pge run command"] = "python l1a_run.py args"
         hdr["emit software build version"] = wm.build_num
-        hdr["emit documentation version"] = "v1"
+        hdr["emit documentation version"] = "TBD"
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.raw_img_path))
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S")
-        hdr["emit data product version"] = "v" + wm.processing_version
+        hdr["emit data product version"] = wm.processing_version
 
         envi.write_envi_header(acq.raw_hdr_path, hdr)
 
         # Placeholder: PGE writes metadata to db
+        dimensions = {
+            "l1a": {
+                "lines": hdr["lines"],
+                "bands": hdr["bands"],
+                "samples": hdr["samples"],
+            }
+        }
         metadata = {
-            "lines": hdr["lines"],
-            "bands": hdr["bands"],
-            "samples": hdr["samples"],
+            "dimensions": dimensions,
             "day_night_flag": "day"
         }
-
-#        acq.save_metadata(metadata)
         dm = wm.database_manager
         dm.update_acquisition_metadata(self.acquisition_id, metadata)
 
@@ -198,7 +200,6 @@ class L1AReassembleRaw(SlurmJobTask):
             }
         }
 
-#        acq.save_processing_log_entry(log_entry)
         dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
 
 

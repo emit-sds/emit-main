@@ -44,6 +44,15 @@ class DatabaseManager:
         set_value = {"$set": metadata}
         acquisitions_coll.update_one(query, set_value, upsert=True)
 
+    def update_acquisition_dimensions(self, acquisition_id, dimensions):
+        meta = self.find_acquisition_by_id(acquisition_id)
+        dim = meta["dimensions"]
+        dim.update(dimensions)
+        query = {"acquisition_id": acquisition_id, "build_num": self.build_num}
+        set_value = {"$set": {"dimensions": dim}}
+        acquisitions_coll = self.db.acquisitions
+        acquisitions_coll.update_one(query, set_value, upsert=True)
+
     def insert_acquisition_log_entry(self, acquisition_id, entry):
         acquisitions_coll = self.db.acquisitions
         query = {"acquisition_id": acquisition_id, "build_num": self.build_num}

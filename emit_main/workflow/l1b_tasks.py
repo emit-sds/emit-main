@@ -90,12 +90,23 @@ class L1BCalibrate(SlurmJobTask):
         hdr["emit pge input files"] = input_files_arr
         hdr["emit pge run command"] = " ".join(cmd)
         hdr["emit software build version"] = wm.build_num
-        hdr["emit documentation version"] = "v1"
+        hdr["emit documentation version"] = "TBD"
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rdn_img_path))
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S")
         hdr["emit data product version"] = wm.processing_version
 
         envi.write_envi_header(acq.rdn_hdr_path, hdr)
+
+        # PGE writes metadata to db
+        dimensions = {
+            "l1b": {
+                "lines": hdr["lines"],
+                "bands": hdr["bands"],
+                "samples": hdr["samples"],
+            }
+        }
+        dm = wm.database_manager
+        dm.update_acquisition_dimensions(self.acquisition_id, dimensions)
 
         log_entry = {
             "task": self.task_family,
@@ -112,7 +123,6 @@ class L1BCalibrate(SlurmJobTask):
             }
         }
 
-        dm = wm.database_manager
         dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
 
 
