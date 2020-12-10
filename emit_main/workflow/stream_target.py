@@ -4,8 +4,9 @@ These classes specifies success criteria to determine if a stream file was proce
 Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
-import luigi
 import os
+
+import luigi
 
 
 class StreamTarget(luigi.Target):

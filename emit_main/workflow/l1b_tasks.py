@@ -43,14 +43,14 @@ class L1BCalibrate(SlurmJobTask):
     def output(self):
 
         logger.debug(self.task_family + " output")
-        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return ENVITarget(acq.rdn_img_path)
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return ENVITarget(acquisition=wm.acquisition, task_family=self.task_family)
 
     def work(self):
 
         logger.debug(self.task_family + " run")
 
-        wm = WorkflowManager(self.config_path, acquisition_id=self.acquisition_id)
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
         pge = wm.pges["emit-sds-l1b"]
 
@@ -156,7 +156,7 @@ class L1BGeolocate(SlurmJobTask):
 
         logger.debug(self.task_family + " run")
 
-        wm = WorkflowManager(self.config_path, acquisition_id=self.acquisition_id)
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
         pge = wm.pges["emit-sds-l1b"]
 

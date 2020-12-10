@@ -33,7 +33,8 @@ class Acquisition:
         # TODO: Define and initialize acquisition metadata
         # TODO: What to do if entry doesn't exist yet?
         dm = DatabaseManager(config_path)
-        self.metadata = dm.find_acquisition_by_id(self.acquisition_id)
+        acquisition_metadata = dm.find_acquisition_by_id(self.acquisition_id)
+        self.__dict__.update(acquisition_metadata)
 
         # Create base directories and add to list to create directories later
         self.dirs = []
@@ -52,17 +53,6 @@ class Acquisition:
         self.date_dir = os.path.join(self.acquisition_dir, self.date_str)
         self.acquisition_id_dir = os.path.join(self.date_dir, self.acquisition_id)
         self.dirs.extend([self.date_dir, self.acquisition_id_dir])
-
-        # TODO: Set orbit and scene. Defaults below are for testing only
-#        acq_meta = self.database_manager.find_acquisition_by_id(self.acquisition_id)
-        if "orbit" in self.metadata.keys():
-            self.orbit_num = self.metadata["orbit"]
-        else:
-            self.orbit_num = "00001"
-        if "scene" in self.metadata.keys():
-            self.scene_num = self.metadata["scene"]
-        else:
-            self.scene_num = "001"
 
         self.__dict__.update(self._build_acquisition_paths())
 
@@ -100,8 +90,8 @@ class Acquisition:
                 for format in formats:
                     prod_key = prod + "_" + format + "_path"
                     prod_prefix = "_".join([self.acquisition_id,
-                                            "o" + self.orbit_num,
-                                            "s" + self.scene_num,
+                                            "o" + self.orbit,
+                                            "s" + self.scene,
                                             level,
                                             prod,
                                             "b" + self.build_num,

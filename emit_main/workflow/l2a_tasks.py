@@ -5,6 +5,7 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
 import logging
+
 import luigi
 
 from emit_main.workflow.acquisition import Acquisition
@@ -49,7 +50,7 @@ class L2AReflectance(SlurmJobTask):
         logger.debug(self.task_family + " run")
         logger.debug("task tmp_dir is %s" % self.tmp_dir)
 
-        wm = WorkflowManager(self.config_path, acquisition_id=self.acquisition_id)
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
         pge = wm.pges["isofit"]
 

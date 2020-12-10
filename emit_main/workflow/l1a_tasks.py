@@ -95,7 +95,7 @@ class L1AReassembleRaw(SlurmJobTask):
         # This task must be triggered once a complete set of frames
 
         # FIXME: Acquisition insertion should be happening in previous step.  This is temporary for testing.
-        wm = WorkflowManager(self.config_path, acquisition_id=self.acquisition_id)
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq_meta = {
             "acquisition_id": "emit20200101t000000",
             "build_num": wm.build_num,
@@ -112,17 +112,13 @@ class L1AReassembleRaw(SlurmJobTask):
 
         logger.debug(self.task_family + " output")
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        acq = wm.acquisition
-        if acq is None:
-            return None
-        else:
-            return ENVITarget(acq.raw_img_path)
+        return ENVITarget(acquisition=wm.acquisition, task_family=self.task_family)
 
     def work(self):
 
         logger.debug(self.task_family + " run")
 
-        wm = WorkflowManager(self.config_path, acquisition_id=self.acquisition_id)
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
         pge = wm.pges["emit-sds-l1a"]
 
