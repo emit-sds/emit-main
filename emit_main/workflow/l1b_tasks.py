@@ -79,7 +79,7 @@ class L1BCalibrate(SlurmJobTask):
 
         # Copy output files to l1b dir
         for file in glob.glob(os.path.join(tmp_output_dir, "*")):
-            shutil.copy(file, acq.l1b_data_dir)
+            shutil.copy2(file, acq.l1b_data_dir)
 
         # Update hdr files
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]

@@ -130,8 +130,8 @@ class L1AReassembleRaw(SlurmJobTask):
         tmp_raw_hdr_path = os.path.join(tmp_output_dir, os.path.basename(acq.raw_hdr_path))
         test_data_raw_img_path = os.path.join(wm.data_dir, "test_data", os.path.basename(acq.raw_img_path))
         test_data_raw_hdr_path = os.path.join(wm.data_dir, "test_data", os.path.basename(acq.raw_hdr_path))
-        shutil.copy(test_data_raw_img_path, tmp_raw_img_path)
-        shutil.copy(test_data_raw_hdr_path, tmp_raw_hdr_path)
+        shutil.copy2(test_data_raw_img_path, tmp_raw_img_path)
+        shutil.copy2(test_data_raw_hdr_path, tmp_raw_hdr_path)
 
         # Placeholder: copy tmp folder back to l1a dir and rename?
         proc_dir = os.path.join(acq.l1a_data_dir, os.path.basename(acq.raw_img_path.replace(".img", "_proc")))
@@ -270,14 +270,14 @@ class L1AReformatEDP(SlurmJobTask):
 
         # Copy scratch files back to store
         for file in glob.glob(os.path.join(tmp_output_dir, "*")):
-            shutil.copy(file, stream.l1a_dir)
+            shutil.copy2(file, stream.l1a_dir)
         # Get edp output filename
         edp_name = os.path.basename(glob.glob(os.path.join(tmp_output_dir, "*.csv"))[0])
         edp_path = os.path.join(stream.l1a_dir, edp_name)
         # Copy and rename log file
         l1a_pge_log_name = edp_name.replace(".csv", "_pge.log")
         for file in glob.glob(os.path.join(tmp_log_dir, "*")):
-            shutil.copy(file, os.path.join(stream.l1a_dir, l1a_pge_log_name))
+            shutil.copy2(file, os.path.join(stream.l1a_dir, l1a_pge_log_name))
 
         query = {
             "hosc_name": stream.hosc_name,

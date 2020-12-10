@@ -70,15 +70,15 @@ class L0StripHOSC(SlurmJobTask):
         if "ingest" in self.stream_path:
             # Move HOSC file out of ingest folder
             # TODO: Change to shutil.move
-            shutil.copy(self.stream_path, stream.l0_dir)
+            shutil.copy2(self.stream_path, stream.l0_dir)
             hosc_path = os.path.join(stream.l0_dir, stream.hosc_name)
         else:
             hosc_path = self.stream_path
         # Copy scratch files back to store
         for file in glob.glob(os.path.join(tmp_output_dir, stream.apid + "*")):
-            shutil.copy(file, stream.l0_dir)
+            shutil.copy2(file, stream.l0_dir)
         for file in glob.glob(os.path.join(tmp_output_dir, "*.log")):
-            shutil.copy(file, stream.l0_dir)
+            shutil.copy2(file, stream.l0_dir)
         # Get ccsds output filename
         ccsds_name = os.path.basename(glob.glob(os.path.join(tmp_output_dir, stream.apid + "*.bin"))[0])
         ccsds_path = os.path.join(stream.l0_dir, ccsds_name)
