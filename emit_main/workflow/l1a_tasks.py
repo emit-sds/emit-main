@@ -94,8 +94,8 @@ class L1AReassembleRaw(SlurmJobTask):
         logger.debug(self.task_family + " requires")
         # This task must be triggered once a complete set of frames
 
-        #FIXME: Acquisition insertion should be happening in previous step.  This is temporary for testing.
-        wm = WorkflowManager(self.config_path, acquisition_id=self.acquisition_id)
+        # FIXME: Acquisition insertion should be happening in previous step.  This is temporary for testing.
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq_meta = {
             "acquisition_id": "emit20200101t000000",
             "build_num": wm.build_num,
@@ -112,27 +112,22 @@ class L1AReassembleRaw(SlurmJobTask):
 
         logger.debug(self.task_family + " output")
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        acq = wm.acquisition
-        if acq is None:
-            return None
-        else:
-            return ENVITarget(acq.raw_img_path)
+        return ENVITarget(acquisition=wm.acquisition, task_family=self.task_family)
 
     def work(self):
 
         logger.debug(self.task_family + " run")
 
-        wm = WorkflowManager(self.config_path, acquisition_id=self.acquisition_id)
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
         pge = wm.pges["emit-sds-l1a"]
 
         # Placeholder: PGE writes to tmp folder
         tmp_output_dir = os.path.join(self.tmp_dir, "output")
         os.makedirs(tmp_output_dir)
+        # Use test data raw files for now
         tmp_raw_img_path = os.path.join(tmp_output_dir, os.path.basename(acq.raw_img_path))
         tmp_raw_hdr_path = os.path.join(tmp_output_dir, os.path.basename(acq.raw_hdr_path))
-#        wm.touch_path(tmp_raw_img_path)
-#        wm.touch_path(tmp_raw_hdr_path)
         test_data_raw_img_path = os.path.join(wm.data_dir, "test_data", os.path.basename(acq.raw_img_path))
         test_data_raw_hdr_path = os.path.join(wm.data_dir, "test_data", os.path.basename(acq.raw_hdr_path))
         shutil.copy(test_data_raw_img_path, tmp_raw_img_path)
@@ -153,7 +148,7 @@ class L1AReassembleRaw(SlurmJobTask):
         hdr["description"] = "EMIT L1A raw instrument data (units: DN)"
         hdr["emit acquisition start time"] = datetime.datetime(2020, 1, 1, 0, 0, 0).strftime("%Y-%m-%dT%H:%M:%S")
         hdr["emit acquisition stop time"] = datetime.datetime(2020, 1, 1, 0, 11, 26).strftime("%Y-%m-%dT%H:%M:%S")
-        hdr["emit pge name"] = pge.repo_name
+        hdr["emit pge name"] = pge.repo_url
         hdr["emit pge version"] = pge.version_tag
         hdr["emit pge input files"] = [
             "file1_key=file1_value",
@@ -161,22 +156,25 @@ class L1AReassembleRaw(SlurmJobTask):
         ]
         hdr["emit pge run command"] = "python l1a_run.py args"
         hdr["emit software build version"] = wm.build_num
-        hdr["emit documentation version"] = "v1"
+        hdr["emit documentation version"] = "TBD"
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.raw_img_path))
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S")
-        hdr["emit data product version"] = "v" + wm.processing_version
+        hdr["emit data product version"] = wm.processing_version
 
         envi.write_envi_header(acq.raw_hdr_path, hdr)
 
         # Placeholder: PGE writes metadata to db
+        dimensions = {
+            "l1a": {
+                "lines": hdr["lines"],
+                "bands": hdr["bands"],
+                "samples": hdr["samples"],
+            }
+        }
         metadata = {
-            "lines": hdr["lines"],
-            "bands": hdr["bands"],
-            "samples": hdr["samples"],
+            "dimensions": dimensions,
             "day_night_flag": "day"
         }
-
-#        acq.save_metadata(metadata)
         dm = wm.database_manager
         dm.update_acquisition_metadata(self.acquisition_id, metadata)
 
@@ -198,7 +196,6 @@ class L1AReassembleRaw(SlurmJobTask):
             }
         }
 
-#        acq.save_processing_log_entry(log_entry)
         dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
 
 

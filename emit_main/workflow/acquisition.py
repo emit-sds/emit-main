@@ -33,14 +33,16 @@ class Acquisition:
         # TODO: Define and initialize acquisition metadata
         # TODO: What to do if entry doesn't exist yet?
         dm = DatabaseManager(config_path)
-        self.metadata = dm.find_acquisition_by_id(self.acquisition_id)
+        acquisition_metadata = dm.find_acquisition_by_id(self.acquisition_id)
+        self.__dict__.update(acquisition_metadata)
 
         # Create base directories and add to list to create directories later
         self.dirs = []
         self.instrument_dir = os.path.join(self.local_store_dir, self.instrument)
         self.environment_dir = os.path.join(self.instrument_dir, self.environment)
         self.data_dir = os.path.join(self.environment_dir, "data")
-        self.acqu
+        self.acquisition_dir = os.path.join(self.data_dir, "acquisition")
+
 
         # Check for instrument again based on filename
         instrument_prefix = self.instrument
@@ -48,20 +50,9 @@ class Acquisition:
             instrument_prefix = "ang"
         # Get date from acquisition string
         self.date_str = self.acquisition_id[len(instrument_prefix):(8 + len(instrument_prefix))]
-        self.date_dir = os.path.join(self.data_dir, self.date_str)
-        self.acquisition_dir = os.path.join(self.date_dir, self.acquisition_id)
-        self.dirs.extend([self.date_dir, self.acquisition_dir])
-
-        # TODO: Set orbit and scene. Defaults below are for testing only
-#        acq_meta = self.database_manager.find_acquisition_by_id(self.acquisition_id)
-        if "orbit" in self.metadata.keys():
-            self.orbit_num = self.metadata["orbit"]
-        else:
-            self.orbit_num = "00001"
-        if "scene" in self.metadata.keys():
-            self.scene_num = self.metadata["scene"]
-        else:
-            self.scene_num = "001"
+        self.date_dir = os.path.join(self.acquisition_dir, self.date_str)
+        self.acquisition_id_dir = os.path.join(self.date_dir, self.acquisition_id)
+        self.dirs.extend([self.date_dir, self.acquisition_id_dir])
 
         self.__dict__.update(self._build_acquisition_paths())
 
@@ -92,20 +83,20 @@ class Acquisition:
         }
         paths = {}
         for level, prod_map in product_map.items():
-            level_data_dir = os.path.join(self.acquisition_dir, level)
+            level_data_dir = os.path.join(self.acquisition_id_dir, level)
             self.__dict__.update({level + "_data_dir": level_data_dir})
             self.dirs.append(level_data_dir)
             for prod, formats in prod_map.items():
                 for format in formats:
                     prod_key = prod + "_" + format + "_path"
                     prod_prefix = "_".join([self.acquisition_id,
-                                            "o" + self.orbit_num,
-                                            "s" + self.scene_num,
+                                            "o" + self.orbit,
+                                            "s" + self.scene,
                                             level,
                                             prod,
                                             "b" + self.build_num,
                                             "v" + self.processing_version])
                     prod_name = prod_prefix + "." + format
-                    prod_path = os.path.join(self.acquisition_dir, level, prod_name)
+                    prod_path = os.path.join(self.acquisition_id_dir, level, prod_name)
                     paths[prod_key] = prod_path
         return paths

@@ -120,7 +120,7 @@ class SlurmJobTask(luigi.Task):
             self.task_tmp_id = self.acquisition_id
         else:
             self.task_tmp_id = os.path.basename(self.stream_path)
-        wm = WorkflowManager(self.config_path)
+        wm = WorkflowManager(config_path=self.config_path)
         # Create tmp folder
         base_tmp_dir = wm.scratch_tmp_dir
         timestamp = datetime.datetime.now().strftime("%Y%m%dt%H%M%S")
@@ -205,7 +205,7 @@ class SlurmJobTask(luigi.Task):
 
     def run(self):
 
-        wm = WorkflowManager(self.config_path)
+        wm = WorkflowManager(config_path=self.config_path)
 
         if wm.luigi_local_scheduler:
             # Run job locally without Slurm scheduler
