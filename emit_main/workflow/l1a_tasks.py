@@ -91,6 +91,9 @@ class L1AReassembleRaw(SlurmJobTask):
 
     def requires(self):
 
+        # TODO: This should check that a folder exists with frames in it and the work function should create the
+        # TODO: acquisition in the DB.  How do we trigger this step?
+
         logger.debug(self.task_family + " requires")
         # This task must be triggered once a complete set of frames
 

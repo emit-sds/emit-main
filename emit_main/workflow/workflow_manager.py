@@ -43,7 +43,7 @@ class WorkflowManager:
         self.environment_dir = os.path.join(self.instrument_dir, self.environment)
         self.data_dir = os.path.join(self.environment_dir, "data")
         self.ingest_dir = os.path.join(self.environment_dir, "ingest")
-        self.repo_dir = os.path.join(self.environment_dir, "repo")
+        self.repo_dir = os.path.join(self.environment_dir, "repos")
         self.scratch_tmp_dir = os.path.join(self.local_scratch_dir, self.instrument, self.environment, "tmp")
         self.scratch_error_dir = os.path.join(self.local_scratch_dir, self.instrument, self.environment, "error")
         dirs.extend([self.instrument_dir, self.environment_dir, self.data_dir, self.ingest_dir, self.repo_dir,

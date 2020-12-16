@@ -41,7 +41,7 @@ class Acquisition:
         self.instrument_dir = os.path.join(self.local_store_dir, self.instrument)
         self.environment_dir = os.path.join(self.instrument_dir, self.environment)
         self.data_dir = os.path.join(self.environment_dir, "data")
-        self.acquisition_dir = os.path.join(self.data_dir, "acquisition")
+        self.acquisition_dir = os.path.join(self.data_dir, "acquisitions")
 
 
         # Check for instrument again based on filename
