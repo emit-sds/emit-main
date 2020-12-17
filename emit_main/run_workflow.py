@@ -34,6 +34,8 @@ def parse_args():
                         Choose from " + ", ".join(product_choices)))
     parser.add_argument("-w", "--workers", default=2,
                         help="Number of luigi workers")
+    parser.add_argument("--build_env", action="store_true",
+                        help="Build the runtime environment")
     args = parser.parse_args()
     if args.products:
         product_list = args.products.split(",")
@@ -123,25 +125,28 @@ def task_failure(task, e):
         dm = WorkflowManager(task.config_path, task.acquisition_id).database_manager
         dm.insert_stream_log_entry(os.path.basename(task.stream_path), log_entry)
 
+
 def set_up_logging(logs_dir):
     # Add file handler logging to main logs directory
-    handler = logging.FileHandler(os.path.join(logs_dir, "run_workflow.log"))
+    handler = logging.FileHandler(os.path.join(logs_dir, "workflow.log"))
     handler.setLevel(logging.INFO)
     formatter = logging.Formatter("%(asctime)s %(levelname)s [%(module)s]: %(message)s")
     handler.setFormatter(formatter)
     logger.addHandler(handler)
+
 
 def main():
     """
     Parse command line arguments and initiate tasks
     """
     args = parse_args()
-    wm = WorkflowManager(args.config_path)
+    wm = WorkflowManager(config_path=args.config_path)
     set_up_logging(wm.logs_dir)
     logger.info("Running workflow with cmd: %s" % str(" ".join(sys.argv)))
 
     # Build the environment if needed
-    wm.build_runtime_environment()
+    if args.build_env:
+        wm.build_runtime_environment()
     # Set up tasks and run
     tasks = get_tasks_from_args(args)
     if args.workers:

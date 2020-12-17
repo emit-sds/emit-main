@@ -6,6 +6,8 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 
 import argparse
 import logging.config
+import os
+import sys
 
 from emit_main.file_monitor.file_monitor import FileMonitor
 
@@ -25,12 +27,25 @@ def parse_args():
     return args
 
 
+def set_up_logging(logs_dir):
+    # Add file handler logging to main logs directory
+    handler = logging.FileHandler(os.path.join(logs_dir, "file_monitor.log"))
+    handler.setLevel(logging.INFO)
+    formatter = logging.Formatter("%(asctime)s %(levelname)s [%(module)s]: %(message)s")
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+
+
 def main():
     """
     Parse command line arguments and start file monitor
     """
     args = parse_args()
+
     fm = FileMonitor(config_path=args.config_path)
+    set_up_logging(fm.logs_dir)
+    logger.info("Running file monitor with cmd: %s" % str(" ".join(sys.argv)))
+
     if args.start_time and args.stop_time:
         fm.ingest_files_by_time_range(args.start_time, args.stop_time)
     else:

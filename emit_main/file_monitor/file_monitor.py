@@ -32,6 +32,7 @@ class FileMonitor:
         self.config_path = os.path.abspath(config_path)
         # Build path for ingest folder
         self.ingest_dir = os.path.join(self.local_store_dir, self.instrument, self.environment, "ingest")
+        self.logs_dir = os.path.join(self.local_store_dir, self.instrument, self.environment, "logs")
 
     def ingest_files(self):
         """

@@ -33,7 +33,7 @@
       },
       {
         "url": "git@github.jpl.nasa.gov:emit/emit-ios.git",
-        "tag": "master",
+        "tag": "0.2.0",
         "conda_env": "emit-ios"
       },
       {
