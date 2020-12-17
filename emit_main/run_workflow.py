@@ -123,22 +123,31 @@ def task_failure(task, e):
         dm = WorkflowManager(task.config_path, task.acquisition_id).database_manager
         dm.insert_stream_log_entry(os.path.basename(task.stream_path), log_entry)
 
+def set_up_logging(logs_dir):
+    # Add file handler logging to main logs directory
+    handler = logging.FileHandler(os.path.join(logs_dir, "run_workflow.log"))
+    handler.setLevel(logging.INFO)
+    formatter = logging.Formatter("%(asctime)s %(levelname)s [%(module)s]: %(message)s")
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
 
 def main():
     """
     Parse command line arguments and initiate tasks
     """
     args = parse_args()
-    tasks = get_tasks_from_args(args)
-
     wm = WorkflowManager(args.config_path)
-    wm.build_runtime_environment()
+    set_up_logging(wm.logs_dir)
+    logger.info("Running workflow with cmd: %s" % str(" ".join(sys.argv)))
 
+    # Build the environment if needed
+    wm.build_runtime_environment()
+    # Set up tasks and run
+    tasks = get_tasks_from_args(args)
     if args.workers:
         workers = args.workers
     else:
         workers = wm.luigi_workers
-
     luigi.build(tasks, workers=workers, local_scheduler=wm.luigi_local_scheduler,
                 logging_conf_file=wm.luigi_logging_conf)
 

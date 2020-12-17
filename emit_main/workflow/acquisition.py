@@ -41,7 +41,7 @@ class Acquisition:
         self.instrument_dir = os.path.join(self.local_store_dir, self.instrument)
         self.environment_dir = os.path.join(self.instrument_dir, self.environment)
         self.data_dir = os.path.join(self.environment_dir, "data")
-        self.acquisition_dir = os.path.join(self.data_dir, "acquisitions")
+        self.acquisitions_dir = os.path.join(self.data_dir, "acquisitions")
 
 
         # Check for instrument again based on filename
@@ -50,7 +50,7 @@ class Acquisition:
             instrument_prefix = "ang"
         # Get date from acquisition string
         self.date_str = self.acquisition_id[len(instrument_prefix):(8 + len(instrument_prefix))]
-        self.date_dir = os.path.join(self.acquisition_dir, self.date_str)
+        self.date_dir = os.path.join(self.acquisitions_dir, self.date_str)
         self.acquisition_id_dir = os.path.join(self.date_dir, self.acquisition_id)
         self.dirs.extend([self.date_dir, self.acquisition_id_dir])
 

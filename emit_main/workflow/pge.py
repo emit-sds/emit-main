@@ -59,7 +59,7 @@ class PGE:
         if output.returncode != 0:
             raise RuntimeError("Failed to clone repo with cmd: %s" % str(cmd))
 
-    def _checkout_tag(self):
+    def _repo_needs_update(self):
         cmd = ["cd", self.repo_dir, "&&", "git", "symbolic-ref", "-q", "--short", "HEAD", "||",
               "git", "describe", "--tags", "--exact-match"]
         output = subprocess.run(" ".join(cmd), shell=True, capture_output=True)
@@ -67,13 +67,15 @@ class PGE:
             logger.error("Failed to get current version tag or branch with cmd: %s" % str(cmd))
             raise RuntimeError(output.stderr.decode("utf-8"))
         current_tag = output.stdout.decode("utf-8").replace("\n", "")
-        if current_tag != self.version_tag:
-            cmd = ["cd", self.repo_dir, "&&", "git", "fetch", "--all", "&&", "git", "checkout", self.version_tag]
-            logger.info("Checking out version tag or branch with cmd: %s" % " ".join(cmd))
-            output = subprocess.run(" ".join(cmd), shell=True, capture_output=True)
-            if output.returncode != 0:
-                logger.error("Failed to checkout version tag or branch with cmd: %s" % str(cmd))
-                raise RuntimeError(output.stderr.decode("utf-8"))
+        return True if current_tag != self.version_tag else False
+
+    def _checkout_tag(self):
+        cmd = ["cd", self.repo_dir, "&&", "git", "fetch", "--all", "&&", "git", "checkout", self.version_tag]
+        logger.info("Checking out version tag or branch with cmd: %s" % " ".join(cmd))
+        output = subprocess.run(" ".join(cmd), shell=True, capture_output=True)
+        if output.returncode != 0:
+            logger.error("Failed to checkout version tag or branch with cmd: %s" % str(cmd))
+            raise RuntimeError(output.stderr.decode("utf-8"))
 
     def _conda_env_exists(self):
         cmd = [self.conda_exe, "env", "list", "|", "grep", self.conda_env_dir]
@@ -102,6 +104,13 @@ class PGE:
             output = subprocess.run(" ".join(cmd), shell=True, capture_output=True)
             if output.returncode != 0:
                 raise RuntimeError("Failed to install repo with cmd: %s" % str(cmd))
+        if self.repo_name == "emit-l0edp":
+            cmd = ["source", self.conda_sh_path, "&&", "conda", "activate", self.conda_env_dir,
+                   "&&", "cd", self.repo_dir, "&&", "cargo", "build", "--release", "&&", "conda", "deactivate"]
+            logger.info("Installing repo with cmd: %s" % " ".join(cmd))
+            output = subprocess.run(" ".join(cmd), shell=True, capture_output=True)
+            if output.returncode != 0:
+                raise RuntimeError("Failed to install repo with cmd: %s" % str(cmd))
 
     def _add_imports(self):
         for repo in self.imports:
@@ -116,12 +125,16 @@ class PGE:
 
     def build(self):
         try:
+            new_repo = False
             if not os.path.exists(self.repo_dir):
                 self._clone_repo()
-            self._checkout_tag()
+                new_repo = True
+            if self._repo_needs_update():
+                self._checkout_tag()
             if not self._conda_env_exists():
                 self._create_conda_env()
-            self._install_repo()
+            if new_repo or self._repo_needs_update():
+                self._install_repo()
         except RuntimeError as e:
             logger.info("Cleaning up directories and conda environments after running into a problem.")
             rm_dir_cmd = ["rm", "-rf", self.repo_dir]
@@ -138,7 +151,7 @@ class PGE:
         if env is None:
             env = os.environ.copy()
         conda_run_cmd = " ".join([self.conda_exe, "run", "-n", self.conda_env_name] + cwd_args + cmd)
-        logging.info("Running command: %s" % conda_run_cmd)
+        logger.info("Running command: %s" % conda_run_cmd)
         output = subprocess.run(conda_run_cmd, shell=True, capture_output=True, env=env)
         if output.returncode != 0:
             logger.error("PGE %s run command failed: %s" % (self.repo_name, output.args))
