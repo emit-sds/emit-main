@@ -75,7 +75,7 @@ class L1BCalibrate(SlurmJobTask):
 
         emitrdn_exe = os.path.join(pge.repo_dir, "emitrdn.py")
         cmd = ["python", emitrdn_exe, tmp_config_path, acq.raw_img_path, tmp_rdn_img_path, "--log_file", tmp_log_path]
-        pge.run(cmd)
+        pge.run(cmd, tmp_dir=self.tmp_dir)
 
         # Copy output files to l1b dir
         for file in glob.glob(os.path.join(tmp_output_dir, "*")):
@@ -161,15 +161,15 @@ class L1BGeolocate(SlurmJobTask):
         pge = wm.pges["emit-sds-l1b"]
 
         cmd = ["touch", acq.loc_img_path]
-        pge.run(cmd)
+        pge.run(cmd, tmp_dir=self.tmp_dir)
         cmd = ["touch", acq.loc_hdr_path]
-        pge.run(cmd)
+        pge.run(cmd, tmp_dir=self.tmp_dir)
         cmd = ["touch", acq.obs_img_path]
-        pge.run(cmd)
+        pge.run(cmd, tmp_dir=self.tmp_dir)
         cmd = ["touch", acq.obs_hdr_path]
-        pge.run(cmd)
+        pge.run(cmd, tmp_dir=self.tmp_dir)
         cmd = ["touch", acq.glt_img_path]
-        pge.run(cmd)
+        pge.run(cmd, tmp_dir=self.tmp_dir)
         cmd = ["touch", acq.glt_hdr_path]
-        pge.run(cmd)
+        pge.run(cmd, tmp_dir=self.tmp_dir)
 

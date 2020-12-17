@@ -62,4 +62,4 @@ class L2AReflectance(SlurmJobTask):
                "--channelized_uncertainty=/home/brodrick/src/isofit/data/avirisng_systematic_error.txt",
                "--wavelength_path=/home/brodrick/src/isofit/examples/20171108_Pasadena/remote/20170320_ang20170228_wavelength_fit.txt",
                "--lut_config_file=/beegfs/scratch/winstono/emit/sonoran_desert/support/lut_config.json"]
-        pge.run(cmd)
+        pge.run(cmd, tmp_dir=self.tmp_dir)

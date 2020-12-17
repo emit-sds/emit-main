@@ -144,7 +144,7 @@ class PGE:
 #                subprocess.run(rm_conda_env_cmd)
             print(e)
 
-    def run(self, cmd, cwd=None, env=None):
+    def run(self, cmd, cwd=None, tmp_dir=None, env=None):
         cwd_args = []
         if cwd:
             cwd_args = ["--cwd", cwd]
@@ -152,6 +152,11 @@ class PGE:
             env = os.environ.copy()
         conda_run_cmd = " ".join([self.conda_exe, "run", "-n", self.conda_env_name] + cwd_args + cmd)
         logger.info("Running command: %s" % conda_run_cmd)
+        with open(os.path.join(tmp_dir, "cmd.txt"), "a") as f:
+            f.write("Command (using \"tmp\" directory):\n")
+            f.write(conda_run_cmd + "\n\n")
+            f.write("Command (using \"error\" directory):\n")
+            f.write(conda_run_cmd.replace("/tmp/", "/error/") + "\n\n")
         output = subprocess.run(conda_run_cmd, shell=True, capture_output=True, env=env)
         if output.returncode != 0:
             logger.error("PGE %s run command failed: %s" % (self.repo_name, output.args))
