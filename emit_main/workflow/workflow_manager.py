@@ -7,7 +7,6 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 import json
 import logging
 import os
-import subprocess
 
 from emit_main.database.database_manager import DatabaseManager
 from emit_main.workflow.acquisition import Acquisition
@@ -43,11 +42,12 @@ class WorkflowManager:
         self.environment_dir = os.path.join(self.instrument_dir, self.environment)
         self.data_dir = os.path.join(self.environment_dir, "data")
         self.ingest_dir = os.path.join(self.environment_dir, "ingest")
-        self.repo_dir = os.path.join(self.environment_dir, "repo")
+        self.logs_dir = os.path.join(self.environment_dir, "logs")
+        self.repos_dir = os.path.join(self.environment_dir, "repos")
         self.scratch_tmp_dir = os.path.join(self.local_scratch_dir, self.instrument, self.environment, "tmp")
         self.scratch_error_dir = os.path.join(self.local_scratch_dir, self.instrument, self.environment, "error")
-        dirs.extend([self.instrument_dir, self.environment_dir, self.data_dir, self.ingest_dir, self.repo_dir,
-                     self.scratch_tmp_dir, self.scratch_error_dir])
+        dirs.extend([self.instrument_dir, self.environment_dir, self.data_dir, self.ingest_dir, self.logs_dir,
+                     self.repos_dir, self.scratch_tmp_dir, self.scratch_error_dir])
 
         # Make directories if they don't exist
         for d in dirs:
@@ -84,7 +84,7 @@ class WorkflowManager:
             pge = PGE(
                 conda_base=self.conda_base_dir,
                 conda_env=conda_env,
-                pge_base=self.repo_dir,
+                pge_base=self.repos_dir,
                 repo_url=repo["url"],
                 version_tag=version_tag,
                 local_paths=local_paths
@@ -111,10 +111,3 @@ class WorkflowManager:
     def remove_path(self, path):
         if os.path.exists((path)):
             os.system(" ".join(["rm", "-f", path]))
-
-    def run(self, cmd):
-        logging.info("Running command: %s" % " ".join(cmd))
-        output = subprocess.run(cmd, shell=True, capture_output=True)
-        if output.returncode != 0:
-            logger.error("WorkflowManager run command failed: %s" % output.args)
-            raise RuntimeError(output.stderr.decode("utf-8"))

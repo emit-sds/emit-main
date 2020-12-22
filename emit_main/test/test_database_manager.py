@@ -7,7 +7,6 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 import datetime
 import logging.config
 
-#sys.path.insert(0,"../")
 from emit_main.database.database_manager import DatabaseManager
 
 logging.config.fileConfig(fname="test_logging.conf")

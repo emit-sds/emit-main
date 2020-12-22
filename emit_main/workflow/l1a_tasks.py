@@ -91,6 +91,9 @@ class L1AReassembleRaw(SlurmJobTask):
 
     def requires(self):
 
+        # TODO: This should check that a folder exists with frames in it and the work function should create the
+        # TODO: acquisition in the DB.  How do we trigger this step?
+
         logger.debug(self.task_family + " requires")
         # This task must be triggered once a complete set of frames
 
@@ -266,7 +269,7 @@ class L1AReformatEDP(SlurmJobTask):
         env["AIT_ROOT"] = wm.pges["emit-ios"].repo_dir
         env["AIT_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "config.yaml")
         env["AIT_ISS_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "sim.yaml")
-        pge.run(cmd, env=env)
+        pge.run(cmd,  tmp_dir=self.tmp_dir, env=env)
 
         # Copy scratch files back to store
         for file in glob.glob(os.path.join(tmp_output_dir, "*")):

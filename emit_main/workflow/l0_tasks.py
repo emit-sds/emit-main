@@ -65,7 +65,7 @@ class L0StripHOSC(SlurmJobTask):
         env["AIT_ROOT"] = wm.pges["emit-ios"].repo_dir
         env["AIT_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "config.yaml")
         env["AIT_ISS_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "sim.yaml")
-        pge.run(cmd, env=env)
+        pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
         if "ingest" in self.stream_path:
             # Move HOSC file out of ingest folder
