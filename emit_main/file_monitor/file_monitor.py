@@ -42,7 +42,7 @@ class FileMonitor:
         Process all files in ingest folder
         """
         ingest_files = [os.path.basename(path) for path in glob.glob(os.path.join(self.ingest_dir, "*hsc.bin"))]
-        self._ingest_file_list(ingest_files)
+        return self._ingest_file_list(ingest_files)
 
     def ingest_files_by_time_range(self, start_time, stop_time):
         """
@@ -58,7 +58,7 @@ class FileMonitor:
             file_stop = tokens[3]
             if file_start >= start_time and file_stop <= stop_time:
                 matching_files.append(file)
-        self._ingest_file_list(matching_files)
+        return self._ingest_file_list(matching_files)
 
     def _ingest_file_list(self, files):
         # Group files by prefix to find matching time ranges
@@ -95,5 +95,6 @@ class FileMonitor:
         # TODO: Change task based on APID
         for p in paths:
             tasks.append(L1AReformatEDP(config_path=self.config_path, stream_path=p))
-        luigi.build(tasks, workers=4, local_scheduler=self.luigi_local_scheduler,
+
+        return luigi.build(tasks, workers=4, local_scheduler=self.luigi_local_scheduler,
                     logging_conf_file=self.luigi_logging_conf)

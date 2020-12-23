@@ -1,5 +1,5 @@
 """
-This code contains test functions for database_manager
+This code contains test functions for database_manager.py
 
 Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """

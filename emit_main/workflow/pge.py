@@ -55,7 +55,7 @@ class PGE:
     def _clone_repo(self):
         cmd = ["git", "clone", self.repo_url, self.repo_dir]
         logger.info("Cloning repo with cmd: %s" % " ".join(cmd))
-        output = subprocess.run(cmd)
+        output = subprocess.run(" ".join(cmd), shell=True, capture_output=True)
         if output.returncode != 0:
             raise RuntimeError("Failed to clone repo with cmd: %s" % str(cmd))
 
@@ -90,7 +90,7 @@ class PGE:
         if os.path.exists(conda_env_yml_path):
             cmd = [self.conda_exe, "env", "create", "-f", conda_env_yml_path, "-n", self.conda_env_name]
             logger.info("Creating conda env with cmd: %s" % " ".join(cmd))
-            output = subprocess.run(cmd, shell=True, capture_output=True)
+            output = subprocess.run(" ".join(cmd), shell=True, capture_output=True)
             if output.returncode != 0:
                 raise RuntimeError("Failed to create conda env with cmd: %s" % str(cmd))
 
@@ -123,7 +123,16 @@ class PGE:
             if output.returncode != 0:
                 raise RuntimeError("Failed to import repo with cmd: %s" % str(cmd))
 
-    def build(self):
+    def check_runtime_environment(self):
+        if not os.path.exists(self.repo_dir):
+            return False
+        if self._repo_needs_update():
+            return False
+        if not self._conda_env_exists():
+            return False
+        return True
+
+    def build_runtime_environment(self):
         try:
             new_repo = False
             if not os.path.exists(self.repo_dir):
