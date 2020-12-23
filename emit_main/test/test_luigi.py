@@ -34,4 +34,4 @@ def test_luigi_build():
 
 
 # TODO: Change this to test_tasks and add another test that uses the luigi scheduler
-test_luigi_build()
+#test_luigi_build()

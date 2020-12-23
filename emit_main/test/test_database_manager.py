@@ -5,34 +5,39 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
 import datetime
-import logging.config
 
 from emit_main.database.database_manager import DatabaseManager
 
-logging.config.fileConfig(fname="test_logging.conf")
-logger = logging.getLogger("emit-main")
 
+def test_acquisition_delete(config_path):
 
-def test_database_manager():
+    print("\nRunning test_acquisition_delete with config: %s" % config_path)
 
-    logger.debug("Running test_database_manager")
-
-    dm = DatabaseManager("config/test_config.json")
-
-    acquisition = {
-        "acquisition_id": "emit20200101t000000",
-        "build_num": "000",
-        "processing_version": "00",
-        "start_time": datetime.datetime(2020, 1, 1, 0, 0, 0),
-        "end_time": datetime.datetime(2020, 1, 1, 0, 11, 26),
-        "orbit": "00001",
-        "scene": "001"
-    }
+    dm = DatabaseManager(config_path=config_path)
 
     acquisitions = dm.db.acquisitions
-    acquisitions.delete_one({"_id": "emit20200101t000000"})
-    acquisition_id = acquisitions.insert_one(acquisition).inserted_id
-    assert acquisition_id == "emit20200101t000000"
+    acquisitions.delete_one({"acquisition_id": "emit20200101t000000", "build_num": dm.build_num})
+
+    acquisition = dm.find_acquisition_by_id("emit20200101t000000")
+    assert acquisition == None
 
 
-test_database_manager()
+def test_acquisition_insert(config_path):
+
+    print("\nRunning test_acquisition_insert with config: %s" % config_path)
+
+    dm = DatabaseManager(config_path=config_path)
+
+    metadata = {
+        "acquisition_id": "emit20200101t000000",
+        "build_num": dm.build_num,
+        "processing_version": dm.processing_version,
+        "start_time": datetime.datetime(2020, 1, 1, 0, 0, 0),
+        "end_time": datetime.datetime(2020, 1, 1, 0, 11, 26),
+        "orbit": "00000",
+        "scene": "000"
+    }
+    dm.insert_acquisition(metadata)
+    acquisition = dm.find_acquisition_by_id(metadata["acquisition_id"])
+
+    assert acquisition["acquisition_id"] == "emit20200101t000000"

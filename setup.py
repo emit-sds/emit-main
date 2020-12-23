@@ -29,7 +29,7 @@ setuptools.setup(
         "gdal==2.3.3",
         "luigi==2.8.10",
         "pymongo==3.9.0",
-        "mongodb==4.0.3",
-        "spectral==0.21"
+        "spectral==0.21",
+        "pytest==6.2.1"
     ]
 )

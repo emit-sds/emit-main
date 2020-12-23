@@ -32,5 +32,5 @@ def test_build_runtime_environment():
     wm.build_runtime_environment()
 
 
-test_acquisition_paths()
-test_build_runtime_environment()
+#test_acquisition_paths()
+#test_build_runtime_environment()

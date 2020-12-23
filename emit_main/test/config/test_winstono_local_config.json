@@ -2,9 +2,8 @@
   "general_config": {
     "instrument": "emit",
     "environment": "test",
-    "processing_version": "01",
+    "processing_version": "00",
     "luigi_local_scheduler": true,
-    "luigi_logging_conf": "../workflow/luigi/logging.conf",
     "luigi_workers": 2
   },
 
@@ -20,37 +19,48 @@
   },
 
   "build_config": {
-    "build_num": "001",
+    "build_num": "000",
     "conda_base_dir": "/Users/winstono/opt/anaconda3/",
     "repositories": [
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-main.git",
-        "tag": "package"
+        "tag": "main"
       },
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-utils.git",
-        "tag": "master"
+        "tag": "main"
+      },
+      {
+        "url": "git@github.jpl.nasa.gov:emit/emit-ios.git",
+        "tag": "0.2.0",
+        "conda_env": "emit-ios"
+      },
+      {
+        "url": "git@github.jpl.nasa.gov:emit/emit-l0edp.git",
+        "tag": "main",
+        "conda_env": "emit-ios"
+      },
+      {
+        "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l0.git",
+        "tag": "main",
+        "conda_env": "emit-ios"
       },
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l1a.git",
-        "tag": "master",
-        "conda_env": "emit-main"
+        "tag": "main",
+        "conda_env": "emit-ios"
       },
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l1b.git",
-        "tag": "master",
-        "conda_env": "emit-main",
-        "local_paths": {
-          "emitrdn_exe": "emitrdn.py"
-        }
+        "tag": "main"
       },
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l2a.git",
-        "tag": "master"
+        "tag": "main"
       },
       {
         "url": "git@github.com:isofit/isofit.git",
-        "tag": "master",
+        "tag": "main",
         "conda_env": "emit-main",
         "local_paths": {
           "apply_oe_exe": "isofit/utils/apply_oe.py"
@@ -58,15 +68,15 @@
       },
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l2b.git",
-        "tag": "master"
+        "tag": "main"
       },
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l3.git",
-        "tag": "master"
+        "tag": "main"
       },
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l4.git",
-        "tag": "master"
+        "tag": "main"
       }
     ]
   }

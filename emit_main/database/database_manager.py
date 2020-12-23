@@ -35,6 +35,7 @@ class DatabaseManager:
 
     def insert_acquisition(self, metadata):
         if self.find_acquisition_by_id(metadata["acquisition_id"]) is None:
+            metadata["creation_time"] = datetime.datetime.now()
             acquisitions_coll = self.db.acquisitions
             acquisitions_coll.insert_one(metadata)
 
@@ -83,7 +84,8 @@ class DatabaseManager:
                 "build_num": self.build_num,
                 "processing_version": self.processing_version,
                 "hosc_name": hosc_name,
-                "processing_log": []
+                "processing_log": [],
+                "creation_time": datetime.datetime.now()
             }
             streams_coll = self.db.streams
             streams_coll.insert_one(metadata)
