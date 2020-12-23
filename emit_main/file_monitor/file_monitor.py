@@ -33,6 +33,9 @@ class FileMonitor:
         # Build path for ingest folder
         self.ingest_dir = os.path.join(self.local_store_dir, self.instrument, self.environment, "ingest")
         self.logs_dir = os.path.join(self.local_store_dir, self.instrument, self.environment, "logs")
+        # Build luigi logging.conf path
+        self.luigi_logging_conf = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "workflow", "luigi",
+                                                               "logging.conf"))
 
     def ingest_files(self):
         """
@@ -92,4 +95,5 @@ class FileMonitor:
         # TODO: Change task based on APID
         for p in paths:
             tasks.append(L1AReformatEDP(config_path=self.config_path, stream_path=p))
-        luigi.build(tasks, workers=4, local_scheduler=self.luigi_local_scheduler, logging_conf_file=self.luigi_logging_conf)
+        luigi.build(tasks, workers=4, local_scheduler=self.luigi_local_scheduler,
+                    logging_conf_file=self.luigi_logging_conf)

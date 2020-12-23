@@ -282,15 +282,11 @@ class L1AReformatEDP(SlurmJobTask):
         for file in glob.glob(os.path.join(tmp_log_dir, "*")):
             shutil.copy2(file, os.path.join(stream.l1a_dir, l1a_pge_log_name))
 
-        query = {
-            "hosc_name": stream.hosc_name,
-            "build_num": wm.build_num,
-        }
         metadata = {
             "edp_name": edp_name
         }
         dm = wm.database_manager
-        dm.update_stream_metadata(query, metadata)
+        dm.update_stream_metadata(stream.hosc_name, metadata)
 
         log_entry = {
             "task": self.task_family,
