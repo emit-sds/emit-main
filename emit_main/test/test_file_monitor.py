@@ -12,5 +12,5 @@ def test_ingest_files(config_path):
     print("\nRunning test_file_monitor with config: %s" % config_path)
 
     fm = FileMonitor(config_path=config_path)
-    luigi_result = fm.ingest_files()
-    assert luigi_result is True
+    paths = fm.ingest_files(dry_run=True)
+    assert len(paths) == 1

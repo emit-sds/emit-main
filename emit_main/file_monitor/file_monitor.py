@@ -37,14 +37,14 @@ class FileMonitor:
         self.luigi_logging_conf = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "workflow", "luigi",
                                                                "logging.conf"))
 
-    def ingest_files(self):
+    def ingest_files(self, dry_run=False):
         """
         Process all files in ingest folder
         """
         ingest_files = [os.path.basename(path) for path in glob.glob(os.path.join(self.ingest_dir, "*hsc.bin"))]
-        return self._ingest_file_list(ingest_files)
+        return self._ingest_file_list(ingest_files, dry_run=dry_run)
 
-    def ingest_files_by_time_range(self, start_time, stop_time):
+    def ingest_files_by_time_range(self, start_time, stop_time, dry_run=False):
         """
         Only process files in ingest folder within a specific datetime range
         :param start_time: Start time in format YYMMDDhhmmss
@@ -58,9 +58,9 @@ class FileMonitor:
             file_stop = tokens[3]
             if file_start >= start_time and file_stop <= stop_time:
                 matching_files.append(file)
-        return self._ingest_file_list(matching_files)
+        return self._ingest_file_list(matching_files, dry_run=dry_run)
 
-    def _ingest_file_list(self, files):
+    def _ingest_file_list(self, files, dry_run=False):
         # Group files by prefix to find matching time ranges
         prefix_hash = {}
         for file in files:
@@ -89,6 +89,9 @@ class FileMonitor:
                         path = os.path.join(self.ingest_dir, file)
                         logger.info("Archiving ingest path (duplicate smaller file for this two hour window): %s"
                                     % path)
+
+        if dry_run:
+            return paths
 
         # Create luigi tasks and execute
         tasks = []
