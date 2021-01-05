@@ -13,4 +13,4 @@ def test_ingest_files(config_path):
 
     fm = FileMonitor(config_path=config_path)
     paths = fm.ingest_files(dry_run=True)
-    assert len(paths) == 1
+    assert len(paths) > 0

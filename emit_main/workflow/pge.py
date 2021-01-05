@@ -146,8 +146,8 @@ class PGE:
                 self._install_repo()
         except RuntimeError as e:
             logger.info("Cleaning up directories and conda environments after running into a problem.")
-            rm_dir_cmd = ["rm", "-rf", self.repo_dir]
-            subprocess.run(rm_dir_cmd)
+#            rm_dir_cmd = ["rm", "-rf", self.repo_dir]
+#            subprocess.run(rm_dir_cmd)
 #            if self._conda_env_exists():
 #                rm_conda_env_cmd = ["conda", "env", "remove", "-n", self.conda_env_name]
 #                subprocess.run(rm_conda_env_cmd)

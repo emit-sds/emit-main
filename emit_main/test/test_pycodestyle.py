@@ -14,7 +14,7 @@ def test_pep8_conformance():
     """
 
     test_dir = os.path.dirname(os.path.abspath(__file__))
-    config_path = test_dir + "/config/pycodestyle_config.txt"
+    config_path = os.path.join(test_dir, "pycodestyle_config.txt")
     repo_dir = os.path.dirname(os.path.dirname(test_dir))
 
     print("\nRunning test_pep8_conformance with config: %s" % config_path)
