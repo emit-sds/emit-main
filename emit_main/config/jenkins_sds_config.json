@@ -1,7 +1,7 @@
 {
   "general_config": {
     "instrument": "emit",
-    "environment": "winstono",
+    "environment": "jenkins",
     "processing_version": "00",
     "luigi_local_scheduler": false,
     "luigi_workers": 2
@@ -20,7 +20,7 @@
 
   "build_config": {
     "build_num": "000",
-    "conda_base_dir": "/home/winstono/anaconda3/",
+    "conda_base_dir": "/home/jenkins/anaconda3/",
     "repositories": [
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-main.git",
