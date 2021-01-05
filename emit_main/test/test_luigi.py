@@ -47,7 +47,7 @@ def test_luigi_build(config_path):
     wm = WorkflowManager(config_path=config_path, acquisition_id=acquisition_id)
 
     luigi_logging_conf = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "workflow", "luigi",
-                                                           "logging.conf"))
+                                                      "logging.conf"))
     success = luigi.build(
         [ExampleTask(config_path=config_path, acquisition_id=acquisition_id)],
         workers=wm.luigi_workers,

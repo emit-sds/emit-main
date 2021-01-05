@@ -73,7 +73,6 @@ def get_tasks_from_args(args):
     return tasks
 
 
-#@luigi.Task.event_handler(luigi.Event.SUCCESS)
 @SlurmJobTask.event_handler(luigi.Event.SUCCESS)
 def task_success(task):
     logger.info("SUCCESS: %s" % task)
@@ -85,7 +84,6 @@ def task_success(task):
     # TODO: Trigger higher level tasks?
 
 
-#@luigi.Task.event_handler(luigi.Event.FAILURE)
 @SlurmJobTask.event_handler(luigi.Event.FAILURE)
 def task_failure(task, e):
     # TODO: If additional debugging is needed, change exc_info to True

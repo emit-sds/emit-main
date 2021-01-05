@@ -28,7 +28,7 @@ class PGE:
             self.version = self.version_tag
 
         self.repo_account = self._get_repo_account()
-        self.repo_name = self.repo_url.split("/")[-1].replace(".git","")
+        self.repo_name = self.repo_url.split("/")[-1].replace(".git", "")
         self.versioned_repo_name = self.repo_name + "-" + self.version
         self.repo_dir = os.path.join(self.pge_base, self.repo_name, "")
 
@@ -40,7 +40,7 @@ class PGE:
 
         if local_paths is not None:
             abs_local_paths = {}
-            for k,v in local_paths.items():
+            for k, v in local_paths.items():
                 abs_local_paths[k] = os.path.join(self.repo_dir, v)
             self.__dict__.update(abs_local_paths)
 
@@ -61,7 +61,7 @@ class PGE:
 
     def _repo_needs_update(self):
         cmd = ["cd", self.repo_dir, "&&", "git", "symbolic-ref", "-q", "--short", "HEAD", "||",
-              "git", "describe", "--tags", "--exact-match"]
+               "git", "describe", "--tags", "--exact-match"]
         output = subprocess.run(" ".join(cmd), shell=True, capture_output=True)
         if output.returncode != 0:
             logger.error("Failed to get current version tag or branch with cmd: %s" % str(cmd))

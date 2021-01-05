@@ -100,4 +100,4 @@ class FileMonitor:
             tasks.append(L1AReformatEDP(config_path=self.config_path, stream_path=p))
 
         return luigi.build(tasks, workers=4, local_scheduler=self.luigi_local_scheduler,
-                    logging_conf_file=self.luigi_logging_conf)
+                           logging_conf_file=self.luigi_logging_conf)

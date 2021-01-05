@@ -43,7 +43,6 @@ class Acquisition:
         self.data_dir = os.path.join(self.environment_dir, "data")
         self.acquisitions_dir = os.path.join(self.data_dir, "acquisitions")
 
-
         # Check for instrument again based on filename
         instrument_prefix = self.instrument
         if self.acquisition_id.startswith("ang"):

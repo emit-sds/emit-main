@@ -102,7 +102,7 @@ class WorkflowManager:
             pge.build_runtime_environment()
             if pge.repo_name == "emit-main" and pge.repo_dir not in os.getcwd():
                 logger.warning("The \"emit-main\" code should be executing inside repository %s to ensure that the "
-                                "correct version is running" % pge.repo_dir)
+                               "correct version is running" % pge.repo_dir)
 
     def path_exists(self, path):
         return os.path.exists(path)

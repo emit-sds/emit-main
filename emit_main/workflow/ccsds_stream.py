@@ -6,16 +6,17 @@ Author: Michael Joyce, Michael.J.Joyce@jpl.nasa.gov
 
 # TODO: Review this code and update for EMIT
 
+
 class CCSDSPacket():
-    ''' CCSDS Space Packet Object
+    """ CCSDS Space Packet Object
 
     Provides an abstraction of a CCSDS Space Packet to simplify handling CCSDS
     packet data. The CCSDS Packet object will automatically read the necessary
     bytes for header and data if a stream is provided on initialization.
-    '''
+    """
 
     def __init__(self, stream=None, **kwargs):
-        ''' Inititialize CCSDSPacket
+        """ Inititialize CCSDSPacket
 
         :param stream: A file object from which to read data (default: None)
         :type stream: file object
@@ -28,7 +29,7 @@ class CCSDSPacket():
                 the hdr_data per the CCSDS Packet format. However, this isn't
                 enforced if these kwargs are used.
 
-        '''
+        """
         if stream:
             self.read(stream)
         else:
@@ -39,12 +40,12 @@ class CCSDSPacket():
 
     @property
     def sclk(self):
-        ''' Extract sclk value from EurC CCSDS secondary header
+        """ Extract sclk value from EurC CCSDS secondary header
 
         The first 10 bytes of a EurC CCSDS science data packet
         are the packet secondary header containing sclk course
         and fine time (first 48 bits) and the aid (remaining 4 bytes)
-        '''
+        """
         val = -1
         if self.sec_hdr_flag == 1:
             val = int.from_bytes(self.data[:6], byteorder='big')
@@ -52,7 +53,7 @@ class CCSDSPacket():
         return val
 
     def _parse_header(self, hdr):
-        ''''''
+        """"""
         self.pkt_ver_num = (hdr[0] & 0xD0) >> 5
         self.pkt_type = (hdr[0] & 0x10) >> 4
         self.sec_hdr_flag = (hdr[0] & 0x08) >> 3
@@ -62,12 +63,12 @@ class CCSDSPacket():
         self.pkt_data_len = int.from_bytes(hdr[4:6], 'big')
 
     def read(self, stream):
-        ''' Read packet data from a stream
+        """ Read packet data from a stream
 
         :param stream: A file object from which to read data
         :type stream: file object
 
-        '''
+        """
         self.hdr_data = stream.read(6)
         if len(self.hdr_data) != 6:
             raise EOFError('CCSDS Header Read failed due to EOF')
@@ -87,7 +88,7 @@ class CCSDSPacket():
 
 
 class ADPStream():
-    ''' ADP File Stream Object
+    """ ADP File Stream Object
     Provides an iterable native-like file interface for reading / writing
     ADP Files. ADPStream handles automatically reading / writing ADP file
     headers on initialization and facilitates easily reading
@@ -97,10 +98,10 @@ class ADPStream():
         instance of the ADPStream with the requested file open. The ADPHeader
         will be automatically read or written depending on file mode.
     >>> adp = ADPStream.open('/path/to/example_adp.dat', 'rb')
-    '''
+    """
 
     def __init__(self, stream, mode='rb', header_metadata={}):
-        ''''''
+        """"""
         if mode.startswith('r'):
             self.header = ADPHeader(stream)
         elif mode.startswith('w') or (mode.startswith('a') and stream.tell() == 0):
@@ -111,7 +112,7 @@ class ADPStream():
 
     @classmethod
     def open(cls, filename, mode='rb', **options):
-        '''Open an ADPStream to handle reading / writing ADP files
+        """Open an ADPStream to handle reading / writing ADP files
         Returns an instance of :class:`ADPStream` which wraps the builtin
         file interface. Binary mode is required so specifying in the mode flag
         is not required. The *options* kwargs are passed as ADP header
@@ -125,28 +126,28 @@ class ADPStream():
         :param dict options): Kwargs values that will be treated as
             :class:`ADPHeader` metadata values so defaults can be provided
         :returns: Opened instance of ADPStream
-        '''
+        """
         mode = mode.replace('b', '') + 'b'
         return cls(builtins.open(filename, mode), mode, header_metadata=options)
 
-    def __enter__ (self):
-        ''''''
+    def __enter__(self):
+        """"""
         return self
 
-    def __exit__ (self, type, value, traceback):
-        ''''''
+    def __exit__(self, type, value, traceback):
+        """"""
         self.close()
 
-    def __next__ (self):
-        ''''''
+    def __next__(self):
+        """"""
         return self.next()
 
-    def __iter__ (self):
-        ''''''
+    def __iter__(self):
+        """"""
         return self
 
     def next(self):
-        ''' Read the next CCSDS Packet during iteration '''
+        """ Read the next CCSDS Packet during iteration """
         packet = self.read()
 
         if packet is None:
@@ -155,10 +156,10 @@ class ADPStream():
         return packet
 
     def read(self):
-        ''' Read a CCSDS packet from the stream
+        """ Read a CCSDS packet from the stream
         :returns: a :class:`CCSDSPacket` object containing the read data
             or None if EOF is reached.
-        '''
+        """
         try:
             pkt = CCSDSPacket(self._stream)
         except EOFError:
@@ -167,9 +168,9 @@ class ADPStream():
         return pkt
 
     def write(self, payload):
-        ''' Write a binary payload to the file
+        """ Write a binary payload to the file
         :param bytes payload: The bytes-like object to write to the stream
-        '''
+        """
         if isinstance(payload, CCSDSPacket):
             payload = payload.to_bytes()
 
@@ -177,5 +178,5 @@ class ADPStream():
         self._stream.flush()
 
     def close(self):
-        ''' Close the underlying file handler '''
+        """ Close the underlying file handler """
         self._stream.close()
