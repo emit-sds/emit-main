@@ -1,6 +1,9 @@
 # Ignore PyCharm project files
 .idea
 
+# Ignore pytest-cov/coverage file
+.coverage
+
 # Ignore folders
 __pycache__
 emit_main.egg-info
