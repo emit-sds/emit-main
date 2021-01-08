@@ -41,7 +41,7 @@ class PGE:
         # jenkins user requires deploy keys to access repos.  These must be unique for each repo and require hostname
         # mapping.  The jenkins hostnames are configured in /home/jenkins/.ssh/config.
         if environment == "jenkins":
-            self.repo_url = self.repo_url.replace(".gov", ".gov-" + self.repo_name)
+            self.repo_url = self.repo_url.replace("github.jpl.nasa.gov", "github.jpl.nasa.gov-" + self.repo_name)
 
         if local_paths is not None:
             abs_local_paths = {}
@@ -150,7 +150,7 @@ class PGE:
             if new_repo or self._repo_needs_update():
                 self._install_repo()
         except RuntimeError as e:
-            logger.info("Cleaning up directories and conda environments after running into a problem.")
+#            logger.info("Cleaning up directories and conda environments after running into a problem.")
 #            rm_dir_cmd = ["rm", "-rf", self.repo_dir]
 #            subprocess.run(rm_dir_cmd)
 #            if self._conda_env_exists():

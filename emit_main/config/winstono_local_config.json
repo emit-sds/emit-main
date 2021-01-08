@@ -63,7 +63,7 @@
         "conda_env": "emit-main-dev"
       },
       {
-        "url": "git@github.com:isofit/isofit.git",
+        "url": "https://github.com/isofit/isofit.git",
         "tag": "v2.6.0",
         "conda_env": "emit-main-dev",
         "local_paths": {
