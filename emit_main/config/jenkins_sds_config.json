@@ -29,7 +29,7 @@
       },
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-utils.git",
-        "tag": "main",
+        "tag": "develop",
         "conda_env": "emit-main-dev"
       },
       {
@@ -44,22 +44,22 @@
       },
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l0.git",
-        "tag": "main",
+        "tag": "develop",
         "conda_env": "emit-main-dev"
       },
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l1a.git",
-        "tag": "main",
+        "tag": "develop",
         "conda_env": "emit-main-dev"
       },
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l1b.git",
-        "tag": "main",
+        "tag": "develop",
         "conda_env": "emit-sds-l1b-dev"
       },
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l2a.git",
-        "tag": "main",
+        "tag": "develop",
         "conda_env": "emit-main-dev"
       },
       {
@@ -72,17 +72,17 @@
       },
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l2b.git",
-        "tag": "main",
+        "tag": "develop",
         "conda_env": "emit-main-dev"
       },
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l3.git",
-        "tag": "main",
+        "tag": "develop",
         "conda_env": "emit-main-dev"
       },
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l4.git",
-        "tag": "main",
+        "tag": "develop",
         "conda_env": "emit-main-dev"
       }
     ]
