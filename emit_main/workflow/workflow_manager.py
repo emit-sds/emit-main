@@ -87,6 +87,7 @@ class WorkflowManager:
                 pge_base=self.repos_dir,
                 repo_url=repo["url"],
                 version_tag=version_tag,
+                environment=self.environment,
                 local_paths=local_paths
             )
             self.pges[pge.repo_name] = pge

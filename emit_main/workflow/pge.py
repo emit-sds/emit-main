@@ -13,7 +13,7 @@ logger = logging.getLogger("emit-main")
 
 class PGE:
 
-    def __init__(self, conda_base, conda_env, pge_base, repo_url, version_tag, local_paths):
+    def __init__(self, conda_base, conda_env, pge_base, repo_url, version_tag, environment, local_paths):
         # conda_env_base is the top level "envs" folder, e.g. ~/anaconda3/envs
         self.conda_env_base = os.path.join(conda_base, "envs")
         self.conda_sh_path = os.path.join(conda_base, "etc/profile.d/conda.sh")
@@ -37,6 +37,11 @@ class PGE:
         else:
             self.conda_env_name = conda_env
         self.conda_env_dir = os.path.join(self.conda_env_base, self.conda_env_name)
+
+        # jenkins user requires deploy keys to access repos.  These must be unique for each repo and require hostname
+        # mapping.  The jenkins hostnames are configured in /home/jenkins/.ssh/config.
+        if environment == "jenkins":
+            self.repo_url = self.repo_url.replace(".gov", ".gov-" + self.repo_name)
 
         if local_paths is not None:
             abs_local_paths = {}
