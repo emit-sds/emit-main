@@ -145,6 +145,8 @@ def main():
     # Build the environment if needed
     if args.build_env:
         wm.build_runtime_environment()
+        logger.info("Exiting after building runtime environment.")
+        sys.exit(0)
     # Set up tasks and run
     tasks = get_tasks_from_args(args)
     if args.workers:
