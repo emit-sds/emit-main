@@ -37,6 +37,11 @@ def parse_args():
     parser.add_argument("--build_env", action="store_true",
                         help="Build the runtime environment")
     args = parser.parse_args()
+
+    if args.config_path is None:
+        print("ERROR: You must specify a configuration file with the --config_path argument.")
+        sys.exit(1)
+
     if args.products:
         product_list = args.products.split(",")
         for prod in product_list:
