@@ -95,6 +95,7 @@ class WorkflowManager:
     def check_runtime_environment(self):
         for pge in self.pges.values():
             if pge.check_runtime_environment() is False:
+                print("Checking PGE: %s" % pge.repo_name)
                 return False
         return True
 

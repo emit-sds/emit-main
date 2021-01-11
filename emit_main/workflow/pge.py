@@ -64,7 +64,7 @@ class PGE:
         if output.returncode != 0:
             raise RuntimeError("Failed to clone repo with cmd: %s" % str(cmd))
 
-    def _repo_needs_update(self):
+    def _repo_tag_needs_update(self):
         cmd = ["cd", self.repo_dir, "&&", "git", "symbolic-ref", "-q", "--short", "HEAD", "||",
                "git", "describe", "--tags", "--exact-match"]
         output = subprocess.run(" ".join(cmd), shell=True, capture_output=True)
@@ -130,10 +130,13 @@ class PGE:
 
     def check_runtime_environment(self):
         if not os.path.exists(self.repo_dir):
+            print("Failed to find repo at path: %s" % self.repo_dir)
             return False
-        if self._repo_needs_update():
+        if self._repo_tag_needs_update():
+            print("PGE repository needs to checkout new tag or branch")
             return False
         if not self._conda_env_exists():
+            print("Conda environment for this PGE doesn't exist")
             return False
         return True
 
@@ -143,19 +146,20 @@ class PGE:
             if not os.path.exists(self.repo_dir):
                 self._clone_repo()
                 new_repo = True
-            if self._repo_needs_update():
+            if self._repo_tag_needs_update():
                 self._checkout_tag()
+            # TODO: Add git pull here in case on same branch and need to update
             if not self._conda_env_exists():
                 self._create_conda_env()
-            if new_repo or self._repo_needs_update():
+            if new_repo or self._repo_tag_needs_update():
                 self._install_repo()
         except RuntimeError as e:
-#            logger.info("Cleaning up directories and conda environments after running into a problem.")
-#            rm_dir_cmd = ["rm", "-rf", self.repo_dir]
-#            subprocess.run(rm_dir_cmd)
-#            if self._conda_env_exists():
-#                rm_conda_env_cmd = ["conda", "env", "remove", "-n", self.conda_env_name]
-#                subprocess.run(rm_conda_env_cmd)
+            # logger.info("Cleaning up directories and conda environments after running into a problem.")
+            # rm_dir_cmd = ["rm", "-rf", self.repo_dir]
+            # subprocess.run(rm_dir_cmd)
+            # if self._conda_env_exists():
+            #    rm_conda_env_cmd = ["conda", "env", "remove", "-n", self.conda_env_name]
+            #    subprocess.run(rm_conda_env_cmd)
             print(e)
 
     def run(self, cmd, cwd=None, tmp_dir=None, env=None):
