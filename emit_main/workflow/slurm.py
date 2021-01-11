@@ -33,13 +33,13 @@ def _build_sbatch_script(tmp_dir, cmd, job_name, outfile, errfile, n_nodes, n_ta
 #SBATCH --mem={memory}
 {conda_exe} run -n {conda_env} {cmd}
     """
-    sbatch_script = os.path.join(tmp_dir, job_name+".sh")
+    sbatch_script = os.path.join(tmp_dir, job_name + ".sh")
     with open(sbatch_script, "w") as f:
         f.write(
             sbatch_template.format(
                 cmd=cmd,
-                job_name=job_name, 
-                outfile=outfile, 
+                job_name=job_name,
+                outfile=outfile,
                 errfile=errfile,
                 n_nodes=n_nodes,
                 n_tasks=n_tasks,
@@ -47,7 +47,7 @@ def _build_sbatch_script(tmp_dir, cmd, job_name, outfile, errfile, n_nodes, n_ta
                 memory=memory,
                 conda_exe=conda_exe,
                 conda_env=conda_env)
-            )
+        )
     return sbatch_script
 
 
@@ -127,8 +127,8 @@ class SlurmJobTask(luigi.Task):
 #        timestamp = datetime.datetime.now().strftime('%Y%m%dt%H%M%S_%f') # Use this for microseconds
         folder_name = self.task_tmp_id + "_" + self.task_family + "_" + timestamp
 
-        for b,a in [(' ',''),('(','_'),(')','_'),(',','_'),('/','_')]:
-          folder_name = folder_name.replace(b,a)
+        for b, a in [(' ', ''), ('(', '_'), (')', '_'), (',', '_'), ('/', '_')]:
+            folder_name = folder_name.replace(b, a)
         self.tmp_dir = os.path.join(base_tmp_dir, folder_name)
 #        max_filename_length = os.fstatvfs(0).f_namemax
 #        self.tmp_dir = self.tmp_dir[:max_filename_length]
@@ -172,14 +172,14 @@ class SlurmJobTask(luigi.Task):
         self._track_job()
 
         # Now delete the temporaries, if they're there.
-       #if self.tmp_dir and os.path.exists(self.tmp_dir):
-       #    logger.info('Removing temporary directory %s' % self.tmp_dir)
-       #    shutil.rmtree(self.tmp_dir)
+        # if self.tmp_dir and os.path.exists(self.tmp_dir):
+        #    logger.info('Removing temporary directory %s' % self.tmp_dir)
+        #    shutil.rmtree(self.tmp_dir)
 
     def _track_job(self):
         while True:
             # Sleep for a little bit
-#            time.sleep(random.randint(POLL_TIME_RANGE[0], POLL_TIME_RANGE[1]))
+            # time.sleep(random.randint(POLL_TIME_RANGE[0], POLL_TIME_RANGE[1]))
             time.sleep(30)
 
             # See what the job's up to
@@ -198,10 +198,10 @@ class SlurmJobTask(luigi.Task):
                 # If no errors, then must be finished
                 if not errors:
                     logger.info("%s %s with job id %i has COMPLETED WITH NO ERRORS " % (self.task_tmp_id, self.task_family, self.job_id))
-                else: # then we have completed with errors
+                else:  # then we have completed with errors
                     logger.info("%s %s with job id %i has COMPLETED WITH ERRORS/WARNINGS:\n%s" % (self.task_tmp_id, self.task_family, self.job_id, errors))
                 break
-            #TODO: Add the rest of the states from https://slurm.schedmd.com/squeue.html
+            # TODO: Add the rest of the states from https://slurm.schedmd.com/squeue.html
 
     def run(self):
 

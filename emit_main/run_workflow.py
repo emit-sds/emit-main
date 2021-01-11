@@ -37,6 +37,11 @@ def parse_args():
     parser.add_argument("--build_env", action="store_true",
                         help="Build the runtime environment")
     args = parser.parse_args()
+
+    if args.config_path is None:
+        print("ERROR: You must specify a configuration file with the --config_path argument.")
+        sys.exit(1)
+
     if args.products:
         product_list = args.products.split(",")
         for prod in product_list:
@@ -73,7 +78,6 @@ def get_tasks_from_args(args):
     return tasks
 
 
-#@luigi.Task.event_handler(luigi.Event.SUCCESS)
 @SlurmJobTask.event_handler(luigi.Event.SUCCESS)
 def task_success(task):
     logger.info("SUCCESS: %s" % task)
@@ -85,7 +89,6 @@ def task_success(task):
     # TODO: Trigger higher level tasks?
 
 
-#@luigi.Task.event_handler(luigi.Event.FAILURE)
 @SlurmJobTask.event_handler(luigi.Event.FAILURE)
 def task_failure(task, e):
     # TODO: If additional debugging is needed, change exc_info to True
@@ -147,14 +150,19 @@ def main():
     # Build the environment if needed
     if args.build_env:
         wm.build_runtime_environment()
+        logger.info("Exiting after building runtime environment.")
+        sys.exit(0)
     # Set up tasks and run
     tasks = get_tasks_from_args(args)
     if args.workers:
         workers = args.workers
     else:
         workers = wm.luigi_workers
+    # Build luigi logging.conf path
+    luigi_logging_conf = os.path.join(os.path.dirname(__file__), "workflow", "luigi", "logging.conf")
+
     luigi.build(tasks, workers=workers, local_scheduler=wm.luigi_local_scheduler,
-                logging_conf_file=wm.luigi_logging_conf)
+                logging_conf_file=luigi_logging_conf)
 
 
 if __name__ == '__main__':

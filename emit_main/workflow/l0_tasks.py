@@ -85,23 +85,11 @@ class L0StripHOSC(SlurmJobTask):
         # TODO: Change log name to match CCSDS name?
 
         # Update DB
-        # TODO: Use stream_path for query
-        query = {
-            "apid": stream.apid,
-            "start_time": stream.start_time,
-            "stop_time": stream.stop_time,
-            "build_num": wm.build_num,
-            "processing_version": wm.processing_version
-        }
         metadata = {
-            "apid": stream.apid,
-            "hosc_name": stream.hosc_name,
-            "ccsds_name": ccsds_name,
-            "start_time": stream.start_time,
-            "stop_time": stream.stop_time
+            "ccsds_name": ccsds_name
         }
         dm = wm.database_manager
-        dm.update_stream_metadata(query, metadata)
+        dm.update_stream_metadata(stream.hosc_name, metadata)
 
         log_entry = {
             "task": self.task_family,

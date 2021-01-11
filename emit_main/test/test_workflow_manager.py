@@ -1,36 +1,37 @@
 """
-This code contains test functions for file_manager
+This code contains test functions for workflow_manager.py
 
 Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
-import logging.config
+import os
 
-#sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from emit_main.workflow.workflow_manager import WorkflowManager
 
-logging.config.fileConfig(fname="test_logging.conf")
-logger = logging.getLogger("emit-main")
+
+def test_check_runtime_environment(config_path):
+
+    print("\nRunning test_check_runtime_environment with config: %s" % config_path)
+
+    wm = WorkflowManager(config_path=config_path)
+    assert wm.check_runtime_environment() is True
 
 
-def test_acquisition_paths():
+def test_acquisition(config_path):
 
-    logger.debug("Running test_acquisition_paths")
+    print("\nRunning test_acquisition with config: %s" % config_path)
 
-    wm = WorkflowManager("config/test_config.json", acquisition_id="emit20200101t000000")
+    wm = WorkflowManager(config_path=config_path, acquisition_id="emit20200101t000000")
     acq = wm.acquisition
-    wm.remove_path(acq.raw_img_path)
-    wm.touch_path(acq.raw_img_path)
-    assert wm.path_exists(acq.raw_img_path)
+    assert acq is not None and os.path.exists(acq.acquisitions_dir)
 
 
-def test_build_runtime_environment():
+def test_stream(config_path):
 
-    logger.debug("Running test_pge_build")
+    print("\nRunning test_stream with config: %s" % config_path)
 
-    wm = WorkflowManager("config/test_config.json")
-    wm.build_runtime_environment()
-
-
-test_acquisition_paths()
-test_build_runtime_environment()
+    wm = WorkflowManager(config_path=config_path)
+    stream_path = os.path.join(wm.ingest_dir, "emit_1675_200101000000_200101020000_200101084102_hsc.bin")
+    wm = WorkflowManager(config_path=config_path, stream_path=stream_path)
+    stream = wm.stream
+    assert stream is not None and os.path.exists(stream.streams_dir)

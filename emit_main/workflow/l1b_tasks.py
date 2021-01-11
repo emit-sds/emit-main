@@ -172,4 +172,3 @@ class L1BGeolocate(SlurmJobTask):
         pge.run(cmd, tmp_dir=self.tmp_dir)
         cmd = ["touch", acq.glt_hdr_path]
         pge.run(cmd, tmp_dir=self.tmp_dir)
-

@@ -13,7 +13,7 @@ logger = logging.getLogger("emit-main")
 
 class PGE:
 
-    def __init__(self, conda_base, conda_env, pge_base, repo_url, version_tag, local_paths):
+    def __init__(self, conda_base, conda_env, pge_base, repo_url, version_tag, environment, local_paths):
         # conda_env_base is the top level "envs" folder, e.g. ~/anaconda3/envs
         self.conda_env_base = os.path.join(conda_base, "envs")
         self.conda_sh_path = os.path.join(conda_base, "etc/profile.d/conda.sh")
@@ -28,7 +28,7 @@ class PGE:
             self.version = self.version_tag
 
         self.repo_account = self._get_repo_account()
-        self.repo_name = self.repo_url.split("/")[-1].replace(".git","")
+        self.repo_name = self.repo_url.split("/")[-1].replace(".git", "")
         self.versioned_repo_name = self.repo_name + "-" + self.version
         self.repo_dir = os.path.join(self.pge_base, self.repo_name, "")
 
@@ -38,9 +38,14 @@ class PGE:
             self.conda_env_name = conda_env
         self.conda_env_dir = os.path.join(self.conda_env_base, self.conda_env_name)
 
+        # jenkins user requires deploy keys to access repos.  These must be unique for each repo and require hostname
+        # mapping.  The jenkins hostnames are configured in /home/jenkins/.ssh/config.
+        if environment == "jenkins":
+            self.repo_url = self.repo_url.replace("github.jpl.nasa.gov", "github.jpl.nasa.gov-" + self.repo_name)
+
         if local_paths is not None:
             abs_local_paths = {}
-            for k,v in local_paths.items():
+            for k, v in local_paths.items():
                 abs_local_paths[k] = os.path.join(self.repo_dir, v)
             self.__dict__.update(abs_local_paths)
 
@@ -55,13 +60,13 @@ class PGE:
     def _clone_repo(self):
         cmd = ["git", "clone", self.repo_url, self.repo_dir]
         logger.info("Cloning repo with cmd: %s" % " ".join(cmd))
-        output = subprocess.run(cmd)
+        output = subprocess.run(" ".join(cmd), shell=True, capture_output=True)
         if output.returncode != 0:
             raise RuntimeError("Failed to clone repo with cmd: %s" % str(cmd))
 
     def _repo_needs_update(self):
         cmd = ["cd", self.repo_dir, "&&", "git", "symbolic-ref", "-q", "--short", "HEAD", "||",
-              "git", "describe", "--tags", "--exact-match"]
+               "git", "describe", "--tags", "--exact-match"]
         output = subprocess.run(" ".join(cmd), shell=True, capture_output=True)
         if output.returncode != 0:
             logger.error("Failed to get current version tag or branch with cmd: %s" % str(cmd))
@@ -90,7 +95,7 @@ class PGE:
         if os.path.exists(conda_env_yml_path):
             cmd = [self.conda_exe, "env", "create", "-f", conda_env_yml_path, "-n", self.conda_env_name]
             logger.info("Creating conda env with cmd: %s" % " ".join(cmd))
-            output = subprocess.run(cmd, shell=True, capture_output=True)
+            output = subprocess.run(" ".join(cmd), shell=True, capture_output=True)
             if output.returncode != 0:
                 raise RuntimeError("Failed to create conda env with cmd: %s" % str(cmd))
 
@@ -123,7 +128,16 @@ class PGE:
             if output.returncode != 0:
                 raise RuntimeError("Failed to import repo with cmd: %s" % str(cmd))
 
-    def build(self):
+    def check_runtime_environment(self):
+        if not os.path.exists(self.repo_dir):
+            return False
+        if self._repo_needs_update():
+            return False
+        if not self._conda_env_exists():
+            return False
+        return True
+
+    def build_runtime_environment(self):
         try:
             new_repo = False
             if not os.path.exists(self.repo_dir):
@@ -136,9 +150,9 @@ class PGE:
             if new_repo or self._repo_needs_update():
                 self._install_repo()
         except RuntimeError as e:
-            logger.info("Cleaning up directories and conda environments after running into a problem.")
-            rm_dir_cmd = ["rm", "-rf", self.repo_dir]
-            subprocess.run(rm_dir_cmd)
+#            logger.info("Cleaning up directories and conda environments after running into a problem.")
+#            rm_dir_cmd = ["rm", "-rf", self.repo_dir]
+#            subprocess.run(rm_dir_cmd)
 #            if self._conda_env_exists():
 #                rm_conda_env_cmd = ["conda", "env", "remove", "-n", self.conda_env_name]
 #                subprocess.run(rm_conda_env_cmd)
