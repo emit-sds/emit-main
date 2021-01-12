@@ -6,14 +6,12 @@ except ImportError:
 import os
 import sys
 
-from emit_main.workflow.l2a_tasks import *
-
 
 def _do_work_on_compute_node(work_dir):
 
     # Open up the pickle file with the work to be done
     os.chdir(work_dir)
-    sys.path.insert(0, work_dir)
+    # sys.path.insert(0, work_dir)
     print(sys.path)
     with open("job-instance.pickle", "rb") as f:
         job = pickle.load(f)
@@ -27,7 +25,7 @@ def main(args=sys.argv):
     """
     try:
         # Set up logging.
-        logging.basicConfig(level=logging.WARN)
+        # logging.basicConfig(level=logging.WARN)
         work_dir = sys.argv[1]
         assert os.path.exists(work_dir), "First argument to sge_runner.py must be a directory that exists"
         _do_work_on_compute_node(work_dir)
