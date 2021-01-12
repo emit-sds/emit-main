@@ -19,7 +19,7 @@
   },
 
   "build_config": {
-    "build_num": "000",
+    "build_num": "0000",
     "conda_base_dir": "/Users/winstono/opt/anaconda3/",
     "repositories": [
       {
