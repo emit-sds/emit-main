@@ -153,7 +153,7 @@ class SlurmJobTask(luigi.Task):
         # Remove "test" directory if this is a unit test run
         if os.path.basename(cwd) == "test":
             cwd = os.path.dirname(cwd)
-        runner_path = os.path.join(os.path.abspath(cwd), "slurm_runner.py")
+        runner_path = os.path.join(os.path.dirname(__file__), "slurm_runner.py")
         # enclose tmp_dir in quotes to protect from special escape chars
         job_str = 'python {0} "{1}"'.format(runner_path, self.tmp_dir)
 

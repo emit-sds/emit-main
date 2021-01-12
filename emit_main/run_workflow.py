@@ -6,6 +6,7 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 
 import argparse
 import logging.config
+import os
 import shutil
 import sys
 
@@ -16,7 +17,8 @@ from emit_main.workflow.l2a_tasks import *
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_main.workflow.workflow_manager import WorkflowManager
 
-logging.config.fileConfig(fname="logging.conf")
+logging_conf = os.path.join(os.path.dirname(__file__), "logging.conf")
+logging.config.fileConfig(fname=logging_conf)
 logger = logging.getLogger("emit-main")
 
 
@@ -41,6 +43,8 @@ def parse_args():
     if args.config_path is None:
         print("ERROR: You must specify a configuration file with the --config_path argument.")
         sys.exit(1)
+
+    args.config_path = os.path.abspath(args.config_path)
 
     if args.products:
         product_list = args.products.split(",")

@@ -11,7 +11,8 @@ import sys
 
 from emit_main.file_monitor.file_monitor import FileMonitor
 
-logging.config.fileConfig(fname="logging.conf")
+logging_conf = os.path.join(os.path.dirname(__file__), "logging.conf")
+logging.config.fileConfig(fname=logging_conf)
 logger = logging.getLogger("emit-main")
 
 
@@ -24,6 +25,13 @@ def parse_args():
     parser.add_argument("--stop_time",
                         help="Stop time (YYMMDDhhmmss)")
     args = parser.parse_args()
+
+    if args.config_path is None:
+        print("ERROR: You must specify a configuration file with the --config_path argument.")
+        sys.exit(1)
+
+    args.config_path = os.path.abspath(args.config_path)
+
     return args
 
 
