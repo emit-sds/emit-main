@@ -24,7 +24,7 @@
     "repositories": [
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-main.git",
-        "tag": "add-pytest",
+        "tag": "develop",
         "conda_env": "emit-main-dev"
       },
       {

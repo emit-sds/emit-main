@@ -83,3 +83,8 @@ class Stream:
         for d in self.dirs:
             if not os.path.exists(d):
                 os.makedirs(d)
+                # Change group ownership in shared environments
+                if self.environment in ["dev", "test", "ops"]:
+                    uid = pwd.getpwnam(os.getlogin()).pw_uid
+                    gid = grp.getgrnam(self.instrument + "-" + self.environment).gr_gid
+                    os.chown(d, uid, gid)

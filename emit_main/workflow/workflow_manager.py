@@ -4,9 +4,11 @@ This code contains the WorkflowManager class that handles filesystem paths
 Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
+import grp
 import json
 import logging
 import os
+import pwd
 
 from emit_main.database.database_manager import DatabaseManager
 from emit_main.workflow.acquisition import Acquisition
@@ -53,6 +55,11 @@ class WorkflowManager:
         for d in dirs:
             if not os.path.exists(d):
                 os.makedirs(d)
+                # Change group ownership in shared environments
+                if self.environment in ["dev", "test", "ops"]:
+                    uid = pwd.getpwnam(os.getlogin()).pw_uid
+                    gid = grp.getgrnam(self.instrument + "-" + self.environment).gr_gid
+                    os.chown(d, uid, gid)
 
         # If we have an acquisition id and acquisition exists in db, initialize acquisition
         if self.acquisition_id and self.database_manager.find_acquisition_by_id(self.acquisition_id):
