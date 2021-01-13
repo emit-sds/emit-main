@@ -37,7 +37,9 @@ def parse_args():
     parser.add_argument("-w", "--workers", default=2,
                         help="Number of luigi workers")
     parser.add_argument("--build_env", action="store_true",
-                        help="Build the runtime environment")
+                        help="Build the runtime environment (primarily used to setup dev environments)")
+    parser.add_argument("--checkout_build", action="store_true",
+                        help="Checks out all repos and tags for a given build")
     args = parser.parse_args()
 
     if args.config_path is None:
@@ -151,11 +153,18 @@ def main():
     set_up_logging(wm.logs_dir)
     logger.info("Running workflow with cmd: %s" % str(" ".join(sys.argv)))
 
-    # Build the environment if needed
+    # Check out code if requested
+    if args.checkout_build:
+        wm.checkout_repos_for_build()
+        logger.info("Exiting after checking out repos for this build.")
+        sys.exit(0)
+
+    # Build the environment if requested
     if args.build_env:
         wm.build_runtime_environment()
         logger.info("Exiting after building runtime environment.")
         sys.exit(0)
+
     # Set up tasks and run
     tasks = get_tasks_from_args(args)
     if args.workers:

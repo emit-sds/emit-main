@@ -64,6 +64,13 @@ class PGE:
         if output.returncode != 0:
             raise RuntimeError("Failed to clone repo with cmd: %s" % str(cmd))
 
+    def _git_pull(self):
+        cmd = ["cd", self.repo_dir, "&&", "git", "pull"]
+        logger.info("Pulling code with cmd: %s" % " ".join(cmd))
+        output = subprocess.run(" ".join(cmd), shell=True, capture_output=True)
+        if output.returncode != 0:
+            raise RuntimeError("Failed to pull code with cmd: %s" % str(cmd))
+
     def _repo_tag_needs_update(self):
         cmd = ["cd", self.repo_dir, "&&", "git", "symbolic-ref", "-q", "--short", "HEAD", "||",
                "git", "describe", "--tags", "--exact-match"]
@@ -128,6 +135,16 @@ class PGE:
             if output.returncode != 0:
                 raise RuntimeError("Failed to import repo with cmd: %s" % str(cmd))
 
+    def checkout_repo(self):
+        try:
+            if not os.path.exists(self.repo_dir):
+                self._clone_repo()
+            if self._repo_tag_needs_update():
+                self._checkout_tag()
+            self._git_pull()
+        except RuntimeError as e:
+            print(e)
+
     def check_runtime_environment(self):
         if not os.path.exists(self.repo_dir):
             print("Failed to find repo at path: %s" % self.repo_dir)
@@ -148,7 +165,7 @@ class PGE:
                 new_repo = True
             if self._repo_tag_needs_update():
                 self._checkout_tag()
-            # TODO: Add git pull here in case on same branch and need to update
+            self._git_pull()
             if not self._conda_env_exists():
                 self._create_conda_env()
             if new_repo or self._repo_tag_needs_update():

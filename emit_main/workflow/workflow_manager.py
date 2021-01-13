@@ -99,6 +99,10 @@ class WorkflowManager:
             )
             self.pges[pge.repo_name] = pge
 
+    def checkout_repos_for_build(self):
+        for pge in self.pges.values():
+            pge.checkout_repo()
+
     def check_runtime_environment(self):
         for pge in self.pges.values():
             if pge.check_runtime_environment() is False:
