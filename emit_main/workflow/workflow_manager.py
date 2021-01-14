@@ -44,12 +44,14 @@ class WorkflowManager:
         self.environment_dir = os.path.join(self.instrument_dir, self.environment)
         self.data_dir = os.path.join(self.environment_dir, "data")
         self.ingest_dir = os.path.join(self.environment_dir, "ingest")
+        self.ingest_duplicates_dir = os.path.join(self.ingest_dir, "duplicates")
         self.logs_dir = os.path.join(self.environment_dir, "logs")
         self.repos_dir = os.path.join(self.environment_dir, "repos")
         self.scratch_tmp_dir = os.path.join(self.local_scratch_dir, self.instrument, self.environment, "tmp")
         self.scratch_error_dir = os.path.join(self.local_scratch_dir, self.instrument, self.environment, "error")
-        dirs.extend([self.instrument_dir, self.environment_dir, self.data_dir, self.ingest_dir, self.logs_dir,
-                     self.repos_dir, self.scratch_tmp_dir, self.scratch_error_dir])
+        dirs.extend([self.instrument_dir, self.environment_dir, self.data_dir, self.ingest_dir,
+                     self.ingest_duplicates_dir, self.logs_dir, self.repos_dir, self.scratch_tmp_dir,
+                     self.scratch_error_dir])
 
         # Make directories if they don't exist
         for d in dirs:

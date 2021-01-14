@@ -8,6 +8,7 @@ import glob
 import json
 import logging
 import os
+import shutil
 
 from emit_main.workflow.l1a_tasks import *
 
@@ -32,6 +33,7 @@ class FileMonitor:
         self.config_path = os.path.abspath(config_path)
         # Build path for ingest folder
         self.ingest_dir = os.path.join(self.local_store_dir, self.instrument, self.environment, "ingest")
+        self.ingest_duplicates_dir = os.path.join(self.ingest_dir, "duplicates")
         self.logs_dir = os.path.join(self.local_store_dir, self.instrument, self.environment, "logs")
         # Build luigi logging.conf path
         self.luigi_logging_conf = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "workflow", "luigi",
@@ -86,9 +88,12 @@ class FileMonitor:
                         logger.info("Adding ingest path (largest file for this two hour window): %s" % path)
                         paths.append(path)
                     else:
-                        path = os.path.join(self.ingest_dir, file)
-                        logger.info("Archiving ingest path (duplicate smaller file for this two hour window): %s"
-                                    % path)
+                        if not dry_run:
+                            path = os.path.join(self.ingest_dir, file)
+                            logger.info("Moving smaller file for this two hour window to 'duplicates' subfolder: %s"
+                                        % path)
+                            base_name = os.path.basename(path)
+                            shutil.move(path, os.path.join(self.ingest_duplicates_dir, base_name))
 
         if dry_run:
             return paths
