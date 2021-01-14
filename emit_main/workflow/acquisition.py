@@ -4,9 +4,11 @@ This code contains the Acquisition class that manages acquisitions and their met
 Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
+import grp
 import json
 import logging
 import os
+import pwd
 
 from emit_main.database.database_manager import DatabaseManager
 
@@ -61,7 +63,7 @@ class Acquisition:
                 os.makedirs(d)
                 # Change group ownership in shared environments
                 if self.environment in ["dev", "test", "ops"]:
-                    uid = pwd.getpwnam(os.getlogin()).pw_uid
+                    uid = pwd.getpwnam(pwd.getpwuid(os.getuid())[0]).pw_uid
                     gid = grp.getgrnam(self.instrument + "-" + self.environment).gr_gid
                     os.chown(d, uid, gid)
 

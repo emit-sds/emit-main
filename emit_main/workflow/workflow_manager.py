@@ -59,7 +59,7 @@ class WorkflowManager:
                 os.makedirs(d)
                 # Change group ownership in shared environments
                 if self.environment in ["dev", "test", "ops"]:
-                    uid = pwd.getpwnam(os.getlogin()).pw_uid
+                    uid = pwd.getpwnam(pwd.getpwuid(os.getuid())[0]).pw_uid
                     gid = grp.getgrnam(self.instrument + "-" + self.environment).gr_gid
                     os.chown(d, uid, gid)
 
