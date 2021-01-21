@@ -33,7 +33,7 @@ def test_acquisition_insert(config_path):
         "build_num": dm.build_num,
         "processing_version": dm.processing_version,
         "start_time": datetime.datetime(2020, 1, 1, 0, 0, 0),
-        "end_time": datetime.datetime(2020, 1, 1, 0, 11, 26),
+        "stop_time": datetime.datetime(2020, 1, 1, 0, 11, 26),
         "orbit": "00000",
         "scene": "000"
     }
