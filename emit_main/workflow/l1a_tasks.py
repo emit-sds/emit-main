@@ -32,13 +32,13 @@ class L1ADepacketize(SlurmJobTask):
     config_path = luigi.Parameter()
     stream_path = luigi.Parameter()
     start_time = luigi.DateSecondParameter(default=datetime.date.today() - datetime.timedelta(7))
-    end_time = luigi.DateSecondParameter(default=datetime.date.today())
+    stop_time = luigi.DateSecondParameter(default=datetime.date.today())
 
     task_namespace = "emit"
 
     def requires(self):
 
-        return L0StripHOSC(apid=self.apid, start_time=self.start_time, end_time=self.end_time)
+        return L0StripHOSC(apid=self.apid, start_time=self.start_time, stop_time=self.stop_time)
 
     def output(self):
 
@@ -59,13 +59,13 @@ class L1APrepFrames(SlurmJobTask):
     config_path = luigi.Parameter()
     stream_path = luigi.Parameter()
     start_time = luigi.DateSecondParameter(default=datetime.date.today() - datetime.timedelta(7))
-    end_time = luigi.DateSecondParameter(default=datetime.date.today())
+    stop_time = luigi.DateSecondParameter(default=datetime.date.today())
 
     task_namespace = "emit"
 
     def requires(self):
 
-        return L0StripHOSC(apid=self.apid, start_time=self.start_time, end_time=self.end_time)
+        return L0StripHOSC(apid=self.apid, start_time=self.start_time, stop_time=self.stop_time)
 
     def output(self):
 
@@ -99,16 +99,35 @@ class L1AReassembleRaw(SlurmJobTask):
 
         # FIXME: Acquisition insertion should be happening in previous step.  This is temporary for testing.
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        start_time_str = self.acquisition_id[len("emit"):(15 + len("emit"))]
+        start_time = datetime.datetime.strptime(start_time_str, "%Y%m%dt%H%M%S")
+        stop_time = start_time + datetime.timedelta(seconds=686)
         acq_meta = {
-            "acquisition_id": "emit20200101t000000",
+            "acquisition_id": self.acquisition_id,
             "build_num": wm.build_num,
             "processing_version": wm.processing_version,
-            "start_time": datetime.datetime(2020, 1, 1, 0, 0, 0),
-            "end_time": datetime.datetime(2020, 1, 1, 0, 11, 26),
-            "orbit": "00001",
-            "scene": "001"
+            "start_time": start_time,
+            "stop_time": stop_time,
+            "orbit": "00000",
+            "scene": "000",
+            "dimensions": {}
         }
         wm.database_manager.insert_acquisition(acq_meta)
+
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        acq = wm.acquisition
+
+        log_entry = {
+            "task": self.task_family,
+            "completion_status": "SUCCESS",
+            "output": {
+                "l1a_raw_path": acq.raw_img_path,
+                "l1a_raw_hdr_path:": acq.raw_hdr_path
+            }
+        }
+
+        wm.database_manager.insert_acquisition_log_entry(self.acquisition_id, log_entry)
+
         return None
 
     def output(self):
