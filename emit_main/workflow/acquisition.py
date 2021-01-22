@@ -84,6 +84,8 @@ class Acquisition:
             "l2a": {
                 "rfl": ["img", "hdr"],
                 "uncert": ["img", "hdr"],
+                "lbl": ["img", "hdr"],
+                "state_subs": ["img", "hdr"],
                 "mask": ["img", "hdr"]
             }
         }

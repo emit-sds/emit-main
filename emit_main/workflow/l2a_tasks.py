@@ -4,11 +4,13 @@ This code contains tasks for executing EMIT Level 2A PGEs and helper utilities.
 Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
+import datetime
 import logging
 import os
 import shutil
 
 import luigi
+import spectral.io.envi as envi
 
 from emit_main.workflow.envi_target import ENVITarget
 from emit_main.workflow.workflow_manager import WorkflowManager
@@ -56,11 +58,18 @@ class L2AReflectance(SlurmJobTask):
         # Build PGE cmd
         tmp_log_path = os.path.join(self.tmp_dir, "isofit.log")
         wavelength_path = os.path.join(pge.repo_dir, "surface", "emit_wavelengths.txt")
-        wavelength_path = "/home/brodrick/src/isofit/examples/20171108_Pasadena/remote/20170320_ang20170228_wavelength_fit.txt" 
+        wavelength_path = "/home/brodrick/src/isofit/examples/20171108_Pasadena/remote/20170320_ang20170228_wavelength_fit.txt"
         surface_path = os.path.join(pge.repo_dir, "surface", "EMIT_surface_test.mat")
-        surface_path = "/beegfs/scratch/brodrick/emit/sonoran_desert/support/basic_surface.mat" 
+        surface_path = "/beegfs/scratch/brodrick/emit/sonoran_desert/support/basic_surface.mat"
         apply_oe_exe = os.path.join(wm.pges["isofit"].repo_dir, "isofit", "utils", "apply_oe.py")
         emulator_base = "/shared/sRTMnet_v100"
+        input_files = {
+            "radiance_file": acq.rdn_img_path,
+            "loc_file": acq.loc_img_path,
+            "obs_file": acq.obs_img_path,
+            "wavelength_file": wavelength_path,
+            "surface_file": surface_path
+        }
         cmd = ["python", apply_oe_exe, acq.rdn_img_path, acq.loc_img_path, acq.obs_img_path, self.tmp_dir, "ang",
                "--presolve=1", "--empirical_line=1", "--emulator_base=" + emulator_base,
                "--n_cores", "40",
@@ -78,10 +87,65 @@ class L2AReflectance(SlurmJobTask):
         tmp_rfl_hdr_path = tmp_rfl_path + ".hdr"
         tmp_uncert_path = os.path.join(self.tmp_dir, "output", self.acquisition_id + "_uncert")
         tmp_uncert_hdr_path = tmp_uncert_path + ".hdr"
+        tmp_lbl_path = os.path.join(self.tmp_dir, "output", self.acquisition_id + "_lbl")
+        tmp_lbl_hdr_path = tmp_lbl_path + ".hdr"
+        tmp_state_subs_path = os.path.join(self.tmp_dir, "output", self.acquisition_id + "_subs_state")
+        tmp_state_subs_hdr_path = tmp_state_subs_path + ".hdr"
         shutil.copy2(tmp_rfl_path, acq.rfl_img_path)
         shutil.copy2(tmp_rfl_hdr_path, acq.rfl_hdr_path)
         shutil.copy2(tmp_uncert_path, acq.uncert_img_path)
         shutil.copy2(tmp_uncert_hdr_path, acq.uncert_hdr_path)
+        shutil.copy2(tmp_lbl_path, acq.lbl_img_path)
+        shutil.copy2(tmp_lbl_hdr_path, acq.lbl_hdr_path)
+        shutil.copy2(tmp_state_subs_path, acq.state_subs_img_path)
+        shutil.copy2(tmp_state_subs_hdr_path, acq.state_subs_hdr_path)
         # Copy log file and rename
         log_path = acq.rfl_img_path.replace(".img", "_pge.log")
         shutil.copy2(tmp_log_path, log_path)
+
+        # Update hdr files
+        input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
+        for hdr_path in [acq.rfl_hdr_path, acq.uncert_hdr_path]:
+            hdr = envi.read_envi_header(hdr_path)
+            hdr["emit pge name"] = pge.repo_url
+            hdr["emit pge version"] = pge.version_tag
+            hdr["emit pge input files"] = input_files_arr
+            hdr["emit pge run command"] = " ".join(cmd)
+            hdr["emit software build version"] = wm.build_num
+            hdr["emit documentation version"] = "TBD"
+            # TODO: Get creation time separately for each file type?
+            creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rfl_img_path))
+            hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S")
+            hdr["emit data product version"] = wm.processing_version
+            envi.write_envi_header(acq.rdn_hdr_path, hdr)
+
+            # PGE writes metadata to db
+            dimensions = {
+                "l2a": {
+                    "lines": hdr["lines"],
+                    "bands": hdr["bands"],
+                    "samples": hdr["samples"],
+                }
+            }
+        # Just update the dimensions once
+        dm = wm.database_manager
+        dm.update_acquisition_dimensions(self.acquisition_id, dimensions)
+
+        log_entry = {
+            "task": self.task_family,
+            "pge_name": pge.repo_url,
+            "pge_version": pge.version_tag,
+            "pge_input_files": input_files,
+            "pge_run_command": " ".join(cmd),
+            "product_creation_time": creation_time,
+            "log_timestamp": datetime.datetime.now(),
+            "completion_status": "SUCCESS",
+            "output": {
+                "l2a_rfl_path": acq.rfl_img_path,
+                "l2a_rfl_hdr_path:": acq.rfl_hdr_path,
+                "l2a_uncert_path": acq.uncert_img_path,
+                "l2a_uncert_hdr_path:": acq.uncert_hdr_path
+            }
+        }
+
+        dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
