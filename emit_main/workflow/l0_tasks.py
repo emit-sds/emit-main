@@ -70,7 +70,8 @@ class L0StripHOSC(SlurmJobTask):
         if "ingest" in self.stream_path:
             # Move HOSC file out of ingest folder
             # TODO: Change to shutil.move
-            shutil.copy2(self.stream_path, stream.l0_dir)
+            # shutil.copy2(self.stream_path, stream.l0_dir)
+            shutil.move(self.stream_path, stream.l0_dir)
             hosc_path = os.path.join(stream.l0_dir, stream.hosc_name)
         else:
             hosc_path = self.stream_path
