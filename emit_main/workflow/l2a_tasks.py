@@ -56,7 +56,9 @@ class L2AReflectance(SlurmJobTask):
         # Build PGE cmd
         tmp_log_path = os.path.join(self.tmp_dir, "isofit.log")
         wavelength_path = os.path.join(pge.repo_dir, "surface", "emit_wavelengths.txt")
+        wavelength_path = "/home/brodrick/src/isofit/examples/20171108_Pasadena/remote/20170320_ang20170228_wavelength_fit.txt" 
         surface_path = os.path.join(pge.repo_dir, "surface", "EMIT_surface_test.mat")
+        surface_path = "/beegfs/scratch/brodrick/emit/sonoran_desert/support/basic_surface.mat" 
         apply_oe_exe = os.path.join(wm.pges["isofit"].repo_dir, "isofit", "utils", "apply_oe.py")
         emulator_base = "/shared/sRTMnet_v100"
         cmd = ["python", apply_oe_exe, acq.rdn_img_path, acq.loc_img_path, acq.obs_img_path, self.tmp_dir, "ang",
