@@ -86,18 +86,13 @@ class WorkflowManager:
                 version_tag = repo["tag"]
             else:
                 version_tag = None
-            if "local_paths" in repo:
-                local_paths = repo["local_paths"]
-            else:
-                local_paths = None
             pge = PGE(
                 conda_base=self.conda_base_dir,
                 conda_env=conda_env,
                 pge_base=self.repos_dir,
                 repo_url=repo["url"],
                 version_tag=version_tag,
-                environment=self.environment,
-                local_paths=local_paths
+                environment=self.environment
             )
             self.pges[pge.repo_name] = pge
 
