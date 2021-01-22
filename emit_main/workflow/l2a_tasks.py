@@ -75,6 +75,7 @@ class L2AReflectance(SlurmJobTask):
                "--n_cores", "40",
                "--wavelength_path", wavelength_path,
                "--surface_path", surface_path,
+               "--ray_temp_dir", "/tmp/ray-" + os.path.basename(self.tmp_dir), 
                "--log_file", tmp_log_path]
 
         env = os.environ.copy()
