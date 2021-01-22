@@ -75,7 +75,9 @@ class Acquisition:
             },
             "l1b": {
                 "rdn": ["img", "hdr", "png", "kmz"],
+                "rdnort": ["img", "hdr"],
                 "loc": ["img", "hdr"],
+                "locort": ["img", "hdr"],
                 "obs": ["img", "hdr"],
                 "glt": ["img", "hdr"],
                 "att": ["nc"],
@@ -85,7 +87,7 @@ class Acquisition:
                 "rfl": ["img", "hdr"],
                 "uncert": ["img", "hdr"],
                 "lbl": ["img", "hdr"],
-                "state_subs": ["img", "hdr"],
+                "statesubs": ["img", "hdr"],
                 "mask": ["img", "hdr"]
             }
         }
