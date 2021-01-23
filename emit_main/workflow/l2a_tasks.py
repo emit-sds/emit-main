@@ -56,12 +56,10 @@ class L2AReflectance(SlurmJobTask):
 
         # Build PGE cmd
         tmp_log_path = os.path.join(self.tmp_dir, "isofit.log")
-        wavelength_path = os.path.join(pge.repo_dir, "surface", "emit_wavelengths.txt")
-        wavelength_path = "/home/brodrick/src/isofit/examples/20171108_Pasadena/remote/20170320_ang20170228_wavelength_fit.txt"
-        surface_path = os.path.join(pge.repo_dir, "surface", "EMIT_surface_test.mat")
-        surface_path = "/beegfs/scratch/brodrick/emit/sonoran_desert/support/basic_surface.mat"
+        wavelength_path = os.path.join(pge.repo_dir, "surface", "release_1_20170320_ang20170228_wavelength_fit.txt")
+        surface_path = os.path.join(pge.repo_dir, "surface", "release_1_basic_surface.mat")
         apply_oe_exe = os.path.join(wm.pges["isofit"].repo_dir, "isofit", "utils", "apply_oe.py")
-        emulator_base = "/shared/sRTMnet_v100"
+        emulator_base = "/shared/sRTMnet/sRTMnet_v100"
         input_files = {
             "radiance_file": acq.rdn_img_path,
             "pixel_locations_file": acq.loc_img_path,
@@ -74,7 +72,7 @@ class L2AReflectance(SlurmJobTask):
                "--n_cores", "40",
                "--wavelength_path", wavelength_path,
                "--surface_path", surface_path,
-               "--ray_temp_dir", "/tmp/ray-" + os.path.basename(self.tmp_dir), 
+               "--ray_temp_dir", "/tmp/ray-" + os.path.basename(self.tmp_dir),
                "--log_file", tmp_log_path]
 
         env = os.environ.copy()
@@ -187,82 +185,55 @@ class L2AMask(SlurmJobTask):
         os.makedirs(tmp_output_dir)
         tmp_rdnort_path = os.path.join(tmp_output_dir, os.path.basename(acq.rdnort_img_path))
         tmp_locort_path = os.path.join(tmp_output_dir, os.path.basename(acq.locort_img_path))
+        tmp_lblort_path = os.path.join(tmp_output_dir, os.path.basename(acq.lblort_img_path))
         apply_glt_exe = os.path.join(pge.repo_dir, "apply_glt.py")
 
         cmd_rdn = ["python", apply_glt_exe, acq.rdn_img_path, acq.glt_img_path, tmp_rdnort_path]
         cmd_loc = ["python", apply_glt_exe, acq.loc_img_path, acq.glt_img_path, tmp_locort_path]
+        cmd_lbl = ["python", apply_glt_exe, acq.lbl_img_path, acq.glt_img_path, tmp_lblort_path]
         pge.run(cmd_rdn, tmp_dir=self.tmp_dir)
         pge.run(cmd_loc, tmp_dir=self.tmp_dir)
+        pge.run(cmd_lbl, tmp_dir=self.tmp_dir)
 
         # Build PGE command for make_masks.py
         tmp_rho_path = os.path.join(tmp_output_dir, self.acquisition_id + "_rho")
         tmp_mask_path = os.path.join(tmp_output_dir, os.path.basename(acq.mask_img_path))
+        tmp_mask_hdr_path = tmp_mask_path + ".hdr"
         solar_irradiance_path = os.path.join(pge.repo_dir, "data", "kurudz_0.1nm.dat")
         make_masks_exe = os.path.join(pge.repo_dir, "make_emit_masks.py")
         input_files = {
             "ortho_radiance_file": tmp_rdnort_path,
             "ortho_pixel_locations_file": tmp_locort_path,
-            "subset_labels_file": acq.lbl_img_path,
+            "ortho_subset_labels_file": tmp_lblort_path,
             "state_subset_file": acq.statesubs_img_path,
             "solar_irradiance_file": solar_irradiance_path
 
         }
-        cmd = ["python", make_masks_exe, tmp_rdnort_path, tmp_locort_path, acq.lbl_img_path, acq.statesubs_img_path,
+        cmd = ["python", make_masks_exe, tmp_rdnort_path, tmp_locort_path, tmp_lblort_path, acq.statesubs_img_path,
                solar_irradiance_path, tmp_rho_path, tmp_mask_path]
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
-        # Copy output files to l2a dir
-        shutil.copy2()
-
-        # Copy output files to l2a dir and rename
-        tmp_rfl_path = os.path.join(self.tmp_dir, "output", self.acquisition_id + "_rfl")
-        tmp_rfl_hdr_path = tmp_rfl_path + ".hdr"
-        tmp_uncert_path = os.path.join(self.tmp_dir, "output", self.acquisition_id + "_uncert")
-        tmp_uncert_hdr_path = tmp_uncert_path + ".hdr"
-        tmp_lbl_path = os.path.join(self.tmp_dir, "output", self.acquisition_id + "_lbl")
-        tmp_lbl_hdr_path = tmp_lbl_path + ".hdr"
-        tmp_statesubs_path = os.path.join(self.tmp_dir, "output", self.acquisition_id + "_subs_state")
-        tmp_statesubs_hdr_path = tmp_statesubs_path + ".hdr"
-        shutil.copy2(tmp_rfl_path, acq.rfl_img_path)
-        shutil.copy2(tmp_rfl_hdr_path, acq.rfl_hdr_path)
-        shutil.copy2(tmp_uncert_path, acq.uncert_img_path)
-        shutil.copy2(tmp_uncert_hdr_path, acq.uncert_hdr_path)
-        shutil.copy2(tmp_lbl_path, acq.lbl_img_path)
-        shutil.copy2(tmp_lbl_hdr_path, acq.lbl_hdr_path)
-        shutil.copy2(tmp_statesubs_path, acq.statesubs_img_path)
-        shutil.copy2(tmp_statesubs_hdr_path, acq.statesubs_hdr_path)
-        # Copy log file and rename
-        log_path = acq.rfl_img_path.replace(".img", "_pge.log")
-        shutil.copy2(tmp_log_path, log_path)
+        # Copy mask files to l2a dir
+        shutil.copy2(tmp_mask_path, acq.mask_img_path)
+        shutil.copy2(tmp_mask_hdr_path, acq.mask_hdr_path)
 
         # Update hdr files
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
-        for hdr_path in [acq.rfl_hdr_path, acq.uncert_hdr_path]:
-            hdr = envi.read_envi_header(hdr_path)
-            hdr["emit pge name"] = pge.repo_url
-            hdr["emit pge version"] = pge.version_tag
-            hdr["emit pge input files"] = input_files_arr
-            hdr["emit pge run command"] = " ".join(cmd)
-            hdr["emit software build version"] = wm.build_num
-            hdr["emit documentation version"] = "TBD"
-            # TODO: Get creation time separately for each file type?
-            creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rfl_img_path))
-            hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S")
-            hdr["emit data product version"] = wm.processing_version
-            envi.write_envi_header(hdr_path, hdr)
+        hdr = envi.read_envi_header(acq.mask_hdr_path)
+        hdr["emit pge name"] = pge.repo_url
+        hdr["emit pge version"] = pge.version_tag
+        hdr["emit pge input files"] = input_files_arr
+        hdr["emit pge run command"] = " ".join(cmd)
+        hdr["emit software build version"] = wm.build_num
+        hdr["emit documentation version"] = "TBD"
+        # TODO: Get creation time separately for each file type?
+        creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.mask_img_path))
+        hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S")
+        hdr["emit data product version"] = wm.processing_version
+        envi.write_envi_header(acq.mask_hdr_path, hdr)
 
-            # PGE writes metadata to db
-            dimensions = {
-                "l2a": {
-                    "lines": hdr["lines"],
-                    "bands": hdr["bands"],
-                    "samples": hdr["samples"],
-                }
-            }
-        # Just update the dimensions once
+        # PGE writes metadata to db
         dm = wm.database_manager
-        dm.update_acquisition_dimensions(self.acquisition_id, dimensions)
-
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -273,10 +244,8 @@ class L2AMask(SlurmJobTask):
             "log_timestamp": datetime.datetime.now(),
             "completion_status": "SUCCESS",
             "output": {
-                "l2a_rfl_path": acq.rfl_img_path,
-                "l2a_rfl_hdr_path:": acq.rfl_hdr_path,
-                "l2a_uncert_path": acq.uncert_img_path,
-                "l2a_uncert_hdr_path:": acq.uncert_hdr_path
+                "l2a_mask_path": acq.mask_img_path,
+                "l2a_mask_hdr_path:": acq.mask_hdr_path
             }
         }
 

@@ -87,6 +87,7 @@ class Acquisition:
                 "rfl": ["img", "hdr"],
                 "uncert": ["img", "hdr"],
                 "lbl": ["img", "hdr"],
+                "lblort": ["img", "hdr"],
                 "statesubs": ["img", "hdr"],
                 "mask": ["img", "hdr"]
             }

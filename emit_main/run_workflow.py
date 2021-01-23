@@ -23,7 +23,7 @@ logger = logging.getLogger("emit-main")
 
 
 def parse_args():
-    product_choices = ["l0hosc", "l1aeng", "l1araw", "l1bcal", "l2arefl"]
+    product_choices = ["l0hosc", "l1aeng", "l1araw", "l1bcal", "l2arefl", "l2amask"]
     parser = argparse.ArgumentParser()
     parser.add_argument("-a", "--acquisition_id", default="",
                         help="Acquisition ID")
@@ -75,7 +75,8 @@ def get_tasks_from_args(args):
         "l1aeng": L1AReformatEDP(**stream_kwargs),
         "l1araw": L1AReassembleRaw(**acquisition_kwargs),
         "l1bcal": L1BCalibrate(**acquisition_kwargs),
-        "l2arefl": L2AReflectance(**acquisition_kwargs)
+        "l2arefl": L2AReflectance(**acquisition_kwargs),
+        "l2amask": L2AReflectance(**acquisition_kwargs)
     }
 
     tasks = []
