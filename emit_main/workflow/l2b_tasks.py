@@ -97,7 +97,16 @@ class L2BAbundance(SlurmJobTask):
         envi.write_envi_header(acq.abun_hdr_path, hdr)
 
         # PGE writes metadata to db
+        dimensions = {
+            "l2b": {
+                "lines": hdr["lines"],
+                "bands": hdr["bands"],
+                "samples": hdr["samples"],
+            }
+        }
         dm = wm.database_manager
+        dm.update_acquisition_dimensions(self.acquisition_id, dimensions)
+
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
