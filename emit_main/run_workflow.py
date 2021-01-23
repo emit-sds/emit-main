@@ -76,7 +76,7 @@ def get_tasks_from_args(args):
         "l1araw": L1AReassembleRaw(**acquisition_kwargs),
         "l1bcal": L1BCalibrate(**acquisition_kwargs),
         "l2arefl": L2AReflectance(**acquisition_kwargs),
-        "l2amask": L2AReflectance(**acquisition_kwargs)
+        "l2amask": L2AMask(**acquisition_kwargs)
     }
 
     tasks = []
