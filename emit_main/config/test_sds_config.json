@@ -70,7 +70,7 @@
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l2b.git",
         "tag": "develop",
-        "conda_env": "emit-sds-l2b-test"
+        "conda_env": "emit-main-test"
       },
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l3.git",

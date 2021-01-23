@@ -55,8 +55,7 @@ class L2BAbundance(SlurmJobTask):
         cmd_tetra = [run_tetra_exe, self.tmp_dir, acq.rfl_img_path]
         env = os.environ.copy()
         env["SP_LOCAL"] = "/shared/specpr"
-        env["PATH"] = "${PATH}:${SP_LOCAL}/bin"
         env["SP_BIN"] = "${SP_LOCAL}/bin"
         env["TETRA"] = "/shared/tetracorder5.26"
-        env["PATH"] = "${PATH}:${TETRA}/bin"
+        env["PATH"] = "${PATH}:${SP_LOCAL}/bin:${TETRA}/bin:/usr/bin"
         pge.run(cmd_tetra, tmp_dir=self.tmp_dir, env=env)
