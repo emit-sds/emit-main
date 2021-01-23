@@ -71,6 +71,7 @@ class Acquisition:
         product_map = {
             "l1a": {
                 "raw": ["img", "hdr"],
+                "dark": ["img", "hdr"],
                 "rawqa": ["txt"]
             },
             "l1b": {
