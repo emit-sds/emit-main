@@ -60,21 +60,24 @@ class L1BCalibrate(SlurmJobTask):
         tmp_rdn_img_path = os.path.join(tmp_output_dir, os.path.basename(acq.rdn_img_path))
         log_name = os.path.basename(acq.rdn_img_path.replace(".img", "_pge.log"))
         tmp_log_path = os.path.join(tmp_output_dir, log_name)
-        l1b_config_path = os.path.join(pge.repo_dir, "synthetic", "config_" + acq.acquisition_id + ".json")
+        # TODO Add logic to check date ranges for proper config
+        calibrations_dir = os.path.join(pge.repo_dir, "calibrations")
+        l1b_config_path = os.path.join(calibrations_dir, "config_20210101_20210131.json")
         with open(l1b_config_path, "r") as f:
             config = json.load(f)
-        input_files = {}
-        for key, value in config.items():
-            if "_file" in key and not key.startswith("/"):
-                config[key] = os.path.abspath(os.path.join(pge.repo_dir, "synthetic", value))
-                input_files[key] = config[key]
         # Set input, dark, and output paths in config
         config["input_file"] = acq.raw_img_path
         # TODO: Get dark frame for this acquisition
-        config["dark_frame_file"] = acq.raw_img_path.replace("_raw_", "_dark_")
+        config["dark_frame_file"] = acq.dark_img_path
         config["output_file"] = tmp_rdn_img_path
 
-        # input_files["raw_file"] = acq.raw_img_path
+        input_files = {}
+        for key, value in config.items():
+            if "_file" in key and not key.startswith("/"):
+                config[key] = os.path.abspath(os.path.join(calibrations_dir, value))
+                if key != "output_file":
+                    input_files[key] = config[key]
+
         tmp_config_path = os.path.join(self.tmp_dir, "l1b_config.json")
         with open(tmp_config_path, "w") as outfile:
             json.dump(config, outfile)

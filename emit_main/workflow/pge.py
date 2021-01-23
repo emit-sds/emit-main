@@ -13,7 +13,7 @@ logger = logging.getLogger("emit-main")
 
 class PGE:
 
-    def __init__(self, conda_base, conda_env, pge_base, repo_url, version_tag, environment, local_paths):
+    def __init__(self, conda_base, conda_env, pge_base, repo_url, version_tag, environment):
         # conda_env_base is the top level "envs" folder, e.g. ~/anaconda3/envs
         self.conda_env_base = os.path.join(conda_base, "envs")
         self.conda_sh_path = os.path.join(conda_base, "etc/profile.d/conda.sh")
@@ -42,12 +42,6 @@ class PGE:
         # mapping.  The jenkins hostnames are configured in /home/jenkins/.ssh/config.
         if environment == "jenkins":
             self.repo_url = self.repo_url.replace("github.jpl.nasa.gov", "github.jpl.nasa.gov-" + self.repo_name)
-
-        if local_paths is not None:
-            abs_local_paths = {}
-            for k, v in local_paths.items():
-                abs_local_paths[k] = os.path.join(self.repo_dir, v)
-            self.__dict__.update(abs_local_paths)
 
     def _get_repo_account(self):
         if self.repo_url.startswith("https"):
