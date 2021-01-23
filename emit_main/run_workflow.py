@@ -14,6 +14,7 @@ from emit_main.workflow.l0_tasks import *
 from emit_main.workflow.l1a_tasks import *
 from emit_main.workflow.l1b_tasks import *
 from emit_main.workflow.l2a_tasks import *
+from emit_main.workflow.l2b_tasks import *
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_main.workflow.workflow_manager import WorkflowManager
 
@@ -23,7 +24,7 @@ logger = logging.getLogger("emit-main")
 
 
 def parse_args():
-    product_choices = ["l0hosc", "l1aeng", "l1araw", "l1bcal", "l2arefl", "l2amask"]
+    product_choices = ["l0hosc", "l1aeng", "l1araw", "l1bcal", "l2arefl", "l2amask", "l2babun"]
     parser = argparse.ArgumentParser()
     parser.add_argument("-a", "--acquisition_id", default="",
                         help="Acquisition ID")
@@ -76,7 +77,8 @@ def get_tasks_from_args(args):
         "l1araw": L1AReassembleRaw(**acquisition_kwargs),
         "l1bcal": L1BCalibrate(**acquisition_kwargs),
         "l2arefl": L2AReflectance(**acquisition_kwargs),
-        "l2amask": L2AMask(**acquisition_kwargs)
+        "l2amask": L2AMask(**acquisition_kwargs),
+        "l2babun": L2BAbundance(**acquisition_kwargs)
     }
 
     tasks = []
