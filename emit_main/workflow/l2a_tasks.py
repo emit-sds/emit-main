@@ -97,6 +97,9 @@ class L2AReflectance(SlurmJobTask):
         shutil.copy2(tmp_lbl_hdr_path, acq.lbl_hdr_path)
         shutil.copy2(tmp_statesubs_path, acq.statesubs_img_path)
         shutil.copy2(tmp_statesubs_hdr_path, acq.statesubs_hdr_path)
+        # TODO: Remove symlinks when possible
+        os.symlink(acq.rfl_hdr_path, acq.rfl_img_path + ".hdr")
+        os.symlink(acq.uncert_hdr_path, acq.uncert_img_path + ".hdr")
         # Copy log file and rename
         log_path = acq.rfl_img_path.replace(".img", "_pge.log")
         shutil.copy2(tmp_log_path, log_path)
