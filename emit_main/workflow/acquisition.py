@@ -91,6 +91,10 @@ class Acquisition:
                 "lblort": ["img", "hdr"],
                 "statesubs": ["img", "hdr"],
                 "mask": ["img", "hdr"]
+            },
+            "l2b": {
+                "abun": ["img", "hdr"],
+                "abununcert": ["img", "hdr"]
             }
         }
         paths = {}
