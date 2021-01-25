@@ -106,6 +106,7 @@ class L2AReflectance(SlurmJobTask):
 
         # Update hdr files
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
+        doc_version = "EMIT SDS L2A JPL-D 104236, Rev B"
         for hdr_path in [acq.rfl_hdr_path, acq.uncert_hdr_path]:
             hdr = envi.read_envi_header(hdr_path)
             hdr["emit pge name"] = pge.repo_url
@@ -113,7 +114,7 @@ class L2AReflectance(SlurmJobTask):
             hdr["emit pge input files"] = input_files_arr
             hdr["emit pge run command"] = " ".join(cmd)
             hdr["emit software build version"] = wm.build_num
-            hdr["emit documentation version"] = "TBD"
+            hdr["emit documentation version"] = doc_version
             # TODO: Get creation time separately for each file type?
             creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rfl_img_path))
             hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S")
@@ -138,6 +139,7 @@ class L2AReflectance(SlurmJobTask):
             "pge_version": pge.version_tag,
             "pge_input_files": input_files,
             "pge_run_command": " ".join(cmd),
+            "documentation_version": doc_version,
             "product_creation_time": creation_time,
             "log_timestamp": datetime.datetime.now(),
             "completion_status": "SUCCESS",
@@ -222,13 +224,14 @@ class L2AMask(SlurmJobTask):
 
         # Update hdr files
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
+        doc_version = "EMIT SDS L2A JPL-D 104236, Rev B"
         hdr = envi.read_envi_header(acq.mask_hdr_path)
         hdr["emit pge name"] = pge.repo_url
         hdr["emit pge version"] = pge.version_tag
         hdr["emit pge input files"] = input_files_arr
         hdr["emit pge run command"] = " ".join(cmd)
         hdr["emit software build version"] = wm.build_num
-        hdr["emit documentation version"] = "TBD"
+        hdr["emit documentation version"] = doc_version
         # TODO: Get creation time separately for each file type?
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.mask_img_path))
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S")
@@ -243,6 +246,7 @@ class L2AMask(SlurmJobTask):
             "pge_version": pge.version_tag,
             "pge_input_files": input_files,
             "pge_run_command": " ".join(cmd),
+            "documentation_version": doc_version,
             "product_creation_time": creation_time,
             "log_timestamp": datetime.datetime.now(),
             "completion_status": "SUCCESS",

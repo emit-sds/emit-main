@@ -166,6 +166,7 @@ class L1AReassembleRaw(SlurmJobTask):
             shutil.move(file, acq.l1a_data_dir)
 
         # Placeholder: update hdr files
+        doc_version = "EMIT SDS L1A JPL-D 104186, Initial"
         hdr = envi.read_envi_header(acq.raw_hdr_path)
         hdr["description"] = "EMIT L1A raw instrument data (units: DN)"
         hdr["emit acquisition start time"] = datetime.datetime(2020, 1, 1, 0, 0, 0).strftime("%Y-%m-%dT%H:%M:%S")
@@ -178,7 +179,7 @@ class L1AReassembleRaw(SlurmJobTask):
         ]
         hdr["emit pge run command"] = "python l1a_run.py args"
         hdr["emit software build version"] = wm.build_num
-        hdr["emit documentation version"] = "TBD"
+        hdr["emit documentation version"] = doc_version
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.raw_img_path))
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S")
         hdr["emit data product version"] = wm.processing_version
@@ -307,6 +308,7 @@ class L1AReformatEDP(SlurmJobTask):
         dm = wm.database_manager
         dm.update_stream_metadata(stream.hosc_name, metadata)
 
+        doc_version = "EMIT IOS SDS ICD JPL-D 104239, Initial"
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -315,6 +317,7 @@ class L1AReformatEDP(SlurmJobTask):
                 "ccsds_path": stream.ccsds_path,
             },
             "pge_run_command": " ".join(cmd),
+            "documentation_version": doc_version,
             "product_creation_time": datetime.datetime.fromtimestamp(os.path.getmtime(edp_path)),
             "log_timestamp": datetime.datetime.now(),
             "completion_status": "SUCCESS",

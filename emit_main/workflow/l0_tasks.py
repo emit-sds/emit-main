@@ -92,6 +92,7 @@ class L0StripHOSC(SlurmJobTask):
         dm = wm.database_manager
         dm.update_stream_metadata(stream.hosc_name, metadata)
 
+        doc_version = "Space Packet Protocol, CCSDS 133.0-B-1 (with Issue 1, Cor. 1, Sept. 2010 and Issue 1, Cor. 2, Sept. 2012 addendums)"
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -100,6 +101,7 @@ class L0StripHOSC(SlurmJobTask):
                 "ingested_hosc_path": self.stream_path,
             },
             "pge_run_command": " ".join(cmd),
+            "documentation_version": doc_version,
             "product_creation_time": datetime.datetime.fromtimestamp(os.path.getmtime(ccsds_path)),
             "log_timestamp": datetime.datetime.now(),
             "completion_status": "SUCCESS",

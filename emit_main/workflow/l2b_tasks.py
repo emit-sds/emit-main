@@ -83,13 +83,14 @@ class L2BAbundance(SlurmJobTask):
 
         # Update hdr files
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
+        doc_version = "EMIT SDS L2B JPL-D 104237, Rev A"
         hdr = envi.read_envi_header(acq.abun_hdr_path)
         hdr["emit pge name"] = pge.repo_url
         hdr["emit pge version"] = pge.version_tag
         hdr["emit pge input files"] = input_files_arr
         hdr["emit pge run command"] = " ".join(cmd)
         hdr["emit software build version"] = wm.build_num
-        hdr["emit documentation version"] = "TBD"
+        hdr["emit documentation version"] = doc_version
         # TODO: Get creation time separately for each file type?
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.abun_img_path))
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S")
@@ -113,6 +114,7 @@ class L2BAbundance(SlurmJobTask):
             "pge_version": pge.version_tag,
             "pge_input_files": input_files,
             "pge_run_command": " ".join(cmd),
+            "documentation_version": doc_version,
             "product_creation_time": creation_time,
             "log_timestamp": datetime.datetime.now(),
             "completion_status": "SUCCESS",
