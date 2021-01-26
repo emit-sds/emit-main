@@ -32,13 +32,13 @@ class L1ADepacketize(SlurmJobTask):
     config_path = luigi.Parameter()
     stream_path = luigi.Parameter()
     start_time = luigi.DateSecondParameter(default=datetime.date.today() - datetime.timedelta(7))
-    end_time = luigi.DateSecondParameter(default=datetime.date.today())
+    stop_time = luigi.DateSecondParameter(default=datetime.date.today())
 
     task_namespace = "emit"
 
     def requires(self):
 
-        return L0StripHOSC(apid=self.apid, start_time=self.start_time, end_time=self.end_time)
+        return L0StripHOSC(apid=self.apid, start_time=self.start_time, stop_time=self.stop_time)
 
     def output(self):
 
@@ -59,13 +59,13 @@ class L1APrepFrames(SlurmJobTask):
     config_path = luigi.Parameter()
     stream_path = luigi.Parameter()
     start_time = luigi.DateSecondParameter(default=datetime.date.today() - datetime.timedelta(7))
-    end_time = luigi.DateSecondParameter(default=datetime.date.today())
+    stop_time = luigi.DateSecondParameter(default=datetime.date.today())
 
     task_namespace = "emit"
 
     def requires(self):
 
-        return L0StripHOSC(apid=self.apid, start_time=self.start_time, end_time=self.end_time)
+        return L0StripHOSC(apid=self.apid, start_time=self.start_time, stop_time=self.stop_time)
 
     def output(self):
 
@@ -99,16 +99,35 @@ class L1AReassembleRaw(SlurmJobTask):
 
         # FIXME: Acquisition insertion should be happening in previous step.  This is temporary for testing.
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        start_time_str = self.acquisition_id[len("emit"):(15 + len("emit"))]
+        start_time = datetime.datetime.strptime(start_time_str, "%Y%m%dt%H%M%S")
+        stop_time = start_time + datetime.timedelta(seconds=686)
         acq_meta = {
-            "acquisition_id": "emit20200101t000000",
+            "acquisition_id": self.acquisition_id,
             "build_num": wm.build_num,
             "processing_version": wm.processing_version,
-            "start_time": datetime.datetime(2020, 1, 1, 0, 0, 0),
-            "end_time": datetime.datetime(2020, 1, 1, 0, 11, 26),
-            "orbit": "00001",
-            "scene": "001"
+            "start_time": start_time,
+            "stop_time": stop_time,
+            "orbit": "00000",
+            "scene": "000",
+            "dimensions": {}
         }
         wm.database_manager.insert_acquisition(acq_meta)
+
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        acq = wm.acquisition
+
+        log_entry = {
+            "task": self.task_family,
+            "completion_status": "SUCCESS",
+            "output": {
+                "l1a_raw_path": acq.raw_img_path,
+                "l1a_raw_hdr_path:": acq.raw_hdr_path
+            }
+        }
+
+        wm.database_manager.insert_acquisition_log_entry(self.acquisition_id, log_entry)
+
         return None
 
     def output(self):
@@ -147,6 +166,7 @@ class L1AReassembleRaw(SlurmJobTask):
             shutil.move(file, acq.l1a_data_dir)
 
         # Placeholder: update hdr files
+        doc_version = "EMIT SDS L1A JPL-D 104186, Initial"
         hdr = envi.read_envi_header(acq.raw_hdr_path)
         hdr["description"] = "EMIT L1A raw instrument data (units: DN)"
         hdr["emit acquisition start time"] = datetime.datetime(2020, 1, 1, 0, 0, 0).strftime("%Y-%m-%dT%H:%M:%S")
@@ -159,7 +179,7 @@ class L1AReassembleRaw(SlurmJobTask):
         ]
         hdr["emit pge run command"] = "python l1a_run.py args"
         hdr["emit software build version"] = wm.build_num
-        hdr["emit documentation version"] = "TBD"
+        hdr["emit documentation version"] = doc_version
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.raw_img_path))
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S")
         hdr["emit data product version"] = wm.processing_version
@@ -269,7 +289,7 @@ class L1AReformatEDP(SlurmJobTask):
         env["AIT_ROOT"] = wm.pges["emit-ios"].repo_dir
         env["AIT_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "config.yaml")
         env["AIT_ISS_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "sim.yaml")
-        pge.run(cmd,  tmp_dir=self.tmp_dir, env=env)
+        pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
         # Copy scratch files back to store
         for file in glob.glob(os.path.join(tmp_output_dir, "*")):
@@ -282,16 +302,13 @@ class L1AReformatEDP(SlurmJobTask):
         for file in glob.glob(os.path.join(tmp_log_dir, "*")):
             shutil.copy2(file, os.path.join(stream.l1a_dir, l1a_pge_log_name))
 
-        query = {
-            "hosc_name": stream.hosc_name,
-            "build_num": wm.build_num,
-        }
         metadata = {
             "edp_name": edp_name
         }
         dm = wm.database_manager
-        dm.update_stream_metadata(query, metadata)
+        dm.update_stream_metadata(stream.hosc_name, metadata)
 
+        doc_version = "EMIT IOS SDS ICD JPL-D 104239, Initial"
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -300,6 +317,7 @@ class L1AReformatEDP(SlurmJobTask):
                 "ccsds_path": stream.ccsds_path,
             },
             "pge_run_command": " ".join(cmd),
+            "documentation_version": doc_version,
             "product_creation_time": datetime.datetime.fromtimestamp(os.path.getmtime(edp_path)),
             "log_timestamp": datetime.datetime.now(),
             "completion_status": "SUCCESS",

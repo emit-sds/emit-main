@@ -70,7 +70,8 @@ class L0StripHOSC(SlurmJobTask):
         if "ingest" in self.stream_path:
             # Move HOSC file out of ingest folder
             # TODO: Change to shutil.move
-            shutil.copy2(self.stream_path, stream.l0_dir)
+            # shutil.copy2(self.stream_path, stream.l0_dir)
+            shutil.move(self.stream_path, stream.l0_dir)
             hosc_path = os.path.join(stream.l0_dir, stream.hosc_name)
         else:
             hosc_path = self.stream_path
@@ -85,24 +86,13 @@ class L0StripHOSC(SlurmJobTask):
         # TODO: Change log name to match CCSDS name?
 
         # Update DB
-        # TODO: Use stream_path for query
-        query = {
-            "apid": stream.apid,
-            "start_time": stream.start_time,
-            "stop_time": stream.stop_time,
-            "build_num": wm.build_num,
-            "processing_version": wm.processing_version
-        }
         metadata = {
-            "apid": stream.apid,
-            "hosc_name": stream.hosc_name,
-            "ccsds_name": ccsds_name,
-            "start_time": stream.start_time,
-            "stop_time": stream.stop_time
+            "ccsds_name": ccsds_name
         }
         dm = wm.database_manager
-        dm.update_stream_metadata(query, metadata)
+        dm.update_stream_metadata(stream.hosc_name, metadata)
 
+        doc_version = "Space Packet Protocol, CCSDS 133.0-B-1 (with Issue 1, Cor. 1, Sept. 2010 and Issue 1, Cor. 2, Sept. 2012 addendums)"
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -111,6 +101,7 @@ class L0StripHOSC(SlurmJobTask):
                 "ingested_hosc_path": self.stream_path,
             },
             "pge_run_command": " ".join(cmd),
+            "documentation_version": doc_version,
             "product_creation_time": datetime.datetime.fromtimestamp(os.path.getmtime(ccsds_path)),
             "log_timestamp": datetime.datetime.now(),
             "completion_status": "SUCCESS",

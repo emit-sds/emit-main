@@ -4,34 +4,31 @@ This code contains test functions for luigi
 Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
-import logging.config
+import os
+
 import luigi
 
-#sys.path.insert(0,"../")
+from emit_main.workflow.test_tasks import ExampleTask
 from emit_main.workflow.workflow_manager import WorkflowManager
-from emit_main.workflow.l1b_tasks import L1BCalibrate
-
-logging.config.fileConfig(fname="test_logging.conf")
-logger = logging.getLogger("emit-main")
 
 
-def test_luigi_build():
+def test_luigi_build(config_path):
 
-    logger.debug("Running test_luigi_build")
+    print("\nRunning test_luigi_build with config: %s" % config_path)
 
-    wm = WorkflowManager("config/test_config.json", acquisition_id="emit20200101t000000")
+    acquisition_id = "emit20200101t000000"
+
+    wm = WorkflowManager(config_path=config_path, acquisition_id=acquisition_id)
     acq = wm.acquisition
-    wm.remove_dir(acq.l1a_data_dir)
-    wm.remove_dir(acq.l1b_data_dir)
+    if os.path.exists(acq.rdn_hdr_path):
+        os.system(" ".join(["rm", "-f", acq.rdn_hdr_path]))
 
+    luigi_logging_conf = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "workflow", "luigi",
+                                                      "logging.conf"))
     success = luigi.build(
-        [L1BCalibrate(config_path="config/test_config.json", acquisition_id="emit20200101t000000")],
+        [ExampleTask(config_path=config_path, acquisition_id=acquisition_id)],
         workers=wm.luigi_workers,
         local_scheduler=wm.luigi_local_scheduler,
-        logging_conf_file=wm.luigi_logging_conf)
+        logging_conf_file=luigi_logging_conf)
 
     assert success
-
-
-# TODO: Change this to test_tasks and add another test that uses the luigi scheduler
-test_luigi_build()

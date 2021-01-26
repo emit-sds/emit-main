@@ -4,9 +4,11 @@ This code contains the Acquisition class that manages acquisitions and their met
 Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
+import grp
 import json
 import logging
 import os
+import pwd
 
 from emit_main.database.database_manager import DatabaseManager
 
@@ -43,7 +45,6 @@ class Acquisition:
         self.data_dir = os.path.join(self.environment_dir, "data")
         self.acquisitions_dir = os.path.join(self.data_dir, "acquisitions")
 
-
         # Check for instrument again based on filename
         instrument_prefix = self.instrument
         if self.acquisition_id.startswith("ang"):
@@ -60,16 +61,24 @@ class Acquisition:
         for d in self.dirs:
             if not os.path.exists(d):
                 os.makedirs(d)
+                # Change group ownership in shared environments
+                if self.environment in ["dev", "test", "ops"]:
+                    uid = pwd.getpwnam(pwd.getpwuid(os.getuid())[0]).pw_uid
+                    gid = grp.getgrnam(self.instrument + "-" + self.environment).gr_gid
+                    os.chown(d, uid, gid)
 
     def _build_acquisition_paths(self):
         product_map = {
             "l1a": {
                 "raw": ["img", "hdr"],
+                "dark": ["img", "hdr"],
                 "rawqa": ["txt"]
             },
             "l1b": {
                 "rdn": ["img", "hdr", "png", "kmz"],
+                "rdnort": ["img", "hdr"],
                 "loc": ["img", "hdr"],
+                "locort": ["img", "hdr"],
                 "obs": ["img", "hdr"],
                 "glt": ["img", "hdr"],
                 "att": ["nc"],
@@ -78,7 +87,14 @@ class Acquisition:
             "l2a": {
                 "rfl": ["img", "hdr"],
                 "uncert": ["img", "hdr"],
+                "lbl": ["img", "hdr"],
+                "lblort": ["img", "hdr"],
+                "statesubs": ["img", "hdr"],
                 "mask": ["img", "hdr"]
+            },
+            "l2b": {
+                "abun": ["img", "hdr"],
+                "abununcert": ["img", "hdr"]
             }
         }
         paths = {}

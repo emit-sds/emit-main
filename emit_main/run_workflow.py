@@ -6,6 +6,7 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 
 import argparse
 import logging.config
+import os
 import shutil
 import sys
 
@@ -13,15 +14,17 @@ from emit_main.workflow.l0_tasks import *
 from emit_main.workflow.l1a_tasks import *
 from emit_main.workflow.l1b_tasks import *
 from emit_main.workflow.l2a_tasks import *
+from emit_main.workflow.l2b_tasks import *
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_main.workflow.workflow_manager import WorkflowManager
 
-logging.config.fileConfig(fname="logging.conf")
+logging_conf = os.path.join(os.path.dirname(__file__), "logging.conf")
+logging.config.fileConfig(fname=logging_conf)
 logger = logging.getLogger("emit-main")
 
 
 def parse_args():
-    product_choices = ["l0hosc", "l1aeng", "l1araw", "l1bcal", "l2arefl"]
+    product_choices = ["l0hosc", "l1aeng", "l1araw", "l1bcal", "l2arefl", "l2amask", "l2babun"]
     parser = argparse.ArgumentParser()
     parser.add_argument("-a", "--acquisition_id", default="",
                         help="Acquisition ID")
@@ -35,8 +38,17 @@ def parse_args():
     parser.add_argument("-w", "--workers", default=2,
                         help="Number of luigi workers")
     parser.add_argument("--build_env", action="store_true",
-                        help="Build the runtime environment")
+                        help="Build the runtime environment (primarily used to setup dev environments)")
+    parser.add_argument("--checkout_build", action="store_true",
+                        help="Checks out all repos and tags for a given build")
     args = parser.parse_args()
+
+    if args.config_path is None:
+        print("ERROR: You must specify a configuration file with the --config_path argument.")
+        sys.exit(1)
+
+    args.config_path = os.path.abspath(args.config_path)
+
     if args.products:
         product_list = args.products.split(",")
         for prod in product_list:
@@ -64,7 +76,9 @@ def get_tasks_from_args(args):
         "l1aeng": L1AReformatEDP(**stream_kwargs),
         "l1araw": L1AReassembleRaw(**acquisition_kwargs),
         "l1bcal": L1BCalibrate(**acquisition_kwargs),
-        "l2arefl": L2AReflectance(**acquisition_kwargs)
+        "l2arefl": L2AReflectance(**acquisition_kwargs),
+        "l2amask": L2AMask(**acquisition_kwargs),
+        "l2babun": L2BAbundance(**acquisition_kwargs)
     }
 
     tasks = []
@@ -73,7 +87,6 @@ def get_tasks_from_args(args):
     return tasks
 
 
-#@luigi.Task.event_handler(luigi.Event.SUCCESS)
 @SlurmJobTask.event_handler(luigi.Event.SUCCESS)
 def task_success(task):
     logger.info("SUCCESS: %s" % task)
@@ -85,7 +98,6 @@ def task_success(task):
     # TODO: Trigger higher level tasks?
 
 
-#@luigi.Task.event_handler(luigi.Event.FAILURE)
 @SlurmJobTask.event_handler(luigi.Event.FAILURE)
 def task_failure(task, e):
     # TODO: If additional debugging is needed, change exc_info to True
@@ -144,17 +156,29 @@ def main():
     set_up_logging(wm.logs_dir)
     logger.info("Running workflow with cmd: %s" % str(" ".join(sys.argv)))
 
-    # Build the environment if needed
+    # Check out code if requested
+    if args.checkout_build:
+        wm.checkout_repos_for_build()
+        logger.info("Exiting after checking out repos for this build.")
+        sys.exit(0)
+
+    # Build the environment if requested
     if args.build_env:
         wm.build_runtime_environment()
+        logger.info("Exiting after building runtime environment.")
+        sys.exit(0)
+
     # Set up tasks and run
     tasks = get_tasks_from_args(args)
     if args.workers:
         workers = args.workers
     else:
         workers = wm.luigi_workers
+    # Build luigi logging.conf path
+    luigi_logging_conf = os.path.join(os.path.dirname(__file__), "workflow", "luigi", "logging.conf")
+
     luigi.build(tasks, workers=workers, local_scheduler=wm.luigi_local_scheduler,
-                logging_conf_file=wm.luigi_logging_conf)
+                logging_conf_file=luigi_logging_conf)
 
 
 if __name__ == '__main__':

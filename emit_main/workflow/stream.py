@@ -5,9 +5,11 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
 import datetime
+import grp
 import json
 import logging
 import os
+import pwd
 
 from emit_main.database.database_manager import DatabaseManager
 
@@ -83,3 +85,8 @@ class Stream:
         for d in self.dirs:
             if not os.path.exists(d):
                 os.makedirs(d)
+                # Change group ownership in shared environments
+                if self.environment in ["dev", "test", "ops"]:
+                    uid = pwd.getpwnam(pwd.getpwuid(os.getuid())[0]).pw_uid
+                    gid = grp.getgrnam(self.instrument + "-" + self.environment).gr_gid
+                    os.chown(d, uid, gid)

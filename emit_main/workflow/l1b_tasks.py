@@ -58,17 +58,26 @@ class L1BCalibrate(SlurmJobTask):
         tmp_output_dir = os.path.join(self.tmp_dir, "output")
         os.makedirs(tmp_output_dir)
         tmp_rdn_img_path = os.path.join(tmp_output_dir, os.path.basename(acq.rdn_img_path))
-        log_name = acq.rdn_img_path.replace(".img", "_pge.log")
+        log_name = os.path.basename(acq.rdn_img_path.replace(".img", "_pge.log"))
         tmp_log_path = os.path.join(tmp_output_dir, log_name)
-        l1b_config_path = os.path.join(pge.repo_dir, "test", "l1b_config_ang.json")
+        # TODO Add logic to check date ranges for proper config
+        calibrations_dir = os.path.join(pge.repo_dir, "calibrations")
+        l1b_config_path = os.path.join(calibrations_dir, "config_20210101_20210131.json")
         with open(l1b_config_path, "r") as f:
             config = json.load(f)
+        # Set input, dark, and output paths in config
+        config["input_file"] = acq.raw_img_path
+        # TODO: Get dark frame for this acquisition
+        config["dark_frame_file"] = acq.dark_img_path
+        config["output_file"] = tmp_rdn_img_path
+
         input_files = {}
         for key, value in config.items():
-            if "_file" in key:
-                config[key] = os.path.join(pge.repo_dir, "test", value)
-                input_files[key] = config[key]
-        input_files["raw_file"] = acq.raw_img_path
+            if "_file" in key and not key.startswith("/"):
+                config[key] = os.path.abspath(os.path.join(calibrations_dir, value))
+                if key != "output_file":
+                    input_files[key] = config[key]
+
         tmp_config_path = os.path.join(self.tmp_dir, "l1b_config.json")
         with open(tmp_config_path, "w") as outfile:
             json.dump(config, outfile)
@@ -83,6 +92,7 @@ class L1BCalibrate(SlurmJobTask):
 
         # Update hdr files
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
+        doc_version = "EMIT SDS L1B JPL-D 104187, Initial"
         hdr = envi.read_envi_header(acq.rdn_hdr_path)
         hdr["emit acquisition start time"] = datetime.datetime(2020, 1, 1, 0, 0, 0).strftime("%Y-%m-%dT%H:%M:%S")
         hdr["emit acquisition stop time"] = datetime.datetime(2020, 1, 1, 0, 11, 26).strftime("%Y-%m-%dT%H:%M:%S")
@@ -91,7 +101,7 @@ class L1BCalibrate(SlurmJobTask):
         hdr["emit pge input files"] = input_files_arr
         hdr["emit pge run command"] = " ".join(cmd)
         hdr["emit software build version"] = wm.build_num
-        hdr["emit documentation version"] = "TBD"
+        hdr["emit documentation version"] = doc_version
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rdn_img_path))
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S")
         hdr["emit data product version"] = wm.processing_version
@@ -115,6 +125,7 @@ class L1BCalibrate(SlurmJobTask):
             "pge_version": pge.version_tag,
             "pge_input_files": input_files,
             "pge_run_command": " ".join(cmd),
+            "documentation_version": doc_version,
             "product_creation_time": creation_time,
             "log_timestamp": datetime.datetime.now(),
             "completion_status": "SUCCESS",
@@ -172,4 +183,3 @@ class L1BGeolocate(SlurmJobTask):
         pge.run(cmd, tmp_dir=self.tmp_dir)
         cmd = ["touch", acq.glt_hdr_path]
         pge.run(cmd, tmp_dir=self.tmp_dir)
-

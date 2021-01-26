@@ -4,9 +4,11 @@ This code contains the WorkflowManager class that handles filesystem paths
 Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
+import grp
 import json
 import logging
 import os
+import pwd
 
 from emit_main.database.database_manager import DatabaseManager
 from emit_main.workflow.acquisition import Acquisition
@@ -42,17 +44,24 @@ class WorkflowManager:
         self.environment_dir = os.path.join(self.instrument_dir, self.environment)
         self.data_dir = os.path.join(self.environment_dir, "data")
         self.ingest_dir = os.path.join(self.environment_dir, "ingest")
+        self.ingest_duplicates_dir = os.path.join(self.ingest_dir, "duplicates")
         self.logs_dir = os.path.join(self.environment_dir, "logs")
         self.repos_dir = os.path.join(self.environment_dir, "repos")
         self.scratch_tmp_dir = os.path.join(self.local_scratch_dir, self.instrument, self.environment, "tmp")
         self.scratch_error_dir = os.path.join(self.local_scratch_dir, self.instrument, self.environment, "error")
-        dirs.extend([self.instrument_dir, self.environment_dir, self.data_dir, self.ingest_dir, self.logs_dir,
-                     self.repos_dir, self.scratch_tmp_dir, self.scratch_error_dir])
+        dirs.extend([self.instrument_dir, self.environment_dir, self.data_dir, self.ingest_dir,
+                     self.ingest_duplicates_dir, self.logs_dir, self.repos_dir, self.scratch_tmp_dir,
+                     self.scratch_error_dir])
 
         # Make directories if they don't exist
         for d in dirs:
             if not os.path.exists(d):
                 os.makedirs(d)
+                # Change group ownership in shared environments
+                if self.environment in ["dev", "test", "ops"]:
+                    uid = pwd.getpwnam(pwd.getpwuid(os.getuid())[0]).pw_uid
+                    gid = grp.getgrnam(self.instrument + "-" + self.environment).gr_gid
+                    os.chown(d, uid, gid)
 
         # If we have an acquisition id and acquisition exists in db, initialize acquisition
         if self.acquisition_id and self.database_manager.find_acquisition_by_id(self.acquisition_id):
@@ -77,26 +86,33 @@ class WorkflowManager:
                 version_tag = repo["tag"]
             else:
                 version_tag = None
-            if "local_paths" in repo:
-                local_paths = repo["local_paths"]
-            else:
-                local_paths = None
             pge = PGE(
                 conda_base=self.conda_base_dir,
                 conda_env=conda_env,
                 pge_base=self.repos_dir,
                 repo_url=repo["url"],
                 version_tag=version_tag,
-                local_paths=local_paths
+                environment=self.environment
             )
             self.pges[pge.repo_name] = pge
 
+    def checkout_repos_for_build(self):
+        for pge in self.pges.values():
+            pge.checkout_repo()
+
+    def check_runtime_environment(self):
+        for pge in self.pges.values():
+            if pge.check_runtime_environment() is False:
+                print("Checking PGE: %s" % pge.repo_name)
+                return False
+        return True
+
     def build_runtime_environment(self):
         for pge in self.pges.values():
-            pge.build()
+            pge.build_runtime_environment()
             if pge.repo_name == "emit-main" and pge.repo_dir not in os.getcwd():
                 logger.warning("The \"emit-main\" code should be executing inside repository %s to ensure that the "
-                                "correct version is running" % pge.repo_dir)
+                               "correct version is running" % pge.repo_dir)
 
     def path_exists(self, path):
         return os.path.exists(path)
