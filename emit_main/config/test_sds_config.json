@@ -19,12 +19,12 @@
   },
 
   "build_config": {
-    "build_num": "0000",
+    "build_num": "0001",
     "conda_base_dir": "/shared/anaconda3/",
     "repositories": [
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-main.git",
-        "tag": "develop",
+        "tag": "v0.1",
         "conda_env": "emit-main-test"
       },
       {
