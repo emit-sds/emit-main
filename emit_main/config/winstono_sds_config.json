@@ -39,7 +39,7 @@
       },
       {
         "url": "git@github.jpl.nasa.gov:emit/emit-l0edp.git",
-        "tag": "master",
+        "tag": "0.1",
         "conda_env": "emit-main-dev"
       },
       {
@@ -55,7 +55,7 @@
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l1b.git",
         "tag": "develop",
-        "conda_env": "emit-sds-l1b-dev"
+        "conda_env": "emit-main-dev"
       },
       {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l2a.git",
@@ -64,7 +64,7 @@
       },
       {
         "url": "https://github.com/isofit/isofit.git",
-        "tag": "v2.6.0",
+        "tag": "v2.7.0",
         "conda_env": "emit-main-dev"
       },
       {

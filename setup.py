@@ -26,12 +26,12 @@ setuptools.setup(
     ],
     python_requires=">=3",
     install_requires=[
-        "gdal==2.3.3",
-        "luigi==2.8.10",
-        "pymongo==3.9.0",
-        "spectral==0.21",
-        "pytest==6.2.1",
-        "pytest-cov==2.10.1",
-        "pycodestyle==2.6.0"
+        "gdal>=3.0.2",
+        "luigi>=2.8.10",
+        "pymongo>=3.9.0",
+        "spectral>=0.21",
+        "pytest>=6.2.1",
+        "pytest-cov>=2.10.1",
+        "pycodestyle>=2.6.0"
     ]
 )
