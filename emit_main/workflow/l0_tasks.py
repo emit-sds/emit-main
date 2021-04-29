@@ -4,6 +4,7 @@ This code contains tasks for executing EMIT Level 0 PGEs and helper utilities.
 Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
+import csv
 import datetime
 import glob
 import logging
@@ -111,3 +112,56 @@ class L0StripHOSC(SlurmJobTask):
             }
         }
         dm.insert_stream_log_entry(stream.hosc_name, log_entry)
+
+
+class L0ProcessObservationsProduct(SlurmJobTask):
+    """
+    Reads planning product and inserts/updates acquisitions in the DB
+    """
+
+    config_path = luigi.Parameter()
+
+    task_namespace = "emit"
+
+    def requires(self):
+
+        logger.debug(self.task_family + " requires")
+        return None
+
+    def output(self):
+
+        logger.debug(self.task_family + " output")
+        return None
+
+    def work(self):
+
+        logger.debug(self.task_family + " work")
+        wm = WorkflowManager(config_path=self.config_path)
+        obs_paths = glob.glob(os.path.join(wm.ingest_dir, "*csv"))
+        for observations_path in obs_paths:
+            with open(observations_path, "r") as csvfile:
+                logger.debug(f"Processing observations from file {observations_path}")
+                csvreader = csv.reader(csvfile)
+                fields = next(csvreader)
+                for row in csvreader:
+                    start_time = datetime.datetime.strptime(row[1], "%Y%m%dT%H%M%S")
+                    stop_time = datetime.datetime.strptime(row[2], "%Y%m%dT%H%M%S")
+                    acquisition_id = wm.instrument + start_time.strftime("%Y%m%dt%H%M%S")
+                    acq_meta = {
+                        "acquisition_id": acquisition_id,
+                        "build_num": wm.build_num,
+                        "processing_version": wm.processing_version,
+                        "dcid": row[0],
+                        "start_time": start_time,
+                        "stop_time": stop_time,
+                        "orbit": row[3],
+                        "scene": row[4],
+                        "dimensions": {}
+                    }
+                    dm = wm.database_manager
+                    if dm.find_acquisition_by_id(acquisition_id):
+                        dm.update_acquisition_metadata(acquisition_id, acq_meta)
+                        logger.debug(f"Updated acquisition in DB with {acq_meta}")
+                    else:
+                        dm.insert_acquisition(acq_meta)
+                        logger.debug(f"Inserted acquisition in DB with {acq_meta}")

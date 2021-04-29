@@ -29,6 +29,28 @@ class DatabaseManager:
         self.db = self.client[self.mongodb_db_name]
         return
 
+    def find_observation_by_id(self, id):
+        observations_coll = self.db.observations
+        if id.startswith(self.instrument):
+            # Find by acquisition_id
+            return observations_coll.find_one({"acquisition_id": id, "build_num": self.build_num})
+        else:
+            # Find by DCID
+            return observations_coll.find_one({"dcid": id, "build_num": self.build_num})
+
+    def insert_observation(self, metadata):
+        # We only insert observations with DCIDs
+        if self.find_observation_by_id(metadata["dcid"]) is None:
+            metadata["creation_time"] = datetime.datetime.now()
+            observations_coll = self.db.observations
+            observations_coll.insert_one(metadata)
+
+    def update_observation_metadata(self, dcid, metadata):
+        observations_coll = self.db.observations
+        query = {"dcid": dcid, "build_num": self.build_num}
+        set_value = {"$set": metadata}
+        observations_coll.update_one(query, set_value, upsert=True)
+
     def find_acquisition_by_id(self, acquisition_id):
         acquisitions_coll = self.db.acquisitions
         return acquisitions_coll.find_one({"acquisition_id": acquisition_id, "build_num": self.build_num})

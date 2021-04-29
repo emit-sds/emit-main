@@ -9,6 +9,57 @@ import datetime
 from emit_main.database.database_manager import DatabaseManager
 
 
+def test_observation_delete(config_path):
+
+    print("\nRunning test_observation_delete with config: %s" % config_path)
+
+    dm = DatabaseManager(config_path=config_path)
+
+    observations = dm.db.observations
+    observations.delete_one({"dcid": "1000", "build_num": dm.build_num})
+
+    observation = dm.find_observation_by_id("1000")
+    assert observation is None
+
+
+def test_observation_insert(config_path):
+
+    print("\nRunning test_observation_insert with config: %s" % config_path)
+
+    dm = DatabaseManager(config_path=config_path)
+
+    metadata = {
+        "dcid": "1000",
+        "build_num": dm.build_num,
+        "start_time": datetime.datetime(2020, 1, 1, 0, 0, 0),
+        "stop_time": datetime.datetime(2020, 1, 1, 0, 11, 26),
+        "orbit": "00000",
+        "scene": "000"
+    }
+    dm.insert_observation(metadata)
+    observation = dm.find_observation_by_id(metadata["dcid"])
+
+    assert observation["dcid"] == "1000"
+
+
+def test_observation_update(config_path):
+
+    print("\nRunning test_observation_update with config: %s" % config_path)
+
+    dm = DatabaseManager(config_path=config_path)
+
+    dcid = "1000"
+    acquisition_id = "emit20200101t000000"
+
+    metadata = {
+        "acquisition_id": acquisition_id
+    }
+    dm.update_observation_metadata(dcid, metadata)
+    observation = dm.find_observation_by_id(dcid)
+
+    assert observation["dcid"] == dcid and observation["acquisition_id"] == acquisition_id
+
+
 def test_acquisition_delete(config_path):
 
     print("\nRunning test_acquisition_delete with config: %s" % config_path)

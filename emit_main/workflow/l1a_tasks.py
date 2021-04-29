@@ -23,30 +23,71 @@ logger = logging.getLogger("emit-main")
 
 
 # TODO: Full implementation TBD
-class L1ADepacketize(SlurmJobTask):
+class L1AReadScienceFrames(SlurmJobTask):
     """
-    Depacketizes CCSDS packet streams
+    Depacketizes CCSDS packet stream for science data (APID 1675) and writes out frames
     :returns: Reconstituted science frames, engineering data, or BAD telemetry depending on APID
     """
 
     config_path = luigi.Parameter()
     stream_path = luigi.Parameter()
-    start_time = luigi.DateSecondParameter(default=datetime.date.today() - datetime.timedelta(7))
-    stop_time = luigi.DateSecondParameter(default=datetime.date.today())
 
     task_namespace = "emit"
 
     def requires(self):
 
-        return L0StripHOSC(apid=self.apid, start_time=self.start_time, stop_time=self.stop_time)
+        logger.debug(self.task_family + " requires")
+        return None
 
     def output(self):
 
-        return luigi.LocalTarget("depacketized_directory_by_apid")
+        logger.debug(self.task_family + " output")
+        return None
 
     def work(self):
 
-        pass
+        logger.debug(self.task_family + " work")
+        wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
+        stream = wm.stream
+        pge = wm.pges["emit-sds-l1a"]
+
+        # Build command and run
+        sds_l1a_science_packet_exe = os.path.join(pge.repo_dir, "emit_sds_l1a", "ccsds_packet.py")
+        tmp_output_dir = os.path.join(self.tmp_dir, "output")
+        cmd = ["python", sds_l1a_science_packet_exe, stream.ccsds_path, tmp_output_dir]
+        pge.run(cmd, tmp_dir=self.tmp_dir)
+
+        # Copy frames back and separate into directories.  Insert acquisition into DB for the first time.
+        # Also, attach frames to stream object in DB
+        frames = [os.path.basename(file) for file in glob.glob(os.path.join(tmp_output_dir, "*"))]
+        acquisitions = set([frame[:len("emitYYYYMMDDthhmmss")] for frame in frames])
+        logger.debug(f"Found frames {frames} and acquisitions {acquisitions}")
+
+        for acquisition_id in acquisitions:
+            # First insert acquisition in database
+            start_time_str = self.acquisition_id[len("emit"):(15 + len("emit"))]
+            start_time = datetime.datetime.strptime(start_time_str, "%Y%m%dt%H%M%S")
+            stop_time = start_time + datetime.timedelta(seconds=686)
+            acq_meta = {
+                "acquisition_id": self.acquisition_id,
+                "build_num": wm.build_num,
+                "processing_version": wm.processing_version,
+                "start_time": start_time,
+                "stop_time": stop_time,
+                "orbit": "00000",
+                "scene": "000",
+                "dimensions": {}
+            }
+            wm.database_manager.insert_acquisition(acq_meta)
+
+            wm = WorkflowManager(config_path=self.config_path, acquisition_id=acquisition_id,
+                                 stream_path=self.stream_path)
+            acq = wm.acquisition
+            frames_comp_dir = os.path.join(acq.l1a_data_dir, "frames_compressed")
+            if not os.path.exists(frames_comp_dir):
+                os.makedirs(frames_comp_dir)
+            for file in glob.glob(os.path.join(tmp_output_dir, acquisition_id + "*")):
+                shutil.copy2(file, frames_comp_dir)
 
 
 # TODO: Full implementation TBD

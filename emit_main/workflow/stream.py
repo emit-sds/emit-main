@@ -33,6 +33,7 @@ class Stream:
         self.hosc_name = None
         self.ccsds_name = None
         self.edp_name = None
+        self.frames = []
 
         # Read metadata from db
         dm = DatabaseManager(config_path)
