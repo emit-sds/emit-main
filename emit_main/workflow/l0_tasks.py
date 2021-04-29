@@ -142,7 +142,7 @@ class L0ProcessObservationsProduct(SlurmJobTask):
             with open(observations_path, "r") as csvfile:
                 logger.debug(f"Processing observations from file {observations_path}")
                 csvreader = csv.reader(csvfile)
-                fields = next(csvreader)
+                header_row = next(csvreader)
                 for row in csvreader:
                     start_time = datetime.datetime.strptime(row[1], "%Y%m%dT%H%M%S")
                     stop_time = datetime.datetime.strptime(row[2], "%Y%m%dT%H%M%S")

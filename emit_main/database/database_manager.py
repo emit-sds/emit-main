@@ -33,6 +33,10 @@ class DatabaseManager:
         acquisitions_coll = self.db.acquisitions
         return acquisitions_coll.find_one({"acquisition_id": acquisition_id, "build_num": self.build_num})
 
+    def find_acquisition_by_dcid(self, dcid):
+        acquisitions_coll = self.db.acquisitions
+        return acquisitions_coll.find_one({"dcid": dcid, "build_num": self.build_num})
+
     def insert_acquisition(self, metadata):
         if self.find_acquisition_by_id(metadata["acquisition_id"]) is None:
             metadata["creation_time"] = datetime.datetime.now()

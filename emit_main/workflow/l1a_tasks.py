@@ -60,34 +60,24 @@ class L1AReadScienceFrames(SlurmJobTask):
         # Copy frames back and separate into directories.  Insert acquisition into DB for the first time.
         # Also, attach frames to stream object in DB
         frames = [os.path.basename(file) for file in glob.glob(os.path.join(tmp_output_dir, "*"))]
-        acquisitions = set([frame[:len("emitYYYYMMDDthhmmss")] for frame in frames])
-        logger.debug(f"Found frames {frames} and acquisitions {acquisitions}")
+        dcids = set([frame.split("_")[0] for frame in frames])
+        logger.debug(f"Found frames {frames} and dcids {dcids}")
 
-        for acquisition_id in acquisitions:
-            # First insert acquisition in database
-            start_time_str = self.acquisition_id[len("emit"):(15 + len("emit"))]
-            start_time = datetime.datetime.strptime(start_time_str, "%Y%m%dt%H%M%S")
-            stop_time = start_time + datetime.timedelta(seconds=686)
-            acq_meta = {
-                "acquisition_id": self.acquisition_id,
-                "build_num": wm.build_num,
-                "processing_version": wm.processing_version,
-                "start_time": start_time,
-                "stop_time": stop_time,
-                "orbit": "00000",
-                "scene": "000",
-                "dimensions": {}
-            }
-            wm.database_manager.insert_acquisition(acq_meta)
-
-            wm = WorkflowManager(config_path=self.config_path, acquisition_id=acquisition_id,
+        dm = wm.database_manager
+        for dcid in dcids:
+            acq = dm.find_acquisition_by_dcid(dcid)
+            if acq is None:
+                raise RuntimeError(f"Unable to find acquisition in DB with dcid {dcid}")
+            wm = WorkflowManager(config_path=self.config_path, acquisition_id=acq["acquisition_id"],
                                  stream_path=self.stream_path)
             acq = wm.acquisition
             frames_comp_dir = os.path.join(acq.l1a_data_dir, "frames_compressed")
             if not os.path.exists(frames_comp_dir):
                 os.makedirs(frames_comp_dir)
-            for file in glob.glob(os.path.join(tmp_output_dir, acquisition_id + "*")):
-                shutil.copy2(file, frames_comp_dir)
+            for path in glob.glob(os.path.join(tmp_output_dir, dcid + "*")):
+                frame_num = os.path.basename(path).split("_")[1]
+                acquisition_frame_path = os.path.join(frames_comp_dir, acq.acquisition_id + "_" + frame_num)
+                shutil.copy2(path, acquisition_frame_path)
 
 
 # TODO: Full implementation TBD
