@@ -78,10 +78,17 @@ class L1AReadScienceFrames(SlurmJobTask):
             acq_frame_paths = []
             for path in glob.glob(os.path.join(tmp_output_dir, dcid + "*")):
                 frame_num = os.path.basename(path).split("_")[1]
-                acquisition_frame_path = os.path.join(frames_comp_dir, acq.acquisition_id + "_" + frame_num)
+                # acquisition_frame_path = os.path.join(frames_comp_dir, acq.acquisition_id + "_" + frame_num)
+                acquisition_frame_path = os.path.join(frames_comp_dir,
+                                                      os.path.basename(path).replace(dcid, acq.acquisition_id))
                 shutil.copy2(path, acquisition_frame_path)
                 acq_frame_paths.append(acquisition_frame_path)
-            acq.metadata["products"]["l1a"]["frames"] = acq_frame_paths
+            if "frames" in acq.metadata["products"]["l1a"]:
+                for path in acq_frame_paths:
+                    if path not in acq.metadata["products"]["l1a"]["frames"]:
+                        acq.metadata["products"]["l1a"]["frames"] += [path]
+            else:
+                acq.metadata["products"]["l1a"]["frames"] = acq_frame_paths
             dm.update_acquisition_metadata(acq.acquisition_id, acq.metadata)
             # Append frames to include in stream metadata
             acquisition_frames_map.append({acq.acquisition_id: acq_frame_paths})
@@ -144,7 +151,6 @@ class L1AReassembleRaw(SlurmJobTask):
 
     config_path = luigi.Parameter()
     acquisition_id = luigi.Parameter()
-#    frames_dir = luigi.Parameter()
 
     task_namespace = "emit"
 
