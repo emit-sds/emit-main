@@ -114,7 +114,7 @@ class L0StripHOSC(SlurmJobTask):
         dm.insert_stream_log_entry(stream.hosc_name, log_entry)
 
 
-class L0ProcessObservationsProduct(SlurmJobTask):
+class L0ProcessPlanningProduct(SlurmJobTask):
     """
     Reads planning product and inserts/updates acquisitions in the DB
     """
@@ -137,28 +137,29 @@ class L0ProcessObservationsProduct(SlurmJobTask):
 
         logger.debug(self.task_family + " work")
         wm = WorkflowManager(config_path=self.config_path)
-        obs_paths = glob.glob(os.path.join(wm.ingest_dir, "*csv"))
-        for observations_path in obs_paths:
-            with open(observations_path, "r") as csvfile:
-                logger.debug(f"Processing observations from file {observations_path}")
+        dm = wm.database_manager
+        planning_prod_paths = glob.glob(os.path.join(wm.ingest_dir, "*csv"))
+        for planning_prod_path in planning_prod_paths:
+            with open(planning_prod_path, "r") as csvfile:
+                logger.debug(f"Processing planned observations from file {planning_prod_path}")
                 csvreader = csv.reader(csvfile)
                 header_row = next(csvreader)
                 for row in csvreader:
                     start_time = datetime.datetime.strptime(row[1], "%Y%m%dT%H%M%S")
                     stop_time = datetime.datetime.strptime(row[2], "%Y%m%dT%H%M%S")
                     acquisition_id = wm.instrument + start_time.strftime("%Y%m%dt%H%M%S")
-                    acq_meta = {
-                        "acquisition_id": acquisition_id,
-                        "build_num": wm.build_num,
-                        "processing_version": wm.processing_version,
-                        "dcid": row[0],
-                        "start_time": start_time,
-                        "stop_time": stop_time,
-                        "orbit": row[3],
-                        "scene": row[4],
-                        "dimensions": {}
-                    }
-                    dm = wm.database_manager
+                    acq_meta = dm.find_acquisition_by_id(acquisition_id)
+                    if acq_meta is None:
+                        acq_meta = {}
+                    acq_meta["acquisition_id"] = acquisition_id
+                    acq_meta["build_num"] = wm.build_num
+                    acq_meta["processing_version"] = wm.processing_version
+                    acq_meta["dcid"] = row[0]
+                    acq_meta["start_time"] = start_time
+                    acq_meta["stop_time"] = stop_time
+                    acq_meta["orbit"] = row[3]
+                    acq_meta["scene"] = row[4]
+
                     if dm.find_acquisition_by_id(acquisition_id):
                         dm.update_acquisition_metadata(acquisition_id, acq_meta)
                         logger.debug(f"Updated acquisition in DB with {acq_meta}")

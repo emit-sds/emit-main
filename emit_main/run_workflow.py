@@ -24,7 +24,7 @@ logger = logging.getLogger("emit-main")
 
 
 def parse_args():
-    product_choices = ["l0hosc", "l0obs", "l1aeng", "l1asci", "l1araw", "l1bcal", "l2arefl", "l2amask", "l2babun"]
+    product_choices = ["l0hosc", "l0plan", "l1aeng", "l1asci", "l1araw", "l1bcal", "l2arefl", "l2amask", "l2babun"]
     parser = argparse.ArgumentParser()
     parser.add_argument("-a", "--acquisition_id", default="",
                         help="Acquisition ID")
@@ -73,7 +73,7 @@ def get_tasks_from_args(args):
 
     prod_task_map = {
         "l0hosc": L0StripHOSC(**stream_kwargs),
-        "l0obs": L0ProcessObservationsProduct(config_path=args.config_path),
+        "l0plan": L0ProcessPlanningProduct(config_path=args.config_path),
         "l1aeng": L1AReformatEDP(**stream_kwargs),
         "l1asci": L1AReadScienceFrames(**stream_kwargs),
         "l1araw": L1AReassembleRaw(**acquisition_kwargs),

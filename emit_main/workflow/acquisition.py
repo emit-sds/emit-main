@@ -35,8 +35,8 @@ class Acquisition:
         # TODO: Define and initialize acquisition metadata
         # TODO: What to do if entry doesn't exist yet?
         dm = DatabaseManager(config_path)
-        acquisition_metadata = dm.find_acquisition_by_id(self.acquisition_id)
-        self.__dict__.update(acquisition_metadata)
+        self.acquisition_metadata = dm.find_acquisition_by_id(self.acquisition_id)
+        self.__dict__.update(self.acquisition_metadata)
 
         # Create base directories and add to list to create directories later
         self.dirs = []
