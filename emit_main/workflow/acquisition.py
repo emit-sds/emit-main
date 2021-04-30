@@ -35,8 +35,9 @@ class Acquisition:
         # TODO: Define and initialize acquisition metadata
         # TODO: What to do if entry doesn't exist yet?
         dm = DatabaseManager(config_path)
-        self.acquisition_metadata = dm.find_acquisition_by_id(self.acquisition_id)
-        self.__dict__.update(self.acquisition_metadata)
+        self.metadata = dm.find_acquisition_by_id(self.acquisition_id)
+        self._initialize_metadata()
+        self.__dict__.update(self.metadata)
 
         # Create base directories and add to list to create directories later
         self.dirs = []
@@ -66,6 +67,23 @@ class Acquisition:
                     uid = pwd.getpwnam(pwd.getpwuid(os.getuid())[0]).pw_uid
                     gid = grp.getgrnam(self.instrument + "-" + self.environment).gr_gid
                     os.chown(d, uid, gid)
+
+    def _initialize_metadata(self):
+        # Insert some placeholder fields so that we don't get missing keys on updates
+        if "processing_log" not in self.metadata:
+            self.metadata["processing_log"] = []
+        if "products" not in self.metadata:
+            self.metadata["products"] = {}
+        if "l1a" not in self.metadata["products"]:
+            self.metadata["products"]["l1a"] = {}
+        if "l1b" not in self.metadata["products"]:
+            self.metadata["products"]["l1b"] = {}
+        if "l2a" not in self.metadata["products"]:
+            self.metadata["products"]["l2a"] = {}
+        if "l2b" not in self.metadata["products"]:
+            self.metadata["products"]["l2b"] = {}
+        if "l3" not in self.metadata["products"]:
+            self.metadata["products"]["l3"] = {}
 
     def _build_acquisition_paths(self):
         product_map = {

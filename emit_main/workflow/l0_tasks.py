@@ -159,6 +159,15 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                     acq_meta["stop_time"] = stop_time
                     acq_meta["orbit"] = row[3]
                     acq_meta["scene"] = row[4]
+                    log_entry = {
+                        "task": self.task_family,
+                        "log_timestamp": datetime.datetime.now(),
+                        "completion_status": "SUCCESS"
+                    }
+                    if "processing_log" in acq_meta:
+                        acq_meta["processing_log"] += [log_entry]
+                    else:
+                        acq_meta["processing_log"] = [log_entry]
 
                     if dm.find_acquisition_by_id(acquisition_id):
                         dm.update_acquisition_metadata(acquisition_id, acq_meta)

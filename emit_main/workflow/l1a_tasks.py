@@ -48,6 +48,7 @@ class L1AReadScienceFrames(SlurmJobTask):
 
         logger.debug(self.task_family + " work")
         wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
+        dm = wm.database_manager
         stream = wm.stream
         pge = wm.pges["emit-sds-l1a"]
 
@@ -57,13 +58,13 @@ class L1AReadScienceFrames(SlurmJobTask):
         cmd = ["python", sds_l1a_science_packet_exe, stream.ccsds_path, tmp_output_dir]
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
-        # Copy frames back and separate into directories.  Insert acquisition into DB for the first time.
-        # Also, attach frames to stream object in DB
+        # Copy frames back and separate into directories.
+        # Also, attach stream files to acquisition object in DB and add frames as well
         frames = [os.path.basename(file) for file in glob.glob(os.path.join(tmp_output_dir, "*"))]
         dcids = set([frame.split("_")[0] for frame in frames])
         logger.debug(f"Found frames {frames} and dcids {dcids}")
-
-        dm = wm.database_manager
+        acquisition_frames_map = []
+        output_frame_paths = []
         for dcid in dcids:
             acq = dm.find_acquisition_by_dcid(dcid)
             if acq is None:
@@ -74,10 +75,37 @@ class L1AReadScienceFrames(SlurmJobTask):
             frames_comp_dir = os.path.join(acq.l1a_data_dir, "frames_compressed")
             if not os.path.exists(frames_comp_dir):
                 os.makedirs(frames_comp_dir)
+            acq_frame_paths = []
             for path in glob.glob(os.path.join(tmp_output_dir, dcid + "*")):
                 frame_num = os.path.basename(path).split("_")[1]
                 acquisition_frame_path = os.path.join(frames_comp_dir, acq.acquisition_id + "_" + frame_num)
                 shutil.copy2(path, acquisition_frame_path)
+                acq_frame_paths.append(acquisition_frame_path)
+            acq.metadata["products"]["l1a"]["frames"] = acq_frame_paths
+            dm.update_acquisition_metadata(acq.acquisition_id, acq.metadata)
+            # Append frames to include in stream metadata
+            acquisition_frames_map.append({acq.acquisition_id: acq_frame_paths})
+            output_frame_paths += acq_frame_paths
+
+        doc_version = "EMIT IOS SDS ICD JPL-D 104239, Initial"
+        log_entry = {
+            "task": self.task_family,
+            "pge_name": pge.repo_url,
+            "pge_version": pge.version_tag,
+            "pge_input_files": {
+                "ccsds_path": stream.ccsds_path,
+            },
+            "pge_run_command": " ".join(cmd),
+            "documentation_version": doc_version,
+            "log_timestamp": datetime.datetime.now(),
+            "completion_status": "SUCCESS",
+            "output": {
+                "frame_paths": output_frame_paths
+            }
+        }
+        stream.metadata["processing_log"] += [log_entry]
+        stream.metadata["acquisition_frames"] = acquisition_frames_map
+        dm.update_stream_metadata(stream.ccsds_name, stream.metadata)
 
 
 # TODO: Full implementation TBD
