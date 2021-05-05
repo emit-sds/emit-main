@@ -148,26 +148,16 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                     start_time = datetime.datetime.strptime(row[1], "%Y%m%dT%H%M%S")
                     stop_time = datetime.datetime.strptime(row[2], "%Y%m%dT%H%M%S")
                     acquisition_id = wm.instrument + start_time.strftime("%Y%m%dt%H%M%S")
-                    acq_meta = dm.find_acquisition_by_id(acquisition_id)
-                    if acq_meta is None:
-                        acq_meta = {}
-                    acq_meta["acquisition_id"] = acquisition_id
-                    acq_meta["build_num"] = wm.build_num
-                    acq_meta["processing_version"] = wm.processing_version
-                    acq_meta["dcid"] = row[0]
-                    acq_meta["start_time"] = start_time
-                    acq_meta["stop_time"] = stop_time
-                    acq_meta["orbit"] = row[3]
-                    acq_meta["scene"] = row[4]
-                    log_entry = {
-                        "task": self.task_family,
-                        "log_timestamp": datetime.datetime.now(),
-                        "completion_status": "SUCCESS"
+                    acq_meta = {
+                        "acquisition_id": acquisition_id,
+                        "build_num": wm.build_num,
+                        "processing_version": wm.processing_version,
+                        "dcid": row[0],
+                        "start_time": start_time,
+                        "stop_time": stop_time,
+                        "orbit": row[3],
+                        "scene": row[4]
                     }
-                    if "processing_log" in acq_meta:
-                        acq_meta["processing_log"] += [log_entry]
-                    else:
-                        acq_meta["processing_log"] = [log_entry]
 
                     if dm.find_acquisition_by_id(acquisition_id):
                         dm.update_acquisition_metadata(acquisition_id, acq_meta)
@@ -175,3 +165,10 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                     else:
                         dm.insert_acquisition(acq_meta)
                         logger.debug(f"Inserted acquisition in DB with {acq_meta}")
+                    # Add processing log entry
+                    log_entry = {
+                        "task": self.task_family,
+                        "log_timestamp": datetime.datetime.now(),
+                        "completion_status": "SUCCESS"
+                    }
+                    dm.insert_acquisition_log_entry(acquisition_id, log_entry)

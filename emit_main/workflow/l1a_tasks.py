@@ -83,16 +83,24 @@ class L1AReadScienceFrames(SlurmJobTask):
                                                       os.path.basename(path).replace(dcid, acq.acquisition_id))
                 shutil.copy2(path, acquisition_frame_path)
                 acq_frame_paths.append(acquisition_frame_path)
-            if "frames" in acq.metadata["products"]["l1a"]:
+            # Add frame paths to acquisition metadata
+            if "frames" in acq.metadata["products"]["l1a"] and acq.metadata["products"]["l1a"]["frames"] is not None:
                 for path in acq_frame_paths:
                     if path not in acq.metadata["products"]["l1a"]["frames"]:
                         acq.metadata["products"]["l1a"]["frames"] += [path]
             else:
                 acq.metadata["products"]["l1a"]["frames"] = acq_frame_paths
-            dm.update_acquisition_metadata(acq.acquisition_id, acq.metadata)
+            acq.metadata["products"]["l1a"]["frames"].sort()
+            dm.update_acquisition_metadata(acq.acquisition_id,
+                                           {"products.l1a.frames": acq.metadata["products"]["l1a"]["frames"]})
+
             # Append frames to include in stream metadata
+            acq_frame_paths.sort()
             acquisition_frames_map.append({acq.acquisition_id: acq_frame_paths})
+            # Keep track of all output paths for log entry
             output_frame_paths += acq_frame_paths
+
+        dm.update_stream_metadata(stream.ccsds_name, {"acquisition_frames": acquisition_frames_map})
 
         doc_version = "EMIT IOS SDS ICD JPL-D 104239, Initial"
         log_entry = {
@@ -110,9 +118,7 @@ class L1AReadScienceFrames(SlurmJobTask):
                 "frame_paths": output_frame_paths
             }
         }
-        stream.metadata["processing_log"] += [log_entry]
-        stream.metadata["acquisition_frames"] = acquisition_frames_map
-        dm.update_stream_metadata(stream.ccsds_name, stream.metadata)
+        dm.insert_stream_log_entry(stream.ccsds_name, log_entry)
 
 
 # TODO: Full implementation TBD
