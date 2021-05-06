@@ -112,31 +112,25 @@ def task_failure(task, e):
 
     # Update DB processing_log with failure message
     if task.task_family == "emit.L1AReassembleRaw":
-        wm = WorkflowManager(task.config_path, task.acquisition_id)
+        wm = WorkflowManager(config_path=task.config_path, acquisition_id=task.acquisition_id)
         acq = wm.acquisition
-        pge = wm.pges["emit-sds-l1a"]
         log_entry = {
             "task": task.task_family,
-            "pge_name": pge.repo_url,
-            "pge_version": pge.version_tag,
-            "pge_input_files": {
-                "file1_key": "file1_value",
-                "file2_key": "file2_value",
-            },
-            "pge_run_command": "python l1a_run.py args",
             "log_timestamp": datetime.datetime.now(),
             "completion_status": "FAILURE",
             "error_message": str(e)
         }
-        acq.save_processing_log_entry(log_entry)
+        dm = wm.database_manager
+        dm.insert_acquisition_log_entry(task.acquisition_id, log_entry)
     if task.task_family in ("emit.L0StripHOSC", "emit.L1AReformatEDP"):
+        wm = WorkflowManager(config_path=task.config_path, stream_path=task.stream_path)
         log_entry = {
             "task": task.task_family,
             "log_timestamp": datetime.datetime.now(),
             "completion_status": "FAILURE",
             "error_message": str(e)
         }
-        dm = WorkflowManager(task.config_path, task.acquisition_id).database_manager
+        dm = wm.database_manager
         dm.insert_stream_log_entry(os.path.basename(task.stream_path), log_entry)
 
 

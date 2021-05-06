@@ -4,6 +4,7 @@ This code contains the Acquisition class that manages acquisitions and their met
 Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
+import glob
 import grp
 import json
 import logging
@@ -134,3 +135,31 @@ class Acquisition:
                     prod_path = os.path.join(self.acquisition_id_dir, level, prod_name)
                     paths[prod_key] = prod_path
         return paths
+
+    def has_complete_set_of_frames(self):
+        frames_dir = os.path.join(self.l1a_data_dir, "frames_compressed")
+        frames = [os.path.basename(frame) for frame in glob.glob(os.path.join(frames_dir, "*"))]
+        frames.sort()
+        # Check incrementing frame num
+        frame_nums = [int(frame.split("_")[1]) for frame in frames]
+        if frame_nums != list(range(frame_nums[0], frame_nums[0] + len(frame_nums))):
+            logger.debug("Set of frames is not sequential!")
+            return False
+        # Check that first frame has status 1 or 5
+        if frames[0].split("_")[2] not in ("1", "5"):
+            logger.debug("Set of frames does not begin with status 1 or 5!")
+            return False
+        # Check that last frame has status 2
+        if frames[-1].split("_")[2] not in ("2"):
+            logger.debug("Set of frames does not end with status 2!")
+            return False
+        # Check that all in between frames have status 0 or 4
+        for frame in frames[1:-1]:
+            if frame.split("_")[2] not in ("0", "4"):
+                logger.debug("Middle frame (not first or last) does not have status 0 or 4!")
+                return False
+        return True
+
+
+
+

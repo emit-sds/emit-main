@@ -22,7 +22,6 @@ from emit_main.workflow.slurm import SlurmJobTask
 logger = logging.getLogger("emit-main")
 
 
-# TODO: Full implementation TBD
 class L1AReadScienceFrames(SlurmJobTask):
     """
     Depacketizes CCSDS packet stream for science data (APID 1675) and writes out frames
@@ -78,7 +77,6 @@ class L1AReadScienceFrames(SlurmJobTask):
             acq_frame_paths = []
             for path in glob.glob(os.path.join(tmp_output_dir, dcid + "*")):
                 frame_num = os.path.basename(path).split("_")[1]
-                # acquisition_frame_path = os.path.join(frames_comp_dir, acq.acquisition_id + "_" + frame_num)
                 acquisition_frame_path = os.path.join(frames_comp_dir,
                                                       os.path.basename(path).replace(dcid, acq.acquisition_id))
                 shutil.copy2(path, acquisition_frame_path)
@@ -148,7 +146,6 @@ class L1APrepFrames(SlurmJobTask):
         pass
 
 
-# TODO: Full implementation TBD
 class L1AReassembleRaw(SlurmJobTask):
     """
     Decompresses science frames and assembles them into time-ordered acquisitions
@@ -161,43 +158,8 @@ class L1AReassembleRaw(SlurmJobTask):
     task_namespace = "emit"
 
     def requires(self):
-
-        # TODO: This should check that a folder exists with frames in it and the work function should create the
-        # TODO: acquisition in the DB.  How do we trigger this step?
-
+        # This task requires a complete set of frames
         logger.debug(self.task_family + " requires")
-        # This task must be triggered once a complete set of frames
-
-        # FIXME: Acquisition insertion should be happening in previous step.  This is temporary for testing.
-        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        start_time_str = self.acquisition_id[len("emit"):(15 + len("emit"))]
-        start_time = datetime.datetime.strptime(start_time_str, "%Y%m%dt%H%M%S")
-        stop_time = start_time + datetime.timedelta(seconds=686)
-        acq_meta = {
-            "acquisition_id": self.acquisition_id,
-            "build_num": wm.build_num,
-            "processing_version": wm.processing_version,
-            "start_time": start_time,
-            "stop_time": stop_time,
-            "orbit": "00000",
-            "scene": "000",
-            "dimensions": {}
-        }
-        wm.database_manager.insert_acquisition(acq_meta)
-
-        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        acq = wm.acquisition
-
-        log_entry = {
-            "task": self.task_family,
-            "completion_status": "SUCCESS",
-            "output": {
-                "l1a_raw_path": acq.raw_img_path,
-                "l1a_raw_hdr_path:": acq.raw_hdr_path
-            }
-        }
-
-        wm.database_manager.insert_acquisition_log_entry(self.acquisition_id, log_entry)
 
         return None
 
@@ -213,7 +175,27 @@ class L1AReassembleRaw(SlurmJobTask):
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
+        if acq.has_complete_set_of_frames() is False:
+            raise RuntimeError(f"Unable to run {self.task_family} on {self.acquisition_id} due to missing frames in " 
+                               f"{acq.l1a_data_dir}")
+
+        # First decompress
         pge = wm.pges["emit-sds-l1a"]
+        tmp_output_dir = os.path.join(self.tmp_dir, "output")
+        os.makedirs(tmp_output_dir)
+
+        reassemble_raw_pge = os.path.join(pge.repo_dir, "run_reassemble_raw.py")
+        comp_frames_dir = os.path.join(acq.l1a_data_dir, "frames_compressed")
+        flex_pge = wm.pges["EMIT_FLEX_codec"]
+        flex_codec_exe = os.path.join(flex_pge.repo_dir, "flexcodec")
+        constants_path = os.path.join(wm.environment_dir, "test_data", "constants.txt")
+        init_data_path = os.path.join(wm.environment_dir, "test_data", "init_data.bin")
+        tmp_log_path = os.path.join(self.tmp_dir, "reassemble_raw_pge.log")
+        cmd = ["python", reassemble_raw_pge, comp_frames_dir, flex_codec_exe, constants_path, init_data_path,
+               "--out_dir", tmp_output_dir, "--level", "DEBUG", "--log_path", tmp_log_path]
+        pge.run(cmd, tmp_dir=self.tmp_dir)
+
+        cmt = """pge = wm.pges["emit-sds-l1a"]
 
         # Placeholder: PGE writes to tmp folder
         tmp_output_dir = os.path.join(self.tmp_dir, "output")
@@ -290,7 +272,7 @@ class L1AReassembleRaw(SlurmJobTask):
             }
         }
 
-        dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
+        dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)"""
 
 
 # TODO: Full implementation TBD
