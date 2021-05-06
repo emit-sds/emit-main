@@ -186,78 +186,65 @@ class L1AReassembleRaw(SlurmJobTask):
         constants_path = os.path.join(wm.environment_dir, "test_data", "constants.txt")
         init_data_path = os.path.join(wm.environment_dir, "test_data", "init_data.bin")
         tmp_log_path = os.path.join(self.tmp_dir, "reassemble_raw_pge.log")
+        input_files = {
+            "compressed_frames_dir": acq.comp_frames_dir,
+            "flexcodec_exe_path": flex_codec_exe,
+            "constants_path": constants_path,
+            "init_data_path": init_data_path
+        }
         cmd = ["python", reassemble_raw_pge, acq.comp_frames_dir, flex_codec_exe, constants_path, init_data_path,
                "--out_dir", tmp_output_dir, "--level", "DEBUG", "--log_path", tmp_log_path]
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
-        cmt = """pge = wm.pges["emit-sds-l1a"]
+        # Copy raw file and log back to l1a data dir
+        tmp_raw_path = os.path.join(tmp_output_dir, acq.acquisition_id + "_raw.img")
+        tmp_raw_hdr_path = tmp_raw_path.replace(".img", ".hdr")
+        shutil.copy2(tmp_raw_path, acq.raw_img_path)
+        shutil.copy2(tmp_raw_hdr_path, acq.raw_hdr_path)
+        shutil.copy2(tmp_log_path, os.path.join(acq.l1a_data_dir, os.path.basename(tmp_log_path)))
 
-        # Placeholder: PGE writes to tmp folder
-        tmp_output_dir = os.path.join(self.tmp_dir, "output")
-        os.makedirs(tmp_output_dir)
-        # Use test data raw files for now
-        tmp_raw_img_path = os.path.join(tmp_output_dir, os.path.basename(acq.raw_img_path))
-        tmp_raw_hdr_path = os.path.join(tmp_output_dir, os.path.basename(acq.raw_hdr_path))
-        test_data_raw_img_path = os.path.join(wm.data_dir, "test_data", os.path.basename(acq.raw_img_path))
-        test_data_raw_hdr_path = os.path.join(wm.data_dir, "test_data", os.path.basename(acq.raw_hdr_path))
-        shutil.copy2(test_data_raw_img_path, tmp_raw_img_path)
-        shutil.copy2(test_data_raw_hdr_path, tmp_raw_hdr_path)
-
-        # Placeholder: copy tmp folder back to l1a dir and rename?
-        proc_dir = os.path.join(acq.l1a_data_dir, os.path.basename(acq.raw_img_path.replace(".img", "_proc")))
-        if os.path.exists(proc_dir):
-            shutil.rmtree(proc_dir)
-        shutil.copytree(self.tmp_dir, proc_dir)
-
-        # Placeholder: move output files to l1a dir
-        for file in glob.glob(os.path.join(proc_dir, "output", "*")):
-            shutil.move(file, acq.l1a_data_dir)
-
-        # Placeholder: update hdr files
+        # Update hdr files
+        input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
         doc_version = "EMIT SDS L1A JPL-D 104186, Initial"
         hdr = envi.read_envi_header(acq.raw_hdr_path)
-        hdr["description"] = "EMIT L1A raw instrument data (units: DN)"
-        hdr["emit acquisition start time"] = datetime.datetime(2020, 1, 1, 0, 0, 0).strftime("%Y-%m-%dT%H:%M:%S")
-        hdr["emit acquisition stop time"] = datetime.datetime(2020, 1, 1, 0, 11, 26).strftime("%Y-%m-%dT%H:%M:%S")
         hdr["emit pge name"] = pge.repo_url
         hdr["emit pge version"] = pge.version_tag
-        hdr["emit pge input files"] = [
-            "file1_key=file1_value",
-            "file2_key=file2_value"
-        ]
-        hdr["emit pge run command"] = "python l1a_run.py args"
+        hdr["emit pge input files"] = input_files_arr
+        hdr["emit pge run command"] = " ".join(cmd)
         hdr["emit software build version"] = wm.build_num
         hdr["emit documentation version"] = doc_version
+        # TODO: Get creation time separately for each file type?
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.raw_img_path))
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S")
         hdr["emit data product version"] = wm.processing_version
-
         envi.write_envi_header(acq.raw_hdr_path, hdr)
 
-        # Placeholder: PGE writes metadata to db
-        dimensions = {
-            "l1a": {
+        # PGE writes metadata to db
+        dm = wm.database_manager
+
+        # TODO: Add products
+        product_dict = {
+            "path": acq.raw_img_path,
+            "dimensions": {
                 "lines": hdr["lines"],
                 "bands": hdr["bands"],
-                "samples": hdr["samples"],
-            }
+                "samples": hdr["samples"]
+            },
+            "checksum": {
+                "value": "",
+                "algorithm": ""
+            },
+            "geometry": {}
         }
-        metadata = {
-            "dimensions": dimensions,
-            "day_night_flag": "day"
-        }
-        dm = wm.database_manager
-        dm.update_acquisition_metadata(self.acquisition_id, metadata)
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1a.raw": product_dict})
 
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
             "pge_version": pge.version_tag,
-            "pge_input_files": {
-                "file1_key": "file1_value",
-                "file2_key": "file2_value",
-            },
-            "pge_run_command": "python l1a_run.py args",
+            "pge_input_files": input_files,
+            "pge_run_command": " ".join(cmd),
+            "documentation_version": doc_version,
             "product_creation_time": creation_time,
             "log_timestamp": datetime.datetime.now(),
             "completion_status": "SUCCESS",
@@ -267,8 +254,7 @@ class L1AReassembleRaw(SlurmJobTask):
             }
         }
 
-        dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)"""
-
+        dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
 
 # TODO: Full implementation TBD
 class L1APEP(SlurmJobTask):
@@ -294,7 +280,6 @@ class L1APEP(SlurmJobTask):
         pass
 
 
-# TODO: Full implementation TBD
 class L1AReformatEDP(SlurmJobTask):
     """
     Creates reformatted engineering data product from CCSDS packet stream
