@@ -71,13 +71,10 @@ class L1AReadScienceFrames(SlurmJobTask):
             wm = WorkflowManager(config_path=self.config_path, acquisition_id=acq["acquisition_id"],
                                  stream_path=self.stream_path)
             acq = wm.acquisition
-            frames_comp_dir = os.path.join(acq.l1a_data_dir, "frames_compressed")
-            if not os.path.exists(frames_comp_dir):
-                os.makedirs(frames_comp_dir)
             acq_frame_paths = []
             for path in glob.glob(os.path.join(tmp_output_dir, dcid + "*")):
                 frame_num = os.path.basename(path).split("_")[1]
-                acquisition_frame_path = os.path.join(frames_comp_dir,
+                acquisition_frame_path = os.path.join(acq.comp_frames_dir,
                                                       os.path.basename(path).replace(dcid, acq.acquisition_id))
                 shutil.copy2(path, acquisition_frame_path)
                 acq_frame_paths.append(acquisition_frame_path)
@@ -179,19 +176,17 @@ class L1AReassembleRaw(SlurmJobTask):
             raise RuntimeError(f"Unable to run {self.task_family} on {self.acquisition_id} due to missing frames in " 
                                f"{acq.l1a_data_dir}")
 
-        # First decompress
         pge = wm.pges["emit-sds-l1a"]
         tmp_output_dir = os.path.join(self.tmp_dir, "output")
         os.makedirs(tmp_output_dir)
 
         reassemble_raw_pge = os.path.join(pge.repo_dir, "run_reassemble_raw.py")
-        comp_frames_dir = os.path.join(acq.l1a_data_dir, "frames_compressed")
         flex_pge = wm.pges["EMIT_FLEX_codec"]
         flex_codec_exe = os.path.join(flex_pge.repo_dir, "flexcodec")
         constants_path = os.path.join(wm.environment_dir, "test_data", "constants.txt")
         init_data_path = os.path.join(wm.environment_dir, "test_data", "init_data.bin")
         tmp_log_path = os.path.join(self.tmp_dir, "reassemble_raw_pge.log")
-        cmd = ["python", reassemble_raw_pge, comp_frames_dir, flex_codec_exe, constants_path, init_data_path,
+        cmd = ["python", reassemble_raw_pge, acq.comp_frames_dir, flex_codec_exe, constants_path, init_data_path,
                "--out_dir", tmp_output_dir, "--level", "DEBUG", "--log_path", tmp_log_path]
         pge.run(cmd, tmp_dir=self.tmp_dir)
 

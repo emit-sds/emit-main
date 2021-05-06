@@ -59,6 +59,10 @@ class Acquisition:
 
         self.__dict__.update(self._build_acquisition_paths())
 
+        # Add sub-dirs
+        self.comp_frames_dir = os.path.join(self.l1a_data_dir, f"compressed_frames_b{self.build_num}")
+        self.dirs.append(self.comp_frames_dir)
+
         # Make directories if they don't exist
         for d in self.dirs:
             if not os.path.exists(d):
@@ -137,8 +141,7 @@ class Acquisition:
         return paths
 
     def has_complete_set_of_frames(self):
-        frames_dir = os.path.join(self.l1a_data_dir, "frames_compressed")
-        frames = [os.path.basename(frame) for frame in glob.glob(os.path.join(frames_dir, "*"))]
+        frames = [os.path.basename(frame) for frame in glob.glob(os.path.join(self.comp_frames_dir, "*"))]
         frames.sort()
         # Check incrementing frame num
         frame_nums = [int(frame.split("_")[1]) for frame in frames]
