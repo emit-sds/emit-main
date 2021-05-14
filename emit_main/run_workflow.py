@@ -35,6 +35,8 @@ def parse_args():
     parser.add_argument("-p", "--products",
                         help=("Comma delimited list of products to create (no spaces). \
                         Choose from " + ", ".join(product_choices)))
+    parser.add_argument("--ignore_missing", action="store_true",
+                        help="Ignore missing frames when reasssembling raw cube")
     parser.add_argument("-w", "--workers", default=2,
                         help="Number of luigi workers")
     parser.add_argument("--build_env", action="store_true",
@@ -76,7 +78,7 @@ def get_tasks_from_args(args):
         "l0plan": L0ProcessPlanningProduct(config_path=args.config_path),
         "l1aeng": L1AReformatEDP(**stream_kwargs),
         "l1asci": L1AReadScienceFrames(**stream_kwargs),
-        "l1araw": L1AReassembleRaw(**acquisition_kwargs),
+        "l1araw": L1AReassembleRaw(ignore_missing=args.ignore_missing, **acquisition_kwargs),
         "l1bcal": L1BCalibrate(**acquisition_kwargs),
         "l2arefl": L2AReflectance(**acquisition_kwargs),
         "l2amask": L2AMask(**acquisition_kwargs),

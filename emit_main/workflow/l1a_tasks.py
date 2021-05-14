@@ -60,9 +60,10 @@ class L1AReadScienceFrames(SlurmJobTask):
         # Copy frames back and separate into directories.
         # Also, attach stream files to acquisition object in DB and add frames as well
         frames = [os.path.basename(file) for file in glob.glob(os.path.join(tmp_output_dir, "*"))]
+        frames.sort()
         dcids = set([frame.split("_")[0] for frame in frames])
         logger.debug(f"Found frames {frames} and dcids {dcids}")
-        acquisition_frames_map = []
+        acquisition_frames_map = {}
         output_frame_paths = []
         for dcid in dcids:
             acq = dm.find_acquisition_by_dcid(dcid)
@@ -73,9 +74,10 @@ class L1AReadScienceFrames(SlurmJobTask):
             acq = wm.acquisition
             acq_frame_paths = []
             for path in glob.glob(os.path.join(tmp_output_dir, dcid + "*")):
-                frame_num = os.path.basename(path).split("_")[1]
-                acquisition_frame_path = os.path.join(acq.comp_frames_dir,
-                                                      os.path.basename(path).replace(dcid, acq.acquisition_id))
+                # Replace dcid with acquisition id on copy
+                fname_tokens = os.path.basename(path).split("_")
+                fname_tokens[0] = acq.acquisition_id
+                acquisition_frame_path = os.path.join(acq.comp_frames_dir, "_".join(fname_tokens))
                 shutil.copy2(path, acquisition_frame_path)
                 acq_frame_paths.append(acquisition_frame_path)
             # Add frame paths to acquisition metadata
@@ -91,7 +93,7 @@ class L1AReadScienceFrames(SlurmJobTask):
 
             # Append frames to include in stream metadata
             acq_frame_paths.sort()
-            acquisition_frames_map.append({acq.acquisition_id: acq_frame_paths})
+            acquisition_frames_map.update({acq.acquisition_id: acq_frame_paths})
             # Keep track of all output paths for log entry
             output_frame_paths += acq_frame_paths
 
@@ -151,6 +153,7 @@ class L1AReassembleRaw(SlurmJobTask):
 
     config_path = luigi.Parameter()
     acquisition_id = luigi.Parameter()
+    ignore_missing = luigi.Parameter()
 
     task_namespace = "emit"
 
@@ -172,7 +175,7 @@ class L1AReassembleRaw(SlurmJobTask):
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
-        if acq.has_complete_set_of_frames() is False:
+        if self.ignore_missing is False and acq.has_complete_set_of_frames() is False:
             raise RuntimeError(f"Unable to run {self.task_family} on {self.acquisition_id} due to missing frames in " 
                                f"{acq.l1a_data_dir}")
 
@@ -199,6 +202,7 @@ class L1AReassembleRaw(SlurmJobTask):
         # Copy raw file and log back to l1a data dir
         tmp_raw_path = os.path.join(tmp_output_dir, acq.acquisition_id + "_raw.img")
         tmp_raw_hdr_path = tmp_raw_path.replace(".img", ".hdr")
+        # TODO: Rename to "raw" or "dark"
         shutil.copy2(tmp_raw_path, acq.raw_img_path)
         shutil.copy2(tmp_raw_hdr_path, acq.raw_hdr_path)
         shutil.copy2(tmp_log_path, os.path.join(acq.l1a_data_dir, os.path.basename(tmp_log_path)))
