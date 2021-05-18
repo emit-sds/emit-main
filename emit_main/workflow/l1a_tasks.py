@@ -22,7 +22,7 @@ from emit_main.workflow.slurm import SlurmJobTask
 logger = logging.getLogger("emit-main")
 
 
-class L1AReadScienceFrames(SlurmJobTask):
+class L1ADepacketizeScienceFrames(SlurmJobTask):
     """
     Depacketizes CCSDS packet stream for science data (APID 1675) and writes out frames
     :returns: Reconstituted science frames, engineering data, or BAD telemetry depending on APID
@@ -52,9 +52,13 @@ class L1AReadScienceFrames(SlurmJobTask):
         pge = wm.pges["emit-sds-l1a"]
 
         # Build command and run
-        sds_l1a_science_packet_exe = os.path.join(pge.repo_dir, "emit_sds_l1a", "ccsds_packet.py")
+        sds_l1a_science_packet_exe = os.path.join(pge.repo_dir, "depacketize_science_frames.py")
         tmp_output_dir = os.path.join(self.tmp_dir, "output")
-        cmd = ["python", sds_l1a_science_packet_exe, stream.ccsds_path, tmp_output_dir]
+        tmp_log_path = os.path.join(self.tmp_dir, "depacketize_science_frames_pge.log")
+        cmd = ["python", sds_l1a_science_packet_exe, stream.ccsds_path,
+               "--out_dir", tmp_output_dir,
+               "--level", "DEBUG",
+               "--log_path", tmp_log_path]
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
         # Copy frames back and separate into directories.
@@ -72,6 +76,9 @@ class L1AReadScienceFrames(SlurmJobTask):
             wm = WorkflowManager(config_path=self.config_path, acquisition_id=acq["acquisition_id"],
                                  stream_path=self.stream_path)
             acq = wm.acquisition
+            # Copy log file into the compressed frames directory
+            shutil.copy2(tmp_log_path, acq.comp_frames_dir + "_pge.log")
+            # Copy the frames
             acq_frame_paths = []
             for path in glob.glob(os.path.join(tmp_output_dir, dcid + "*")):
                 # Replace dcid with acquisition id on copy
@@ -175,6 +182,7 @@ class L1AReassembleRaw(SlurmJobTask):
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
+        # Check for missing frames before proceeding. Override with --ignore_missing arg
         if self.ignore_missing is False and acq.has_complete_set_of_frames() is False:
             raise RuntimeError(f"Unable to run {self.task_family} on {self.acquisition_id} due to missing frames in " 
                                f"{acq.l1a_data_dir}")
@@ -183,7 +191,7 @@ class L1AReassembleRaw(SlurmJobTask):
         tmp_output_dir = os.path.join(self.tmp_dir, "output")
         os.makedirs(tmp_output_dir)
 
-        reassemble_raw_pge = os.path.join(pge.repo_dir, "run_reassemble_raw.py")
+        reassemble_raw_pge = os.path.join(pge.repo_dir, "reassemble_raw_cube.py")
         flex_pge = wm.pges["EMIT_FLEX_codec"]
         flex_codec_exe = os.path.join(flex_pge.repo_dir, "flexcodec")
         constants_path = os.path.join(wm.environment_dir, "test_data", "constants.txt")
@@ -195,8 +203,13 @@ class L1AReassembleRaw(SlurmJobTask):
             "constants_path": constants_path,
             "init_data_path": init_data_path
         }
-        cmd = ["python", reassemble_raw_pge, acq.comp_frames_dir, flex_codec_exe, constants_path, init_data_path,
-               "--out_dir", tmp_output_dir, "--level", "DEBUG", "--log_path", tmp_log_path]
+        cmd = ["python", reassemble_raw_pge, acq.comp_frames_dir,
+               "--flexcodec_exe", flex_codec_exe,
+               "--constants_path", constants_path,
+               "--init_data_path", init_data_path,
+               "--out_dir", tmp_output_dir,
+               "--level", "DEBUG",
+               "--log_path", tmp_log_path]
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
         # Copy raw file and log back to l1a data dir
@@ -205,7 +218,7 @@ class L1AReassembleRaw(SlurmJobTask):
         # TODO: Rename to "raw" or "dark"
         shutil.copy2(tmp_raw_path, acq.raw_img_path)
         shutil.copy2(tmp_raw_hdr_path, acq.raw_hdr_path)
-        shutil.copy2(tmp_log_path, os.path.join(acq.l1a_data_dir, os.path.basename(tmp_log_path)))
+        shutil.copy2(tmp_log_path, acq.raw_img_path.replace(".img", "_pge.log"))
 
         # Update hdr files
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
@@ -259,6 +272,7 @@ class L1AReassembleRaw(SlurmJobTask):
         }
 
         dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
+
 
 # TODO: Full implementation TBD
 class L1APEP(SlurmJobTask):
