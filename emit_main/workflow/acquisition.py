@@ -162,7 +162,3 @@ class Acquisition:
                 logger.debug("Middle frame (not first or last) does not have status 0 or 4!")
                 return False
         return True
-
-
-
-

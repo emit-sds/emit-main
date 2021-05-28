@@ -184,7 +184,7 @@ class L1AReassembleRaw(SlurmJobTask):
         acq = wm.acquisition
         # Check for missing frames before proceeding. Override with --ignore_missing arg
         if self.ignore_missing is False and acq.has_complete_set_of_frames() is False:
-            raise RuntimeError(f"Unable to run {self.task_family} on {self.acquisition_id} due to missing frames in " 
+            raise RuntimeError(f"Unable to run {self.task_family} on {self.acquisition_id} due to missing frames in "
                                f"{acq.l1a_data_dir}")
 
         pge = wm.pges["emit-sds-l1a"]

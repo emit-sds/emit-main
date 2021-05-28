@@ -25,6 +25,7 @@ def _build_sbatch_script(tmp_dir, cmd, job_name, outfile, errfile, n_nodes, n_ta
 
     sbatch_template = """#!/bin/bash
 #SBATCH -J {job_name}
+#SBATCH --partition=emit
 #SBATCH --output={outfile}
 #SBATCH --error={errfile}
 #SBATCH -N{n_nodes}
