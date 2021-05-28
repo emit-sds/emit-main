@@ -24,7 +24,7 @@ logger = logging.getLogger("emit-main")
 
 
 def parse_args():
-    product_choices = ["l0hosc", "l1aeng", "l1araw", "l1bcal", "l2arefl", "l2amask", "l2babun"]
+    product_choices = ["l0hosc", "l0plan", "l1aeng", "l1aframe", "l1araw", "l1bcal", "l2arefl", "l2amask", "l2babun"]
     parser = argparse.ArgumentParser()
     parser.add_argument("-a", "--acquisition_id", default="",
                         help="Acquisition ID")
@@ -35,6 +35,8 @@ def parse_args():
     parser.add_argument("-p", "--products",
                         help=("Comma delimited list of products to create (no spaces). \
                         Choose from " + ", ".join(product_choices)))
+    parser.add_argument("--ignore_missing", action="store_true",
+                        help="Ignore missing frames when reasssembling raw cube")
     parser.add_argument("-w", "--workers", default=2,
                         help="Number of luigi workers")
     parser.add_argument("--build_env", action="store_true",
@@ -73,8 +75,10 @@ def get_tasks_from_args(args):
 
     prod_task_map = {
         "l0hosc": L0StripHOSC(**stream_kwargs),
+        "l0plan": L0ProcessPlanningProduct(config_path=args.config_path),
         "l1aeng": L1AReformatEDP(**stream_kwargs),
-        "l1araw": L1AReassembleRaw(**acquisition_kwargs),
+        "l1aframe": L1ADepacketizeScienceFrames(**stream_kwargs),
+        "l1araw": L1AReassembleRaw(ignore_missing=args.ignore_missing, **acquisition_kwargs),
         "l1bcal": L1BCalibrate(**acquisition_kwargs),
         "l2arefl": L2AReflectance(**acquisition_kwargs),
         "l2amask": L2AMask(**acquisition_kwargs),
@@ -110,31 +114,25 @@ def task_failure(task, e):
 
     # Update DB processing_log with failure message
     if task.task_family == "emit.L1AReassembleRaw":
-        wm = WorkflowManager(task.config_path, task.acquisition_id)
+        wm = WorkflowManager(config_path=task.config_path, acquisition_id=task.acquisition_id)
         acq = wm.acquisition
-        pge = wm.pges["emit-sds-l1a"]
         log_entry = {
             "task": task.task_family,
-            "pge_name": pge.repo_url,
-            "pge_version": pge.version_tag,
-            "pge_input_files": {
-                "file1_key": "file1_value",
-                "file2_key": "file2_value",
-            },
-            "pge_run_command": "python l1a_run.py args",
             "log_timestamp": datetime.datetime.now(),
             "completion_status": "FAILURE",
             "error_message": str(e)
         }
-        acq.save_processing_log_entry(log_entry)
+        dm = wm.database_manager
+        dm.insert_acquisition_log_entry(task.acquisition_id, log_entry)
     if task.task_family in ("emit.L0StripHOSC", "emit.L1AReformatEDP"):
+        wm = WorkflowManager(config_path=task.config_path, stream_path=task.stream_path)
         log_entry = {
             "task": task.task_family,
             "log_timestamp": datetime.datetime.now(),
             "completion_status": "FAILURE",
             "error_message": str(e)
         }
-        dm = WorkflowManager(task.config_path, task.acquisition_id).database_manager
+        dm = wm.database_manager
         dm.insert_stream_log_entry(os.path.basename(task.stream_path), log_entry)
 
 

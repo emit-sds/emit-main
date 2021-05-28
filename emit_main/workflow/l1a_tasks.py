@@ -22,31 +22,107 @@ from emit_main.workflow.slurm import SlurmJobTask
 logger = logging.getLogger("emit-main")
 
 
-# TODO: Full implementation TBD
-class L1ADepacketize(SlurmJobTask):
+class L1ADepacketizeScienceFrames(SlurmJobTask):
     """
-    Depacketizes CCSDS packet streams
+    Depacketizes CCSDS packet stream for science data (APID 1675) and writes out frames
     :returns: Reconstituted science frames, engineering data, or BAD telemetry depending on APID
     """
 
     config_path = luigi.Parameter()
     stream_path = luigi.Parameter()
-    start_time = luigi.DateSecondParameter(default=datetime.date.today() - datetime.timedelta(7))
-    stop_time = luigi.DateSecondParameter(default=datetime.date.today())
 
     task_namespace = "emit"
 
     def requires(self):
 
-        return L0StripHOSC(apid=self.apid, start_time=self.start_time, stop_time=self.stop_time)
+        logger.debug(self.task_family + " requires")
+        return None
 
     def output(self):
 
-        return luigi.LocalTarget("depacketized_directory_by_apid")
+        logger.debug(self.task_family + " output")
+        return None
 
     def work(self):
 
-        pass
+        logger.debug(self.task_family + " work")
+        wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
+        dm = wm.database_manager
+        stream = wm.stream
+        pge = wm.pges["emit-sds-l1a"]
+
+        # Build command and run
+        sds_l1a_science_packet_exe = os.path.join(pge.repo_dir, "depacketize_science_frames.py")
+        tmp_output_dir = os.path.join(self.tmp_dir, "output")
+        tmp_log_path = os.path.join(self.tmp_dir, "depacketize_science_frames_pge.log")
+        cmd = ["python", sds_l1a_science_packet_exe, stream.ccsds_path,
+               "--out_dir", tmp_output_dir,
+               "--level", "DEBUG",
+               "--log_path", tmp_log_path]
+        pge.run(cmd, tmp_dir=self.tmp_dir)
+
+        # Copy frames back and separate into directories.
+        # Also, attach stream files to acquisition object in DB and add frames as well
+        frames = [os.path.basename(file) for file in glob.glob(os.path.join(tmp_output_dir, "*"))]
+        frames.sort()
+        dcids = set([frame.split("_")[0] for frame in frames])
+        logger.debug(f"Found frames {frames} and dcids {dcids}")
+        acquisition_frames_map = {}
+        output_frame_paths = []
+        for dcid in dcids:
+            acq = dm.find_acquisition_by_dcid(dcid)
+            if acq is None:
+                raise RuntimeError(f"Unable to find acquisition in DB with dcid {dcid}")
+            wm = WorkflowManager(config_path=self.config_path, acquisition_id=acq["acquisition_id"],
+                                 stream_path=self.stream_path)
+            acq = wm.acquisition
+            # Copy log file into the compressed frames directory
+            shutil.copy2(tmp_log_path, acq.comp_frames_dir + "_pge.log")
+            # Copy the frames
+            acq_frame_paths = []
+            for path in glob.glob(os.path.join(tmp_output_dir, dcid + "*")):
+                # Replace dcid with acquisition id on copy
+                fname_tokens = os.path.basename(path).split("_")
+                fname_tokens[0] = acq.acquisition_id
+                acquisition_frame_path = os.path.join(acq.comp_frames_dir, "_".join(fname_tokens))
+                shutil.copy2(path, acquisition_frame_path)
+                acq_frame_paths.append(acquisition_frame_path)
+            # Add frame paths to acquisition metadata
+            if "frames" in acq.metadata["products"]["l1a"] and acq.metadata["products"]["l1a"]["frames"] is not None:
+                for path in acq_frame_paths:
+                    if path not in acq.metadata["products"]["l1a"]["frames"]:
+                        acq.metadata["products"]["l1a"]["frames"] += [path]
+            else:
+                acq.metadata["products"]["l1a"]["frames"] = acq_frame_paths
+            acq.metadata["products"]["l1a"]["frames"].sort()
+            dm.update_acquisition_metadata(acq.acquisition_id,
+                                           {"products.l1a.frames": acq.metadata["products"]["l1a"]["frames"]})
+
+            # Append frames to include in stream metadata
+            acq_frame_paths.sort()
+            acquisition_frames_map.update({acq.acquisition_id: acq_frame_paths})
+            # Keep track of all output paths for log entry
+            output_frame_paths += acq_frame_paths
+
+        dm.update_stream_metadata(stream.ccsds_name, {"acquisition_frames": acquisition_frames_map})
+
+        doc_version = "EMIT IOS SDS ICD JPL-D 104239, Initial"
+        log_entry = {
+            "task": self.task_family,
+            "pge_name": pge.repo_url,
+            "pge_version": pge.version_tag,
+            "pge_input_files": {
+                "ccsds_path": stream.ccsds_path,
+            },
+            "pge_run_command": " ".join(cmd),
+            "documentation_version": doc_version,
+            "log_timestamp": datetime.datetime.now(),
+            "completion_status": "SUCCESS",
+            "output": {
+                "frame_paths": output_frame_paths
+            }
+        }
+        dm.insert_stream_log_entry(stream.ccsds_name, log_entry)
 
 
 # TODO: Full implementation TBD
@@ -76,7 +152,6 @@ class L1APrepFrames(SlurmJobTask):
         pass
 
 
-# TODO: Full implementation TBD
 class L1AReassembleRaw(SlurmJobTask):
     """
     Decompresses science frames and assembles them into time-ordered acquisitions
@@ -85,48 +160,13 @@ class L1AReassembleRaw(SlurmJobTask):
 
     config_path = luigi.Parameter()
     acquisition_id = luigi.Parameter()
-#    frames_dir = luigi.Parameter()
+    ignore_missing = luigi.Parameter()
 
     task_namespace = "emit"
 
     def requires(self):
-
-        # TODO: This should check that a folder exists with frames in it and the work function should create the
-        # TODO: acquisition in the DB.  How do we trigger this step?
-
+        # This task requires a complete set of frames
         logger.debug(self.task_family + " requires")
-        # This task must be triggered once a complete set of frames
-
-        # FIXME: Acquisition insertion should be happening in previous step.  This is temporary for testing.
-        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        start_time_str = self.acquisition_id[len("emit"):(15 + len("emit"))]
-        start_time = datetime.datetime.strptime(start_time_str, "%Y%m%dt%H%M%S")
-        stop_time = start_time + datetime.timedelta(seconds=686)
-        acq_meta = {
-            "acquisition_id": self.acquisition_id,
-            "build_num": wm.build_num,
-            "processing_version": wm.processing_version,
-            "start_time": start_time,
-            "stop_time": stop_time,
-            "orbit": "00000",
-            "scene": "000",
-            "dimensions": {}
-        }
-        wm.database_manager.insert_acquisition(acq_meta)
-
-        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        acq = wm.acquisition
-
-        log_entry = {
-            "task": self.task_family,
-            "completion_status": "SUCCESS",
-            "output": {
-                "l1a_raw_path": acq.raw_img_path,
-                "l1a_raw_hdr_path:": acq.raw_hdr_path
-            }
-        }
-
-        wm.database_manager.insert_acquisition_log_entry(self.acquisition_id, log_entry)
 
         return None
 
@@ -142,74 +182,86 @@ class L1AReassembleRaw(SlurmJobTask):
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
-        pge = wm.pges["emit-sds-l1a"]
+        # Check for missing frames before proceeding. Override with --ignore_missing arg
+        if self.ignore_missing is False and acq.has_complete_set_of_frames() is False:
+            raise RuntimeError(f"Unable to run {self.task_family} on {self.acquisition_id} due to missing frames in " 
+                               f"{acq.l1a_data_dir}")
 
-        # Placeholder: PGE writes to tmp folder
+        pge = wm.pges["emit-sds-l1a"]
         tmp_output_dir = os.path.join(self.tmp_dir, "output")
         os.makedirs(tmp_output_dir)
-        # Use test data raw files for now
-        tmp_raw_img_path = os.path.join(tmp_output_dir, os.path.basename(acq.raw_img_path))
-        tmp_raw_hdr_path = os.path.join(tmp_output_dir, os.path.basename(acq.raw_hdr_path))
-        test_data_raw_img_path = os.path.join(wm.data_dir, "test_data", os.path.basename(acq.raw_img_path))
-        test_data_raw_hdr_path = os.path.join(wm.data_dir, "test_data", os.path.basename(acq.raw_hdr_path))
-        shutil.copy2(test_data_raw_img_path, tmp_raw_img_path)
-        shutil.copy2(test_data_raw_hdr_path, tmp_raw_hdr_path)
 
-        # Placeholder: copy tmp folder back to l1a dir and rename?
-        proc_dir = os.path.join(acq.l1a_data_dir, os.path.basename(acq.raw_img_path.replace(".img", "_proc")))
-        if os.path.exists(proc_dir):
-            shutil.rmtree(proc_dir)
-        shutil.copytree(self.tmp_dir, proc_dir)
+        reassemble_raw_pge = os.path.join(pge.repo_dir, "reassemble_raw_cube.py")
+        flex_pge = wm.pges["EMIT_FLEX_codec"]
+        flex_codec_exe = os.path.join(flex_pge.repo_dir, "flexcodec")
+        constants_path = os.path.join(wm.environment_dir, "test_data", "constants.txt")
+        init_data_path = os.path.join(wm.environment_dir, "test_data", "init_data.bin")
+        tmp_log_path = os.path.join(self.tmp_dir, "reassemble_raw_pge.log")
+        input_files = {
+            "compressed_frames_dir": acq.comp_frames_dir,
+            "flexcodec_exe_path": flex_codec_exe,
+            "constants_path": constants_path,
+            "init_data_path": init_data_path
+        }
+        cmd = ["python", reassemble_raw_pge, acq.comp_frames_dir,
+               "--flexcodec_exe", flex_codec_exe,
+               "--constants_path", constants_path,
+               "--init_data_path", init_data_path,
+               "--out_dir", tmp_output_dir,
+               "--level", "DEBUG",
+               "--log_path", tmp_log_path]
+        pge.run(cmd, tmp_dir=self.tmp_dir)
 
-        # Placeholder: move output files to l1a dir
-        for file in glob.glob(os.path.join(proc_dir, "output", "*")):
-            shutil.move(file, acq.l1a_data_dir)
+        # Copy raw file and log back to l1a data dir
+        tmp_raw_path = os.path.join(tmp_output_dir, acq.acquisition_id + "_raw.img")
+        tmp_raw_hdr_path = tmp_raw_path.replace(".img", ".hdr")
+        # TODO: Rename to "raw" or "dark"
+        shutil.copy2(tmp_raw_path, acq.raw_img_path)
+        shutil.copy2(tmp_raw_hdr_path, acq.raw_hdr_path)
+        shutil.copy2(tmp_log_path, acq.raw_img_path.replace(".img", "_pge.log"))
 
-        # Placeholder: update hdr files
+        # Update hdr files
+        input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
         doc_version = "EMIT SDS L1A JPL-D 104186, Initial"
         hdr = envi.read_envi_header(acq.raw_hdr_path)
-        hdr["description"] = "EMIT L1A raw instrument data (units: DN)"
-        hdr["emit acquisition start time"] = datetime.datetime(2020, 1, 1, 0, 0, 0).strftime("%Y-%m-%dT%H:%M:%S")
-        hdr["emit acquisition stop time"] = datetime.datetime(2020, 1, 1, 0, 11, 26).strftime("%Y-%m-%dT%H:%M:%S")
         hdr["emit pge name"] = pge.repo_url
         hdr["emit pge version"] = pge.version_tag
-        hdr["emit pge input files"] = [
-            "file1_key=file1_value",
-            "file2_key=file2_value"
-        ]
-        hdr["emit pge run command"] = "python l1a_run.py args"
+        hdr["emit pge input files"] = input_files_arr
+        hdr["emit pge run command"] = " ".join(cmd)
         hdr["emit software build version"] = wm.build_num
         hdr["emit documentation version"] = doc_version
+        # TODO: Get creation time separately for each file type?
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.raw_img_path))
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S")
         hdr["emit data product version"] = wm.processing_version
-
         envi.write_envi_header(acq.raw_hdr_path, hdr)
 
-        # Placeholder: PGE writes metadata to db
-        dimensions = {
-            "l1a": {
+        # PGE writes metadata to db
+        dm = wm.database_manager
+
+        # TODO: Add products
+        product_dict = {
+            "path": acq.raw_img_path,
+            "dimensions": {
                 "lines": hdr["lines"],
                 "bands": hdr["bands"],
-                "samples": hdr["samples"],
-            }
+                "samples": hdr["samples"]
+            },
+            "checksum": {
+                "value": "",
+                "algorithm": ""
+            },
+            "geometry": {}
         }
-        metadata = {
-            "dimensions": dimensions,
-            "day_night_flag": "day"
-        }
-        dm = wm.database_manager
-        dm.update_acquisition_metadata(self.acquisition_id, metadata)
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1a.raw": product_dict})
 
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
             "pge_version": pge.version_tag,
-            "pge_input_files": {
-                "file1_key": "file1_value",
-                "file2_key": "file2_value",
-            },
-            "pge_run_command": "python l1a_run.py args",
+            "pge_input_files": input_files,
+            "pge_run_command": " ".join(cmd),
+            "documentation_version": doc_version,
             "product_creation_time": creation_time,
             "log_timestamp": datetime.datetime.now(),
             "completion_status": "SUCCESS",
@@ -246,7 +298,6 @@ class L1APEP(SlurmJobTask):
         pass
 
 
-# TODO: Full implementation TBD
 class L1AReformatEDP(SlurmJobTask):
     """
     Creates reformatted engineering data product from CCSDS packet stream

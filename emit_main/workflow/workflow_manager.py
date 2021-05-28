@@ -69,7 +69,7 @@ class WorkflowManager:
         else:
             self.acquisition = None
 
-        # If we have a stream path, initialize a stream object
+        # If we have a stream path and stream exists in db, initialize a stream object
         if self.stream_path and self.database_manager.find_stream_by_name(os.path.basename(stream_path)):
             self.stream = Stream(self.config_path, self.stream_path)
         else:

@@ -32,31 +32,14 @@ class Stream:
 
         self.hosc_name = None
         self.ccsds_name = None
-        self.edp_name = None
+        # self.edp_name = None
+        # self.frames = []
 
         # Read metadata from db
         dm = DatabaseManager(config_path)
-        stream_metadata = dm.find_stream_by_name(os.path.basename(stream_path))
-        self.__dict__.update(stream_metadata)
-
-#        self.config_path = config_path
-#        self.path = stream_path
-#         file_name = os.path.basename(stream_path)
-#         if "hsc.bin" in file_name:
-#             self.stream_type = "hosc"
-#             self.hosc_name = os.path.basename(file_name)
-#             tokens = file_name.split("_")
-#             self.apid = tokens[1]
-#             # Need to add first two year digits
-#             self.start_time_str = "20" + tokens[2]
-#             self.stop_time_str = "20" + tokens[3]
-#             self.production_time = "20" + tokens[4]
-#         else:
-#             self.stream_type = "ccsds"
-#             self.ccsds_name = os.path.basename(file_name)
-#             self.apid = file_name[:4]
-#             self.start_time_str = datetime.datetime.strptime(file_name[5:24],
-#                                                              "%Y-%m-%dT%H%M%S").strftime("%Y%m%d%H%M%S")
+        self.metadata = dm.find_stream_by_name(os.path.basename(stream_path))
+        self._initialize_metadata()
+        self.__dict__.update(self.metadata)
 
         # Create base directories and add to list to create directories later
         self.dirs = []
@@ -77,8 +60,6 @@ class Stream:
             self.hosc_path = os.path.join(self.l0_dir, self.hosc_name)
         if self.ccsds_name:
             self.ccsds_path = os.path.join(self.l0_dir, self.ccsds_name)
-        if self.edp_name:
-            self.edp_path = os.path.join(self.l1a_dir, self.edp_name)
         self.dirs.extend([self.streams_dir, self.apid_dir, self.date_dir, self.l0_dir, self.l1a_dir])
 
         # Make directories if they don't exist
@@ -90,3 +71,8 @@ class Stream:
                     uid = pwd.getpwnam(pwd.getpwuid(os.getuid())[0]).pw_uid
                     gid = grp.getgrnam(self.instrument + "-" + self.environment).gr_gid
                     os.chown(d, uid, gid)
+
+    def _initialize_metadata(self):
+        # Insert some placeholder fields so that we don't get missing keys on updates
+        if "processing_log" not in self.metadata:
+            self.metadata["processing_log"] = []

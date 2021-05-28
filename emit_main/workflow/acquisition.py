@@ -4,6 +4,7 @@ This code contains the Acquisition class that manages acquisitions and their met
 Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
+import glob
 import grp
 import json
 import logging
@@ -35,8 +36,9 @@ class Acquisition:
         # TODO: Define and initialize acquisition metadata
         # TODO: What to do if entry doesn't exist yet?
         dm = DatabaseManager(config_path)
-        acquisition_metadata = dm.find_acquisition_by_id(self.acquisition_id)
-        self.__dict__.update(acquisition_metadata)
+        self.metadata = dm.find_acquisition_by_id(self.acquisition_id)
+        self._initialize_metadata()
+        self.__dict__.update(self.metadata)
 
         # Create base directories and add to list to create directories later
         self.dirs = []
@@ -57,6 +59,10 @@ class Acquisition:
 
         self.__dict__.update(self._build_acquisition_paths())
 
+        # Add sub-dirs
+        self.comp_frames_dir = os.path.join(self.l1a_data_dir, f"compressed_frames_b{self.build_num}")
+        self.dirs.append(self.comp_frames_dir)
+
         # Make directories if they don't exist
         for d in self.dirs:
             if not os.path.exists(d):
@@ -66,6 +72,23 @@ class Acquisition:
                     uid = pwd.getpwnam(pwd.getpwuid(os.getuid())[0]).pw_uid
                     gid = grp.getgrnam(self.instrument + "-" + self.environment).gr_gid
                     os.chown(d, uid, gid)
+
+    def _initialize_metadata(self):
+        # Insert some placeholder fields so that we don't get missing keys on updates
+        if "processing_log" not in self.metadata:
+            self.metadata["processing_log"] = []
+        if "products" not in self.metadata:
+            self.metadata["products"] = {}
+        if "l1a" not in self.metadata["products"]:
+            self.metadata["products"]["l1a"] = {}
+        if "l1b" not in self.metadata["products"]:
+            self.metadata["products"]["l1b"] = {}
+        if "l2a" not in self.metadata["products"]:
+            self.metadata["products"]["l2a"] = {}
+        if "l2b" not in self.metadata["products"]:
+            self.metadata["products"]["l2b"] = {}
+        if "l3" not in self.metadata["products"]:
+            self.metadata["products"]["l3"] = {}
 
     def _build_acquisition_paths(self):
         product_map = {
@@ -116,3 +139,30 @@ class Acquisition:
                     prod_path = os.path.join(self.acquisition_id_dir, level, prod_name)
                     paths[prod_key] = prod_path
         return paths
+
+    def has_complete_set_of_frames(self):
+        frames = [os.path.basename(frame) for frame in glob.glob(os.path.join(self.comp_frames_dir, "*"))]
+        frames.sort()
+        # Check incrementing frame num
+        frame_nums = [int(frame.split("_")[1]) for frame in frames]
+        if frame_nums != list(range(frame_nums[0], frame_nums[0] + len(frame_nums))):
+            logger.debug("Set of frames is not sequential!")
+            return False
+        # Check that first frame has status 1 or 5
+        if frames[0].split("_")[2] not in ("1", "5"):
+            logger.debug("Set of frames does not begin with status 1 or 5!")
+            return False
+        # Check that last frame has status 2
+        if frames[-1].split("_")[2] not in ("2"):
+            logger.debug("Set of frames does not end with status 2!")
+            return False
+        # Check that all in between frames have status 0 or 4
+        for frame in frames[1:-1]:
+            if frame.split("_")[2] not in ("0", "4"):
+                logger.debug("Middle frame (not first or last) does not have status 0 or 4!")
+                return False
+        return True
+
+
+
+

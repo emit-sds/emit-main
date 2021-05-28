@@ -53,6 +53,11 @@
         "conda_env": "emit-main-dev"
       },
       {
+        "url": "git@github.jpl.nasa.gov:flex-data-compression/EMIT_FLEX_codec.git",
+        "tag": "master",
+        "conda_env": "emit-main-dev"
+      },
+      {
         "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l1b.git",
         "tag": "develop",
         "conda_env": "emit-main-dev"
