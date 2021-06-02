@@ -61,3 +61,6 @@ class Config:
         # Get date from acquisition string
         date_str = acquisition_id[len(instrument_prefix):(15 + len(instrument_prefix))]
         return datetime.datetime.strptime(date_str, "%Y%m%dt%H%M%S")
+
+    def get_properties(self):
+        return self.properties

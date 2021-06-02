@@ -20,7 +20,7 @@ class DatabaseManager:
         """
 
         # Update manager with properties from config file
-        self.__dict__.update(Config(config_path).properties)
+        self.__dict__.update(Config(config_path).get_properties())
 
         self.client = MongoClient(self.mongodb_host, self.mongodb_port)
         self.db = self.client[self.mongodb_db_name]

@@ -26,7 +26,7 @@ class FileMonitor:
         """
 
         # Update manager with properties from config file
-        self.__dict__.update(Config(config_path).properties)
+        self.__dict__.update(Config(config_path).get_properties())
 
         self.config_path = os.path.abspath(config_path)
         # Build path for ingest folder

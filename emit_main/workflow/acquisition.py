@@ -24,11 +24,11 @@ class Acquisition:
         :param acquisition_id: The name of the acquisition with timestamp (eg. "emit20200519t140035")
         """
 
+        # Update manager with properties from config file
+        self.__dict__.update(Config(config_path, acquisition_id).get_properties())
+
         self.config_path = config_path
         self.acquisition_id = acquisition_id
-
-        # Update manager with properties from config file
-        self.__dict__.update(Config(config_path, acquisition_id).properties)
 
         dm = DatabaseManager(config_path)
         self.metadata = dm.find_acquisition_by_id(self.acquisition_id)

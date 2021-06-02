@@ -27,13 +27,13 @@ class WorkflowManager:
         :param acquisition_id: The name of the acquisition with timestamp (eg. "emit20200519t140035")
         """
 
+        # Update manager with properties from config file
+        self.__dict__.update(Config(config_path, acquisition_id).get_properties())
+
         self.config_path = config_path
         self.acquisition_id = acquisition_id
         self.stream_path = stream_path
         self.database_manager = DatabaseManager(config_path)
-
-        # Update manager with properties from config file
-        self.__dict__.update(Config(config_path, acquisition_id).properties)
 
         # Create base directories and add to list to create directories later
         dirs = []
