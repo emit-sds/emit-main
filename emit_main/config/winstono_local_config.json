@@ -2,6 +2,7 @@
   "general_config": {
     "instrument": "emit",
     "environment": "winstono",
+    "build_num": "0000",
     "processing_version": "00",
     "luigi_local_scheduler": true,
     "luigi_workers": 2
@@ -20,72 +21,17 @@
 
   "build_config": {
     "build_num": "0000",
-    "conda_base_dir": "/Users/winstono/opt/anaconda3/",
-    "repositories": [
+    "conda_base_dir": "/Users/winstono/opt/anaconda3/"
+  },
+
+  "ancillary_files": {
+    "decompression_constants_path": "resources/decompression/constants.txt",
+    "decompression_init_data_path": "resources/decompression/init_data.bin",
+    "versions": [
       {
-        "url": "git@github.jpl.nasa.gov:emit-sds/emit-main.git",
-        "tag": "develop",
-        "conda_env": "emit-main-dev"
-      },
-      {
-        "url": "git@github.jpl.nasa.gov:emit-sds/emit-utils.git",
-        "tag": "develop",
-        "conda_env": "emit-main-dev"
-      },
-      {
-        "url": "git@github.jpl.nasa.gov:emit/emit-ios.git",
-        "tag": "0.2.0",
-        "conda_env": "emit-main-dev"
-      },
-      {
-        "url": "git@github.jpl.nasa.gov:emit/emit-l0edp.git",
-        "tag": "0.1",
-        "conda_env": "emit-main-dev"
-      },
-      {
-        "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l0.git",
-        "tag": "develop",
-        "conda_env": "emit-main-dev"
-      },
-      {
-        "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l1a.git",
-        "tag": "develop",
-        "conda_env": "emit-main-dev"
-      },
-      {
-        "url": "git@github.jpl.nasa.gov:flex-data-compression/EMIT_FLEX_codec.git",
-        "tag": "master",
-        "conda_env": "emit-main-dev"
-      },
-      {
-        "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l1b.git",
-        "tag": "develop",
-        "conda_env": "emit-main-dev"
-      },
-      {
-        "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l2a.git",
-        "tag": "develop",
-        "conda_env": "emit-main-dev"
-      },
-      {
-        "url": "https://github.com/isofit/isofit.git",
-        "tag": "v2.6.0",
-        "conda_env": "emit-main-dev"
-      },
-      {
-        "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l2b.git",
-        "tag": "develop",
-        "conda_env": "emit-main-dev"
-      },
-      {
-        "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l3.git",
-        "tag": "develop",
-        "conda_env": "emit-main-dev"
-      },
-      {
-        "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l4.git",
-        "tag": "develop",
-        "conda_env": "emit-main-dev"
+        "start_date": "2021-01-01",
+        "end_date": "2022-01-01",
+        "l1b_config_path": "repos/emit-sds-l1b/tree/main/calibrations/config_20210101_20210131.json"
       }
     ]
   }

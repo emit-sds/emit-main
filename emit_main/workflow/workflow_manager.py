@@ -11,6 +11,7 @@ import os
 import pwd
 
 from emit_main.database.database_manager import DatabaseManager
+from emit_main.util.config import Config
 from emit_main.workflow.acquisition import Acquisition
 from emit_main.workflow.pge import PGE
 from emit_main.workflow.stream import Stream
@@ -31,12 +32,8 @@ class WorkflowManager:
         self.stream_path = stream_path
         self.database_manager = DatabaseManager(config_path)
 
-        # Read config file for environment specific paths
-        with open(config_path, "r") as f:
-            config = json.load(f)
-            self.__dict__.update(config["general_config"])
-            self.__dict__.update(config["filesystem_config"])
-            self.__dict__.update(config["build_config"])
+        # Update manager with properties from config file
+        self.__dict__.update(Config(config_path, acquisition_id).properties)
 
         # Create base directories and add to list to create directories later
         dirs = []
@@ -96,6 +93,16 @@ class WorkflowManager:
             )
             self.pges[pge.repo_name] = pge
 
+    def _get_ancillary_file_paths(self, anc_files_config):
+        if "versions" in anc_files_config:
+            versions = anc_files_config["versions"]
+            # Look for matching date range and update top level dictionary with those key/value pairs
+            for k, v in enumerate(versions):
+                pass
+            # Remove "versions" and return dictionary
+            del anc_files_config["versions"]
+        return {}
+
     def checkout_repos_for_build(self):
         for pge in self.pges.values():
             pge.checkout_repo()
@@ -113,17 +120,3 @@ class WorkflowManager:
             if pge.repo_name == "emit-main" and pge.repo_dir not in os.getcwd():
                 logger.warning("The \"emit-main\" code should be executing inside repository %s to ensure that the "
                                "correct version is running" % pge.repo_dir)
-
-    def path_exists(self, path):
-        return os.path.exists(path)
-
-    def touch_path(self, path):
-        os.system(" ".join(["touch", path]))
-
-    def remove_dir(self, path):
-        if os.path.exists(path):
-            os.system(" ".join(["rm", "-rf", path]))
-
-    def remove_path(self, path):
-        if os.path.exists((path)):
-            os.system(" ".join(["rm", "-f", path]))

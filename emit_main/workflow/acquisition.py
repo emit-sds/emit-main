@@ -12,6 +12,7 @@ import os
 import pwd
 
 from emit_main.database.database_manager import DatabaseManager
+from emit_main.util.config import Config
 
 logger = logging.getLogger("emit-main")
 
@@ -23,18 +24,12 @@ class Acquisition:
         :param acquisition_id: The name of the acquisition with timestamp (eg. "emit20200519t140035")
         """
 
-        # Read config file for environment specific paths
-        with open(config_path, "r") as f:
-            config = json.load(f)
-            self.__dict__.update(config["general_config"])
-            self.__dict__.update(config["filesystem_config"])
-            self.__dict__.update(config["build_config"])
-
         self.config_path = config_path
         self.acquisition_id = acquisition_id
 
-        # TODO: Define and initialize acquisition metadata
-        # TODO: What to do if entry doesn't exist yet?
+        # Update manager with properties from config file
+        self.__dict__.update(Config(config_path, acquisition_id).properties)
+
         dm = DatabaseManager(config_path)
         self.metadata = dm.find_acquisition_by_id(self.acquisition_id)
         self._initialize_metadata()

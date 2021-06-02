@@ -12,6 +12,7 @@ import os
 import pwd
 import shutil
 
+from emit_main.util.config import Config
 from emit_main.workflow.l1a_tasks import *
 
 logger = logging.getLogger("emit-main")
@@ -24,13 +25,8 @@ class FileMonitor:
         :param config_path: Path to config file containing environment settings
         """
 
-        self.config_path = config_path
-        # Read config file for environment specific paths
-        with open(config_path, "r") as f:
-            config = json.load(f)
-            self.__dict__.update(config["general_config"])
-            self.__dict__.update(config["filesystem_config"])
-            self.__dict__.update(config["build_config"])
+        # Update manager with properties from config file
+        self.__dict__.update(Config(config_path).properties)
 
         self.config_path = os.path.abspath(config_path)
         # Build path for ingest folder
