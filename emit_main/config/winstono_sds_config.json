@@ -21,5 +21,17 @@
   "build_config": {
     "build_num": "0000",
     "conda_base_dir": "/home/winstono/anaconda3/"
+  },
+
+  "ancillary_files": {
+    "decompression_constants_path": "repos/emit-sds-l1a/decompression/constants.txt",
+    "decompression_init_data_path": "repos/emit-sds-l1a/decompression/init_data.bin",
+    "dem_path": "/shared/dem/TBD",
+    "versions": [
+      {
+        "version_date_range": ["2021-01-01", "2022-01-01"],
+        "l1b_config_path": "repos/emit-sds-l1b/calibrations/config_20210101_20210131.json"
+      }
+    ]
   }
 }

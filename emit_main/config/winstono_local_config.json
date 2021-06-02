@@ -25,13 +25,13 @@
   },
 
   "ancillary_files": {
-    "decompression_constants_path": "resources/decompression/constants.txt",
-    "decompression_init_data_path": "resources/decompression/init_data.bin",
+    "decompression_constants_path": "repos/emit-sds-l1a/decompression/constants.txt",
+    "decompression_init_data_path": "repos/emit-sds-l1a/decompression/init_data.bin",
+    "dem_path": "/shared/dem/TBD",
     "versions": [
       {
-        "start_date": "2021-01-01",
-        "end_date": "2022-01-01",
-        "l1b_config_path": "repos/emit-sds-l1b/tree/main/calibrations/config_20210101_20210131.json"
+        "version_date_range": ["2021-01-01", "2022-01-01"],
+        "l1b_config_path": "repos/emit-sds-l1b/calibrations/config_20210101_20210131.json"
       }
     ]
   }

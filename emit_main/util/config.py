@@ -46,12 +46,18 @@ class Config:
                 acquisition_date = self._get_date_from_acquisition(acquisition_id)
                 # Look for matching date range and update top level dictionary with those key/value pairs
                 for version in versions:
-                    start_date = datetime.datetime.strptime(version["start_date"], "%Y-%m-%d")
-                    end_date = datetime.datetime.strptime(version["end_date"], "%Y-%m-%d")
+                    start_date = datetime.datetime.strptime(version["version_date_range"][0], "%Y-%m-%d")
+                    end_date = datetime.datetime.strptime(version["version_date_range"][1], "%Y-%m-%d")
                     if start_date <= acquisition_date < end_date:
                         anc_files_config.update(version)
             # Remove "versions" and return dictionary
             del anc_files_config["versions"]
+        # Convert file paths to absolute paths
+        environment_dir = os.path.join(self.properties["local_store_dir"], self.properties["instrument"],
+                                       self.properties["environment"])
+        for key, path in anc_files_config.items():
+            if type(path) is str and not path.startswith("/"):
+                anc_files_config[key] = os.path.join(environment_dir, path)
         return anc_files_config
 
     def _get_date_from_acquisition(self, acquisition_id):
