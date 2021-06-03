@@ -24,11 +24,11 @@ class Acquisition:
         :param acquisition_id: The name of the acquisition with timestamp (eg. "emit20200519t140035")
         """
 
-        # Update manager with properties from config file
-        self.__dict__.update(Config(config_path, acquisition_id).get_properties())
-
         self.config_path = config_path
         self.acquisition_id = acquisition_id
+
+        # Get config properties
+        self.config = Config(config_path, acquisition_id).get_dictionary()
 
         dm = DatabaseManager(config_path)
         self.metadata = dm.find_acquisition_by_id(self.acquisition_id)
@@ -37,13 +37,13 @@ class Acquisition:
 
         # Create base directories and add to list to create directories later
         self.dirs = []
-        self.instrument_dir = os.path.join(self.local_store_dir, self.instrument)
-        self.environment_dir = os.path.join(self.instrument_dir, self.environment)
+        self.instrument_dir = os.path.join(self.config["local_store_dir"], self.config["instrument"])
+        self.environment_dir = os.path.join(self.instrument_dir, self.config["environment"])
         self.data_dir = os.path.join(self.environment_dir, "data")
         self.acquisitions_dir = os.path.join(self.data_dir, "acquisitions")
 
         # Check for instrument again based on filename
-        instrument_prefix = self.instrument
+        instrument_prefix = self.config["instrument"]
         if self.acquisition_id.startswith("ang"):
             instrument_prefix = "ang"
         # Get date from acquisition string
@@ -55,7 +55,7 @@ class Acquisition:
         self.__dict__.update(self._build_acquisition_paths())
 
         # Add sub-dirs
-        self.comp_frames_dir = os.path.join(self.l1a_data_dir, f"compressed_frames_b{self.build_num}")
+        self.comp_frames_dir = os.path.join(self.l1a_data_dir, f"compressed_frames_b{self.config['build_num']}")
         self.dirs.append(self.comp_frames_dir)
 
         # Make directories if they don't exist
@@ -63,9 +63,9 @@ class Acquisition:
             if not os.path.exists(d):
                 os.makedirs(d)
                 # Change group ownership in shared environments
-                if self.environment in ["dev", "test", "ops"]:
+                if self.config["environment"] in ["dev", "test", "ops"]:
                     uid = pwd.getpwnam(pwd.getpwuid(os.getuid())[0]).pw_uid
-                    gid = grp.getgrnam(self.instrument + "-" + self.environment).gr_gid
+                    gid = grp.getgrnam(self.config["instrument"] + "-" + self.config["environment"]).gr_gid
                     os.chown(d, uid, gid)
 
     def _initialize_metadata(self):
@@ -128,8 +128,8 @@ class Acquisition:
                                             "s" + self.scene,
                                             level,
                                             prod,
-                                            "b" + self.build_num,
-                                            "v" + self.processing_version])
+                                            "b" + self.config["build_num"],
+                                            "v" + self.config["processing_version"]])
                     prod_name = prod_prefix + "." + format
                     prod_path = os.path.join(self.acquisition_id_dir, level, prod_name)
                     paths[prod_key] = prod_path

@@ -38,7 +38,7 @@ class L1BCalibrate(SlurmJobTask):
     def requires(self):
 
         logger.debug(self.task_family + " requires")
-        return L1AReassembleRaw(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return L1AReassembleRaw(config_path=self.config_path, acquisition_id=self.acquisition_id, ignore_missing=False)
 
     def output(self):
 
@@ -100,11 +100,11 @@ class L1BCalibrate(SlurmJobTask):
         hdr["emit pge version"] = pge.version_tag
         hdr["emit pge input files"] = input_files_arr
         hdr["emit pge run command"] = " ".join(cmd)
-        hdr["emit software build version"] = wm.build_num
+        hdr["emit software build version"] = wm.config["build_num"]
         hdr["emit documentation version"] = doc_version
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rdn_img_path))
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S")
-        hdr["emit data product version"] = wm.processing_version
+        hdr["emit data product version"] = wm.config["processing_version"]
 
         envi.write_envi_header(acq.rdn_hdr_path, hdr)
 

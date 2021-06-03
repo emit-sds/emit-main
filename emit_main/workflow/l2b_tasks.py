@@ -89,12 +89,12 @@ class L2BAbundance(SlurmJobTask):
         hdr["emit pge version"] = pge.version_tag
         hdr["emit pge input files"] = input_files_arr
         hdr["emit pge run command"] = " ".join(cmd)
-        hdr["emit software build version"] = wm.build_num
+        hdr["emit software build version"] = wm.config["build_num"]
         hdr["emit documentation version"] = doc_version
         # TODO: Get creation time separately for each file type?
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.abun_img_path))
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S")
-        hdr["emit data product version"] = wm.processing_version
+        hdr["emit data product version"] = wm.config["processing_version"]
         envi.write_envi_header(acq.abun_hdr_path, hdr)
 
         # PGE writes metadata to db

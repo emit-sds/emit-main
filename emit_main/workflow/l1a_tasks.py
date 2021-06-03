@@ -194,8 +194,8 @@ class L1AReassembleRaw(SlurmJobTask):
         reassemble_raw_pge = os.path.join(pge.repo_dir, "reassemble_raw_cube.py")
         flex_pge = wm.pges["EMIT_FLEX_codec"]
         flex_codec_exe = os.path.join(flex_pge.repo_dir, "flexcodec")
-        constants_path = os.path.join(wm.environment_dir, "test_data", "constants.txt")
-        init_data_path = os.path.join(wm.environment_dir, "test_data", "init_data.bin")
+        constants_path = wm.config["decompression_constants_path"]
+        init_data_path = wm.config["decompression_init_data_path"]
         tmp_log_path = os.path.join(self.tmp_dir, "reassemble_raw_pge.log")
         input_files = {
             "compressed_frames_dir": acq.comp_frames_dir,
@@ -228,12 +228,12 @@ class L1AReassembleRaw(SlurmJobTask):
         hdr["emit pge version"] = pge.version_tag
         hdr["emit pge input files"] = input_files_arr
         hdr["emit pge run command"] = " ".join(cmd)
-        hdr["emit software build version"] = wm.build_num
+        hdr["emit software build version"] = wm.config["build_num"]
         hdr["emit documentation version"] = doc_version
         # TODO: Get creation time separately for each file type?
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.raw_img_path))
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S")
-        hdr["emit data product version"] = wm.processing_version
+        hdr["emit data product version"] = wm.config["processing_version"]
         envi.write_envi_header(acq.raw_hdr_path, hdr)
 
         # PGE writes metadata to db
@@ -246,12 +246,7 @@ class L1AReassembleRaw(SlurmJobTask):
                 "lines": hdr["lines"],
                 "bands": hdr["bands"],
                 "samples": hdr["samples"]
-            },
-            "checksum": {
-                "value": "",
-                "algorithm": ""
-            },
-            "geometry": {}
+            }
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1a.raw": product_dict})
 

@@ -208,7 +208,7 @@ class SlurmJobTask(luigi.Task):
 
         wm = WorkflowManager(config_path=self.config_path)
 
-        if wm.luigi_local_scheduler:
+        if wm.config["luigi_local_scheduler"]:
             # Run job locally without Slurm scheduler
             logger.debug("Running task locally: %s" % self.task_family)
             self._init_local()

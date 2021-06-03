@@ -171,11 +171,11 @@ def main():
     if args.workers:
         workers = args.workers
     else:
-        workers = wm.luigi_workers
+        workers = wm.config["luigi_workers"]
     # Build luigi logging.conf path
     luigi_logging_conf = os.path.join(os.path.dirname(__file__), "workflow", "luigi", "logging.conf")
 
-    luigi.build(tasks, workers=workers, local_scheduler=wm.luigi_local_scheduler,
+    luigi.build(tasks, workers=workers, local_scheduler=wm.config["luigi_local_scheduler"],
                 logging_conf_file=luigi_logging_conf)
 
 
