@@ -91,22 +91,23 @@ class L2BAbundance(SlurmJobTask):
         hdr["emit pge run command"] = " ".join(cmd)
         hdr["emit software build version"] = wm.config["build_num"]
         hdr["emit documentation version"] = doc_version
-        # TODO: Get creation time separately for each file type?
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.abun_img_path))
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S")
         hdr["emit data product version"] = wm.config["processing_version"]
         envi.write_envi_header(acq.abun_hdr_path, hdr)
 
         # PGE writes metadata to db
-        dimensions = {
-            "l2b": {
+        dm = wm.database_manager
+        product_dict = {
+            "img_path": acq.abun_img_path,
+            "hdr_path": acq.abun_hdr_path,
+            "dimensions": {
                 "lines": hdr["lines"],
                 "bands": hdr["bands"],
-                "samples": hdr["samples"],
+                "samples": hdr["samples"]
             }
         }
-        dm = wm.database_manager
-        dm.update_acquisition_dimensions(self.acquisition_id, dimensions)
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2b.abun": product_dict})
 
         log_entry = {
             "task": self.task_family,
@@ -119,7 +120,7 @@ class L2BAbundance(SlurmJobTask):
             "log_timestamp": datetime.datetime.now(),
             "completion_status": "SUCCESS",
             "output": {
-                "l2b_abun_path": acq.abun_img_path,
+                "l2b_abun_img_path": acq.abun_img_path,
                 "l2b_abun_hdr_path:": acq.abun_hdr_path
             }
         }

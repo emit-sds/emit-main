@@ -109,15 +109,17 @@ class L1BCalibrate(SlurmJobTask):
         envi.write_envi_header(acq.rdn_hdr_path, hdr)
 
         # PGE writes metadata to db
-        dimensions = {
-            "l1b": {
+        dm = wm.database_manager
+        product_dict = {
+            "img_path": acq.rdn_img_path,
+            "hdr_path": acq.rdn_hdr_path,
+            "dimensions": {
                 "lines": hdr["lines"],
                 "bands": hdr["bands"],
-                "samples": hdr["samples"],
+                "samples": hdr["samples"]
             }
         }
-        dm = wm.database_manager
-        dm.update_acquisition_dimensions(self.acquisition_id, dimensions)
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn": product_dict})
 
         log_entry = {
             "task": self.task_family,
@@ -130,7 +132,7 @@ class L1BCalibrate(SlurmJobTask):
             "log_timestamp": datetime.datetime.now(),
             "completion_status": "SUCCESS",
             "output": {
-                "l1b_rdn_path": acq.rdn_img_path,
+                "l1b_rdn_img_path": acq.rdn_img_path,
                 "l1b_rdn_hdr_path:": acq.rdn_hdr_path
             }
         }

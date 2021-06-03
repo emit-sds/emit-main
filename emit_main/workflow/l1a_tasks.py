@@ -230,7 +230,6 @@ class L1AReassembleRaw(SlurmJobTask):
         hdr["emit pge run command"] = " ".join(cmd)
         hdr["emit software build version"] = wm.config["build_num"]
         hdr["emit documentation version"] = doc_version
-        # TODO: Get creation time separately for each file type?
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.raw_img_path))
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S")
         hdr["emit data product version"] = wm.config["processing_version"]
@@ -241,7 +240,8 @@ class L1AReassembleRaw(SlurmJobTask):
 
         # TODO: Add products
         product_dict = {
-            "path": acq.raw_img_path,
+            "img_path": acq.raw_img_path,
+            "hdr_path": acq.raw_hdr_path,
             "dimensions": {
                 "lines": hdr["lines"],
                 "bands": hdr["bands"],
@@ -261,7 +261,7 @@ class L1AReassembleRaw(SlurmJobTask):
             "log_timestamp": datetime.datetime.now(),
             "completion_status": "SUCCESS",
             "output": {
-                "l1a_raw_path": acq.raw_img_path,
+                "l1a_raw_img_path": acq.raw_img_path,
                 "l1a_raw_hdr_path:": acq.raw_hdr_path
             }
         }

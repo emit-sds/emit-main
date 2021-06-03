@@ -5,11 +5,10 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
 import datetime
-import json
 
 from pymongo import MongoClient
 
-from emit_main.util.config import Config
+from emit_main.config.config import Config
 
 
 class DatabaseManager:

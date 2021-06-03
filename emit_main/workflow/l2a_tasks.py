@@ -107,7 +107,8 @@ class L2AReflectance(SlurmJobTask):
         # Update hdr files
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
         doc_version = "EMIT SDS L2A JPL-D 104236, Rev B"
-        for hdr_path in [acq.rfl_hdr_path, acq.uncert_hdr_path]:
+        dm = wm.database_manager
+        for img_path, hdr_path in [(acq.rfl_img_path, acq.rfl_hdr_path), (acq.uncert_img_path, acq.uncert_hdr_path)]:
             hdr = envi.read_envi_header(hdr_path)
             hdr["emit pge name"] = pge.repo_url
             hdr["emit pge version"] = pge.version_tag
@@ -115,23 +116,25 @@ class L2AReflectance(SlurmJobTask):
             hdr["emit pge run command"] = " ".join(cmd)
             hdr["emit software build version"] = wm.config["build_num"]
             hdr["emit documentation version"] = doc_version
-            # TODO: Get creation time separately for each file type?
-            creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rfl_img_path))
+            creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(img_path))
             hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S")
             hdr["emit data product version"] = wm.config["processing_version"]
             envi.write_envi_header(hdr_path, hdr)
 
-            # PGE writes metadata to db
-            dimensions = {
-                "l2a": {
+            # Update product dictionary in DB
+            product_dict = {
+                "img_path": img_path,
+                "hdr_path": hdr_path,
+                "dimensions": {
                     "lines": hdr["lines"],
                     "bands": hdr["bands"],
-                    "samples": hdr["samples"],
+                    "samples": hdr["samples"]
                 }
             }
-        # Just update the dimensions once
-        dm = wm.database_manager
-        dm.update_acquisition_dimensions(self.acquisition_id, dimensions)
+            if "_rfl_" in img_path:
+                dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2a.rfl": product_dict})
+            elif "_uncert_" in img_path:
+                dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2a.uncert": product_dict})
 
         log_entry = {
             "task": self.task_family,
@@ -144,9 +147,9 @@ class L2AReflectance(SlurmJobTask):
             "log_timestamp": datetime.datetime.now(),
             "completion_status": "SUCCESS",
             "output": {
-                "l2a_rfl_path": acq.rfl_img_path,
+                "l2a_rfl_img_path": acq.rfl_img_path,
                 "l2a_rfl_hdr_path:": acq.rfl_hdr_path,
-                "l2a_uncert_path": acq.uncert_img_path,
+                "l2a_uncert_img_path": acq.uncert_img_path,
                 "l2a_uncert_hdr_path:": acq.uncert_hdr_path
             }
         }
@@ -240,6 +243,17 @@ class L2AMask(SlurmJobTask):
 
         # PGE writes metadata to db
         dm = wm.database_manager
+        product_dict = {
+            "img_path": acq.mask_img_path,
+            "hdr_path": acq.mask_hdr_path,
+            "dimensions": {
+                "lines": hdr["lines"],
+                "bands": hdr["bands"],
+                "samples": hdr["samples"]
+            }
+        }
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2a.mask": product_dict})
+
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -251,7 +265,7 @@ class L2AMask(SlurmJobTask):
             "log_timestamp": datetime.datetime.now(),
             "completion_status": "SUCCESS",
             "output": {
-                "l2a_mask_path": acq.mask_img_path,
+                "l2a_mask_img_path": acq.mask_img_path,
                 "l2a_mask_hdr_path:": acq.mask_hdr_path
             }
         }

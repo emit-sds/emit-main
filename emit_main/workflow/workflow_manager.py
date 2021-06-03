@@ -5,13 +5,12 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
 import grp
-import json
 import logging
 import os
 import pwd
 
 from emit_main.database.database_manager import DatabaseManager
-from emit_main.util.config import Config
+from emit_main.config.config import Config
 from emit_main.workflow.acquisition import Acquisition
 from emit_main.workflow.pge import PGE
 from emit_main.workflow.stream import Stream

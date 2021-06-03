@@ -4,15 +4,10 @@ This code contains the FileMonitor class that watches folders to trigger activit
 Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
-import glob
 import grp
-import json
-import logging
-import os
 import pwd
-import shutil
 
-from emit_main.util.config import Config
+from emit_main.config.config import Config
 from emit_main.workflow.l1a_tasks import *
 
 logger = logging.getLogger("emit-main")
