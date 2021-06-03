@@ -115,8 +115,8 @@ class L1BCalibrate(SlurmJobTask):
             "hdr_path": acq.rdn_hdr_path,
             "dimensions": {
                 "lines": hdr["lines"],
-                "bands": hdr["bands"],
-                "samples": hdr["samples"]
+                "samples": hdr["samples"],
+                "bands": hdr["bands"]
             }
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn": product_dict})

@@ -103,8 +103,8 @@ class L2BAbundance(SlurmJobTask):
             "hdr_path": acq.abun_hdr_path,
             "dimensions": {
                 "lines": hdr["lines"],
-                "bands": hdr["bands"],
-                "samples": hdr["samples"]
+                "samples": hdr["samples"],
+                "bands": hdr["bands"]
             }
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2b.abun": product_dict})

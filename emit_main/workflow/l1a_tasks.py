@@ -238,14 +238,13 @@ class L1AReassembleRaw(SlurmJobTask):
         # PGE writes metadata to db
         dm = wm.database_manager
 
-        # TODO: Add products
         product_dict = {
             "img_path": acq.raw_img_path,
             "hdr_path": acq.raw_hdr_path,
             "dimensions": {
                 "lines": hdr["lines"],
-                "bands": hdr["bands"],
-                "samples": hdr["samples"]
+                "samples": hdr["samples"],
+                "bands": hdr["bands"]
             }
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1a.raw": product_dict})

@@ -127,8 +127,8 @@ class L2AReflectance(SlurmJobTask):
                 "hdr_path": hdr_path,
                 "dimensions": {
                     "lines": hdr["lines"],
-                    "bands": hdr["bands"],
-                    "samples": hdr["samples"]
+                    "samples": hdr["samples"],
+                    "bands": hdr["bands"]
                 }
             }
             if "_rfl_" in img_path:
@@ -248,8 +248,8 @@ class L2AMask(SlurmJobTask):
             "hdr_path": acq.mask_hdr_path,
             "dimensions": {
                 "lines": hdr["lines"],
-                "bands": hdr["bands"],
-                "samples": hdr["samples"]
+                "samples": hdr["samples"],
+                "bands": hdr["bands"]
             }
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2a.mask": product_dict})
