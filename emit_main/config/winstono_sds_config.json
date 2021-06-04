@@ -27,6 +27,9 @@
     "decompression_constants_path": "repos/emit-sds-l1a/decompression/constants.txt",
     "decompression_init_data_path": "repos/emit-sds-l1a/decompression/init_data.bin",
     "dem_path": "/shared/dem/TBD",
+    "isofit_wavelength_path": "repos/emit-sds-l2a/surface_v1/release_1_20170320_ang20170228_wavelength_fit.txt",
+    "isofit_surface_path": "repos/emit-sds-l2a/surface_v1/release_1_basic_surface.mat",
+    "isofit_emulator_base": "/shared/sRTMnet/sRTMnet_v100",
     "versions": [
       {
         "version_date_range": ["2021-01-01", "2022-01-01"],

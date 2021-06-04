@@ -55,11 +55,11 @@ class L2AReflectance(SlurmJobTask):
         pge = wm.pges["emit-sds-l2a"]
 
         # Build PGE cmd
-        tmp_log_path = os.path.join(self.tmp_dir, "isofit.log")
-        wavelength_path = os.path.join(pge.repo_dir, "surface", "release_1_20170320_ang20170228_wavelength_fit.txt")
-        surface_path = os.path.join(pge.repo_dir, "surface", "release_1_basic_surface.mat")
         apply_oe_exe = os.path.join(wm.pges["isofit"].repo_dir, "isofit", "utils", "apply_oe.py")
-        emulator_base = "/shared/sRTMnet/sRTMnet_v100"
+        tmp_log_path = os.path.join(self.tmp_dir, "isofit.log")
+        wavelength_path = wm.config["isofit_wavelength_path"]
+        surface_path = wm.config["isofit_surface_path"]
+        emulator_base = wm.config["isofit_emulator_base"]
         input_files = {
             "radiance_file": acq.rdn_img_path,
             "pixel_locations_file": acq.loc_img_path,
@@ -235,7 +235,6 @@ class L2AMask(SlurmJobTask):
         hdr["emit pge run command"] = " ".join(cmd)
         hdr["emit software build version"] = wm.config["build_num"]
         hdr["emit documentation version"] = doc_version
-        # TODO: Get creation time separately for each file type?
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.mask_img_path))
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S")
         hdr["emit data product version"] = wm.config["processing_version"]
