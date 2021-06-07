@@ -76,7 +76,7 @@ class L2AReflectance(SlurmJobTask):
                "--log_file", tmp_log_path]
 
         env = os.environ.copy()
-        env["SIXS_DIR"] = "/shared/sixs"
+        env["SIXS_DIR"] = wm.config["isofit_sixs_dir"]
         env["EMULATOR_DIR"] = emulator_base
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
@@ -125,6 +125,7 @@ class L2AReflectance(SlurmJobTask):
             product_dict = {
                 "img_path": img_path,
                 "hdr_path": hdr_path,
+                "created": creation_time,
                 "dimensions": {
                     "lines": hdr["lines"],
                     "samples": hdr["samples"],
@@ -245,6 +246,7 @@ class L2AMask(SlurmJobTask):
         product_dict = {
             "img_path": acq.mask_img_path,
             "hdr_path": acq.mask_hdr_path,
+            "created": creation_time,
             "dimensions": {
                 "lines": hdr["lines"],
                 "samples": hdr["samples"],

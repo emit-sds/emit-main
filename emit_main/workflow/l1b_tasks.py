@@ -60,10 +60,7 @@ class L1BCalibrate(SlurmJobTask):
         tmp_rdn_img_path = os.path.join(tmp_output_dir, os.path.basename(acq.rdn_img_path))
         log_name = os.path.basename(acq.rdn_img_path.replace(".img", "_pge.log"))
         tmp_log_path = os.path.join(tmp_output_dir, log_name)
-        # TODO Add logic to check date ranges for proper config
-        calibrations_dir = os.path.join(pge.repo_dir, "calibrations")
-        l1b_config_path = os.path.join(calibrations_dir, "config_20210101_20210131.json")
-        with open(l1b_config_path, "r") as f:
+        with open(wm.config["lib_config_path"], "r") as f:
             config = json.load(f)
         # Set input, dark, and output paths in config
         config["input_file"] = acq.raw_img_path
@@ -113,6 +110,7 @@ class L1BCalibrate(SlurmJobTask):
         product_dict = {
             "img_path": acq.rdn_img_path,
             "hdr_path": acq.rdn_hdr_path,
+            "created": creation_time,
             "dimensions": {
                 "lines": hdr["lines"],
                 "samples": hdr["samples"],

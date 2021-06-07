@@ -241,6 +241,7 @@ class L1AReassembleRaw(SlurmJobTask):
         product_dict = {
             "img_path": acq.raw_img_path,
             "hdr_path": acq.raw_hdr_path,
+            "created": creation_time,
             "dimensions": {
                 "lines": hdr["lines"],
                 "samples": hdr["samples"],
@@ -332,6 +333,7 @@ class L1AReformatEDP(SlurmJobTask):
         cmd = [sds_l1a_eng_exe, stream.ccsds_path, self.tmp_dir, ios_l1_edp_exe]
         env = os.environ.copy()
         env["AIT_ROOT"] = wm.pges["emit-ios"].repo_dir
+        # TODO: Convert these to ancillary file paths?
         env["AIT_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "config.yaml")
         env["AIT_ISS_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "sim.yaml")
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)

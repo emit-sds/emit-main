@@ -37,7 +37,7 @@ class Config:
                 build_config = json.load(b)
                 self.dictionary.update(build_config)
             # Read in ancillary paths
-            self.dictionary.update(self._get_ancillary_file_paths(config["ancillary_files"], acquisition_id))
+            self.dictionary.update(self._get_ancillary_file_paths(config["ancillary_paths"], acquisition_id))
 
     def _get_ancillary_file_paths(self, anc_files_config, acquisition_id):
         if "versions" in anc_files_config:

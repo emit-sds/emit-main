@@ -54,9 +54,9 @@ class L2BAbundance(SlurmJobTask):
         run_tetra_exe = os.path.join(pge.repo_dir, "run_tetracorder_pge.sh")
         cmd_tetra = [run_tetra_exe, self.tmp_dir, acq.rfl_img_path]
         env = os.environ.copy()
-        env["SP_LOCAL"] = "/shared/specpr"
+        env["SP_LOCAL"] = wm.config["specpr_path"]
         env["SP_BIN"] = "${SP_LOCAL}/bin"
-        env["TETRA"] = "/shared/tetracorder5.26"
+        env["TETRA"] = wm.config["tetracorder_path"]
         env["PATH"] = "${PATH}:${SP_LOCAL}/bin:${TETRA}/bin:/usr/bin"
         pge.run(cmd_tetra, tmp_dir=self.tmp_dir, env=env)
 
@@ -101,6 +101,7 @@ class L2BAbundance(SlurmJobTask):
         product_dict = {
             "img_path": acq.abun_img_path,
             "hdr_path": acq.abun_hdr_path,
+            "created": creation_time,
             "dimensions": {
                 "lines": hdr["lines"],
                 "samples": hdr["samples"],
