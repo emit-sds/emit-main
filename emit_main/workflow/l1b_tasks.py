@@ -38,7 +38,7 @@ class L1BCalibrate(SlurmJobTask):
     def requires(self):
 
         logger.debug(self.task_family + " requires")
-        return L1AReassembleRaw(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return L1AReassembleRaw(config_path=self.config_path, acquisition_id=self.acquisition_id, ignore_missing=False)
 
     def output(self):
 
@@ -60,10 +60,7 @@ class L1BCalibrate(SlurmJobTask):
         tmp_rdn_img_path = os.path.join(tmp_output_dir, os.path.basename(acq.rdn_img_path))
         log_name = os.path.basename(acq.rdn_img_path.replace(".img", "_pge.log"))
         tmp_log_path = os.path.join(tmp_output_dir, log_name)
-        # TODO Add logic to check date ranges for proper config
-        calibrations_dir = os.path.join(pge.repo_dir, "calibrations")
-        l1b_config_path = os.path.join(calibrations_dir, "config_20210101_20210131.json")
-        with open(l1b_config_path, "r") as f:
+        with open(wm.config["lib_config_path"], "r") as f:
             config = json.load(f)
         # Set input, dark, and output paths in config
         config["input_file"] = acq.raw_img_path
@@ -100,24 +97,27 @@ class L1BCalibrate(SlurmJobTask):
         hdr["emit pge version"] = pge.version_tag
         hdr["emit pge input files"] = input_files_arr
         hdr["emit pge run command"] = " ".join(cmd)
-        hdr["emit software build version"] = wm.build_num
+        hdr["emit software build version"] = wm.config["build_num"]
         hdr["emit documentation version"] = doc_version
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rdn_img_path))
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S")
-        hdr["emit data product version"] = wm.processing_version
+        hdr["emit data product version"] = wm.config["processing_version"]
 
         envi.write_envi_header(acq.rdn_hdr_path, hdr)
 
         # PGE writes metadata to db
-        dimensions = {
-            "l1b": {
+        dm = wm.database_manager
+        product_dict = {
+            "img_path": acq.rdn_img_path,
+            "hdr_path": acq.rdn_hdr_path,
+            "created": creation_time,
+            "dimensions": {
                 "lines": hdr["lines"],
-                "bands": hdr["bands"],
                 "samples": hdr["samples"],
+                "bands": hdr["bands"]
             }
         }
-        dm = wm.database_manager
-        dm.update_acquisition_dimensions(self.acquisition_id, dimensions)
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn": product_dict})
 
         log_entry = {
             "task": self.task_family,
@@ -130,7 +130,7 @@ class L1BCalibrate(SlurmJobTask):
             "log_timestamp": datetime.datetime.now(),
             "completion_status": "SUCCESS",
             "output": {
-                "l1b_rdn_path": acq.rdn_img_path,
+                "l1b_rdn_img_path": acq.rdn_img_path,
                 "l1b_rdn_hdr_path:": acq.rdn_hdr_path
             }
         }

@@ -5,13 +5,12 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
 import grp
-import json
 import logging
 import os
 import pwd
 
 from emit_main.database.database_manager import DatabaseManager
-from emit_main.util.config import Config
+from emit_main.config.config import Config
 from emit_main.workflow.acquisition import Acquisition
 from emit_main.workflow.pge import PGE
 from emit_main.workflow.stream import Stream
@@ -27,26 +26,29 @@ class WorkflowManager:
         :param acquisition_id: The name of the acquisition with timestamp (eg. "emit20200519t140035")
         """
 
-        # Update manager with properties from config file
-        self.__dict__.update(Config(config_path, acquisition_id).get_properties())
-
         self.config_path = config_path
         self.acquisition_id = acquisition_id
         self.stream_path = stream_path
+
+        # Get config properties
+        self.config = Config(config_path, acquisition_id).get_dictionary()
+
         self.database_manager = DatabaseManager(config_path)
 
         # Create base directories and add to list to create directories later
         dirs = []
-        self.instrument_dir = os.path.join(self.local_store_dir, self.instrument)
-        self.environment_dir = os.path.join(self.instrument_dir, self.environment)
+        self.instrument_dir = os.path.join(self.config["local_store_dir"], self.config["instrument"])
+        self.environment_dir = os.path.join(self.instrument_dir, self.config["environment"])
         self.data_dir = os.path.join(self.environment_dir, "data")
         self.ingest_dir = os.path.join(self.environment_dir, "ingest")
         self.ingest_duplicates_dir = os.path.join(self.ingest_dir, "duplicates")
         self.logs_dir = os.path.join(self.environment_dir, "logs")
         self.repos_dir = os.path.join(self.environment_dir, "repos")
         self.resources_dir = os.path.join(self.environment_dir, "resources")
-        self.scratch_tmp_dir = os.path.join(self.local_scratch_dir, self.instrument, self.environment, "tmp")
-        self.scratch_error_dir = os.path.join(self.local_scratch_dir, self.instrument, self.environment, "error")
+        self.scratch_tmp_dir = os.path.join(self.config["local_scratch_dir"], self.config["instrument"],
+                                            self.config["environment"], "tmp")
+        self.scratch_error_dir = os.path.join(self.config["local_scratch_dir"], self.config["instrument"],
+                                              self.config["environment"], "error")
         dirs.extend([self.instrument_dir, self.environment_dir, self.data_dir, self.ingest_dir,
                      self.ingest_duplicates_dir, self.logs_dir, self.repos_dir, self.resources_dir,
                      self.scratch_tmp_dir, self.scratch_error_dir])
@@ -56,9 +58,9 @@ class WorkflowManager:
             if not os.path.exists(d):
                 os.makedirs(d)
                 # Change group ownership in shared environments
-                if self.environment in ["dev", "test", "ops"]:
+                if self.config["environment"] in ["dev", "test", "ops"]:
                     uid = pwd.getpwnam(pwd.getpwuid(os.getuid())[0]).pw_uid
-                    gid = grp.getgrnam(self.instrument + "-" + self.environment).gr_gid
+                    gid = grp.getgrnam(self.config["instrument"] + "-" + self.config["environment"]).gr_gid
                     os.chown(d, uid, gid)
 
         # If we have an acquisition id and acquisition exists in db, initialize acquisition
@@ -75,7 +77,7 @@ class WorkflowManager:
 
         # Create repository paths and PGEs based on build config
         self.pges = {}
-        for repo in self.repositories:
+        for repo in self.config["repositories"]:
             if "conda_env" in repo and len(repo["conda_env"]) > 0:
                 conda_env = repo["conda_env"]
             else:
@@ -85,24 +87,14 @@ class WorkflowManager:
             else:
                 version_tag = None
             pge = PGE(
-                conda_base=self.conda_base_dir,
+                conda_base=self.config["conda_base_dir"],
                 conda_env=conda_env,
                 pge_base=self.repos_dir,
                 repo_url=repo["url"],
                 version_tag=version_tag,
-                environment=self.environment
+                environment=self.config["environment"]
             )
             self.pges[pge.repo_name] = pge
-
-    def _get_ancillary_file_paths(self, anc_files_config):
-        if "versions" in anc_files_config:
-            versions = anc_files_config["versions"]
-            # Look for matching date range and update top level dictionary with those key/value pairs
-            for k, v in enumerate(versions):
-                pass
-            # Remove "versions" and return dictionary
-            del anc_files_config["versions"]
-        return {}
 
     def checkout_repos_for_build(self):
         for pge in self.pges.values():

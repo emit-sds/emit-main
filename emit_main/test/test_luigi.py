@@ -27,8 +27,8 @@ def test_luigi_build(config_path):
                                                       "logging.conf"))
     success = luigi.build(
         [ExampleTask(config_path=config_path, acquisition_id=acquisition_id)],
-        workers=wm.luigi_workers,
-        local_scheduler=wm.luigi_local_scheduler,
+        workers=wm.config["luigi_workers"],
+        local_scheduler=wm.config["luigi_local_scheduler"],
         logging_conf_file=luigi_logging_conf)
 
     assert success

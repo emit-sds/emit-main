@@ -194,8 +194,8 @@ class L1AReassembleRaw(SlurmJobTask):
         reassemble_raw_pge = os.path.join(pge.repo_dir, "reassemble_raw_cube.py")
         flex_pge = wm.pges["EMIT_FLEX_codec"]
         flex_codec_exe = os.path.join(flex_pge.repo_dir, "flexcodec")
-        constants_path = os.path.join(wm.environment_dir, "test_data", "constants.txt")
-        init_data_path = os.path.join(wm.environment_dir, "test_data", "init_data.bin")
+        constants_path = wm.config["decompression_constants_path"]
+        init_data_path = wm.config["decompression_init_data_path"]
         tmp_log_path = os.path.join(self.tmp_dir, "reassemble_raw_pge.log")
         input_files = {
             "compressed_frames_dir": acq.comp_frames_dir,
@@ -228,30 +228,25 @@ class L1AReassembleRaw(SlurmJobTask):
         hdr["emit pge version"] = pge.version_tag
         hdr["emit pge input files"] = input_files_arr
         hdr["emit pge run command"] = " ".join(cmd)
-        hdr["emit software build version"] = wm.build_num
+        hdr["emit software build version"] = wm.config["build_num"]
         hdr["emit documentation version"] = doc_version
-        # TODO: Get creation time separately for each file type?
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.raw_img_path))
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S")
-        hdr["emit data product version"] = wm.processing_version
+        hdr["emit data product version"] = wm.config["processing_version"]
         envi.write_envi_header(acq.raw_hdr_path, hdr)
 
         # PGE writes metadata to db
         dm = wm.database_manager
 
-        # TODO: Add products
         product_dict = {
-            "path": acq.raw_img_path,
+            "img_path": acq.raw_img_path,
+            "hdr_path": acq.raw_hdr_path,
+            "created": creation_time,
             "dimensions": {
                 "lines": hdr["lines"],
-                "bands": hdr["bands"],
-                "samples": hdr["samples"]
-            },
-            "checksum": {
-                "value": "",
-                "algorithm": ""
-            },
-            "geometry": {}
+                "samples": hdr["samples"],
+                "bands": hdr["bands"]
+            }
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1a.raw": product_dict})
 
@@ -266,7 +261,7 @@ class L1AReassembleRaw(SlurmJobTask):
             "log_timestamp": datetime.datetime.now(),
             "completion_status": "SUCCESS",
             "output": {
-                "l1a_raw_path": acq.raw_img_path,
+                "l1a_raw_img_path": acq.raw_img_path,
                 "l1a_raw_hdr_path:": acq.raw_hdr_path
             }
         }
@@ -338,6 +333,7 @@ class L1AReformatEDP(SlurmJobTask):
         cmd = [sds_l1a_eng_exe, stream.ccsds_path, self.tmp_dir, ios_l1_edp_exe]
         env = os.environ.copy()
         env["AIT_ROOT"] = wm.pges["emit-ios"].repo_dir
+        # TODO: Convert these to ancillary file paths?
         env["AIT_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "config.yaml")
         env["AIT_ISS_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "sim.yaml")
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)

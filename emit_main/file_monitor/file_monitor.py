@@ -4,15 +4,10 @@ This code contains the FileMonitor class that watches folders to trigger activit
 Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
-import glob
 import grp
-import json
-import logging
-import os
 import pwd
-import shutil
 
-from emit_main.util.config import Config
+from emit_main.config.config import Config
 from emit_main.workflow.l1a_tasks import *
 
 logger = logging.getLogger("emit-main")
@@ -25,14 +20,15 @@ class FileMonitor:
         :param config_path: Path to config file containing environment settings
         """
 
-        # Update manager with properties from config file
-        self.__dict__.update(Config(config_path).get_properties())
-
         self.config_path = os.path.abspath(config_path)
+
+        # Get config properties
+        self.config = Config(config_path).get_dictionary()
+
         # Build path for ingest folder
-        self.ingest_dir = os.path.join(self.local_store_dir, self.instrument, self.environment, "ingest")
+        self.ingest_dir = os.path.join(self.config["local_store_dir"], self.config["instrument"], self.config["environment"], "ingest")
         self.ingest_duplicates_dir = os.path.join(self.ingest_dir, "duplicates")
-        self.logs_dir = os.path.join(self.local_store_dir, self.instrument, self.environment, "logs")
+        self.logs_dir = os.path.join(self.config["local_store_dir"], self.config["instrument"], self.config["environment"], "logs")
         # Build luigi logging.conf path
         self.luigi_logging_conf = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "workflow", "luigi",
                                                                "logging.conf"))
@@ -43,9 +39,9 @@ class FileMonitor:
             if not os.path.exists(d):
                 os.makedirs(d)
                 # Change group ownership in shared environments
-                if self.environment in ["dev", "test", "ops"]:
+                if self.config["environment"] in ["dev", "test", "ops"]:
                     uid = pwd.getpwnam(pwd.getpwuid(os.getuid())[0]).pw_uid
-                    gid = grp.getgrnam(self.instrument + "-" + self.environment).gr_gid
+                    gid = grp.getgrnam(self.config["instrument"] + "-" + self.config["environment"]).gr_gid
                     os.chown(d, uid, gid)
 
     def ingest_files(self, dry_run=False):
@@ -113,5 +109,5 @@ class FileMonitor:
         for p in paths:
             tasks.append(L1AReformatEDP(config_path=self.config_path, stream_path=p))
 
-        return luigi.build(tasks, workers=4, local_scheduler=self.luigi_local_scheduler,
+        return luigi.build(tasks, workers=4, local_scheduler=self.config["luigi_local_scheduler"],
                            logging_conf_file=self.luigi_logging_conf)

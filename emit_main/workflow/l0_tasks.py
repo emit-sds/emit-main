@@ -147,11 +147,11 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                 for row in csvreader:
                     start_time = datetime.datetime.strptime(row[1], "%Y%m%dT%H%M%S")
                     stop_time = datetime.datetime.strptime(row[2], "%Y%m%dT%H%M%S")
-                    acquisition_id = wm.instrument + start_time.strftime("%Y%m%dt%H%M%S")
+                    acquisition_id = wm.config["instrument"] + start_time.strftime("%Y%m%dt%H%M%S")
                     acq_meta = {
                         "acquisition_id": acquisition_id,
-                        "build_num": wm.build_num,
-                        "processing_version": wm.processing_version,
+                        "build_num": wm.config["build_num"],
+                        "processing_version": wm.config["processing_version"],
                         "dcid": row[0],
                         "start_time": start_time,
                         "stop_time": stop_time,

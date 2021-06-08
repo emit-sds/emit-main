@@ -5,11 +5,10 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
 import datetime
-import json
 
 from pymongo import MongoClient
 
-from emit_main.util.config import Config
+from emit_main.config.config import Config
 
 
 class DatabaseManager:
@@ -19,44 +18,48 @@ class DatabaseManager:
         :param config_path: Path to config file containing environment settings
         """
 
-        # Update manager with properties from config file
-        self.__dict__.update(Config(config_path).get_properties())
+        self.config_path = config_path
 
-        self.client = MongoClient(self.mongodb_host, self.mongodb_port)
-        self.db = self.client[self.mongodb_db_name]
+        # Get config properties
+        self.config = Config(config_path).get_dictionary()
+
+        self.client = MongoClient(self.config["mongodb_host"], self.config["mongodb_port"])
+        self.db = self.client[self.config["mongodb_db_name"]]
 
     def find_acquisition_by_id(self, acquisition_id):
         acquisitions_coll = self.db.acquisitions
-        return acquisitions_coll.find_one({"acquisition_id": acquisition_id, "build_num": self.build_num})
+        return acquisitions_coll.find_one({"acquisition_id": acquisition_id, "build_num": self.config["build_num"]})
 
     def find_acquisition_by_dcid(self, dcid):
         acquisitions_coll = self.db.acquisitions
-        return acquisitions_coll.find_one({"dcid": dcid, "build_num": self.build_num})
+        return acquisitions_coll.find_one({"dcid": dcid, "build_num": self.config["build_num"]})
 
     def insert_acquisition(self, metadata):
         if self.find_acquisition_by_id(metadata["acquisition_id"]) is None:
-            metadata["creation_time"] = datetime.datetime.now()
+            metadata["created"] = datetime.datetime.now()
+            metadata["last_modified"] = datetime.datetime.now()
             acquisitions_coll = self.db.acquisitions
             acquisitions_coll.insert_one(metadata)
 
     def update_acquisition_metadata(self, acquisition_id, metadata):
         acquisitions_coll = self.db.acquisitions
-        query = {"acquisition_id": acquisition_id, "build_num": self.build_num}
+        query = {"acquisition_id": acquisition_id, "build_num": self.config["build_num"]}
+        metadata["last_modified"] = datetime.datetime.now()
         set_value = {"$set": metadata}
         acquisitions_coll.update_one(query, set_value, upsert=True)
 
     def insert_acquisition_log_entry(self, acquisition_id, entry):
         acquisitions_coll = self.db.acquisitions
-        query = {"acquisition_id": acquisition_id, "build_num": self.build_num}
+        query = {"acquisition_id": acquisition_id, "build_num": self.config["build_num"]}
         push_value = {"$push": {"processing_log": entry}}
         acquisitions_coll.update_one(query, push_value)
 
     def find_stream_by_name(self, name):
         streams_coll = self.db.streams
         if "hsc.bin" in name:
-            query = {"hosc_name": name, "build_num": self.build_num}
+            query = {"hosc_name": name, "build_num": self.config["build_num"]}
         else:
-            query = {"ccsds_name": name, "build_num": self.build_num}
+            query = {"ccsds_name": name, "build_num": self.config["build_num"]}
         return streams_coll.find_one(query)
 
     def insert_hosc_stream(self, hosc_name):
@@ -72,11 +75,12 @@ class DatabaseManager:
                 "apid": apid,
                 "start_time": start_time,
                 "stop_time": stop_time,
-                "build_num": self.build_num,
-                "processing_version": self.processing_version,
+                "build_num": self.config["build_num"],
+                "processing_version": self.config["processing_version"],
                 "hosc_name": hosc_name,
                 "processing_log": [],
-                "creation_time": datetime.datetime.now()
+                "created": datetime.datetime.now(),
+                "last_modified": datetime.datetime.now()
             }
             streams_coll = self.db.streams
             streams_coll.insert_one(metadata)
@@ -84,17 +88,18 @@ class DatabaseManager:
     def update_stream_metadata(self, name, metadata):
         streams_coll = self.db.streams
         if "hsc.bin" in name:
-            query = {"hosc_name": name, "build_num": self.build_num}
+            query = {"hosc_name": name, "build_num": self.config["build_num"]}
         else:
-            query = {"ccsds_name": name, "build_num": self.build_num}
+            query = {"ccsds_name": name, "build_num": self.config["build_num"]}
+        metadata["last_modified"] = datetime.datetime.now()
         set_value = {"$set": metadata}
         streams_coll.update_one(query, set_value, upsert=True)
 
     def insert_stream_log_entry(self, name, entry):
         streams_coll = self.db.streams
         if "hsc.bin" in name:
-            query = {"hosc_name": name, "build_num": self.build_num}
+            query = {"hosc_name": name, "build_num": self.config["build_num"]}
         else:
-            query = {"ccsds_name": name, "build_num": self.build_num}
+            query = {"ccsds_name": name, "build_num": self.config["build_num"]}
         push_value = {"$push": {"processing_log": entry}}
         streams_coll.update_one(query, push_value)
