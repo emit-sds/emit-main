@@ -104,8 +104,7 @@ def task_success(task):
 
 @SlurmJobTask.event_handler(luigi.Event.FAILURE)
 def task_failure(task, e):
-    # TODO: If additional debugging is needed, change exc_info to True
-    logger.error("FAILURE: %s failed with exception %s" % (task, str(e)), exc_info=False)
+    logger.error("TASK FAILURE: %s" % task)
 
     # Move tmp folder to errors folder
     error_dir = task.tmp_dir.replace("/tmp/", "/error/")
@@ -113,26 +112,20 @@ def task_failure(task, e):
     shutil.move(task.tmp_dir, error_dir)
 
     # Update DB processing_log with failure message
-    if task.task_family == "emit.L1AReassembleRaw":
-        wm = WorkflowManager(config_path=task.config_path, acquisition_id=task.acquisition_id)
-        acq = wm.acquisition
-        log_entry = {
-            "task": task.task_family,
-            "log_timestamp": datetime.datetime.now(),
-            "completion_status": "FAILURE",
-            "error_message": str(e)
-        }
-        dm = wm.database_manager
+    log_entry = {
+        "task": task.task_family,
+        "log_timestamp": datetime.datetime.now(),
+        "completion_status": "FAILURE",
+        "error_message": str(e)
+    }
+    acquisition_tasks = ("emit.L1AReassembleRaw", "emit.L1BCalibrate", "emit.L2AReflectance", "emit.L2AMask",
+                         "emit.L2BAbundance")
+    stream_tasks = ("emit.L0StripHOSC", "emit.L1ADepacketizeScienceFrames", "emit.L1AReformatEDP")
+    wm = WorkflowManager(config_path=task.config_path)
+    dm = wm.database_manager
+    if task.task_family in acquisition_tasks:
         dm.insert_acquisition_log_entry(task.acquisition_id, log_entry)
-    if task.task_family in ("emit.L0StripHOSC", "emit.L1AReformatEDP"):
-        wm = WorkflowManager(config_path=task.config_path, stream_path=task.stream_path)
-        log_entry = {
-            "task": task.task_family,
-            "log_timestamp": datetime.datetime.now(),
-            "completion_status": "FAILURE",
-            "error_message": str(e)
-        }
-        dm = wm.database_manager
+    elif task.task_family in stream_tasks:
         dm.insert_stream_log_entry(os.path.basename(task.stream_path), log_entry)
 
 

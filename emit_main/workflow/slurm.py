@@ -131,8 +131,6 @@ class SlurmJobTask(luigi.Task):
         for b, a in [(' ', ''), ('(', '_'), (')', '_'), (',', '_'), ('/', '_')]:
             folder_name = folder_name.replace(b, a)
         self.tmp_dir = os.path.join(base_tmp_dir, folder_name)
-#        max_filename_length = os.fstatvfs(0).f_namemax
-#        self.tmp_dir = self.tmp_dir[:max_filename_length]
         logger.info("Created tmp dir: %s", self.tmp_dir)
         os.makedirs(self.tmp_dir)
 
@@ -172,11 +170,6 @@ class SlurmJobTask(luigi.Task):
 
         self._track_job()
 
-        # Now delete the temporaries, if they're there.
-        # if self.tmp_dir and os.path.exists(self.tmp_dir):
-        #    logger.info('Removing temporary directory %s' % self.tmp_dir)
-        #    shutil.rmtree(self.tmp_dir)
-
     def _track_job(self):
         while True:
             # Sleep for a little bit
@@ -198,9 +191,13 @@ class SlurmJobTask(luigi.Task):
                 errors = _get_sbatch_errors(self.errfile)
                 # If no errors, then must be finished
                 if not errors:
-                    logger.info("%s %s with job id %i has COMPLETED WITH NO ERRORS " % (self.task_tmp_id, self.task_family, self.job_id))
+                    logger.info("%s %s with job id %i has COMPLETED WITH NO ERRORS " % (self.task_tmp_id,
+                                                                                        self.task_family, self.job_id))
                 else:  # then we have completed with errors
-                    logger.info("%s %s with job id %i has COMPLETED WITH ERRORS/WARNINGS:\n%s" % (self.task_tmp_id, self.task_family, self.job_id, errors))
+                    logger.info("%s %s with job id %i has COMPLETED WITH ERRORS/WARNINGS " % (self.task_tmp_id,
+                                                                                              self.task_family,
+                                                                                              self.job_id))
+                    raise RuntimeError(errors)
                 break
             # TODO: Add the rest of the states from https://slurm.schedmd.com/squeue.html
 
