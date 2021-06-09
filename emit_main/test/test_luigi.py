@@ -14,6 +14,7 @@ from emit_main.workflow.workflow_manager import WorkflowManager
 
 def test_luigi_build(config_path):
 
+    config_path = os.path.abspath(config_path)
     print("\nRunning test_luigi_build with config: %s" % config_path)
 
     acquisition_id = "emit20200101t000000"

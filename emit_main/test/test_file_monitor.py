@@ -14,6 +14,7 @@ from emit_main.workflow.workflow_manager import WorkflowManager
 
 def test_ingest_files(config_path):
 
+    config_path = os.path.abspath(config_path)
     print("\nRunning test_file_monitor with config: %s" % config_path)
 
     wm = WorkflowManager(config_path=config_path)

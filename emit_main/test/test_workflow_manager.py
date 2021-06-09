@@ -11,6 +11,7 @@ from emit_main.workflow.workflow_manager import WorkflowManager
 
 def test_check_runtime_environment(config_path):
 
+    config_path = os.path.abspath(config_path)
     print("\nRunning test_check_runtime_environment with config: %s" % config_path)
 
     wm = WorkflowManager(config_path=config_path)
@@ -19,6 +20,7 @@ def test_check_runtime_environment(config_path):
 
 def test_acquisition(config_path):
 
+    config_path = os.path.abspath(config_path)
     print("\nRunning test_acquisition with config: %s" % config_path)
 
     wm = WorkflowManager(config_path=config_path, acquisition_id="emit20200101t000000")
@@ -28,6 +30,7 @@ def test_acquisition(config_path):
 
 def test_stream(config_path):
 
+    config_path = os.path.abspath(config_path)
     print("\nRunning test_stream with config: %s" % config_path)
 
     wm = WorkflowManager(config_path=config_path)
