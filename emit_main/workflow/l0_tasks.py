@@ -156,7 +156,8 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                         "start_time": start_time,
                         "stop_time": stop_time,
                         "orbit": row[3],
-                        "scene": row[4]
+                        "scene": row[4],
+                        "submode": row[5].lower()
                     }
 
                     if dm.find_acquisition_by_id(acquisition_id):

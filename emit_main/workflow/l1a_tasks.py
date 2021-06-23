@@ -77,14 +77,14 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
                                  stream_path=self.stream_path)
             acq = wm.acquisition
             # Copy log file into the compressed frames directory
-            shutil.copy2(tmp_log_path, acq.comp_frames_dir + "_pge.log")
+            shutil.copy2(tmp_log_path, acq.frames_dir + "_pge.log")
             # Copy the frames
             acq_frame_paths = []
             for path in glob.glob(os.path.join(tmp_output_dir, dcid + "*")):
                 # Replace dcid with acquisition id on copy
                 fname_tokens = os.path.basename(path).split("_")
                 fname_tokens[0] = acq.acquisition_id
-                acquisition_frame_path = os.path.join(acq.comp_frames_dir, "_".join(fname_tokens))
+                acquisition_frame_path = os.path.join(acq.frames_dir, "_".join(fname_tokens))
                 shutil.copy2(path, acquisition_frame_path)
                 acq_frame_paths.append(acquisition_frame_path)
             # Add frame paths to acquisition metadata
@@ -198,12 +198,12 @@ class L1AReassembleRaw(SlurmJobTask):
         init_data_path = wm.config["decompression_init_data_path"]
         tmp_log_path = os.path.join(self.tmp_dir, "reassemble_raw_pge.log")
         input_files = {
-            "compressed_frames_dir": acq.comp_frames_dir,
+            "compressed_frames_dir": acq.frames_dir,
             "flexcodec_exe_path": flex_codec_exe,
             "constants_path": constants_path,
             "init_data_path": init_data_path
         }
-        cmd = ["python", reassemble_raw_pge, acq.comp_frames_dir,
+        cmd = ["python", reassemble_raw_pge, acq.frames_dir,
                "--flexcodec_exe", flex_codec_exe,
                "--constants_path", constants_path,
                "--init_data_path", init_data_path,
