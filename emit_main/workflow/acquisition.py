@@ -54,8 +54,8 @@ class Acquisition:
         self.__dict__.update(self._build_acquisition_paths())
 
         # Add sub-dirs
-        self.comp_frames_dir = os.path.join(self.l1a_data_dir, f"compressed_frames_b{self.config['build_num']}")
-        self.dirs.append(self.comp_frames_dir)
+        self.frames_dir = self.raw_img_path.replace("_raw_", "_frames_").replace(".img", "")
+        self.dirs.append(self.frames_dir)
 
         # Make directories if they don't exist
         for d in self.dirs:
@@ -135,24 +135,24 @@ class Acquisition:
         return paths
 
     def has_complete_set_of_frames(self):
-        frames = [os.path.basename(frame) for frame in glob.glob(os.path.join(self.comp_frames_dir, "*"))]
+        frames = [os.path.basename(frame) for frame in glob.glob(os.path.join(self.frames_dir, "*"))]
         frames.sort()
         # Check incrementing frame num
         frame_nums = [int(frame.split("_")[1]) for frame in frames]
         if frame_nums != list(range(frame_nums[0], frame_nums[0] + len(frame_nums))):
-            logger.debug("Set of frames is not sequential!")
+            logger.warning("Set of frames is not sequential!")
             return False
         # Check that first frame has status 1 or 5
-        if frames[0].split("_")[2] not in ("1", "5"):
-            logger.debug("Set of frames does not begin with status 1 or 5!")
-            return False
-        # Check that last frame has status 2
-        if frames[-1].split("_")[2] not in ("2"):
-            logger.debug("Set of frames does not end with status 2!")
+        if frames[0].split("_")[3] not in ("1", "5"):
+            logger.warning("Set of frames does not begin with status 1 or 5!")
             return False
         # Check that all in between frames have status 0 or 4
         for frame in frames[1:-1]:
-            if frame.split("_")[2] not in ("0", "4"):
-                logger.debug("Middle frame (not first or last) does not have status 0 or 4!")
+            if frame.split("_")[3] not in ("0", "4"):
+                logger.warning("Middle frame (not first or last) does not have status 0 or 4!")
                 return False
+        # Check that we have the expected number of frames
+        expected_num = int(frames[0].split("_")[2])
+        if len(frames) != expected_num:
+            logger.warning(f"Number of frames, {len(frames)}, does not match expected number, {expected_num}")
         return True
