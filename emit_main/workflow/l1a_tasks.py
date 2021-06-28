@@ -125,33 +125,6 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
         dm.insert_stream_log_entry(stream.ccsds_name, log_entry)
 
 
-# TODO: Full implementation TBD
-class L1APrepFrames(SlurmJobTask):
-    """
-    Orders compressed frames and checks for a complete set for a given DCID
-    :returns: Folder containing a complete set of compressed frames
-    """
-
-    config_path = luigi.Parameter()
-    stream_path = luigi.Parameter()
-    start_time = luigi.DateSecondParameter(default=datetime.date.today() - datetime.timedelta(7))
-    stop_time = luigi.DateSecondParameter(default=datetime.date.today())
-
-    task_namespace = "emit"
-
-    def requires(self):
-
-        return L0StripHOSC(apid=self.apid, start_time=self.start_time, stop_time=self.stop_time)
-
-    def output(self):
-
-        return luigi.LocalTarget("depacketized_directory_by_apid")
-
-    def work(self):
-
-        pass
-
-
 class L1AReassembleRaw(SlurmJobTask):
     """
     Decompresses science frames and assembles them into time-ordered acquisitions
