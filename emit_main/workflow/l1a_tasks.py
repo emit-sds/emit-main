@@ -158,7 +158,7 @@ class L1AReassembleRaw(SlurmJobTask):
         # Check for missing frames before proceeding. Override with --ignore_missing arg
         if self.ignore_missing is False and acq.has_complete_set_of_frames() is False:
             raise RuntimeError(f"Unable to run {self.task_family} on {self.acquisition_id} due to missing frames in "
-                               f"{acq.l1a_data_dir}")
+                               f"{acq.frames_dir}")
 
         pge = wm.pges["emit-sds-l1a"]
         tmp_output_dir = os.path.join(self.tmp_dir, "output")
@@ -188,32 +188,34 @@ class L1AReassembleRaw(SlurmJobTask):
         # Copy raw file and log back to l1a data dir
         tmp_raw_path = os.path.join(tmp_output_dir, acq.acquisition_id + "_raw.img")
         tmp_raw_hdr_path = tmp_raw_path.replace(".img", ".hdr")
-        # TODO: Rename to "raw" or "dark"
-        shutil.copy2(tmp_raw_path, acq.raw_img_path)
-        shutil.copy2(tmp_raw_hdr_path, acq.raw_hdr_path)
-        shutil.copy2(tmp_log_path, acq.raw_img_path.replace(".img", "_pge.log"))
+        # Rename to "raw" or "dark" depending on submode flag
+        reassembled_img_path = acq.dark_img_path if acq.submode == "dark" else acq.raw_img_path
+        reassembled_hdr_path = acq.dark_hdr_path if acq.submode == "dark" else acq.raw_hdr_path
+        shutil.copy2(tmp_raw_path, reassembled_img_path)
+        shutil.copy2(tmp_raw_hdr_path, reassembled_hdr_path)
+        shutil.copy2(tmp_log_path, reassembled_img_path.replace(".img", "_pge.log"))
 
         # Update hdr files
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
         doc_version = "EMIT SDS L1A JPL-D 104186, Initial"
-        hdr = envi.read_envi_header(acq.raw_hdr_path)
+        hdr = envi.read_envi_header(reassembled_hdr_path)
         hdr["emit pge name"] = pge.repo_url
         hdr["emit pge version"] = pge.version_tag
         hdr["emit pge input files"] = input_files_arr
         hdr["emit pge run command"] = " ".join(cmd)
         hdr["emit software build version"] = wm.config["build_num"]
         hdr["emit documentation version"] = doc_version
-        creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.raw_img_path))
+        creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(reassembled_img_path))
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S")
         hdr["emit data product version"] = wm.config["processing_version"]
-        envi.write_envi_header(acq.raw_hdr_path, hdr)
+        envi.write_envi_header(reassembled_hdr_path, hdr)
 
         # PGE writes metadata to db
         dm = wm.database_manager
 
         product_dict = {
-            "img_path": acq.raw_img_path,
-            "hdr_path": acq.raw_hdr_path,
+            "img_path": reassembled_img_path,
+            "hdr_path": reassembled_hdr_path,
             "created": creation_time,
             "dimensions": {
                 "lines": hdr["lines"],
@@ -234,8 +236,8 @@ class L1AReassembleRaw(SlurmJobTask):
             "log_timestamp": datetime.datetime.now(),
             "completion_status": "SUCCESS",
             "output": {
-                "l1a_raw_img_path": acq.raw_img_path,
-                "l1a_raw_hdr_path:": acq.raw_hdr_path
+                "l1a_raw_img_path": reassembled_img_path,
+                "l1a_raw_hdr_path:": reassembled_hdr_path
             }
         }
 

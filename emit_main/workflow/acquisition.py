@@ -144,12 +144,12 @@ class Acquisition:
             return False
         # Check that first frame has status 1 or 5
         if frames[0].split("_")[3] not in ("1", "5"):
-            logger.warning("Set of frames does not begin with status 1 or 5!")
+            logger.warning("First frame in set does not begin with status 1 or 5!")
             return False
-        # Check that all in between frames have status 0 or 4
-        for frame in frames[1:-1]:
+        # Check that all subsequent frames have status 0 or 4
+        for frame in frames[1:]:
             if frame.split("_")[3] not in ("0", "4"):
-                logger.warning("Middle frame (not first or last) does not have status 0 or 4!")
+                logger.warning("One of the frames in the set (after the first) does not have status 0 or 4!")
                 return False
         # Check that we have the expected number of frames
         expected_num = int(frames[0].split("_")[2])
