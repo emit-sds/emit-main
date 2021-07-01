@@ -35,7 +35,7 @@
     "tetracorder_path": "/shared/tetracorder5.26",
     "versions": [
       {
-        "version_date_range": ["2021-01-01", "2022-01-01"],
+        "version_date_range": ["2021-01-01T00:00:00", "2022-01-01T00:00:00"],
         "l1b_config_path": "repos/emit-sds-l1b/calibrations/config_20210101_20210131.json"
       }
     ]
