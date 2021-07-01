@@ -96,8 +96,13 @@ def task_success(task):
     logger.info("SUCCESS: %s" % task)
 
     # TODO: Delete tmp folder
-#    logger.debug("Deleting tmp folder %s" % task.tmp_dir)
+#    logger.debug("Deleting scratch tmp folder %s" % task.tmp_dir)
 #    shutil.rmtree(task.tmp_dir)
+
+    # Remove local tmp dir
+    logger.debug(f"Deleting task's local tmp folder: {task.local_tmp_dir}")
+    if os.path.exists(task.local_tmp_dir):
+        shutil.rmtree(task.local_tmp_dir)
 
     # TODO: Trigger higher level tasks?
 
@@ -107,9 +112,16 @@ def task_failure(task, e):
     logger.error("TASK FAILURE: %s" % task)
 
     # Move tmp folder to errors folder
-    error_dir = task.tmp_dir.replace("/tmp/", "/error/")
-    logger.error("Moving tmp folder %s to %s" % (task.tmp_dir, error_dir))
-    shutil.move(task.tmp_dir, error_dir)
+    error_task_dir = task.tmp_dir.replace("/tmp/", "/error/")
+    logger.error("Moving scratch tmp folder %s to %s" % (task.tmp_dir, error_task_dir))
+    shutil.move(task.tmp_dir, error_task_dir)
+
+    # Copy local tmp dir to error/tmp under scratch
+    error_tmp_dir = error_task_dir + "_tmp"
+    logger.error(f"Copying local tmp folder {task.local_tmp_dir} to {error_tmp_dir}")
+    shutil.copytree(task.local_tmp_dir, error_tmp_dir)
+    logger.error(f"Deleting task's local tmp folder: {task.local_tmp_dir}")
+    shutil.rmtree(task.local_tmp_dir)
 
     # Update DB processing_log with failure message
     log_entry = {

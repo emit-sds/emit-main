@@ -107,6 +107,7 @@ class SlurmJobTask(luigi.Task):
 
     tmp_dir = ""
     task_tmp_id = ""
+    local_tmp_dir = ""
 
     def _dump(self, out_dir=''):
         """Dump instance to file."""
@@ -131,8 +132,11 @@ class SlurmJobTask(luigi.Task):
         for b, a in [(' ', ''), ('(', '_'), (')', '_'), (',', '_'), ('/', '_')]:
             folder_name = folder_name.replace(b, a)
         self.tmp_dir = os.path.join(base_tmp_dir, folder_name)
-        logger.info("Created tmp dir: %s", self.tmp_dir)
+        self.local_tmp_dir = os.path.join(wm.local_tmp_dir, folder_name)
         os.makedirs(self.tmp_dir)
+        os.makedirs(self.local_tmp_dir)
+        logger.info("Created scratch tmp dir: %s", self.tmp_dir)
+        logger.info("Created local tmp dir: %s", self.local_tmp_dir)
 
         # If config file is relative path, copy config file to tmp dir
         if not self.config_path.startswith("/"):
