@@ -29,6 +29,9 @@ class L2BAbundance(SlurmJobTask):
     config_path = luigi.Parameter()
     acquisition_id = luigi.Parameter()
 
+    memory = 30000
+    local_tmp_space = 125000
+
     task_namespace = "emit"
 
     def requires(self):
@@ -52,18 +55,18 @@ class L2BAbundance(SlurmJobTask):
 
         # Build PGE commands for run_tetracorder_pge.sh
         run_tetra_exe = os.path.join(pge.repo_dir, "run_tetracorder_pge.sh")
-        cmd_tetra = [run_tetra_exe, self.tmp_dir, acq.rfl_img_path]
+        cmd_tetra = [run_tetra_exe, self.local_tmp_dir, acq.rfl_img_path]
         env = os.environ.copy()
         env["SP_LOCAL"] = wm.config["specpr_path"]
         env["SP_BIN"] = "${SP_LOCAL}/bin"
         env["TETRA"] = wm.config["tetracorder_path"]
         env["PATH"] = "${PATH}:${SP_LOCAL}/bin:${TETRA}/bin:/usr/bin"
-        pge.run(cmd_tetra, tmp_dir=self.tmp_dir, env=env)
+        pge.run(cmd_tetra, tmp_dir=self.local_tmp_dir, env=env)
 
         # Build aggregator cmd
         aggregator_exe = os.path.join(pge.repo_dir, "aggregator.py")
-        tetra_out_dir = os.path.join(self.tmp_dir, "tetra_out")
-        tmp_output_dir = os.path.join(self.tmp_dir, "output")
+        tetra_out_dir = os.path.join(self.local_tmp_dir, "tetra_out")
+        tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
         os.makedirs(tmp_output_dir)
         tmp_abun_path = os.path.join(tmp_output_dir, os.path.basename(acq.abun_img_path))
         tmp_abun_hdr_path = tmp_abun_path + ".hdr"

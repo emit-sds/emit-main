@@ -23,7 +23,6 @@ from emit_main.workflow.slurm import SlurmJobTask
 logger = logging.getLogger("emit-main")
 
 
-# TODO: Full implementation TBD
 class L1BCalibrate(SlurmJobTask):
     """
     Performs calibration of raw data to produce radiance

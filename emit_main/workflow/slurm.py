@@ -13,7 +13,8 @@ from emit_main.workflow.workflow_manager import WorkflowManager
 logger = logging.getLogger("emit-main")
 
 
-def _build_sbatch_script(tmp_dir, cmd, job_name, outfile, errfile, n_nodes, n_tasks, n_cores, memory):
+def _build_sbatch_script(tmp_dir, cmd, job_name, partition, outfile, errfile, n_nodes, n_tasks, n_cores, memory,
+                         local_tmp_space):
     """Create shell script to submit to Slurm queue via `sbatch`
 
     Returns path to sbatch script
@@ -25,13 +26,14 @@ def _build_sbatch_script(tmp_dir, cmd, job_name, outfile, errfile, n_nodes, n_ta
 
     sbatch_template = """#!/bin/bash
 #SBATCH -J {job_name}
-#SBATCH --partition=emit
+#SBATCH --partition={partition}
 #SBATCH --output={outfile}
 #SBATCH --error={errfile}
 #SBATCH -N{n_nodes}
 #SBATCH -n{n_tasks}
 #SBATCH --cpus-per-task={n_cores}
 #SBATCH --mem={memory}
+#SBATCH --tmp={local_tmp_space}
 {conda_exe} run -n {conda_env} {cmd}
     """
     sbatch_script = os.path.join(tmp_dir, job_name + ".sh")
@@ -40,12 +42,14 @@ def _build_sbatch_script(tmp_dir, cmd, job_name, outfile, errfile, n_nodes, n_ta
             sbatch_template.format(
                 cmd=cmd,
                 job_name=job_name,
+                partition=partition,
                 outfile=outfile,
                 errfile=errfile,
                 n_nodes=n_nodes,
                 n_tasks=n_tasks,
                 n_cores=n_cores,
                 memory=memory,
+                local_tmp_space=local_tmp_space,
                 conda_exe=conda_exe,
                 conda_env=conda_env)
         )
@@ -96,15 +100,20 @@ def _get_sbatch_errors(errfile):
 
 class SlurmJobTask(luigi.Task):
 
+    # Luigi parameters that can be passed in to the task
     config_path = luigi.Parameter()
     acquisition_id = luigi.Parameter(default="")
     stream_path = luigi.Parameter(default="")
+    partition = luigi.Parameter(default="emit")
 
-    n_nodes = luigi.IntParameter(default=1)
-    n_tasks = luigi.IntParameter(default=1)
-    n_cores = luigi.IntParameter(default=1)
-    memory = luigi.IntParameter(default=4000)
+    # Resource management parameters to be overridden as needed by subclass tasks
+    n_nodes = 1
+    n_tasks = 1
+    n_cores = 1
+    memory = 4000
+    local_tmp_space = 20000
 
+    # Additional params to be overridden
     tmp_dir = ""
     task_tmp_id = ""
     local_tmp_dir = ""
@@ -164,7 +173,8 @@ class SlurmJobTask(luigi.Task):
         self.outfile = os.path.join(self.tmp_dir, 'job.out')
         self.errfile = os.path.join(self.tmp_dir, 'job.err')
         sbatch_script = _build_sbatch_script(self.tmp_dir, job_str, self.task_family, self.outfile, self.errfile,
-                                             self.n_nodes, self.n_tasks, self.n_cores, self.memory)
+                                             self.n_nodes, self.n_tasks, self.n_cores, self.memory,
+                                             self.local_tmp_space)
         logger.debug('sbatch script: ' + sbatch_script)
 
         # Submit the job and grab job ID

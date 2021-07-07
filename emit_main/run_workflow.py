@@ -35,6 +35,8 @@ def parse_args():
     parser.add_argument("-p", "--products",
                         help=("Comma delimited list of products to create (no spaces). \
                         Choose from " + ", ".join(product_choices)))
+    parser.add_argument("--partition", default="emit",
+                        help="The slurm partition to be used - emit (default), debug, standard, patient ")
     parser.add_argument("--ignore_missing", action="store_true",
                         help="Ignore missing frames when reasssembling raw cube")
     parser.add_argument("-w", "--workers", default=2,
@@ -66,11 +68,13 @@ def get_tasks_from_args(args):
     products = args.products.split(",")
     stream_kwargs = {
         "config_path": args.config_path,
-        "stream_path": args.stream_path
+        "stream_path": args.stream_path,
+        "partition": args.partition
     }
     acquisition_kwargs = {
         "config_path": args.config_path,
-        "acquisition_id": args.acquisition_id
+        "acquisition_id": args.acquisition_id,
+        "partition": args.partition
     }
 
     prod_task_map = {

@@ -56,7 +56,7 @@ class L2AReflectance(SlurmJobTask):
 
         # Build PGE cmd
         apply_oe_exe = os.path.join(wm.pges["isofit"].repo_dir, "isofit", "utils", "apply_oe.py")
-        tmp_log_path = os.path.join(self.tmp_dir, "isofit.log")
+        tmp_log_path = os.path.join(self.local_tmp_dir, "isofit.log")
         wavelength_path = wm.config["isofit_wavelength_path"]
         surface_path = wm.config["isofit_surface_path"]
         emulator_base = wm.config["isofit_emulator_base"]
@@ -67,12 +67,12 @@ class L2AReflectance(SlurmJobTask):
             "wavelength_file": wavelength_path,
             "surface_file": surface_path
         }
-        cmd = ["python", apply_oe_exe, acq.rdn_img_path, acq.loc_img_path, acq.obs_img_path, self.tmp_dir, "emit",
+        cmd = ["python", apply_oe_exe, acq.rdn_img_path, acq.loc_img_path, acq.obs_img_path, self.local_tmp_dir, "emit",
                "--presolve=1", "--empirical_line=1", "--emulator_base=" + emulator_base,
                "--n_cores", "40",
                "--wavelength_path", wavelength_path,
                "--surface_path", surface_path,
-               "--ray_temp_dir", "/tmp/ray-" + os.path.basename(self.tmp_dir),
+               "--ray_temp_dir", "/tmp/ray-" + os.path.basename(self.local_tmp_dir),
                "--log_file", tmp_log_path]
 
         env = os.environ.copy()
@@ -81,13 +81,13 @@ class L2AReflectance(SlurmJobTask):
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
         # Copy output files to l2a dir and rename
-        tmp_rfl_path = os.path.join(self.tmp_dir, "output", self.acquisition_id + "_rfl")
+        tmp_rfl_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_rfl")
         tmp_rfl_hdr_path = tmp_rfl_path + ".hdr"
-        tmp_uncert_path = os.path.join(self.tmp_dir, "output", self.acquisition_id + "_uncert")
+        tmp_uncert_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_uncert")
         tmp_uncert_hdr_path = tmp_uncert_path + ".hdr"
-        tmp_lbl_path = os.path.join(self.tmp_dir, "output", self.acquisition_id + "_lbl")
+        tmp_lbl_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_lbl")
         tmp_lbl_hdr_path = tmp_lbl_path + ".hdr"
-        tmp_statesubs_path = os.path.join(self.tmp_dir, "output", self.acquisition_id + "_subs_state")
+        tmp_statesubs_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_subs_state")
         tmp_statesubs_hdr_path = tmp_statesubs_path + ".hdr"
         shutil.copy2(tmp_rfl_path, acq.rfl_img_path)
         shutil.copy2(tmp_rfl_hdr_path, acq.rfl_hdr_path)
