@@ -172,8 +172,8 @@ class SlurmJobTask(luigi.Task):
         # Build sbatch script
         self.outfile = os.path.join(self.tmp_dir, 'job.out')
         self.errfile = os.path.join(self.tmp_dir, 'job.err')
-        sbatch_script = _build_sbatch_script(self.tmp_dir, job_str, self.task_family, self.outfile, self.errfile,
-                                             self.n_nodes, self.n_tasks, self.n_cores, self.memory,
+        sbatch_script = _build_sbatch_script(self.tmp_dir, job_str, self.task_family, self.partition, self.outfile,
+                                             self.errfile, self.n_nodes, self.n_tasks, self.n_cores, self.memory,
                                              self.local_tmp_space)
         logger.debug('sbatch script: ' + sbatch_script)
 
