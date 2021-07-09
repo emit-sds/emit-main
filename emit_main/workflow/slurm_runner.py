@@ -6,6 +6,8 @@ except ImportError:
 import os
 import sys
 
+from emit_main.workflow.workflow_manager import WorkflowManager
+
 
 def _do_work_on_compute_node(work_dir):
 
@@ -15,6 +17,12 @@ def _do_work_on_compute_node(work_dir):
     print(sys.path)
     with open("job-instance.pickle", "rb") as f:
         job = pickle.load(f)
+
+    # Set up local tmp dir
+    wm = WorkflowManager(config_path=job.config_path)
+    job.local_tmp_dir = os.path.join(wm.local_tmp_dir, job.task_instance_id)
+    os.makedirs(job.local_tmp_dir)
+    print("Created local tmp dir: %s", job.local_tmp_dir)
 
     # Do the work contained
     job.work()

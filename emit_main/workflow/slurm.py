@@ -114,8 +114,9 @@ class SlurmJobTask(luigi.Task):
     local_tmp_space = 20000
 
     # Additional params to be overridden
-    tmp_dir = ""
     task_tmp_id = ""
+    task_instance_id = ""
+    tmp_dir = ""
     local_tmp_dir = ""
 
     def _dump(self, out_dir=''):
@@ -125,27 +126,25 @@ class SlurmJobTask(luigi.Task):
             logger.debug("Pickling to file: %s" % self.job_file)
             pickle.dump(self, open(self.job_file, "wb"), protocol=2)
 
-    def _init_local(self):
-
+    def _set_task_tmp_id(self):
         if len(self.acquisition_id) > 0:
             self.task_tmp_id = self.acquisition_id
-        else:
+        elif len(self.stream_path) > 0:
             self.task_tmp_id = os.path.basename(self.stream_path)
+
+    def _set_task_instance_id(self):
+        timestamp = datetime.datetime.now().strftime("%Y%m%dt%H%M%S")
+        instance_id = self.task_tmp_id + "_" + self.task_family + "_" + timestamp
+        for b, a in [(' ', ''), ('(', '_'), (')', '_'), (',', '_'), ('/', '_')]:
+            instance_id = instance_id.replace(b, a)
+        self.task_instance_id = instance_id
+
+    def _init_local(self):
         wm = WorkflowManager(config_path=self.config_path)
         # Create tmp folder
-        base_tmp_dir = wm.scratch_tmp_dir
-        timestamp = datetime.datetime.now().strftime("%Y%m%dt%H%M%S")
-#        timestamp = datetime.datetime.now().strftime('%Y%m%dt%H%M%S_%f') # Use this for microseconds
-        folder_name = self.task_tmp_id + "_" + self.task_family + "_" + timestamp
-
-        for b, a in [(' ', ''), ('(', '_'), (')', '_'), (',', '_'), ('/', '_')]:
-            folder_name = folder_name.replace(b, a)
-        self.tmp_dir = os.path.join(base_tmp_dir, folder_name)
-        self.local_tmp_dir = os.path.join(wm.local_tmp_dir, folder_name)
+        self.tmp_dir = os.path.join(wm.scratch_tmp_dir, self.task_instance_id)
         os.makedirs(self.tmp_dir)
-        os.makedirs(self.local_tmp_dir)
         logger.info("Created scratch tmp dir: %s", self.tmp_dir)
-        logger.info("Created local tmp dir: %s", self.local_tmp_dir)
 
         # If config file is relative path, copy config file to tmp dir
         if not self.config_path.startswith("/"):
@@ -218,16 +217,21 @@ class SlurmJobTask(luigi.Task):
     def run(self):
 
         wm = WorkflowManager(config_path=self.config_path)
-
+        self._set_task_tmp_id()
+        self._set_task_instance_id()
+        self._init_local()
         if wm.config["luigi_local_scheduler"]:
             # Run job locally without Slurm scheduler
             logger.debug("Running task locally: %s" % self.task_family)
-            self._init_local()
+            # Set up local tmp dir
+            self.local_tmp_dir = os.path.join(wm.local_tmp_dir, self.task_instance_id)
+            os.makedirs(self.local_tmp_dir)
+            logger.info("Created local tmp dir: %s", self.local_tmp_dir)
+            # Run the job
             self.work()
         else:
             # Run the job
             logger.debug("Running task with Slurm: %s" % self.task_family)
-            self._init_local()
             self._run_job()
 
     def work(self):
