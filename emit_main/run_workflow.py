@@ -79,7 +79,7 @@ def get_tasks_from_args(args):
 
     prod_task_map = {
         "l0hosc": L0StripHOSC(**stream_kwargs),
-        "l0plan": L0ProcessPlanningProduct(config_path=args.config_path),
+        "l0plan": L0ProcessPlanningProduct(config_path=args.config_path, partition=args.partition),
         "l1aeng": L1AReformatEDP(**stream_kwargs),
         "l1aframe": L1ADepacketizeScienceFrames(**stream_kwargs),
         "l1araw": L1AReassembleRaw(ignore_missing=args.ignore_missing, **acquisition_kwargs),
@@ -103,9 +103,9 @@ def task_success(task):
 #    logger.debug("Deleting scratch tmp folder %s" % task.tmp_dir)
 #    shutil.rmtree(task.tmp_dir)
 
-    # Remove local tmp dir
-    logger.debug(f"Deleting task's local tmp folder: {task.local_tmp_dir}")
+    # Remove local tmp dir if exists
     if os.path.exists(task.local_tmp_dir):
+        logger.debug(f"Deleting task's local tmp folder: {task.local_tmp_dir}")
         shutil.rmtree(task.local_tmp_dir)
 
     # TODO: Trigger higher level tasks?
@@ -115,17 +115,18 @@ def task_success(task):
 def task_failure(task, e):
     logger.error("TASK FAILURE: %s" % task)
 
-    # Move tmp folder to errors folder
+    # Move scratch tmp folder to errors folder
     error_task_dir = task.tmp_dir.replace("/tmp/", "/error/")
     logger.error("Moving scratch tmp folder %s to %s" % (task.tmp_dir, error_task_dir))
     shutil.move(task.tmp_dir, error_task_dir)
 
-    # Copy local tmp dir to error/tmp under scratch
-    error_tmp_dir = error_task_dir + "_tmp"
-    logger.error(f"Copying local tmp folder {task.local_tmp_dir} to {error_tmp_dir}")
-    shutil.copytree(task.local_tmp_dir, error_tmp_dir)
-    logger.error(f"Deleting task's local tmp folder: {task.local_tmp_dir}")
-    shutil.rmtree(task.local_tmp_dir)
+    # Copy local tmp dir to error/tmp under scratch if exists
+    if os.path.exists(task.local_tmp_dir):
+        error_tmp_dir = error_task_dir + "_tmp"
+        logger.error(f"Copying local tmp folder {task.local_tmp_dir} to {error_tmp_dir}")
+        shutil.copytree(task.local_tmp_dir, error_tmp_dir)
+        logger.error(f"Deleting task's local tmp folder: {task.local_tmp_dir}")
+        shutil.rmtree(task.local_tmp_dir)
 
     # Update DB processing_log with failure message
     log_entry = {

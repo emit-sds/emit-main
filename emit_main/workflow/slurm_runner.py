@@ -4,6 +4,7 @@ except ImportError:
     import pickle
 
 import os
+import shutil
 import sys
 
 from emit_main.workflow.workflow_manager import WorkflowManager
@@ -14,7 +15,7 @@ def _do_work_on_compute_node(work_dir):
     # Open up the pickle file with the work to be done
     os.chdir(work_dir)
     # sys.path.insert(0, work_dir)
-    print(sys.path)
+    # print(f"sys.path: {sys.path}")
     with open("job-instance.pickle", "rb") as f:
         job = pickle.load(f)
 
@@ -25,7 +26,20 @@ def _do_work_on_compute_node(work_dir):
     print("Created local tmp dir: %s", job.local_tmp_dir)
 
     # Do the work contained
-    job.work()
+    try:
+        job.work()
+    except RuntimeError as e:
+        # Move local tmp folder to "error" subfolder under "scratch"
+        print("Encountered error with task:  %s" % job)
+        error_task_dir = job.tmp_dir.replace("/tmp/", "/error/")
+        error_tmp_dir = error_task_dir + "_tmp"
+        print(f"Copying local tmp folder {job.local_tmp_dir} to {error_tmp_dir}")
+        shutil.copytree(job.local_tmp_dir, error_tmp_dir)
+        raise e
+    finally:
+        # Delete local tmp folder
+        print(f"Deleting task's local tmp folder: {job.local_tmp_dir}")
+        shutil.rmtree(job.local_tmp_dir)
 
 
 def main(args=sys.argv):
