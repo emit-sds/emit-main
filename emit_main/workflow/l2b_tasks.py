@@ -14,7 +14,8 @@ import spectral.io.envi as envi
 
 from emit_main.workflow.envi_target import ENVITarget
 from emit_main.workflow.workflow_manager import WorkflowManager
-from emit_main.workflow.l2a_tasks import L2AMask
+from emit_main.workflow.l1b_tasks import L1BGeolocate
+from emit_main.workflow.l2a_tasks import L2AMask, L2AReflectance
 from emit_main.workflow.slurm import SlurmJobTask
 
 logger = logging.getLogger("emit-main")
@@ -28,6 +29,7 @@ class L2BAbundance(SlurmJobTask):
 
     config_path = luigi.Parameter()
     acquisition_id = luigi.Parameter()
+    level = luigi.Parameter()
 
     memory = 30000
     local_tmp_space = 125000
@@ -37,7 +39,9 @@ class L2BAbundance(SlurmJobTask):
     def requires(self):
 
         logger.debug(self.task_family + " requires")
-        return L2AMask(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return (L1BGeolocate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level),
+                L2AReflectance(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level),
+                L2AMask(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level))
 
     def output(self):
 

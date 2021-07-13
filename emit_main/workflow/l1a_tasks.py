@@ -29,8 +29,8 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
     """
 
     config_path = luigi.Parameter()
-    level = luigi.Parameter()
     stream_path = luigi.Parameter()
+    level = luigi.Parameter()
 
     task_namespace = "emit"
 
@@ -133,9 +133,9 @@ class L1AReassembleRaw(SlurmJobTask):
     """
 
     config_path = luigi.Parameter()
-    level = luigi.Parameter()
     acquisition_id = luigi.Parameter()
     ignore_missing = luigi.Parameter()
+    level = luigi.Parameter()
 
     memory = 30000
     local_tmp_space = 125000
