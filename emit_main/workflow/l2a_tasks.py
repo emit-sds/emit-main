@@ -27,6 +27,7 @@ class L2AReflectance(SlurmJobTask):
     """
 
     config_path = luigi.Parameter()
+    level = luigi.Parameter()
     acquisition_id = luigi.Parameter()
 
     n_cores = 40
@@ -73,7 +74,8 @@ class L2AReflectance(SlurmJobTask):
                "--wavelength_path", wavelength_path,
                "--surface_path", surface_path,
                "--ray_temp_dir", "/tmp/ray-" + os.path.basename(self.local_tmp_dir),
-               "--log_file", tmp_log_path]
+               "--log_file", tmp_log_path,
+               "--logging_level", self.level]
 
         env = os.environ.copy()
         env["SIXS_DIR"] = wm.config["isofit_sixs_dir"]

@@ -102,9 +102,10 @@ class SlurmJobTask(luigi.Task):
 
     # Luigi parameters that can be passed in to the task
     config_path = luigi.Parameter()
+    level = luigi.Parameter(default="INFO")
+    partition = luigi.Parameter(default="emit")
     acquisition_id = luigi.Parameter(default="")
     stream_path = luigi.Parameter(default="")
-    partition = luigi.Parameter(default="emit")
 
     # Resource management parameters to be overridden as needed by subclass tasks
     n_nodes = 1

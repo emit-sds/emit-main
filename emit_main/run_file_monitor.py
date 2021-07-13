@@ -24,6 +24,8 @@ def parse_args():
                         help="Start time (YYMMDDhhmmss)")
     parser.add_argument("--stop_time",
                         help="Stop time (YYMMDDhhmmss)")
+    parser.add_argument("-l", "--level", default="INFO",
+                        help="The log level (default: INFO)")
     args = parser.parse_args()
 
     if args.config_path is None:
@@ -32,13 +34,16 @@ def parse_args():
 
     args.config_path = os.path.abspath(args.config_path)
 
+    # Upper case the log level
+    args.level = args.level.upper()
+
     return args
 
 
-def set_up_logging(logs_dir):
+def set_up_logging(logs_dir, level):
     # Add file handler logging to main logs directory
     handler = logging.FileHandler(os.path.join(logs_dir, "file_monitor.log"))
-    handler.setLevel(logging.INFO)
+    handler.setLevel(level)
     formatter = logging.Formatter("%(asctime)s %(levelname)s [%(module)s]: %(message)s")
     handler.setFormatter(formatter)
     logger.addHandler(handler)
@@ -51,7 +56,7 @@ def main():
     args = parse_args()
 
     fm = FileMonitor(config_path=args.config_path)
-    set_up_logging(fm.logs_dir)
+    set_up_logging(fm.logs_dir, args.level)
     logger.info("Running file monitor with cmd: %s" % str(" ".join(sys.argv)))
 
     if args.start_time and args.stop_time:

@@ -30,6 +30,7 @@ class L1BCalibrate(SlurmJobTask):
     """
 
     config_path = luigi.Parameter()
+    level = luigi.Parameter()
     acquisition_id = luigi.Parameter()
 
     task_namespace = "emit"
@@ -80,7 +81,8 @@ class L1BCalibrate(SlurmJobTask):
             json.dump(config, outfile)
 
         emitrdn_exe = os.path.join(pge.repo_dir, "emitrdn.py")
-        cmd = ["python", emitrdn_exe, tmp_config_path, acq.raw_img_path, tmp_rdn_img_path, "--log_file", tmp_log_path]
+        cmd = ["python", emitrdn_exe, tmp_config_path, acq.raw_img_path, tmp_rdn_img_path, "--log_file", tmp_log_path,
+               "--level", self.level]
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
         # Copy output files to l1b dir

@@ -29,6 +29,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
     """
 
     config_path = luigi.Parameter()
+    level = luigi.Parameter()
     stream_path = luigi.Parameter()
 
     task_namespace = "emit"
@@ -57,7 +58,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
         tmp_log_path = os.path.join(self.tmp_dir, "depacketize_science_frames_pge.log")
         cmd = ["python", sds_l1a_science_packet_exe, stream.ccsds_path,
                "--out_dir", tmp_output_dir,
-               "--level", "DEBUG",
+               "--level", self.level,
                "--log_path", tmp_log_path]
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
@@ -132,6 +133,7 @@ class L1AReassembleRaw(SlurmJobTask):
     """
 
     config_path = luigi.Parameter()
+    level = luigi.Parameter()
     acquisition_id = luigi.Parameter()
     ignore_missing = luigi.Parameter()
 
@@ -184,7 +186,7 @@ class L1AReassembleRaw(SlurmJobTask):
                "--constants_path", constants_path,
                "--init_data_path", init_data_path,
                "--out_dir", tmp_output_dir,
-               "--level", "DEBUG",
+               "--level", self.level,
                "--log_path", tmp_log_path]
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
