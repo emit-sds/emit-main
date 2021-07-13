@@ -64,7 +64,7 @@ class L2BAbundance(SlurmJobTask):
         env["SP_BIN"] = "${SP_LOCAL}/bin"
         env["TETRA"] = wm.config["tetracorder_path"]
         env["PATH"] = "${PATH}:${SP_LOCAL}/bin:${TETRA}/bin:/usr/bin"
-        pge.run(cmd_tetra, tmp_dir=self.local_tmp_dir, env=env)
+        pge.run(cmd_tetra, tmp_dir=self.tmp_dir, env=env)
 
         # Build aggregator cmd
         aggregator_exe = os.path.join(pge.repo_dir, "aggregator.py")
