@@ -23,7 +23,6 @@ from emit_main.workflow.slurm import SlurmJobTask
 logger = logging.getLogger("emit-main")
 
 
-# TODO: Full implementation TBD
 class L1BCalibrate(SlurmJobTask):
     """
     Performs calibration of raw data to produce radiance
@@ -32,13 +31,15 @@ class L1BCalibrate(SlurmJobTask):
 
     config_path = luigi.Parameter()
     acquisition_id = luigi.Parameter()
+    level = luigi.Parameter()
 
     task_namespace = "emit"
 
     def requires(self):
 
         logger.debug(self.task_family + " requires")
-        return L1AReassembleRaw(config_path=self.config_path, acquisition_id=self.acquisition_id, ignore_missing=False)
+        return L1AReassembleRaw(config_path=self.config_path, acquisition_id=self.acquisition_id, ignore_missing=False,
+                                level=self.level)
 
     def output(self):
 
@@ -60,7 +61,7 @@ class L1BCalibrate(SlurmJobTask):
         tmp_rdn_img_path = os.path.join(tmp_output_dir, os.path.basename(acq.rdn_img_path))
         log_name = os.path.basename(acq.rdn_img_path.replace(".img", "_pge.log"))
         tmp_log_path = os.path.join(tmp_output_dir, log_name)
-        with open(wm.config["lib_config_path"], "r") as f:
+        with open(wm.config["l1b_config_path"], "r") as f:
             config = json.load(f)
         # Set input, dark, and output paths in config
         config["input_file"] = acq.raw_img_path
@@ -69,6 +70,7 @@ class L1BCalibrate(SlurmJobTask):
         config["output_file"] = tmp_rdn_img_path
 
         input_files = {}
+        calibrations_dir = os.path.join(pge.repo_dir, "calibrations")
         for key, value in config.items():
             if "_file" in key and not key.startswith("/"):
                 config[key] = os.path.abspath(os.path.join(calibrations_dir, value))
@@ -80,7 +82,8 @@ class L1BCalibrate(SlurmJobTask):
             json.dump(config, outfile)
 
         emitrdn_exe = os.path.join(pge.repo_dir, "emitrdn.py")
-        cmd = ["python", emitrdn_exe, tmp_config_path, acq.raw_img_path, tmp_rdn_img_path, "--log_file", tmp_log_path]
+        cmd = ["python", emitrdn_exe, tmp_config_path, acq.raw_img_path, tmp_rdn_img_path, "--log_file", tmp_log_path,
+               "--level", self.level]
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
         # Copy output files to l1b dir
@@ -147,13 +150,14 @@ class L1BGeolocate(SlurmJobTask):
 
     config_path = luigi.Parameter()
     acquisition_id = luigi.Parameter()
+    level = luigi.Parameter()
 
     task_namespace = "emit"
 
     def requires(self):
 
         logger.debug(self.task_family + " requires")
-        return L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level)
 
     def output(self):
 

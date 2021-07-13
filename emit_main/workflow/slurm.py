@@ -13,7 +13,8 @@ from emit_main.workflow.workflow_manager import WorkflowManager
 logger = logging.getLogger("emit-main")
 
 
-def _build_sbatch_script(tmp_dir, cmd, job_name, outfile, errfile, n_nodes, n_tasks, n_cores, memory):
+def _build_sbatch_script(tmp_dir, cmd, job_name, partition, outfile, errfile, n_nodes, n_tasks, n_cores, memory,
+                         local_tmp_space):
     """Create shell script to submit to Slurm queue via `sbatch`
 
     Returns path to sbatch script
@@ -25,13 +26,14 @@ def _build_sbatch_script(tmp_dir, cmd, job_name, outfile, errfile, n_nodes, n_ta
 
     sbatch_template = """#!/bin/bash
 #SBATCH -J {job_name}
-#SBATCH --partition=emit
+#SBATCH --partition={partition}
 #SBATCH --output={outfile}
 #SBATCH --error={errfile}
 #SBATCH -N{n_nodes}
 #SBATCH -n{n_tasks}
 #SBATCH --cpus-per-task={n_cores}
 #SBATCH --mem={memory}
+#SBATCH --tmp={local_tmp_space}
 {conda_exe} run -n {conda_env} {cmd}
     """
     sbatch_script = os.path.join(tmp_dir, job_name + ".sh")
@@ -40,12 +42,14 @@ def _build_sbatch_script(tmp_dir, cmd, job_name, outfile, errfile, n_nodes, n_ta
             sbatch_template.format(
                 cmd=cmd,
                 job_name=job_name,
+                partition=partition,
                 outfile=outfile,
                 errfile=errfile,
                 n_nodes=n_nodes,
                 n_tasks=n_tasks,
                 n_cores=n_cores,
                 memory=memory,
+                local_tmp_space=local_tmp_space,
                 conda_exe=conda_exe,
                 conda_env=conda_env)
         )
@@ -96,17 +100,25 @@ def _get_sbatch_errors(errfile):
 
 class SlurmJobTask(luigi.Task):
 
+    # Luigi parameters that can be passed in to the task
     config_path = luigi.Parameter()
+    level = luigi.Parameter(default="INFO")
+    partition = luigi.Parameter(default="emit")
     acquisition_id = luigi.Parameter(default="")
     stream_path = luigi.Parameter(default="")
 
-    n_nodes = luigi.IntParameter(default=1)
-    n_tasks = luigi.IntParameter(default=1)
-    n_cores = luigi.IntParameter(default=1)
-    memory = luigi.IntParameter(default=4000)
+    # Resource management parameters to be overridden as needed by subclass tasks
+    n_nodes = 1
+    n_tasks = 1
+    n_cores = 1
+    memory = 4000
+    local_tmp_space = 20000
 
-    tmp_dir = ""
+    # Additional params to be overridden
     task_tmp_id = ""
+    task_instance_id = ""
+    tmp_dir = ""
+    local_tmp_dir = ""
 
     def _dump(self, out_dir=''):
         """Dump instance to file."""
@@ -115,24 +127,25 @@ class SlurmJobTask(luigi.Task):
             logger.debug("Pickling to file: %s" % self.job_file)
             pickle.dump(self, open(self.job_file, "wb"), protocol=2)
 
-    def _init_local(self):
-
+    def _set_task_tmp_id(self):
         if len(self.acquisition_id) > 0:
             self.task_tmp_id = self.acquisition_id
-        else:
+        elif len(self.stream_path) > 0:
             self.task_tmp_id = os.path.basename(self.stream_path)
+
+    def _set_task_instance_id(self):
+        timestamp = datetime.datetime.now().strftime("%Y%m%dt%H%M%S")
+        instance_id = self.task_tmp_id + "_" + self.task_family + "_" + timestamp
+        for b, a in [(' ', ''), ('(', '_'), (')', '_'), (',', '_'), ('/', '_')]:
+            instance_id = instance_id.replace(b, a)
+        self.task_instance_id = instance_id
+
+    def _init_local(self):
         wm = WorkflowManager(config_path=self.config_path)
         # Create tmp folder
-        base_tmp_dir = wm.scratch_tmp_dir
-        timestamp = datetime.datetime.now().strftime("%Y%m%dt%H%M%S")
-#        timestamp = datetime.datetime.now().strftime('%Y%m%dt%H%M%S_%f') # Use this for microseconds
-        folder_name = self.task_tmp_id + "_" + self.task_family + "_" + timestamp
-
-        for b, a in [(' ', ''), ('(', '_'), (')', '_'), (',', '_'), ('/', '_')]:
-            folder_name = folder_name.replace(b, a)
-        self.tmp_dir = os.path.join(base_tmp_dir, folder_name)
-        logger.info("Created tmp dir: %s", self.tmp_dir)
+        self.tmp_dir = os.path.join(wm.scratch_tmp_dir, self.task_instance_id)
         os.makedirs(self.tmp_dir)
+        logger.info("Created scratch tmp dir: %s", self.tmp_dir)
 
         # If config file is relative path, copy config file to tmp dir
         if not self.config_path.startswith("/"):
@@ -159,8 +172,9 @@ class SlurmJobTask(luigi.Task):
         # Build sbatch script
         self.outfile = os.path.join(self.tmp_dir, 'job.out')
         self.errfile = os.path.join(self.tmp_dir, 'job.err')
-        sbatch_script = _build_sbatch_script(self.tmp_dir, job_str, self.task_family, self.outfile, self.errfile,
-                                             self.n_nodes, self.n_tasks, self.n_cores, self.memory)
+        sbatch_script = _build_sbatch_script(self.tmp_dir, job_str, self.task_family, self.partition, self.outfile,
+                                             self.errfile, self.n_nodes, self.n_tasks, self.n_cores, self.memory,
+                                             self.local_tmp_space)
         logger.debug('sbatch script: ' + sbatch_script)
 
         # Submit the job and grab job ID
@@ -204,16 +218,21 @@ class SlurmJobTask(luigi.Task):
     def run(self):
 
         wm = WorkflowManager(config_path=self.config_path)
-
+        self._set_task_tmp_id()
+        self._set_task_instance_id()
+        self._init_local()
         if wm.config["luigi_local_scheduler"]:
             # Run job locally without Slurm scheduler
             logger.debug("Running task locally: %s" % self.task_family)
-            self._init_local()
+            # Set up local tmp dir
+            self.local_tmp_dir = os.path.join(wm.local_tmp_dir, self.task_instance_id)
+            os.makedirs(self.local_tmp_dir)
+            logger.info("Created local tmp dir: %s", self.local_tmp_dir)
+            # Run the job
             self.work()
         else:
             # Run the job
             logger.debug("Running task with Slurm: %s" % self.task_family)
-            self._init_local()
             self._run_job()
 
     def work(self):

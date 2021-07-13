@@ -5,11 +5,39 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
 import os
+import shutil
 
 import luigi
 
+from emit_main.workflow.slurm import SlurmJobTask
 from emit_main.workflow.test_tasks import ExampleTask
 from emit_main.workflow.workflow_manager import WorkflowManager
+
+
+@SlurmJobTask.event_handler(luigi.Event.SUCCESS)
+def task_success(task):
+    print("SUCCESS: %s" % task)
+
+    print("Deleting task's tmp folder %s" % task.tmp_dir)
+    if os.path.exists(task.tmp_dir):
+        shutil.rmtree(task.tmp_dir)
+
+    print(f"Deleting task's local tmp dir: {task.local_tmp_dir}")
+    if os.path.exists(task.local_tmp_dir):
+        shutil.rmtree(task.local_tmp_dir)
+
+
+@SlurmJobTask.event_handler(luigi.Event.FAILURE)
+def task_failure(task, e):
+    print("TASK FAILURE: %s" % task)
+
+    print("Deleting task's tmp folder %s" % task.tmp_dir)
+    if os.path.exists(task.tmp_dir):
+        shutil.rmtree(task.tmp_dir)
+
+    print(f"Deleting task's local tmp dir: {task.local_tmp_dir}")
+    if os.path.exists(task.local_tmp_dir):
+        shutil.rmtree(task.local_tmp_dir)
 
 
 def test_luigi_build(config_path):

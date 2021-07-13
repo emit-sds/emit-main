@@ -35,6 +35,10 @@ def parse_args():
     parser.add_argument("-p", "--products",
                         help=("Comma delimited list of products to create (no spaces). \
                         Choose from " + ", ".join(product_choices)))
+    parser.add_argument("-l", "--level", default="INFO",
+                        help="The log level (default: INFO)")
+    parser.add_argument("--partition", default="emit",
+                        help="The slurm partition to be used - emit (default), debug, standard, patient ")
     parser.add_argument("--ignore_missing", action="store_true",
                         help="Ignore missing frames when reasssembling raw cube")
     parser.add_argument("-w", "--workers", default=2,
@@ -51,6 +55,9 @@ def parse_args():
 
     args.config_path = os.path.abspath(args.config_path)
 
+    # Upper case the log level
+    args.level = args.level.upper()
+
     if args.products:
         product_list = args.products.split(",")
         for prod in product_list:
@@ -64,27 +71,22 @@ def parse_args():
 
 def get_tasks_from_args(args):
     products = args.products.split(",")
-    stream_kwargs = {
+    kwargs = {
         "config_path": args.config_path,
-        "stream_path": args.stream_path
+        "level": args.level,
+        "partition": args.partition
     }
-    acquisition_kwargs = {
-        "config_path": args.config_path,
-        "acquisition_id": args.acquisition_id
-    }
-
     prod_task_map = {
-        "l0hosc": L0StripHOSC(**stream_kwargs),
-        "l0plan": L0ProcessPlanningProduct(config_path=args.config_path),
-        "l1aeng": L1AReformatEDP(**stream_kwargs),
-        "l1aframe": L1ADepacketizeScienceFrames(**stream_kwargs),
-        "l1araw": L1AReassembleRaw(ignore_missing=args.ignore_missing, **acquisition_kwargs),
-        "l1bcal": L1BCalibrate(**acquisition_kwargs),
-        "l2arefl": L2AReflectance(**acquisition_kwargs),
-        "l2amask": L2AMask(**acquisition_kwargs),
-        "l2babun": L2BAbundance(**acquisition_kwargs)
+        "l0hosc": L0StripHOSC(stream_path=args.stream_path, **kwargs),
+        "l0plan": L0ProcessPlanningProduct(**kwargs),
+        "l1aeng": L1AReformatEDP(stream_path=args.stream_path, **kwargs),
+        "l1aframe": L1ADepacketizeScienceFrames(stream_path=args.stream_path, **kwargs),
+        "l1araw": L1AReassembleRaw(acquisition_id=args.acquisition_id, ignore_missing=args.ignore_missing, **kwargs),
+        "l1bcal": L1BCalibrate(acquisition_id=args.acquisition_id, **kwargs),
+        "l2arefl": L2AReflectance(acquisition_id=args.acquisition_id, **kwargs),
+        "l2amask": L2AMask(acquisition_id=args.acquisition_id, **kwargs),
+        "l2babun": L2BAbundance(acquisition_id=args.acquisition_id, **kwargs)
     }
-
     tasks = []
     for prod in products:
         tasks.append(prod_task_map[prod])
@@ -96,8 +98,13 @@ def task_success(task):
     logger.info("SUCCESS: %s" % task)
 
     # TODO: Delete tmp folder
-#    logger.debug("Deleting tmp folder %s" % task.tmp_dir)
+#    logger.debug("Deleting scratch tmp folder %s" % task.tmp_dir)
 #    shutil.rmtree(task.tmp_dir)
+
+    # Remove local tmp dir if exists
+    if os.path.exists(task.local_tmp_dir):
+        logger.debug(f"Deleting task's local tmp folder: {task.local_tmp_dir}")
+        shutil.rmtree(task.local_tmp_dir)
 
     # TODO: Trigger higher level tasks?
 
@@ -106,10 +113,18 @@ def task_success(task):
 def task_failure(task, e):
     logger.error("TASK FAILURE: %s" % task)
 
-    # Move tmp folder to errors folder
-    error_dir = task.tmp_dir.replace("/tmp/", "/error/")
-    logger.error("Moving tmp folder %s to %s" % (task.tmp_dir, error_dir))
-    shutil.move(task.tmp_dir, error_dir)
+    # Move scratch tmp folder to errors folder
+    error_task_dir = task.tmp_dir.replace("/tmp/", "/error/")
+    logger.error("Moving scratch tmp folder %s to %s" % (task.tmp_dir, error_task_dir))
+    shutil.move(task.tmp_dir, error_task_dir)
+
+    # Copy local tmp dir to error/tmp under scratch if exists
+    if os.path.exists(task.local_tmp_dir):
+        error_tmp_dir = error_task_dir + "_tmp"
+        logger.error(f"Copying local tmp folder {task.local_tmp_dir} to {error_tmp_dir}")
+        shutil.copytree(task.local_tmp_dir, error_tmp_dir)
+        logger.error(f"Deleting task's local tmp folder: {task.local_tmp_dir}")
+        shutil.rmtree(task.local_tmp_dir)
 
     # Update DB processing_log with failure message
     log_entry = {
@@ -129,10 +144,10 @@ def task_failure(task, e):
         dm.insert_stream_log_entry(os.path.basename(task.stream_path), log_entry)
 
 
-def set_up_logging(logs_dir):
+def set_up_logging(logs_dir, level):
     # Add file handler logging to main logs directory
     handler = logging.FileHandler(os.path.join(logs_dir, "workflow.log"))
-    handler.setLevel(logging.INFO)
+    handler.setLevel(level)
     formatter = logging.Formatter("%(asctime)s %(levelname)s [%(module)s]: %(message)s")
     handler.setFormatter(formatter)
     logger.addHandler(handler)
@@ -144,7 +159,7 @@ def main():
     """
     args = parse_args()
     wm = WorkflowManager(config_path=args.config_path)
-    set_up_logging(wm.logs_dir)
+    set_up_logging(wm.logs_dir, args.level)
     logger.info("Running workflow with cmd: %s" % str(" ".join(sys.argv)))
 
     # Check out code if requested

@@ -30,6 +30,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
 
     config_path = luigi.Parameter()
     stream_path = luigi.Parameter()
+    level = luigi.Parameter()
 
     task_namespace = "emit"
 
@@ -57,7 +58,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
         tmp_log_path = os.path.join(self.tmp_dir, "depacketize_science_frames_pge.log")
         cmd = ["python", sds_l1a_science_packet_exe, stream.ccsds_path,
                "--out_dir", tmp_output_dir,
-               "--level", "DEBUG",
+               "--level", self.level,
                "--log_path", tmp_log_path]
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
@@ -134,6 +135,10 @@ class L1AReassembleRaw(SlurmJobTask):
     config_path = luigi.Parameter()
     acquisition_id = luigi.Parameter()
     ignore_missing = luigi.Parameter()
+    level = luigi.Parameter()
+
+    memory = 30000
+    local_tmp_space = 125000
 
     task_namespace = "emit"
 
@@ -161,7 +166,7 @@ class L1AReassembleRaw(SlurmJobTask):
                                f"{acq.frames_dir}")
 
         pge = wm.pges["emit-sds-l1a"]
-        tmp_output_dir = os.path.join(self.tmp_dir, "output")
+        tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
         os.makedirs(tmp_output_dir)
 
         reassemble_raw_pge = os.path.join(pge.repo_dir, "reassemble_raw_cube.py")
@@ -169,9 +174,9 @@ class L1AReassembleRaw(SlurmJobTask):
         flex_codec_exe = os.path.join(flex_pge.repo_dir, "flexcodec")
         constants_path = wm.config["decompression_constants_path"]
         init_data_path = wm.config["decompression_init_data_path"]
-        tmp_log_path = os.path.join(self.tmp_dir, "reassemble_raw_pge.log")
+        tmp_log_path = os.path.join(self.local_tmp_dir, "reassemble_raw_pge.log")
         input_files = {
-            "compressed_frames_dir": acq.frames_dir,
+            "frames_dir": acq.frames_dir,
             "flexcodec_exe_path": flex_codec_exe,
             "constants_path": constants_path,
             "init_data_path": init_data_path
@@ -181,7 +186,7 @@ class L1AReassembleRaw(SlurmJobTask):
                "--constants_path", constants_path,
                "--init_data_path", init_data_path,
                "--out_dir", tmp_output_dir,
-               "--level", "DEBUG",
+               "--level", self.level,
                "--log_path", tmp_log_path]
         pge.run(cmd, tmp_dir=self.tmp_dir)
 

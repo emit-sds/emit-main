@@ -46,8 +46,8 @@ class Config:
                 acquisition_date = self._get_date_from_acquisition(acquisition_id)
                 # Look for matching date range and update top level dictionary with those key/value pairs
                 for version in versions:
-                    start_date = datetime.datetime.strptime(version["version_date_range"][0], "%Y-%m-%d")
-                    end_date = datetime.datetime.strptime(version["version_date_range"][1], "%Y-%m-%d")
+                    start_date = datetime.datetime.strptime(version["version_date_range"][0], "%Y-%m-%dT%H:%M:%S")
+                    end_date = datetime.datetime.strptime(version["version_date_range"][1], "%Y-%m-%dT%H:%M:%S")
                     if start_date <= acquisition_date < end_date:
                         anc_files_config.update(version)
             # Remove "versions" and return dictionary

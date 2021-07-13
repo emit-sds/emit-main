@@ -49,6 +49,7 @@ class WorkflowManager:
                                             self.config["environment"], "tmp")
         self.scratch_error_dir = os.path.join(self.config["local_scratch_dir"], self.config["instrument"],
                                               self.config["environment"], "error")
+        self.local_tmp_dir = os.path.join("/tmp", self.config["instrument"], self.config["environment"])
         dirs.extend([self.instrument_dir, self.environment_dir, self.data_dir, self.ingest_dir,
                      self.ingest_duplicates_dir, self.logs_dir, self.repos_dir, self.resources_dir,
                      self.scratch_tmp_dir, self.scratch_error_dir])
