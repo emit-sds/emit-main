@@ -36,7 +36,7 @@ class DatabaseManager:
 
     def insert_acquisition(self, metadata):
         if self.find_acquisition_by_id(metadata["acquisition_id"]) is None:
-            utc_now = datetime.datetime.utcnow()
+            utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
             metadata["created"] = utc_now
             metadata["last_modified"] = utc_now
             acquisitions_coll = self.db.acquisitions
@@ -45,7 +45,7 @@ class DatabaseManager:
     def update_acquisition_metadata(self, acquisition_id, metadata):
         acquisitions_coll = self.db.acquisitions
         query = {"acquisition_id": acquisition_id, "build_num": self.config["build_num"]}
-        metadata["last_modified"] = datetime.datetime.utcnow()
+        metadata["last_modified"] = datetime.datetime.now(tz=datetime.timezone.utc)
         set_value = {"$set": metadata}
         acquisitions_coll.update_one(query, set_value, upsert=True)
 
@@ -81,7 +81,7 @@ class DatabaseManager:
             # These dates are already in UTC and will be stored in the DB as UTC by default
             start_time = datetime.datetime.strptime(start_time_str, "%Y%m%d%H%M%S")
             stop_time = datetime.datetime.strptime(stop_time_str, "%Y%m%d%H%M%S")
-            utc_now = datetime.datetime.utcnow()
+            utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
             metadata = {
                 "apid": apid,
                 "start_time": start_time,
@@ -102,7 +102,7 @@ class DatabaseManager:
             query = {"hosc_name": name, "build_num": self.config["build_num"]}
         else:
             query = {"ccsds_name": name, "build_num": self.config["build_num"]}
-        metadata["last_modified"] = datetime.datetime.utcnow()
+        metadata["last_modified"] = datetime.datetime.now(tz=datetime.timezone.utc)
         set_value = {"$set": metadata}
         streams_coll.update_one(query, set_value, upsert=True)
 

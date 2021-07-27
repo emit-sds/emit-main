@@ -5,8 +5,7 @@
     "build_num": "0000",
     "processing_version": "00",
     "luigi_local_scheduler": true,
-    "luigi_workers": 2,
-    "timezone": "America/Los_Angeles"
+    "luigi_workers": 2
   },
 
   "filesystem_config": {

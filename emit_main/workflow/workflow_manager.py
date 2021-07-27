@@ -8,7 +8,6 @@ import grp
 import logging
 import os
 import pwd
-import pytz
 
 from emit_main.database.database_manager import DatabaseManager
 from emit_main.config.config import Config
@@ -35,8 +34,6 @@ class WorkflowManager:
         self.config = Config(config_path, acquisition_id).get_dictionary()
 
         self.database_manager = DatabaseManager(config_path)
-
-        self.timezone = pytz.timezone(self.config["timezone"])
 
         # Create base directories and add to list to create directories later
         dirs = []

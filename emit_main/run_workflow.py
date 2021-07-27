@@ -130,7 +130,7 @@ def task_failure(task, e):
     wm = WorkflowManager(config_path=task.config_path)
     log_entry = {
         "task": task.task_family,
-        "log_timestamp": datetime.datetime.utcnow(),
+        "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
         "completion_status": "FAILURE",
         "error_message": str(e)
     }

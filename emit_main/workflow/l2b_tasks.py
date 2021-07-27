@@ -99,7 +99,7 @@ class L2BAbundance(SlurmJobTask):
         hdr["emit pge run command"] = " ".join(cmd)
         hdr["emit software build version"] = wm.config["build_num"]
         hdr["emit documentation version"] = doc_version
-        creation_time = wm.timezone.localize(datetime.datetime.fromtimestamp(os.path.getmtime(acq.abun_img_path)))
+        creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.abun_img_path), tz=datetime.timezone.utc)
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         hdr["emit data product version"] = wm.config["processing_version"]
         envi.write_envi_header(acq.abun_hdr_path, hdr)
@@ -126,7 +126,7 @@ class L2BAbundance(SlurmJobTask):
             "pge_run_command": " ".join(cmd),
             "documentation_version": doc_version,
             "product_creation_time": creation_time,
-            "log_timestamp": datetime.datetime.utcnow(),
+            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
                 "l2b_abun_img_path": acq.abun_img_path,

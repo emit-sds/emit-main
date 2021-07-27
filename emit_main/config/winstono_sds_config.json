@@ -4,8 +4,7 @@
     "environment": "winstono",
     "processing_version": "00",
     "luigi_local_scheduler": false,
-    "luigi_workers": 2,
-    "timezone": "America/Los_Angeles"
+    "luigi_workers": 2
   },
 
   "filesystem_config": {
