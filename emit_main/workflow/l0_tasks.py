@@ -145,6 +145,7 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                 csvreader = csv.reader(csvfile)
                 header_row = next(csvreader)
                 for row in csvreader:
+                    # These times are already in UTC and will be stored in DB as UTC by default
                     start_time = datetime.datetime.strptime(row[1], "%Y%m%dT%H%M%S")
                     stop_time = datetime.datetime.strptime(row[2], "%Y%m%dT%H%M%S")
                     acquisition_id = wm.config["instrument"] + start_time.strftime("%Y%m%dt%H%M%S")
@@ -169,7 +170,7 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                     # Add processing log entry
                     log_entry = {
                         "task": self.task_family,
-                        "log_timestamp": datetime.datetime.now(),
+                        "log_timestamp": wm.timezone.localize(datetime.datetime.now()),
                         "completion_status": "SUCCESS"
                     }
                     dm.insert_acquisition_log_entry(acquisition_id, log_entry)

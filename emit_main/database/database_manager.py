@@ -76,8 +76,9 @@ class DatabaseManager:
             # Need to add first two year digits
             start_time_str = "20" + tokens[2]
             stop_time_str = "20" + tokens[3]
-            start_time = self.timezone.localize(datetime.datetime.strptime(start_time_str, "%Y%m%d%H%M%S"))
-            stop_time = self.timezone.localize(datetime.datetime.strptime(stop_time_str, "%Y%m%d%H%M%S"))
+            # These dates are already in UTC and will be stored in the DB as UTC by default
+            start_time = datetime.datetime.strptime(start_time_str, "%Y%m%d%H%M%S")
+            stop_time = datetime.datetime.strptime(stop_time_str, "%Y%m%d%H%M%S")
             metadata = {
                 "apid": apid,
                 "start_time": start_time,

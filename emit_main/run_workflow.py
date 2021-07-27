@@ -127,16 +127,16 @@ def task_failure(task, e):
         shutil.rmtree(task.local_tmp_dir)
 
     # Update DB processing_log with failure message
+    wm = WorkflowManager(config_path=task.config_path)
     log_entry = {
         "task": task.task_family,
-        "log_timestamp": datetime.datetime.now(),
+        "log_timestamp": wm.timezone.localize(datetime.datetime.now()),
         "completion_status": "FAILURE",
         "error_message": str(e)
     }
     acquisition_tasks = ("emit.L1AReassembleRaw", "emit.L1BCalibrate", "emit.L2AReflectance", "emit.L2AMask",
                          "emit.L2BAbundance")
     stream_tasks = ("emit.L0StripHOSC", "emit.L1ADepacketizeScienceFrames", "emit.L1AReformatEDP")
-    wm = WorkflowManager(config_path=task.config_path)
     dm = wm.database_manager
     if task.task_family in acquisition_tasks:
         dm.insert_acquisition_log_entry(task.acquisition_id, log_entry)

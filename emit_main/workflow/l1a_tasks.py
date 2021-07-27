@@ -117,7 +117,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
             },
             "pge_run_command": " ".join(cmd),
             "documentation_version": doc_version,
-            "log_timestamp": datetime.datetime.now(),
+            "log_timestamp": wm.timezone.localize(datetime.datetime.now()),
             "completion_status": "SUCCESS",
             "output": {
                 "frame_paths": output_frame_paths
@@ -210,7 +210,7 @@ class L1AReassembleRaw(SlurmJobTask):
         hdr["emit pge run command"] = " ".join(cmd)
         hdr["emit software build version"] = wm.config["build_num"]
         hdr["emit documentation version"] = doc_version
-        creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(reassembled_img_path))
+        creation_time = wm.timezone.localize(datetime.datetime.fromtimestamp(os.path.getmtime(reassembled_img_path)))
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S")
         hdr["emit data product version"] = wm.config["processing_version"]
         envi.write_envi_header(reassembled_hdr_path, hdr)
@@ -238,7 +238,7 @@ class L1AReassembleRaw(SlurmJobTask):
             "pge_run_command": " ".join(cmd),
             "documentation_version": doc_version,
             "product_creation_time": creation_time,
-            "log_timestamp": datetime.datetime.now(),
+            "log_timestamp": wm.timezone.localize(datetime.datetime.now()),
             "completion_status": "SUCCESS",
             "output": {
                 "l1a_raw_img_path": reassembled_img_path,
@@ -345,8 +345,8 @@ class L1AReformatEDP(SlurmJobTask):
             },
             "pge_run_command": " ".join(cmd),
             "documentation_version": doc_version,
-            "product_creation_time": datetime.datetime.fromtimestamp(os.path.getmtime(edp_path)),
-            "log_timestamp": datetime.datetime.now(),
+            "product_creation_time": wm.timezone.localize(datetime.datetime.fromtimestamp(os.path.getmtime(edp_path))),
+            "log_timestamp": wm.timezone.localize(datetime.datetime.now()),
             "completion_status": "SUCCESS",
             "output": {
                 "edp_path": edp_path
