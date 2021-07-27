@@ -117,7 +117,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
             },
             "pge_run_command": " ".join(cmd),
             "documentation_version": doc_version,
-            "log_timestamp": wm.timezone.localize(datetime.datetime.now()),
+            "log_timestamp": datetime.datetime.utcnow(),
             "completion_status": "SUCCESS",
             "output": {
                 "frame_paths": output_frame_paths
@@ -240,7 +240,7 @@ class L1AReassembleRaw(SlurmJobTask):
             "pge_run_command": " ".join(cmd),
             "documentation_version": doc_version,
             "product_creation_time": creation_time,
-            "log_timestamp": wm.timezone.localize(datetime.datetime.now()),
+            "log_timestamp": datetime.datetime.utcnow(),
             "completion_status": "SUCCESS",
             "output": {
                 "l1a_raw_img_path": reassembled_img_path,
@@ -348,7 +348,7 @@ class L1AReformatEDP(SlurmJobTask):
             "pge_run_command": " ".join(cmd),
             "documentation_version": doc_version,
             "product_creation_time": wm.timezone.localize(datetime.datetime.fromtimestamp(os.path.getmtime(edp_path))),
-            "log_timestamp": wm.timezone.localize(datetime.datetime.now()),
+            "log_timestamp": datetime.datetime.utcnow(),
             "completion_status": "SUCCESS",
             "output": {
                 "edp_path": edp_path

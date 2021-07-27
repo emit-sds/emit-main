@@ -104,7 +104,7 @@ class L0StripHOSC(SlurmJobTask):
             "documentation_version": doc_version,
             "product_creation_time": wm.timezone.localize(
                 datetime.datetime.fromtimestamp(os.path.getmtime(ccsds_path))),
-            "log_timestamp": wm.timezone.localize(datetime.datetime.now()),
+            "log_timestamp": datetime.datetime.utcnow(),
             "completion_status": "SUCCESS",
             "output": {
                 "hosc_path": hosc_path,
@@ -170,7 +170,7 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                     # Add processing log entry
                     log_entry = {
                         "task": self.task_family,
-                        "log_timestamp": wm.timezone.localize(datetime.datetime.now()),
+                        "log_timestamp": datetime.datetime.utcnow(),
                         "completion_status": "SUCCESS"
                     }
                     dm.insert_acquisition_log_entry(acquisition_id, log_entry)

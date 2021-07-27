@@ -149,7 +149,7 @@ class L2AReflectance(SlurmJobTask):
             "pge_run_command": " ".join(cmd),
             "documentation_version": doc_version,
             "product_creation_time": creation_time,
-            "log_timestamp": wm.timezone.localize(datetime.datetime.now()),
+            "log_timestamp": datetime.datetime.utcnow(),
             "completion_status": "SUCCESS",
             "output": {
                 "l2a_rfl_img_path": acq.rfl_img_path,
@@ -270,7 +270,7 @@ class L2AMask(SlurmJobTask):
             "pge_run_command": " ".join(cmd),
             "documentation_version": doc_version,
             "product_creation_time": creation_time,
-            "log_timestamp": wm.timezone.localize(datetime.datetime.now()),
+            "log_timestamp": datetime.datetime.utcnow(),
             "completion_status": "SUCCESS",
             "output": {
                 "l2a_mask_img_path": acq.mask_img_path,

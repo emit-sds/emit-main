@@ -126,7 +126,7 @@ class L2BAbundance(SlurmJobTask):
             "pge_run_command": " ".join(cmd),
             "documentation_version": doc_version,
             "product_creation_time": creation_time,
-            "log_timestamp": wm.timezone.localize(datetime.datetime.now()),
+            "log_timestamp": datetime.datetime.utcnow(),
             "completion_status": "SUCCESS",
             "output": {
                 "l2b_abun_img_path": acq.abun_img_path,
