@@ -94,9 +94,8 @@ class L1BCalibrate(SlurmJobTask):
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
         doc_version = "EMIT SDS L1B JPL-D 104187, Initial"
         hdr = envi.read_envi_header(acq.rdn_hdr_path)
-        # TODO: TZ
-        hdr["emit acquisition start time"] = datetime.datetime(2020, 1, 1, 0, 0, 0).strftime("%Y-%m-%dT%H:%M:%S")
-        hdr["emit acquisition stop time"] = datetime.datetime(2020, 1, 1, 0, 11, 26).strftime("%Y-%m-%dT%H:%M:%S")
+        hdr["emit acquisition start time"] = acq.start_time.strftime("%Y-%m-%dT%H:%M:%S%z")
+        hdr["emit acquisition stop time"] = acq.stop_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         hdr["emit pge name"] = pge.repo_url
         hdr["emit pge version"] = pge.version_tag
         hdr["emit pge input files"] = input_files_arr
@@ -104,7 +103,7 @@ class L1BCalibrate(SlurmJobTask):
         hdr["emit software build version"] = wm.config["build_num"]
         hdr["emit documentation version"] = doc_version
         creation_time = wm.timezone.localize(datetime.datetime.fromtimestamp(os.path.getmtime(acq.rdn_img_path)))
-        hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S")
+        hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         hdr["emit data product version"] = wm.config["processing_version"]
 
         envi.write_envi_header(acq.rdn_hdr_path, hdr)
