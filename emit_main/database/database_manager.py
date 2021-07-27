@@ -5,6 +5,7 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
 import datetime
+import pytz
 
 from pymongo import MongoClient
 
@@ -23,6 +24,9 @@ class DatabaseManager:
         # Get config properties
         self.config = Config(config_path).get_dictionary()
 
+        # Set timezone from config
+        self.timezone = pytz.timezone(self.config["timezone"])
+
         self.client = MongoClient(self.config["mongodb_host"], self.config["mongodb_port"])
         self.db = self.client[self.config["mongodb_db_name"]]
 
@@ -36,15 +40,15 @@ class DatabaseManager:
 
     def insert_acquisition(self, metadata):
         if self.find_acquisition_by_id(metadata["acquisition_id"]) is None:
-            metadata["created"] = datetime.datetime.now()
-            metadata["last_modified"] = datetime.datetime.now()
+            metadata["created"] = self.timezone.localize(datetime.datetime.now())
+            metadata["last_modified"] = self.timezone.localize(datetime.datetime.now())
             acquisitions_coll = self.db.acquisitions
             acquisitions_coll.insert_one(metadata)
 
     def update_acquisition_metadata(self, acquisition_id, metadata):
         acquisitions_coll = self.db.acquisitions
         query = {"acquisition_id": acquisition_id, "build_num": self.config["build_num"]}
-        metadata["last_modified"] = datetime.datetime.now()
+        metadata["last_modified"] = self.timezone.localize(datetime.datetime.now())
         set_value = {"$set": metadata}
         acquisitions_coll.update_one(query, set_value, upsert=True)
 
@@ -64,13 +68,16 @@ class DatabaseManager:
 
     def insert_hosc_stream(self, hosc_name):
         if self.find_stream_by_name(hosc_name) is None:
+            if "_hsc.bin" not in hosc_name:
+                raise RuntimeError(f"Attempting to insert HOSC stream file in DB with name {hosc_name}. Does not "
+                                   f"appear to be a HOSC file")
             tokens = hosc_name.split("_")
             apid = tokens[1]
             # Need to add first two year digits
             start_time_str = "20" + tokens[2]
             stop_time_str = "20" + tokens[3]
-            start_time = datetime.datetime.strptime(start_time_str, "%Y%m%d%H%M%S")
-            stop_time = datetime.datetime.strptime(stop_time_str, "%Y%m%d%H%M%S")
+            start_time = self.timezone.localize(datetime.datetime.strptime(start_time_str, "%Y%m%d%H%M%S"))
+            stop_time = self.timezone.localize(datetime.datetime.strptime(stop_time_str, "%Y%m%d%H%M%S"))
             metadata = {
                 "apid": apid,
                 "start_time": start_time,
@@ -79,8 +86,8 @@ class DatabaseManager:
                 "processing_version": self.config["processing_version"],
                 "hosc_name": hosc_name,
                 "processing_log": [],
-                "created": datetime.datetime.now(),
-                "last_modified": datetime.datetime.now()
+                "created": self.timezone.localize(datetime.datetime.now()),
+                "last_modified": self.timezone.localize(datetime.datetime.now())
             }
             streams_coll = self.db.streams
             streams_coll.insert_one(metadata)
@@ -91,7 +98,7 @@ class DatabaseManager:
             query = {"hosc_name": name, "build_num": self.config["build_num"]}
         else:
             query = {"ccsds_name": name, "build_num": self.config["build_num"]}
-        metadata["last_modified"] = datetime.datetime.now()
+        metadata["last_modified"] = self.timezone.localize(datetime.datetime.now())
         set_value = {"$set": metadata}
         streams_coll.update_one(query, set_value, upsert=True)
 

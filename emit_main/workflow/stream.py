@@ -52,13 +52,14 @@ class Stream:
 #        self.date_str = self.start_time_str[:8]
         self.date_str = self.start_time.strftime("%Y%m%d")
         self.date_dir = os.path.join(self.apid_dir, self.date_str)
+        self.raw_dir = os.path.join(self.date_dir, "raw")
         self.l0_dir = os.path.join(self.date_dir, "l0")
         self.l1a_dir = os.path.join(self.date_dir, "l1a")
         if self.hosc_name:
             self.hosc_path = os.path.join(self.l0_dir, self.hosc_name)
         if self.ccsds_name:
             self.ccsds_path = os.path.join(self.l0_dir, self.ccsds_name)
-        self.dirs.extend([self.streams_dir, self.apid_dir, self.date_dir, self.l0_dir, self.l1a_dir])
+        self.dirs.extend([self.streams_dir, self.apid_dir, self.date_dir, self.raw_dir, self.l0_dir, self.l1a_dir])
 
         # Make directories if they don't exist
         for d in self.dirs:

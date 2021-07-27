@@ -33,7 +33,6 @@ class L0StripHOSC(SlurmJobTask):
 
     def requires(self):
         logger.debug(self.task_family + " requires")
-        # TODO: Check for hosc filename and throw exception if incorrect
         wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
         if wm.stream is None:
             # Insert new stream in db
@@ -70,21 +69,20 @@ class L0StripHOSC(SlurmJobTask):
 
         if "ingest" in self.stream_path:
             # Move HOSC file out of ingest folder
-            # TODO: Change to shutil.move
-            # shutil.copy2(self.stream_path, stream.l0_dir)
-            shutil.move(self.stream_path, stream.l0_dir)
-            hosc_path = os.path.join(stream.l0_dir, stream.hosc_name)
+            shutil.move(self.stream_path, stream.raw_dir)
+            hosc_path = os.path.join(stream.raw_dir, stream.hosc_name)
         else:
             hosc_path = self.stream_path
-        # Copy scratch files back to store
+        # Copy scratch CCSDS file and report back to store
         for file in glob.glob(os.path.join(tmp_output_dir, stream.apid + "*")):
-            shutil.copy2(file, stream.l0_dir)
-        for file in glob.glob(os.path.join(tmp_output_dir, "*.log")):
             shutil.copy2(file, stream.l0_dir)
         # Get ccsds output filename
         ccsds_name = os.path.basename(glob.glob(os.path.join(tmp_output_dir, stream.apid + "*.bin"))[0])
         ccsds_path = os.path.join(stream.l0_dir, ccsds_name)
-        # TODO: Change log name to match CCSDS name?
+        # Copy and rename log file
+        renamed_pge_log = ccsds_name.replace(".bin", "_hsc_l0_pge.log")
+        renamed_pge_log_path = os.path.join(stream.l0_dir, renamed_pge_log)
+        shutil.copy2(tmp_log, renamed_pge_log_path)
 
         # Update DB
         metadata = {
@@ -93,7 +91,8 @@ class L0StripHOSC(SlurmJobTask):
         dm = wm.database_manager
         dm.update_stream_metadata(stream.hosc_name, metadata)
 
-        doc_version = "Space Packet Protocol, CCSDS 133.0-B-1 (with Issue 1, Cor. 1, Sept. 2010 and Issue 1, Cor. 2, Sept. 2012 addendums)"
+        doc_version = "Space Packet Protocol, CCSDS 133.0-B-1 (with Issue 1, Cor. 1, Sept. 2010 and Issue 1, Cor. 2, \
+        Sept. 2012 addendums)"
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -103,8 +102,9 @@ class L0StripHOSC(SlurmJobTask):
             },
             "pge_run_command": " ".join(cmd),
             "documentation_version": doc_version,
-            "product_creation_time": datetime.datetime.fromtimestamp(os.path.getmtime(ccsds_path)),
-            "log_timestamp": datetime.datetime.now(),
+            "product_creation_time": wm.timezone.localize(
+                datetime.datetime.fromtimestamp(os.path.getmtime(ccsds_path))),
+            "log_timestamp": wm.timezone.localize(datetime.datetime.now()),
             "completion_status": "SUCCESS",
             "output": {
                 "hosc_path": hosc_path,
