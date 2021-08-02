@@ -32,6 +32,7 @@ class L1BCalibrate(SlurmJobTask):
     config_path = luigi.Parameter()
     acquisition_id = luigi.Parameter()
     level = luigi.Parameter()
+    partition = luigi.Parameter()
 
     task_namespace = "emit"
 
@@ -39,7 +40,7 @@ class L1BCalibrate(SlurmJobTask):
 
         logger.debug(self.task_family + " requires")
         return L1AReassembleRaw(config_path=self.config_path, acquisition_id=self.acquisition_id, ignore_missing=False,
-                                level=self.level)
+                                level=self.level, partition=self.partition)
 
     def output(self):
 
@@ -94,16 +95,16 @@ class L1BCalibrate(SlurmJobTask):
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
         doc_version = "EMIT SDS L1B JPL-D 104187, Initial"
         hdr = envi.read_envi_header(acq.rdn_hdr_path)
-        hdr["emit acquisition start time"] = datetime.datetime(2020, 1, 1, 0, 0, 0).strftime("%Y-%m-%dT%H:%M:%S")
-        hdr["emit acquisition stop time"] = datetime.datetime(2020, 1, 1, 0, 11, 26).strftime("%Y-%m-%dT%H:%M:%S")
+        hdr["emit acquisition start time"] = acq.start_time.strftime("%Y-%m-%dT%H:%M:%S%z")
+        hdr["emit acquisition stop time"] = acq.stop_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         hdr["emit pge name"] = pge.repo_url
         hdr["emit pge version"] = pge.version_tag
         hdr["emit pge input files"] = input_files_arr
         hdr["emit pge run command"] = " ".join(cmd)
         hdr["emit software build version"] = wm.config["build_num"]
         hdr["emit documentation version"] = doc_version
-        creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rdn_img_path))
-        hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S")
+        creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rdn_img_path), tz=datetime.timezone.utc)
+        hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         hdr["emit data product version"] = wm.config["processing_version"]
 
         envi.write_envi_header(acq.rdn_hdr_path, hdr)
@@ -130,7 +131,7 @@ class L1BCalibrate(SlurmJobTask):
             "pge_run_command": " ".join(cmd),
             "documentation_version": doc_version,
             "product_creation_time": creation_time,
-            "log_timestamp": datetime.datetime.now(),
+            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
                 "l1b_rdn_img_path": acq.rdn_img_path,
@@ -151,13 +152,15 @@ class L1BGeolocate(SlurmJobTask):
     config_path = luigi.Parameter()
     acquisition_id = luigi.Parameter()
     level = luigi.Parameter()
+    partition = luigi.Parameter()
 
     task_namespace = "emit"
 
     def requires(self):
 
         logger.debug(self.task_family + " requires")
-        return L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level)
+        return L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+                            partition=self.partition)
 
     def output(self):
 

@@ -27,8 +27,9 @@ class L2AReflectance(SlurmJobTask):
     """
 
     config_path = luigi.Parameter()
-    level = luigi.Parameter()
     acquisition_id = luigi.Parameter()
+    level = luigi.Parameter()
+    partition = luigi.Parameter()
 
     n_cores = 40
     memory = 180000
@@ -37,7 +38,8 @@ class L2AReflectance(SlurmJobTask):
     def requires(self):
 
         logger.debug(self.task_family + " requires")
-        return L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level)
+        return L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+                            partition=self.partition)
 
         # TODO: Add L1BGeolocate(config_path=self.config_path, acquisition_id=self.acquisition_id) when ready
 
@@ -112,14 +114,16 @@ class L2AReflectance(SlurmJobTask):
         dm = wm.database_manager
         for img_path, hdr_path in [(acq.rfl_img_path, acq.rfl_hdr_path), (acq.uncert_img_path, acq.uncert_hdr_path)]:
             hdr = envi.read_envi_header(hdr_path)
+            hdr["emit acquisition start time"] = acq.start_time.strftime("%Y-%m-%dT%H:%M:%S%z")
+            hdr["emit acquisition stop time"] = acq.stop_time.strftime("%Y-%m-%dT%H:%M:%S%z")
             hdr["emit pge name"] = pge.repo_url
             hdr["emit pge version"] = pge.version_tag
             hdr["emit pge input files"] = input_files_arr
             hdr["emit pge run command"] = " ".join(cmd)
             hdr["emit software build version"] = wm.config["build_num"]
             hdr["emit documentation version"] = doc_version
-            creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(img_path))
-            hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S")
+            creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(img_path), tz=datetime.timezone.utc)
+            hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
             hdr["emit data product version"] = wm.config["processing_version"]
             envi.write_envi_header(hdr_path, hdr)
 
@@ -147,7 +151,7 @@ class L2AReflectance(SlurmJobTask):
             "pge_run_command": " ".join(cmd),
             "documentation_version": doc_version,
             "product_creation_time": creation_time,
-            "log_timestamp": datetime.datetime.now(),
+            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
                 "l2a_rfl_img_path": acq.rfl_img_path,
@@ -169,14 +173,17 @@ class L2AMask(SlurmJobTask):
     config_path = luigi.Parameter()
     acquisition_id = luigi.Parameter()
     level = luigi.Parameter()
+    partition = luigi.Parameter()
 
     task_namespace = "emit"
 
     def requires(self):
 
         logger.debug(self.task_family + " requires")
-        return (L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level),
-                L2AReflectance(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level))
+        return (L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+                             partition=self.partition),
+                L2AReflectance(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+                               partition=self.partition))
 
     def output(self):
 
@@ -233,14 +240,16 @@ class L2AMask(SlurmJobTask):
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
         doc_version = "EMIT SDS L2A JPL-D 104236, Rev B"
         hdr = envi.read_envi_header(acq.mask_hdr_path)
+        hdr["emit acquisition start time"] = acq.start_time.strftime("%Y-%m-%dT%H:%M:%S%z")
+        hdr["emit acquisition stop time"] = acq.stop_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         hdr["emit pge name"] = pge.repo_url
         hdr["emit pge version"] = pge.version_tag
         hdr["emit pge input files"] = input_files_arr
         hdr["emit pge run command"] = " ".join(cmd)
         hdr["emit software build version"] = wm.config["build_num"]
         hdr["emit documentation version"] = doc_version
-        creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.mask_img_path))
-        hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S")
+        creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.mask_img_path), tz=datetime.timezone.utc)
+        hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         hdr["emit data product version"] = wm.config["processing_version"]
         envi.write_envi_header(acq.mask_hdr_path, hdr)
 
@@ -266,7 +275,7 @@ class L2AMask(SlurmJobTask):
             "pge_run_command": " ".join(cmd),
             "documentation_version": doc_version,
             "product_creation_time": creation_time,
-            "log_timestamp": datetime.datetime.now(),
+            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
                 "l2a_mask_img_path": acq.mask_img_path,

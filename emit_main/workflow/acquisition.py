@@ -9,6 +9,7 @@ import grp
 import logging
 import os
 import pwd
+import pytz
 
 from emit_main.database.database_manager import DatabaseManager
 from emit_main.config.config import Config
@@ -33,6 +34,10 @@ class Acquisition:
         self.metadata = dm.find_acquisition_by_id(self.acquisition_id)
         self._initialize_metadata()
         self.__dict__.update(self.metadata)
+
+        # Add UTC tzinfo property to start/stop datetime objects for printing
+        self.start_time = pytz.utc.localize(self.start_time)
+        self.stop_time = pytz.utc.localize(self.stop_time)
 
         # Create base directories and add to list to create directories later
         self.dirs = []
