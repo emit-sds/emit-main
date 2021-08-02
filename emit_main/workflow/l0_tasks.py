@@ -82,7 +82,7 @@ class L0StripHOSC(SlurmJobTask):
         ccsds_name = os.path.basename(glob.glob(os.path.join(tmp_output_dir, stream.apid + "*.bin"))[0])
         ccsds_path = os.path.join(stream.l0_dir, ccsds_name)
         # Copy and rename log file
-        renamed_pge_log = ccsds_name.replace(".bin", "_hsc_l0_pge.log")
+        renamed_pge_log = ccsds_name.replace(".bin", "_pge.log")
         renamed_pge_log_path = os.path.join(stream.l0_dir, renamed_pge_log)
         shutil.copy2(tmp_log, renamed_pge_log_path)
 
