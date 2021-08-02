@@ -32,6 +32,7 @@ class L1BCalibrate(SlurmJobTask):
     config_path = luigi.Parameter()
     acquisition_id = luigi.Parameter()
     level = luigi.Parameter()
+    partition = luigi.Parameter()
 
     task_namespace = "emit"
 
@@ -39,7 +40,7 @@ class L1BCalibrate(SlurmJobTask):
 
         logger.debug(self.task_family + " requires")
         return L1AReassembleRaw(config_path=self.config_path, acquisition_id=self.acquisition_id, ignore_missing=False,
-                                level=self.level)
+                                level=self.level, partition=self.partition)
 
     def output(self):
 
@@ -151,13 +152,15 @@ class L1BGeolocate(SlurmJobTask):
     config_path = luigi.Parameter()
     acquisition_id = luigi.Parameter()
     level = luigi.Parameter()
+    partition = luigi.Parameter()
 
     task_namespace = "emit"
 
     def requires(self):
 
         logger.debug(self.task_family + " requires")
-        return L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level)
+        return L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+                            partition=self.partition)
 
     def output(self):
 

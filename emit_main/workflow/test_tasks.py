@@ -16,6 +16,8 @@ class ExampleTask(SlurmJobTask):
 
     config_path = luigi.Parameter()
     acquisition_id = luigi.Parameter()
+    level = luigi.Parameter()
+    partition = luigi.Parameter()
 
     task_namespace = "emit"
 

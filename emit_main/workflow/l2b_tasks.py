@@ -30,6 +30,7 @@ class L2BAbundance(SlurmJobTask):
     config_path = luigi.Parameter()
     acquisition_id = luigi.Parameter()
     level = luigi.Parameter()
+    partition = luigi.Parameter()
 
     memory = 30000
     local_tmp_space = 125000
@@ -39,8 +40,10 @@ class L2BAbundance(SlurmJobTask):
     def requires(self):
 
         logger.debug(self.task_family + " requires")
-        return (L2AReflectance(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level),
-                L2AMask(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level))
+        return (L2AReflectance(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+                               partition=self.partition),
+                L2AMask(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+                        partition=self.partition))
 
     def output(self):
 

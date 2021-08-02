@@ -28,6 +28,8 @@ class L0StripHOSC(SlurmJobTask):
 
     config_path = luigi.Parameter()
     stream_path = luigi.Parameter()
+    level = luigi.Parameter()
+    partition = luigi.Parameter()
 
     task_namespace = "emit"
 
@@ -120,6 +122,8 @@ class L0ProcessPlanningProduct(SlurmJobTask):
     """
 
     config_path = luigi.Parameter()
+    level = luigi.Parameter()
+    partition = luigi.Parameter()
 
     task_namespace = "emit"
 
@@ -161,6 +165,7 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                         "submode": row[5].lower()
                     }
 
+                    # TODO: Do lookup and update by DCID to prevent duplicates. Or look for duplicates and handle?
                     if dm.find_acquisition_by_id(acquisition_id):
                         dm.update_acquisition_metadata(acquisition_id, acq_meta)
                         logger.debug(f"Updated acquisition in DB with {acq_meta}")

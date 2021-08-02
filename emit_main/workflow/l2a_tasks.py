@@ -27,8 +27,9 @@ class L2AReflectance(SlurmJobTask):
     """
 
     config_path = luigi.Parameter()
-    level = luigi.Parameter()
     acquisition_id = luigi.Parameter()
+    level = luigi.Parameter()
+    partition = luigi.Parameter()
 
     n_cores = 40
     memory = 180000
@@ -37,7 +38,8 @@ class L2AReflectance(SlurmJobTask):
     def requires(self):
 
         logger.debug(self.task_family + " requires")
-        return L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level)
+        return L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+                            partition=self.partition)
 
         # TODO: Add L1BGeolocate(config_path=self.config_path, acquisition_id=self.acquisition_id) when ready
 
@@ -171,14 +173,17 @@ class L2AMask(SlurmJobTask):
     config_path = luigi.Parameter()
     acquisition_id = luigi.Parameter()
     level = luigi.Parameter()
+    partition = luigi.Parameter()
 
     task_namespace = "emit"
 
     def requires(self):
 
         logger.debug(self.task_family + " requires")
-        return (L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level),
-                L2AReflectance(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level))
+        return (L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+                             partition=self.partition),
+                L2AReflectance(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+                               partition=self.partition))
 
     def output(self):
 
