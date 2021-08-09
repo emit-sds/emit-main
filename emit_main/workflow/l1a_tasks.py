@@ -349,22 +349,37 @@ class L1AReformatEDP(SlurmJobTask):
         env["AIT_ISS_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "sim.yaml")
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
-        # Copy scratch files back to store
-        for file in glob.glob(os.path.join(tmp_output_dir, "*")):
-            shutil.copy2(file, stream.l1a_dir)
-        # Get edp output filename
-        edp_name = os.path.basename(glob.glob(os.path.join(tmp_output_dir, "*.csv"))[0])
+        # Get tmp edp and log names
+        tmp_edp_path = glob.glob(os.path.join(tmp_output_dir, "*.csv"))[0]
+        tmp_report_path = glob.glob(os.path.join(tmp_output_dir, "*_report.txt"))[0]
+
+        # Construct EDP filename and report name based on ccsds name
+        edp_name = stream.ccsds_name.replace("l0_ccsds", "l1a_eng").replace(".bin", ".csv")
         edp_path = os.path.join(stream.l1a_dir, edp_name)
+        report_path = edp_path.replace(".csv", "_report.txt")
+
+        # Copy scratch EDP file and report back to store
+        shutil.copy2(tmp_edp_path, edp_path)
+        shutil.copy2(tmp_report_path, report_path)
+
         # Copy and rename log file
-        l1a_pge_log_name = edp_name.replace(".csv", "_pge.log")
+        l1a_pge_log_path = edp_path.replace(".csv", "_pge.log")
         for file in glob.glob(os.path.join(tmp_log_dir, "*")):
-            shutil.copy2(file, os.path.join(stream.l1a_dir, l1a_pge_log_name))
+            shutil.copy2(file, l1a_pge_log_path)
 
         metadata = {
-            "edp_name": edp_name
+            "edp_name": edp_name,
+
         }
         dm = wm.database_manager
         dm.update_stream_metadata(stream.hosc_name, metadata)
+
+        product_dict = {
+            "edp_path": edp_path,
+            "created": datetime.datetime.fromtimestamp(os.path.getmtime(edp_path), tz=datetime.timezone.utc)
+        }
+
+        dm.update_stream_metadata(stream.hosc_name, {"products.l1a": product_dict})
 
         doc_version = "EMIT IOS SDS ICD JPL-D 104239, Initial"
         log_entry = {
