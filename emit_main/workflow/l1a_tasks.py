@@ -93,7 +93,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
                 acq_frame_paths.append(acquisition_frame_path)
 
             # Create a symlink from the stream l1a dir to the acquisition l1a frames dir
-            os.symlink(acq.frames_dir, os.path.join(stream.l1a_dir, os.path.basename(acq.frames_dir)))
+            os.symlink(acq.frames_dir, os.path.join(stream.frames_dir, os.path.basename(acq.frames_dir)))
 
             # Add frame paths to acquisition metadata
             if "frames" in acq.metadata["products"]["l1a"] and acq.metadata["products"]["l1a"]["frames"] is not None:
@@ -123,11 +123,14 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
             # Keep track of all output paths for log entry
             output_frame_paths += acq_frame_paths
 
-        dm.update_stream_metadata(stream.ccsds_name, {"acquisition_frames": acquisition_frames_map})
+        dm.update_stream_metadata(stream.ccsds_name, {"products.l1a": acquisition_frames_map})
 
         # Copy log file and report file into the stream's l1a directory
-        shutil.copy2(tmp_log_path, os.path.join(stream.l1a_dir, stream.ccsds_name + "_l1a_sdp_pge.log"))
-        shutil.copy2(tmp_report_path, os.path.join(stream.l1a_dir, stream.ccsds_name + "_l1a_sdp_report.txt"))
+        sdp_log_name = stream.ccsds_name.replace("l0_ccsds", "l1a_frames").replace(".bin", "_pge.log")
+        sdp_log_path = os.path.join(stream.l1a_dir, sdp_log_name)
+        sdp_report_path = sdp_log_path.replace("_pge.log", "_report.txt")
+        shutil.copy2(tmp_log_path, sdp_log_path)
+        shutil.copy2(tmp_report_path, sdp_report_path)
 
         doc_version = "EMIT IOS SDS ICD JPL-D 104239, Initial"
         log_entry = {
