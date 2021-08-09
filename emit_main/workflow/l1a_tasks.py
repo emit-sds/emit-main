@@ -93,7 +93,9 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
                 acq_frame_paths.append(acquisition_frame_path)
 
             # Create a symlink from the stream l1a dir to the acquisition l1a frames dir
-            os.symlink(acq.frames_dir, os.path.join(stream.frames_dir, os.path.basename(acq.frames_dir)))
+            acq_frame_symlink = os.path.join(stream.frames_dir, os.path.basename(acq.frames_dir))
+            if not os.path.exists(acq_frame_symlink):
+                os.symlink(acq.frames_dir, acq_frame_symlink)
 
             # Add frame paths to acquisition metadata
             if "frames" in acq.metadata["products"]["l1a"] and acq.metadata["products"]["l1a"]["frames"] is not None:
@@ -201,6 +203,7 @@ class L1AReassembleRaw(SlurmJobTask):
         constants_path = wm.config["decompression_constants_path"]
         init_data_path = wm.config["decompression_init_data_path"]
         tmp_log_path = os.path.join(self.local_tmp_dir, "reassemble_raw_pge.log")
+        tmp_report_path = tmp_log_path.replace(".log", "_report.txt")
         input_files = {
             "frames_dir": acq.frames_dir,
             "flexcodec_exe_path": flex_codec_exe,
@@ -225,6 +228,7 @@ class L1AReassembleRaw(SlurmJobTask):
         shutil.copy2(tmp_raw_path, reassembled_img_path)
         shutil.copy2(tmp_raw_hdr_path, reassembled_hdr_path)
         shutil.copy2(tmp_log_path, reassembled_img_path.replace(".img", "_pge.log"))
+        shutil.copy2(tmp_report_path, reassembled_img_path.replace(".img", "_report.txt"))
 
         # Update hdr files
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
