@@ -56,14 +56,15 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
         # Build command and run
         sds_l1a_science_packet_exe = os.path.join(pge.repo_dir, "depacketize_science_frames.py")
         tmp_output_dir = os.path.join(self.tmp_dir, "output")
-        tmp_log_path = os.path.join(self.tmp_dir, "depacketize_science_frames_pge.log")
+        tmp_log_path = os.path.join(self.tmp_dir, "depacketize_science_frames.log")
+        tmp_report_path = tmp_log_path.replace(".log", "_report.txt")
         cmd = ["python", sds_l1a_science_packet_exe, stream.ccsds_path,
                "--out_dir", tmp_output_dir,
                "--level", self.level,
                "--log_path", tmp_log_path]
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
-        # Copy frames back and separate into directories.
+        # Based on DCIDs, copy frames to appropriate acquisition l1a frames directory.
         # Also, attach stream files to acquisition object in DB and add frames as well
         frames = [os.path.basename(file) for file in glob.glob(os.path.join(tmp_output_dir, "*"))]
         frames.sort()
@@ -78,17 +79,22 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
             wm = WorkflowManager(config_path=self.config_path, acquisition_id=acq["acquisition_id"],
                                  stream_path=self.stream_path)
             acq = wm.acquisition
-            # Copy log file into the compressed frames directory
-            shutil.copy2(tmp_log_path, acq.frames_dir + "_pge.log")
+            stream = wm.stream
+
             # Copy the frames
             acq_frame_paths = []
             for path in glob.glob(os.path.join(tmp_output_dir, dcid + "*")):
+                # TODO: Keep DCID here for future reference and rename on later step?
                 # Replace dcid with acquisition id on copy
                 fname_tokens = os.path.basename(path).split("_")
                 fname_tokens[0] = acq.acquisition_id
                 acquisition_frame_path = os.path.join(acq.frames_dir, "_".join(fname_tokens))
                 shutil.copy2(path, acquisition_frame_path)
                 acq_frame_paths.append(acquisition_frame_path)
+
+            # Create a symlink from the stream l1a dir to the acquisition l1a frames dir
+            os.symlink(acq.frames_dir, os.path.join(stream.l1a_dir, os.path.basename(acq.frames_dir)))
+
             # Add frame paths to acquisition metadata
             if "frames" in acq.metadata["products"]["l1a"] and acq.metadata["products"]["l1a"]["frames"] is not None:
                 for path in acq_frame_paths:
@@ -97,16 +103,31 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
             else:
                 acq.metadata["products"]["l1a"]["frames"] = acq_frame_paths
             acq.metadata["products"]["l1a"]["frames"].sort()
-            dm.update_acquisition_metadata(acq.acquisition_id,
-                                           {"products.l1a.frames": acq.metadata["products"]["l1a"]["frames"]})
+            dm.update_acquisition_metadata(
+                acq.acquisition_id,
+                {"products.l1a.frames": acq.metadata["products"]["l1a"]["frames"]})
+
+            # Add stream file to acquisition metadata in DB so there is a link back to CCSDS packet stream for each
+            # acquisition. There may be multiple stream files that contribute frames to a given acquisition
+            if "associated_ccsds" in acq.metadata and acq.metadata["associated_ccsds"] is not None:
+                if stream.ccsds_path not in acq.metadata["associated_ccsds"]:
+                    acq.metadata["associated_ccsds"] += stream.ccsds_path
+            else:
+                acq.metadata["associated_ccsds"] = [stream.ccsds_path]
+            dm.update_acquisition_metadata(acq.acquisition_id, {"associated_ccsds": acq.metadata["associated_ccsds"]})
 
             # Append frames to include in stream metadata
             acq_frame_paths.sort()
             acquisition_frames_map.update({acq.acquisition_id: acq_frame_paths})
+
             # Keep track of all output paths for log entry
             output_frame_paths += acq_frame_paths
 
         dm.update_stream_metadata(stream.ccsds_name, {"acquisition_frames": acquisition_frames_map})
+
+        # Copy log file and report file into the stream's l1a directory
+        shutil.copy2(tmp_log_path, os.path.join(stream.l1a_dir, stream.ccsds_name + "_l1a_sdp_pge.log"))
+        shutil.copy2(tmp_report_path, os.path.join(stream.l1a_dir, stream.ccsds_name + "_l1a_sdp_report.txt"))
 
         doc_version = "EMIT IOS SDS ICD JPL-D 104239, Initial"
         log_entry = {
