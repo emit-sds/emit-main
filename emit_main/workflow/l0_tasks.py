@@ -75,20 +75,48 @@ class L0StripHOSC(SlurmJobTask):
             hosc_path = os.path.join(stream.raw_dir, stream.hosc_name)
         else:
             hosc_path = self.stream_path
-        # Copy scratch CCSDS file and report back to store
-        for file in glob.glob(os.path.join(tmp_output_dir, stream.apid + "*")):
-            shutil.copy2(file, stream.l0_dir)
-        # Get ccsds output filename
-        ccsds_name = os.path.basename(glob.glob(os.path.join(tmp_output_dir, stream.apid + "*.bin"))[0])
+
+        # Get tmp ccsds and log names
+        tmp_ccsds_path = glob.glob(os.path.join(tmp_output_dir, stream.apid + "*.bin"))[0]
+        tmp_report_path = glob.glob(os.path.join(tmp_output_dir, stream.apid + "*_report.txt"))[0]
+
+        # Get CCSDS start time and file name and report name
+        tmp_ccsds_name = os.path.basename(tmp_ccsds_path)
+        ccsds_start_time_str = tmp_ccsds_name.split("_")[1]
+        ccsds_start_time = datetime.datetime.strptime(ccsds_start_time_str, "%Y-%m-%dT%H:%M:%S")
+        ccsds_name = "_".join([
+            stream.apid,
+            ccsds_start_time_str,
+            "l0",
+            "ccsds",
+            "b" + wm.config["build_num"],
+            "v" + wm.config["processing_version"]
+        ]) + ".bin"
         ccsds_path = os.path.join(stream.l0_dir, ccsds_name)
+        report_path = ccsds_path.replace(".bin", "_report.txt")
+
+        # Copy scratch CCSDS file and report back to store
+        shutil.copy2(tmp_ccsds_path, ccsds_path)
+        shutil.copy2(tmp_report_path, report_path)
+
         # Copy and rename log file
-        renamed_pge_log = ccsds_name.replace(".bin", "_pge.log")
-        renamed_pge_log_path = os.path.join(stream.l0_dir, renamed_pge_log)
-        shutil.copy2(tmp_log, renamed_pge_log_path)
+        log_path = ccsds_path.replace(".bin", "_pge.log")
+        shutil.copy2(tmp_log, log_path)
 
         # Update DB
         metadata = {
-            "ccsds_name": ccsds_name
+            "ccsds_name": ccsds_name,
+            "ccsds_start_time": ccsds_start_time,
+            "products": {
+                "raw": {
+                    "hosc_path": hosc_path,
+                    "created": datetime.datetime.fromtimestamp(os.path.getmtime(hosc_path), tz=datetime.timezone.utc)
+                },
+                "l0": {
+                    "ccsds_path": ccsds_path,
+                    "created": datetime.datetime.fromtimestamp(os.path.getmtime(ccsds_path), tz=datetime.timezone.utc)
+                }
+            }
         }
         dm = wm.database_manager
         dm.update_stream_metadata(stream.hosc_name, metadata)

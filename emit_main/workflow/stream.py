@@ -55,11 +55,15 @@ class Stream:
         self.raw_dir = os.path.join(self.date_dir, "raw")
         self.l0_dir = os.path.join(self.date_dir, "l0")
         self.l1a_dir = os.path.join(self.date_dir, "l1a")
+        self.dirs.extend([self.streams_dir, self.apid_dir, self.date_dir, self.raw_dir, self.l0_dir, self.l1a_dir])
+
         if self.hosc_name:
             self.hosc_path = os.path.join(self.l0_dir, self.hosc_name)
         if self.ccsds_name:
             self.ccsds_path = os.path.join(self.l0_dir, self.ccsds_name)
-        self.dirs.extend([self.streams_dir, self.apid_dir, self.date_dir, self.raw_dir, self.l0_dir, self.l1a_dir])
+            self.frames_dir = os.path.join(
+                self.l1a_dir, self.ccsds_name.replace("l0_ccsds", "l1a_frames").replace(".bin", ""))
+            self.dirs.append(self.frames_dir)
 
         # Make directories if they don't exist
         for d in self.dirs:
@@ -75,3 +79,11 @@ class Stream:
         # Insert some placeholder fields so that we don't get missing keys on updates
         if "processing_log" not in self.metadata:
             self.metadata["processing_log"] = []
+        if "products" not in self.metadata:
+            self.metadata["products"] = {}
+        if "raw" not in self.metadata["products"]:
+            self.metadata["products"]["raw"] = {}
+        if "l0" not in self.metadata["products"]:
+            self.metadata["products"]["l0"] = {}
+        if "l1a" not in self.metadata["products"]:
+            self.metadata["products"]["l1a"] = {}
