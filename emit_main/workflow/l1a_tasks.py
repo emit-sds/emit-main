@@ -222,13 +222,42 @@ class L1AReassembleRaw(SlurmJobTask):
         # Copy raw file and log back to l1a data dir
         tmp_raw_path = os.path.join(tmp_output_dir, acq.acquisition_id + "_raw.img")
         tmp_raw_hdr_path = tmp_raw_path.replace(".img", ".hdr")
-        # Rename to "raw" or "dark" depending on submode flag
+        # TODO: Just use "raw" and not "dark"?
+        # Rename to "raw" or "dark" depending on submode flag, but leave log and report files as "raw"
         reassembled_img_path = acq.dark_img_path if acq.submode == "dark" else acq.raw_img_path
         reassembled_hdr_path = acq.dark_hdr_path if acq.submode == "dark" else acq.raw_hdr_path
         shutil.copy2(tmp_raw_path, reassembled_img_path)
         shutil.copy2(tmp_raw_hdr_path, reassembled_hdr_path)
-        shutil.copy2(tmp_log_path, reassembled_img_path.replace(".img", "_pge.log"))
-        shutil.copy2(tmp_report_path, reassembled_img_path.replace(".img", "_report.txt"))
+        shutil.copy2(tmp_log_path, acq.raw_img_path.replace(".img", "_pge.log"))
+        report_path = acq.raw_img_path.replace(".img", "_report.txt")
+        shutil.copy2(tmp_report_path, report_path)
+
+        # Create rawqa report file based on CCSDS depacketization report(s) and reassembly report
+        rawqa_file = open(acq.rawqa_txt_path, "w")
+
+        # Get depacketization report from associated CCSDS files
+        for path in acq.associated_ccsds:
+            depacket_report_path = path.replace("l0", "l1a").replace("ccsds", "frames").replace(".bin", "_report.txt")
+            if os.path.exists(depacket_report_path):
+                with open(depacket_report_path, "r") as f:
+                    rawqa_file.write("SOURCE FILE\n")
+                    rawqa_file.write("===========\n")
+                    rawqa_file.write(f"{depacket_report_path}\n\n")
+                    rawqa_file.write(f.read() + "\n\n")
+            else:
+                logger.warning(f"Unable to find depacketization report located at {depacket_report_path}")
+
+        # Get reassembly report
+        if os.path.exists(report_path):
+            with open(tmp_report_path, "r") as f:
+                rawqa_file.write("SOURCE FILE\n")
+                rawqa_file.write("===========\n")
+                rawqa_file.write(f"{report_path}\n\n")
+                rawqa_file.write(f.read())
+        else:
+            logger.warning(f"Unable to find reassembly report located at {report_path}")
+
+        rawqa_file.close()
 
         # Update hdr files
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
@@ -251,7 +280,8 @@ class L1AReassembleRaw(SlurmJobTask):
         # PGE writes metadata to db
         dm = wm.database_manager
 
-        product_dict = {
+        # Update raw product dictionary
+        product_dict_raw = {
             "img_path": reassembled_img_path,
             "hdr_path": reassembled_hdr_path,
             "created": creation_time,
@@ -261,7 +291,14 @@ class L1AReassembleRaw(SlurmJobTask):
                 "bands": hdr["bands"]
             }
         }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1a.raw": product_dict})
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1a.raw": product_dict_raw})
+
+        # Update rawqa product dictionary
+        product_dict_rawqa = {
+            "txt_path": acq.rawqa_txt_path,
+            "created": datetime.datetime.fromtimestamp(os.path.getmtime(acq.rawqa_txt_path), tz=datetime.timezone.utc)
+        }
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1a.rawqa": product_dict_rawqa})
 
         log_entry = {
             "task": self.task_family,
@@ -275,37 +312,109 @@ class L1AReassembleRaw(SlurmJobTask):
             "completion_status": "SUCCESS",
             "output": {
                 "l1a_raw_img_path": reassembled_img_path,
-                "l1a_raw_hdr_path:": reassembled_hdr_path
+                "l1a_raw_hdr_path:": reassembled_hdr_path,
+                "l1a_rawqa_txt_path": acq.rawqa_txt_path
             }
         }
 
         dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
 
 
-# TODO: Full implementation TBD
-class L1APEP(SlurmJobTask):
+class L1ARawQA(SlurmJobTask):
     """
-    Performs performance evaluation of raw data
-    :returns: Perfomance evaluation report
+    Concatenates depacketization and decompression report into a single 'rawqa'
+    file that summarizes missing packets, missing frames, cloudy frames, and
+    decompression errors.
     """
 
     config_path = luigi.Parameter()
+    acquisition_id = luigi.Parameter()
+    ignore_missing = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
 
     task_namespace = "emit"
 
     def requires(self):
-
-        return L1AReassembleRaw()
+        logger.debug(self.task_family + " requires")
+        return L1AReassembleRaw(config_path=self.config_path, acquisition_id=self.acquisition_id,
+                                ignore_missing=self.ignore_missing, level=self.level, partition=self.partition)
 
     def output(self):
 
-        return luigi.LocalTarget("pep_path")
+        logger.debug(self.task_family + " output")
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return ENVITarget(acquisition=wm.acquisition, task_family=self.task_family)
 
     def work(self):
 
-        pass
+        logger.debug(self.task_family + " run")
+
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        acq = wm.acquisition
+
+        pge = wm.pges["emit-main"]
+
+        tmp_output_dir = os.path.join(self.tmp_dir, "output")
+        os.makedirs(tmp_output_dir)
+        tmp_rawqa_path = os.path.join(tmp_output_dir, "rawqa.txt")
+
+        rawqa_file = open(tmp_rawqa_path, "w")
+        input_files = []
+
+        # Get depacketization report from associated CCSDS files
+        for path in acq.associated_ccsds:
+            depacket_report_path = path.replace("l0", "l1a").replace("ccsds", "frames").replace(".bin", "_report.txt")
+            if os.path.exists(depacket_report_path):
+                with open(depacket_report_path, "r") as f:
+                    rawqa_file.write("==========================================\n")
+                    rawqa_file.write(f"SOURCE FILE: {depacket_report_path}\n\n")
+                    rawqa_file.write(f.read() + "\n\n")
+                input_files.append(depacket_report_path)
+            else:
+                logger.warning(f"Unable to find depacketization report located at {depacket_report_path}")
+
+        # Get reassembly report
+        reassembly_report_path = acq.raw_img_path.replace(".img", "_report.txt")
+        if os.path.exists(reassembly_report_path):
+            with open(reassembly_report_path, "r") as f:
+                rawqa_file.write("==========================================\n")
+                rawqa_file.write(f"SOURCE FILE: {reassembly_report_path}\n\n")
+                rawqa_file.write(f.read())
+            input_files.append(reassembly_report_path)
+        else:
+            logger.warning(f"Unable to find reassembly report located at {depacket_report_path}")
+
+        rawqa_file.close()
+
+        # Copy report back to /store
+        shutil.copy2(tmp_rawqa_path, acq.rawqa_txt_path)
+
+        # PGE writes metadata to db
+        dm = wm.database_manager
+        creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rawqa_txt_path), tz=datetime.timezone.utc)
+        product_dict = {
+            "txt_path": acq.rawqa_txt_path,
+            "created": creation_time
+        }
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1a.rawqa": product_dict})
+
+        log_entry = {
+            "task": self.task_family,
+            "pge_name": pge.repo_url,
+            "pge_version": pge.version_tag,
+            "pge_input_files": input_files,
+            "pge_run_command": "N/A - rawqa file is concatenation of input files",
+            "documentation_version": "N/A",
+            "product_creation_time": creation_time,
+            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
+            "completion_status": "SUCCESS",
+            "output": {
+                "l1a_rawqa_txt_path": acq.rawqa_txt_path
+            }
+        }
+
+        dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
 
 
 class L1AReformatEDP(SlurmJobTask):
