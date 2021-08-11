@@ -24,7 +24,8 @@ logger = logging.getLogger("emit-main")
 
 
 def parse_args():
-    product_choices = ["l0hosc", "l0plan", "l1aeng", "l1aframe", "l1araw", "l1bcal", "l2arefl", "l2amask", "l2babun"]
+    product_choices = ["l0hosc", "l0plan", "l1aeng", "l1aframe", "l1aframereport", "l1araw", "l1bcal", "l2arefl",
+                       "l2amask", "l2babun"]
     parser = argparse.ArgumentParser()
     parser.add_argument("-a", "--acquisition_id", default="",
                         help="Acquisition ID")
@@ -81,6 +82,7 @@ def get_tasks_from_args(args):
         "l0plan": L0ProcessPlanningProduct(**kwargs),
         "l1aeng": L1AReformatEDP(stream_path=args.stream_path, **kwargs),
         "l1aframe": L1ADepacketizeScienceFrames(stream_path=args.stream_path, **kwargs),
+        "l1aframereport": L1AFrameReport(acquisition_id=args.acquisition_id, **kwargs),
         "l1araw": L1AReassembleRaw(acquisition_id=args.acquisition_id, ignore_missing=args.ignore_missing, **kwargs),
         "l1bcal": L1BCalibrate(acquisition_id=args.acquisition_id, **kwargs),
         "l2arefl": L2AReflectance(acquisition_id=args.acquisition_id, **kwargs),
@@ -97,16 +99,15 @@ def get_tasks_from_args(args):
 def task_success(task):
     logger.info("SUCCESS: %s" % task)
 
-    # TODO: Delete tmp folder
-#    logger.debug("Deleting scratch tmp folder %s" % task.tmp_dir)
-#    shutil.rmtree(task.tmp_dir)
+    # If not in DEBUG mode, clean up scratch tmp and local tmp dirs
+    if task.level != "DEBUG":
+        logger.debug("Deleting scratch tmp folder %s" % task.tmp_dir)
+        shutil.rmtree(task.tmp_dir)
 
-    # Remove local tmp dir if exists
-    if os.path.exists(task.local_tmp_dir):
-        logger.debug(f"Deleting task's local tmp folder: {task.local_tmp_dir}")
-        shutil.rmtree(task.local_tmp_dir)
-
-    # TODO: Trigger higher level tasks?
+        # Remove local tmp dir if exists
+        if os.path.exists(task.local_tmp_dir):
+            logger.debug(f"Deleting task's local tmp folder: {task.local_tmp_dir}")
+            shutil.rmtree(task.local_tmp_dir)
 
 
 @SlurmJobTask.event_handler(luigi.Event.FAILURE)
@@ -134,8 +135,8 @@ def task_failure(task, e):
         "completion_status": "FAILURE",
         "error_message": str(e)
     }
-    acquisition_tasks = ("emit.L1AReassembleRaw", "emit.L1BCalibrate", "emit.L2AReflectance", "emit.L2AMask",
-                         "emit.L2BAbundance")
+    acquisition_tasks = ("emit.L1AReassembleRaw", "emit.L1AFrameReport", "emit.L1BCalibrate", "emit.L2AReflectance",
+                         "emit.L2AMask", "emit.L2BAbundance")
     stream_tasks = ("emit.L0StripHOSC", "emit.L1ADepacketizeScienceFrames", "emit.L1AReformatEDP")
     dm = wm.database_manager
     if task.task_family in acquisition_tasks:

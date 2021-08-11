@@ -161,7 +161,7 @@ class L1AReassembleRaw(SlurmJobTask):
 
     config_path = luigi.Parameter()
     acquisition_id = luigi.Parameter()
-    ignore_missing = luigi.Parameter()
+    ignore_missing = luigi.BoolParameter(default=False)
     level = luigi.Parameter()
     partition = luigi.Parameter()
 
@@ -259,6 +259,11 @@ class L1AReassembleRaw(SlurmJobTask):
 
         rawqa_file.close()
 
+        # Copy decompressed frames to /store
+        tmp_decomp_frame_paths = glob.glob(os.path.join(tmp_output_dir, "*.decomp"))
+        for path in tmp_decomp_frame_paths:
+            shutil.copy2(path, acq.decomp_dir)
+
         # Update hdr files
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
         doc_version = "EMIT SDS L1A JPL-D 104186, Initial"
@@ -320,25 +325,24 @@ class L1AReassembleRaw(SlurmJobTask):
         dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
 
 
-class L1ARawQA(SlurmJobTask):
+class L1AFrameReport(SlurmJobTask):
     """
-    Concatenates depacketization and decompression report into a single 'rawqa'
-    file that summarizes missing packets, missing frames, cloudy frames, and
-    decompression errors.
+    Runs the ngis_check_frame.py script.
+    :returns: A frame report, frame header and line header CSVs for all frames in an acquisition
     """
 
     config_path = luigi.Parameter()
     acquisition_id = luigi.Parameter()
-    ignore_missing = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
 
     task_namespace = "emit"
 
     def requires(self):
+
         logger.debug(self.task_family + " requires")
-        return L1AReassembleRaw(config_path=self.config_path, acquisition_id=self.acquisition_id,
-                                ignore_missing=self.ignore_missing, level=self.level, partition=self.partition)
+        return L1AReassembleRaw(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+                                partition=self.partition)
 
     def output(self):
 
@@ -352,65 +356,51 @@ class L1ARawQA(SlurmJobTask):
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
+        pge = wm.pges["NGIS_Check_Line_Frame"]
 
-        pge = wm.pges["emit-main"]
-
-        tmp_output_dir = os.path.join(self.tmp_dir, "output")
+        tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
         os.makedirs(tmp_output_dir)
-        tmp_rawqa_path = os.path.join(tmp_output_dir, "rawqa.txt")
 
-        rawqa_file = open(tmp_rawqa_path, "w")
-        input_files = []
+        # Create symlinks of decompressed frames
+        input_decomp_frame_paths = glob.glob(os.path.join(acq.decomp_dir, "*.decomp"))
+        for decomp_frame_path in input_decomp_frame_paths:
+            decomp_frame_symlink = os.path.join(tmp_output_dir, os.path.basename(decomp_frame_path))
+            os.symlink(decomp_frame_path, decomp_frame_symlink)
 
-        # Get depacketization report from associated CCSDS files
-        for path in acq.associated_ccsds:
-            depacket_report_path = path.replace("l0", "l1a").replace("ccsds", "frames").replace(".bin", "_report.txt")
-            if os.path.exists(depacket_report_path):
-                with open(depacket_report_path, "r") as f:
-                    rawqa_file.write("==========================================\n")
-                    rawqa_file.write(f"SOURCE FILE: {depacket_report_path}\n\n")
-                    rawqa_file.write(f.read() + "\n\n")
-                input_files.append(depacket_report_path)
-            else:
-                logger.warning(f"Unable to find depacketization report located at {depacket_report_path}")
+        ngis_check_list_exe = os.path.join(pge.repo_dir, "python", "ngis_check_list.py")
+        cmd = ["python", ngis_check_list_exe, tmp_output_dir]
+        pge.run(cmd, tmp_dir=self.tmp_dir)
 
-        # Get reassembly report
-        reassembly_report_path = acq.raw_img_path.replace(".img", "_report.txt")
-        if os.path.exists(reassembly_report_path):
-            with open(reassembly_report_path, "r") as f:
-                rawqa_file.write("==========================================\n")
-                rawqa_file.write(f"SOURCE FILE: {reassembly_report_path}\n\n")
-                rawqa_file.write(f.read())
-            input_files.append(reassembly_report_path)
-        else:
-            logger.warning(f"Unable to find reassembly report located at {depacket_report_path}")
-
-        rawqa_file.close()
-
-        # Copy report back to /store
-        shutil.copy2(tmp_rawqa_path, acq.rawqa_txt_path)
+        output_files = glob.glob(os.path.join(tmp_output_dir, "*.csv"))
+        output_files += glob.glob(os.path.join(tmp_output_dir, "*.txt"))
+        for file in output_files:
+            shutil.copy2(file, acq.decomp_dir)
 
         # PGE writes metadata to db
         dm = wm.database_manager
-        creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rawqa_txt_path), tz=datetime.timezone.utc)
+
+        all_frames_report = glob.glob(os.path.join(acq.decomp_dir, "*allframesreport.txt"))[0]
+        creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(all_frames_report), tz=datetime.timezone.utc)
+
+        # Update frames_report product dictionary
         product_dict = {
-            "txt_path": acq.rawqa_txt_path,
+            "txt_path": all_frames_report,
             "created": creation_time
         }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1a.rawqa": product_dict})
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1a.frames_report": product_dict})
 
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
             "pge_version": pge.version_tag,
-            "pge_input_files": input_files,
-            "pge_run_command": "N/A - rawqa file is concatenation of input files",
+            "pge_input_files": {"decomp_dir": acq.decomp_dir},
+            "pge_run_command": " ".join(cmd),
             "documentation_version": "N/A",
             "product_creation_time": creation_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
-                "l1a_rawqa_txt_path": acq.rawqa_txt_path
+                "l1a_decomp_dir": acq.decomp_dir
             }
         }
 
