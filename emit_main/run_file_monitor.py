@@ -26,6 +26,8 @@ def parse_args():
                         help="Stop time (YYMMDDhhmmss)")
     parser.add_argument("-l", "--level", default="INFO",
                         help="The log level (default: INFO)")
+    parser.add_argument("--partition", default="emit",
+                        help="The slurm partition to be used - emit (default), debug, standard, patient ")
     args = parser.parse_args()
 
     if args.config_path is None:
@@ -55,7 +57,7 @@ def main():
     """
     args = parse_args()
 
-    fm = FileMonitor(config_path=args.config_path)
+    fm = FileMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
     set_up_logging(fm.logs_dir, args.level)
     logger.info("Running file monitor with cmd: %s" % str(" ".join(sys.argv)))
 

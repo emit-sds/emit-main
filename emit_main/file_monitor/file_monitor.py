@@ -15,12 +15,14 @@ logger = logging.getLogger("emit-main")
 
 class FileMonitor:
 
-    def __init__(self, config_path):
+    def __init__(self, config_path, level="INFO", partition="emit"):
         """
         :param config_path: Path to config file containing environment settings
         """
 
         self.config_path = os.path.abspath(config_path)
+        self.level = level
+        self.partition = partition
 
         # Get config properties
         self.config = Config(config_path).get_dictionary()
@@ -105,9 +107,15 @@ class FileMonitor:
 
         # Create luigi tasks and execute
         tasks = []
-        # TODO: Change task based on APID
         for p in paths:
-            tasks.append(L1AReformatEDP(config_path=self.config_path, stream_path=p))
+            apid = os.path.basename(p).split("_")[1]
+            # Run different tasks based on apid (engineering or science)
+            if apid == "1674":
+                tasks.append(L1AReformatEDP(config_path=self.config_path, stream_path=p, level=self.level,
+                                            partition=self.partition))
+            if apid == "1675":
+                tasks.append(L1ADepacketizeScienceFrames(config_path=self.config_path, stream_path=p, level=self.level,
+                                                         partition=self.partition))
 
         return luigi.build(tasks, workers=4, local_scheduler=self.config["luigi_local_scheduler"],
                            logging_conf_file=self.luigi_logging_conf)
