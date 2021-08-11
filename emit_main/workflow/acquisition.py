@@ -60,7 +60,8 @@ class Acquisition:
 
         # Add sub-dirs
         self.frames_dir = self.raw_img_path.replace("_raw_", "_frames_").replace(".img", "")
-        self.dirs.append(self.frames_dir)
+        self.decomp_dir = self.frames_dir.replace("_frames_", "_decomp_")
+        self.dirs.extend([self.frames_dir, self.decomp_dir])
 
         # Make directories if they don't exist
         for d in self.dirs:
