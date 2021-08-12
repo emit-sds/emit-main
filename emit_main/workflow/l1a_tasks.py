@@ -33,6 +33,9 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
 
+    memory = 30000
+    local_tmp_space = 125000
+
     task_namespace = "emit"
 
     def requires(self):
@@ -55,8 +58,8 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
 
         # Build command and run
         sds_l1a_science_packet_exe = os.path.join(pge.repo_dir, "depacketize_science_frames.py")
-        tmp_output_dir = os.path.join(self.tmp_dir, "output")
-        tmp_log_path = os.path.join(self.tmp_dir, "depacketize_science_frames.log")
+        tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
+        tmp_log_path = os.path.join(self.local_tmp_dir, "depacketize_science_frames.log")
         tmp_report_path = tmp_log_path.replace(".log", "_report.txt")
         cmd = ["python", sds_l1a_science_packet_exe, stream.ccsds_path,
                "--out_dir", tmp_output_dir,
@@ -336,6 +339,9 @@ class L1AFrameReport(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
 
+    memory = 30000
+    local_tmp_space = 125000
+
     task_namespace = "emit"
 
     def requires(self):
@@ -418,6 +424,9 @@ class L1AReformatEDP(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
 
+    memory = 30000
+    local_tmp_space = 125000
+
     task_namespace = "emit"
 
     def requires(self):
@@ -442,12 +451,12 @@ class L1AReformatEDP(SlurmJobTask):
         # Build command and run
         sds_l1a_eng_exe = os.path.join(pge.repo_dir, "run_l1a_eng.sh")
         ios_l1_edp_exe = os.path.join(wm.pges["emit-ios"].repo_dir, "emit", "bin", "emit_l1_edp.py")
-        tmp_output_dir = os.path.join(self.tmp_dir, "output")
-        tmp_log_dir = os.path.join(self.tmp_dir, "logs")
+        tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
+        tmp_log_dir = os.path.join(self.local_tmp_dir, "logs")
 
         tmp_log = os.path.join(tmp_output_dir, stream.hosc_name + ".log")
 
-        cmd = [sds_l1a_eng_exe, stream.ccsds_path, self.tmp_dir, ios_l1_edp_exe]
+        cmd = [sds_l1a_eng_exe, stream.ccsds_path, self.local_tmp_dir, ios_l1_edp_exe]
         env = os.environ.copy()
         env["AIT_ROOT"] = wm.pges["emit-ios"].repo_dir
         # TODO: Convert these to ancillary file paths?
