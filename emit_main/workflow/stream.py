@@ -25,6 +25,10 @@ class Stream:
         self.config_path = config_path
         self.stream_path = stream_path
 
+        # Declare these variables which will get populated later by tasks
+        self.hosc_name = None
+        self.ccsds_name = None
+
         # Get config properties
         self.config = Config(config_path).get_dictionary()
 
