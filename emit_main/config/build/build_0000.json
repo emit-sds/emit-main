@@ -38,7 +38,7 @@
     {
       "url": "git@github.jpl.nasa.gov:aviris/NGIS_Check_Line_Frame.git",
       "tag": "ngis_1280_480",
-      "conda_env": "check-line-frame"
+      "conda_env": "emit-main-dev"
     },
     {
       "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l1b.git",

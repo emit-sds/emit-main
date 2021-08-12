@@ -15,12 +15,14 @@ logger = logging.getLogger("emit-main")
 
 class FileMonitor:
 
-    def __init__(self, config_path):
+    def __init__(self, config_path, level="INFO", partition="emit"):
         """
         :param config_path: Path to config file containing environment settings
         """
 
         self.config_path = os.path.abspath(config_path)
+        self.level = level
+        self.partition = partition
 
         # Get config properties
         self.config = Config(config_path).get_dictionary()
@@ -29,9 +31,6 @@ class FileMonitor:
         self.ingest_dir = os.path.join(self.config["local_store_dir"], self.config["instrument"], self.config["environment"], "ingest")
         self.ingest_duplicates_dir = os.path.join(self.ingest_dir, "duplicates")
         self.logs_dir = os.path.join(self.config["local_store_dir"], self.config["instrument"], self.config["environment"], "logs")
-        # Build luigi logging.conf path
-        self.luigi_logging_conf = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "workflow", "luigi",
-                                                               "logging.conf"))
         self.dirs = [self.ingest_dir, self.ingest_duplicates_dir, self.logs_dir]
 
         # Make directories if they don't exist
@@ -103,11 +102,15 @@ class FileMonitor:
         if dry_run:
             return paths
 
-        # Create luigi tasks and execute
+        # Return luigi tasks
         tasks = []
-        # TODO: Change task based on APID
         for p in paths:
-            tasks.append(L1AReformatEDP(config_path=self.config_path, stream_path=p))
-
-        return luigi.build(tasks, workers=4, local_scheduler=self.config["luigi_local_scheduler"],
-                           logging_conf_file=self.luigi_logging_conf)
+            apid = os.path.basename(p).split("_")[1]
+            # Run different tasks based on apid (engineering or science)
+            if apid == "1674":
+                tasks.append(L1AReformatEDP(config_path=self.config_path, stream_path=p, level=self.level,
+                                            partition=self.partition))
+            if apid == "1675":
+                tasks.append(L1ADepacketizeScienceFrames(config_path=self.config_path, stream_path=p, level=self.level,
+                                                         partition=self.partition))
+        return tasks

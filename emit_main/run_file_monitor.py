@@ -10,6 +10,7 @@ import os
 import sys
 
 from emit_main.file_monitor.file_monitor import FileMonitor
+from emit_main.workflow.l1a_tasks import *
 
 logging_conf = os.path.join(os.path.dirname(__file__), "logging.conf")
 logging.config.fileConfig(fname=logging_conf)
@@ -26,6 +27,12 @@ def parse_args():
                         help="Stop time (YYMMDDhhmmss)")
     parser.add_argument("-l", "--level", default="INFO",
                         help="The log level (default: INFO)")
+    parser.add_argument("--partition", default="emit",
+                        help="The slurm partition to be used - emit (default), debug, standard, patient ")
+    parser.add_argument("-w", "--workers",
+                        help="Number of luigi workers")
+    parser.add_argument("--dry_run", action="store_true",
+                        help="Just return a list of paths to process from the ingest folder, but take no action")
     args = parser.parse_args()
 
     if args.config_path is None:
@@ -38,6 +45,56 @@ def parse_args():
     args.level = args.level.upper()
 
     return args
+
+
+@SlurmJobTask.event_handler(luigi.Event.SUCCESS)
+def task_success(task):
+    logger.info("SUCCESS: %s" % task)
+
+    # If not in DEBUG mode, clean up scratch tmp and local tmp dirs
+    if task.level != "DEBUG":
+        logger.debug("Deleting scratch tmp folder %s" % task.tmp_dir)
+        shutil.rmtree(task.tmp_dir)
+
+        # Remove local tmp dir if exists
+        if os.path.exists(task.local_tmp_dir):
+            logger.debug(f"Deleting task's local tmp folder: {task.local_tmp_dir}")
+            shutil.rmtree(task.local_tmp_dir)
+
+
+@SlurmJobTask.event_handler(luigi.Event.FAILURE)
+def task_failure(task, e):
+    logger.error("TASK FAILURE: %s" % task)
+
+    # Move scratch tmp folder to errors folder
+    error_task_dir = task.tmp_dir.replace("/tmp/", "/error/")
+    logger.error("Moving scratch tmp folder %s to %s" % (task.tmp_dir, error_task_dir))
+    shutil.move(task.tmp_dir, error_task_dir)
+
+    # Copy local tmp dir to error/tmp under scratch if exists
+    if os.path.exists(task.local_tmp_dir):
+        error_tmp_dir = error_task_dir + "_tmp"
+        logger.error(f"Copying local tmp folder {task.local_tmp_dir} to {error_tmp_dir}")
+        shutil.copytree(task.local_tmp_dir, error_tmp_dir)
+        logger.error(f"Deleting task's local tmp folder: {task.local_tmp_dir}")
+        shutil.rmtree(task.local_tmp_dir)
+
+    # Update DB processing_log with failure message
+    wm = WorkflowManager(config_path=task.config_path)
+    log_entry = {
+        "task": task.task_family,
+        "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
+        "completion_status": "FAILURE",
+        "error_message": str(e)
+    }
+    acquisition_tasks = ("emit.L1AReassembleRaw", "emit.L1AFrameReport", "emit.L1BCalibrate", "emit.L2AReflectance",
+                         "emit.L2AMask", "emit.L2BAbundance")
+    stream_tasks = ("emit.L0StripHOSC", "emit.L1ADepacketizeScienceFrames", "emit.L1AReformatEDP")
+    dm = wm.database_manager
+    if task.task_family in acquisition_tasks:
+        dm.insert_acquisition_log_entry(task.acquisition_id, log_entry)
+    elif task.task_family in stream_tasks:
+        dm.insert_stream_log_entry(os.path.basename(task.stream_path), log_entry)
 
 
 def set_up_logging(logs_dir, level):
@@ -55,14 +112,31 @@ def main():
     """
     args = parse_args()
 
-    fm = FileMonitor(config_path=args.config_path)
+    fm = FileMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
     set_up_logging(fm.logs_dir, args.level)
     logger.info("Running file monitor with cmd: %s" % str(" ".join(sys.argv)))
 
+    # Get tasks from file monitor
+    dry_run = args.dry_run
     if args.start_time and args.stop_time:
-        fm.ingest_files_by_time_range(args.start_time, args.stop_time)
+        tasks = fm.ingest_files_by_time_range(args.start_time, args.stop_time, dry_run=dry_run)
     else:
-        fm.ingest_files()
+        tasks = fm.ingest_files(dry_run=dry_run)
+
+    # If it's a dry run just print the paths and exit
+    if dry_run:
+        logger.info("Dry run flag set. Showing list of paths to ingest:")
+        logger.info("\n".join(tasks))
+        sys.exit(0)
+
+    # Set up luigi tasks and execute
+    if args.workers:
+        workers = args.workers
+    else:
+        workers = fm.config["luigi_workers"]
+    luigi_logging_conf = os.path.join(os.path.dirname(__file__), "workflow", "luigi", "logging.conf")
+    luigi.build(tasks, workers=workers, local_scheduler=fm.config["luigi_local_scheduler"],
+                logging_conf_file=luigi_logging_conf)
 
 
 if __name__ == '__main__':
