@@ -136,7 +136,7 @@ def main():
         workers = fm.config["luigi_workers"]
     luigi_logging_conf = os.path.join(os.path.dirname(__file__), "workflow", "luigi", "logging.conf")
     luigi.build(tasks, workers=workers, local_scheduler=fm.config["luigi_local_scheduler"],
-                logging_conf_file=fm.luigi_logging_conf)
+                logging_conf_file=luigi_logging_conf)
 
 
 if __name__ == '__main__':
