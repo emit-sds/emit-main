@@ -42,7 +42,7 @@ def parse_args():
                         help="The slurm partition to be used - emit (default), debug, standard, patient ")
     parser.add_argument("--ignore_missing", action="store_true",
                         help="Ignore missing frames when reasssembling raw cube")
-    parser.add_argument("-w", "--workers", default=2,
+    parser.add_argument("-w", "--workers",
                         help="Number of luigi workers")
     parser.add_argument("--build_env", action="store_true",
                         help="Build the runtime environment (primarily used to setup dev environments)")
