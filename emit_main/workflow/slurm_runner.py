@@ -37,9 +37,10 @@ def _do_work_on_compute_node(work_dir):
         shutil.copytree(job.local_tmp_dir, error_tmp_dir)
         raise e
     finally:
-        # Delete local tmp folder
-        print(f"Deleting task's local tmp folder: {job.local_tmp_dir}")
-        shutil.rmtree(job.local_tmp_dir)
+        # Delete local tmp folder in all cases except when running on debug partition with DEBUG level
+        if job.partition != "debug" or (job.partition == "debug" and job.level != "DEBUG"):
+            print(f"Deleting task's local tmp folder: {job.local_tmp_dir}")
+            shutil.rmtree(job.local_tmp_dir)
 
 
 def main(args=sys.argv):
