@@ -71,10 +71,7 @@ class L0StripHOSC(SlurmJobTask):
 
         if "ingest" in self.stream_path:
             # Move HOSC file out of ingest folder
-            shutil.move(self.stream_path, stream.raw_dir)
-            hosc_path = os.path.join(stream.raw_dir, stream.hosc_name)
-        else:
-            hosc_path = self.stream_path
+            shutil.move(self.stream_path, self.hosc_path)
 
         # Get tmp ccsds and log names
         tmp_ccsds_path = glob.glob(os.path.join(tmp_output_dir, stream.apid + "*.bin"))[0]
@@ -109,8 +106,9 @@ class L0StripHOSC(SlurmJobTask):
             "ccsds_start_time": ccsds_start_time,
             "products": {
                 "raw": {
-                    "hosc_path": hosc_path,
-                    "created": datetime.datetime.fromtimestamp(os.path.getmtime(hosc_path), tz=datetime.timezone.utc)
+                    "hosc_path": self.hosc_path,
+                    "created": datetime.datetime.fromtimestamp(
+                        os.path.getmtime(self.hosc_path), tz=datetime.timezone.utc)
                 },
                 "l0": {
                     "ccsds_path": ccsds_path,
@@ -137,7 +135,7 @@ class L0StripHOSC(SlurmJobTask):
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
-                "hosc_path": hosc_path,
+                "hosc_path": self.hosc_path,
                 "ccsds_path": ccsds_path,
             }
         }

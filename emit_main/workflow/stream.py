@@ -28,11 +28,6 @@ class Stream:
         # Get config properties
         self.config = Config(config_path).get_dictionary()
 
-        self.hosc_name = None
-        self.ccsds_name = None
-        # self.edp_name = None
-        # self.frames = []
-
         # Read metadata from db
         dm = DatabaseManager(config_path)
         self.metadata = dm.find_stream_by_name(os.path.basename(stream_path))
@@ -58,12 +53,13 @@ class Stream:
         self.dirs.extend([self.streams_dir, self.apid_dir, self.date_dir, self.raw_dir, self.l0_dir, self.l1a_dir])
 
         if self.hosc_name:
-            self.hosc_path = os.path.join(self.l0_dir, self.hosc_name)
+            self.hosc_path = os.path.join(self.raw_dir, self.hosc_name)
         if self.ccsds_name:
             self.ccsds_path = os.path.join(self.l0_dir, self.ccsds_name)
-            self.frames_dir = os.path.join(
-                self.l1a_dir, self.ccsds_name.replace("l0_ccsds", "l1a_frames").replace(".bin", ""))
-            self.dirs.append(self.frames_dir)
+            if self.apid == "1675":
+                self.frames_dir = os.path.join(
+                    self.l1a_dir, self.ccsds_name.replace("l0_ccsds", "l1a_frames").replace(".bin", ""))
+                self.dirs.append(self.frames_dir)
 
         # Make directories if they don't exist
         for d in self.dirs:
