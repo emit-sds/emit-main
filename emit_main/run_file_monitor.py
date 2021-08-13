@@ -5,12 +5,17 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
 import argparse
+import datetime
 import logging.config
 import os
+import shutil
 import sys
 
+import luigi
+
 from emit_main.file_monitor.file_monitor import FileMonitor
-from emit_main.workflow.l1a_tasks import *
+from emit_main.workflow.slurm import SlurmJobTask
+from emit_main.workflow.workflow_manager import WorkflowManager
 
 logging_conf = os.path.join(os.path.dirname(__file__), "logging.conf")
 logging.config.fileConfig(fname=logging_conf)
