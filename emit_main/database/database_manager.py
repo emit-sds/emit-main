@@ -23,8 +23,11 @@ class DatabaseManager:
         # Get config properties
         self.config = Config(config_path).get_dictionary()
 
-        self.client = MongoClient(self.config["mongodb_host"], self.config["mongodb_port"])
-        self.db = self.client[self.config["mongodb_db_name"]]
+        self.client = MongoClient(self.config["db_host"], self.config["db_port"], username=self.config["db_user"],
+                                  password=self.config["db_password"], authSource=self.config["db_name"],
+                                  authMechanism="SCRAM-SHA-256")
+
+        self.db = self.client[self.config["db_name"]]
 
     def find_acquisition_by_id(self, acquisition_id):
         acquisitions_coll = self.db.acquisitions

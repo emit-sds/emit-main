@@ -29,21 +29,30 @@ class Config:
             self.dictionary.update(config["general_config"])
             self.dictionary.update(config["filesystem_config"])
             self.dictionary.update(config["database_config"])
+            self.dictionary.update(config["email_config"])
             self.dictionary.update(config["build_config"])
+
             # Use build_num to read in build config
             config_dir = os.path.dirname(config_path)
             build_config_path = os.path.join(config_dir, "build", "build_" + self.dictionary["build_num"] + ".json")
             with open(build_config_path, "r") as b:
                 build_config = json.load(b)
                 self.dictionary.update(build_config)
+
             # Read in ancillary paths
             self.dictionary.update(self._get_ancillary_file_paths(config["ancillary_paths"], acquisition_id))
 
+            # Get passwords from secrets file which is located in resources directory
+            self.dictionary.update(self._get_passwords())
+
     def _get_ancillary_file_paths(self, anc_files_config, acquisition_id):
+        # Get the ancillary paths that are either absolute paths or relative to the environment directory
+        # (eg. /store/emit/ops).
         if "versions" in anc_files_config:
             if acquisition_id is not None:
                 versions = anc_files_config["versions"]
                 acquisition_date = self._get_date_from_acquisition(acquisition_id)
+
                 # Look for matching date range and update top level dictionary with those key/value pairs
                 for version in versions:
                     # These dates are all in UTC by default and do not require any timezone conversion
@@ -51,8 +60,10 @@ class Config:
                     end_date = datetime.datetime.strptime(version["version_date_range"][1], "%Y-%m-%dT%H:%M:%S")
                     if start_date <= acquisition_date < end_date:
                         anc_files_config.update(version)
+
             # Remove "versions" and return dictionary
             del anc_files_config["versions"]
+
         # Convert file paths to absolute paths
         environment_dir = os.path.join(self.dictionary["local_store_dir"], self.dictionary["instrument"],
                                        self.dictionary["environment"])
@@ -68,6 +79,13 @@ class Config:
         # Get date from acquisition string
         date_str = acquisition_id[len(instrument_prefix):(15 + len(instrument_prefix))]
         return datetime.datetime.strptime(date_str, "%Y%m%dt%H%M%S")
+
+    def _get_passwords(self):
+        secrets_path = os.path.join(self.dictionary["local_store_dir"], self.dictionary["instrument"],
+                                    self.dictionary["environment"], "resources", "secrets.json")
+        with open(secrets_path, "r") as f:
+            passwords = json.load(f)
+        return passwords
 
     def get_dictionary(self):
         return self.dictionary

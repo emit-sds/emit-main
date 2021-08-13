@@ -113,6 +113,10 @@ def task_success(task):
 @SlurmJobTask.event_handler(luigi.Event.FAILURE)
 def task_failure(task, e):
     logger.error("TASK FAILURE: %s" % task)
+    wm = WorkflowManager(config_path=task.config_path)
+
+    # Send failure notification
+    wm.send_failure_notification(task)
 
     # Move scratch tmp folder to errors folder
     error_task_dir = task.tmp_dir.replace("/tmp/", "/error/")
@@ -128,7 +132,7 @@ def task_failure(task, e):
         shutil.rmtree(task.local_tmp_dir)
 
     # Update DB processing_log with failure message
-    wm = WorkflowManager(config_path=task.config_path)
+
     log_entry = {
         "task": task.task_family,
         "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),

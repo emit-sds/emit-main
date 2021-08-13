@@ -8,6 +8,9 @@ import grp
 import logging
 import os
 import pwd
+import smtplib
+
+from email.mime.text import MIMEText
 
 from emit_main.database.database_manager import DatabaseManager
 from emit_main.config.config import Config
@@ -114,3 +117,20 @@ class WorkflowManager:
             if pge.repo_name == "emit-main" and pge.repo_dir not in os.getcwd():
                 logger.warning("The \"emit-main\" code should be executing inside repository %s to ensure that the "
                                "correct version is running" % pge.repo_dir)
+
+    def send_failure_notification(self, task):
+        # Create a text/plain message
+        sender = self.config["email_sender"]
+        recipient_list = self.config["email_recipient_list"]
+        msg_text = f"The following task failed:\n\n{task}"
+        msg = MIMEText(msg_text)
+        msg["Subject"] = f"EMIT SDS Task Failure: {task.task_family}"
+        msg["From"] = sender
+        msg["To"] = ", ".join(recipient_list)
+
+        # Send the message via our own SMTP server
+        s = smtplib.SMTP(self.config["smtp_host"], self.config["smtp_port"])
+        s.starttls()
+        s.login(self.config["email_user"], self.config["email_password"])
+        s.sendmail(sender, recipient_list, msg.as_string())
+        s.quit()
