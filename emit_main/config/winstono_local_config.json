@@ -27,7 +27,6 @@
     ],
     "smtp_host": "smtp.jpl.nasa.gov",
     "smtp_port": 587
-
   },
 
   "build_config": {
