@@ -9,6 +9,8 @@ import json
 import logging
 import os
 
+from cryptography.fernet import Fernet
+
 logger = logging.getLogger("emit-main")
 
 
@@ -42,7 +44,7 @@ class Config:
             # Read in ancillary paths
             self.dictionary.update(self._get_ancillary_file_paths(config["ancillary_paths"], acquisition_id))
 
-            # Get passwords from secrets file which is located in resources directory
+            # Get passwords from resources/credentials directory
             self.dictionary.update(self._get_passwords())
 
     def _get_ancillary_file_paths(self, anc_files_config, acquisition_id):
@@ -81,10 +83,25 @@ class Config:
         return datetime.datetime.strptime(date_str, "%Y%m%dt%H%M%S")
 
     def _get_passwords(self):
-        secrets_path = os.path.join(self.dictionary["local_store_dir"], self.dictionary["instrument"],
-                                    self.dictionary["environment"], "resources", "secrets.json")
-        with open(secrets_path, "r") as f:
-            passwords = json.load(f)
+        # Get encrypted passwords
+        passwords_path = os.path.join(self.dictionary["local_store_dir"], self.dictionary["instrument"],
+                                      self.dictionary["environment"], "resources", "credentials",
+                                      "encrypted_passwords.json")
+        with open(passwords_path, "r") as f:
+            enc_passwords = json.load(f)
+
+        # Decrypt passwords
+        key_path = os.path.join(os.path.dirname(passwords_path), "key.txt")
+        with open(key_path) as f:
+            key = f.read()
+            key_bytes = bytes(key, 'utf-8')
+
+        passwords = {}
+        crypto_key = Fernet(key_bytes)
+        for k, v in enc_passwords.items():
+            pass_bytes = bytes(v, "utf-8")
+            passwords[k] = (crypto_key.decrypt(pass_bytes)).decode("utf-8")
+
         return passwords
 
     def get_dictionary(self):
