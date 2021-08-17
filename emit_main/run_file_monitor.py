@@ -5,12 +5,17 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
 import argparse
+import datetime
 import logging.config
 import os
+import shutil
 import sys
 
+import luigi
+
 from emit_main.file_monitor.file_monitor import FileMonitor
-from emit_main.workflow.l1a_tasks import *
+from emit_main.workflow.slurm import SlurmJobTask
+from emit_main.workflow.workflow_manager import WorkflowManager
 
 logging_conf = os.path.join(os.path.dirname(__file__), "logging.conf")
 logging.config.fileConfig(fname=logging_conf)
@@ -65,6 +70,10 @@ def task_success(task):
 @SlurmJobTask.event_handler(luigi.Event.FAILURE)
 def task_failure(task, e):
     logger.error("TASK FAILURE: %s" % task)
+    wm = WorkflowManager(config_path=task.config_path)
+
+    # Send failure notification
+    wm.send_failure_notification(task)
 
     # Move scratch tmp folder to errors folder
     error_task_dir = task.tmp_dir.replace("/tmp/", "/error/")
@@ -80,7 +89,7 @@ def task_failure(task, e):
         shutil.rmtree(task.local_tmp_dir)
 
     # Update DB processing_log with failure message
-    wm = WorkflowManager(config_path=task.config_path)
+
     log_entry = {
         "task": task.task_family,
         "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),

@@ -13,9 +13,20 @@
   },
 
   "database_config": {
-    "mongodb_host": "128.149.52.213",
-    "mongodb_port": 27017,
-    "mongodb_db_name": "emitTestDB"
+    "db_host": "128.149.52.213",
+    "db_port": 27017,
+    "db_name": "emitTestDB",
+    "db_user": "emit-test"
+  },
+
+  "email_config": {
+    "email_user": "winstono",
+    "email_sender": "emit-sds@jpl.nasa.gov",
+    "email_recipient_list": [
+      "winston.olson-duvall@jpl.nasa.gov"
+    ],
+    "smtp_host": "smtp.jpl.nasa.gov",
+    "smtp_port": 587
   },
 
   "build_config": {

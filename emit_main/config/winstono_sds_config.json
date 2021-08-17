@@ -13,9 +13,20 @@
   },
 
   "database_config": {
-    "mongodb_host": "128.149.52.213",
-    "mongodb_port": 27017,
-    "mongodb_db_name": "emitDevDB"
+    "db_host": "128.149.52.213",
+    "db_port": 27017,
+    "db_name": "emitDevDB",
+    "db_user": "emit-dev"
+  },
+
+  "email_config": {
+    "email_user": "winstono",
+    "email_sender": "emit-sds@jpl.nasa.gov",
+    "email_recipient_list": [
+      "winston.olson-duvall@jpl.nasa.gov"
+    ],
+    "smtp_host": "smtp.jpl.nasa.gov",
+    "smtp_port": 587
   },
 
   "build_config": {
@@ -34,6 +45,11 @@
     "specpr_path": "/shared/specpr",
     "tetracorder_path": "/shared/tetracorder5.26",
     "versions": [
+      {
+        "version_date_range": ["2018-01-01T00:00:00", "2019-01-01T00:00:00"],
+        "isofit_wavelength_path": "/beegfs/scratch/brodrick/emit/megabox/support/synth_wavelengths.txt",
+        "isofit_surface_path": "/beegfs/scratch/brodrick/emit/megabox/support/EMIT_synth_surface.mat"
+      },
       {
         "version_date_range": ["2021-01-01T00:00:00", "2022-01-01T00:00:00"],
         "l1b_config_path": "repos/emit-sds-l1b/calibrations/config_20210101_20210131.json"
