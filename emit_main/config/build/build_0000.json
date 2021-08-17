@@ -12,12 +12,12 @@
     },
     {
       "url": "git@github.jpl.nasa.gov:emit/emit-ios.git",
-      "tag": "0.2.0",
+      "tag": "master",
       "conda_env": "emit-main-dev"
     },
     {
       "url": "git@github.jpl.nasa.gov:emit/emit-l0edp.git",
-      "tag": "0.1",
+      "tag": "master",
       "conda_env": "emit-main-dev"
     },
     {
@@ -52,7 +52,7 @@
     },
     {
       "url": "https://github.com/isofit/isofit.git",
-      "tag": "v2.7.0",
+      "tag": "master",
       "conda_env": "emit-main-dev"
     },
     {
