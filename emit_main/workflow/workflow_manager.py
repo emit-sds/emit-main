@@ -61,11 +61,7 @@ class WorkflowManager:
         for d in dirs:
             if not os.path.exists(d):
                 os.makedirs(d)
-                # Change group ownership in shared environments
-                if self.config["environment"] in ["dev", "test", "ops"]:
-                    uid = pwd.getpwnam(pwd.getpwuid(os.getuid())[0]).pw_uid
-                    gid = grp.getgrnam(self.config["instrument"] + "-" + self.config["environment"]).gr_gid
-                    os.chown(d, uid, gid)
+                self.change_group_ownership(d)
 
         # If we have an acquisition id and acquisition exists in db, initialize acquisition
         if self.acquisition_id and self.database_manager.find_acquisition_by_id(self.acquisition_id):
@@ -134,3 +130,15 @@ class WorkflowManager:
         s.login(self.config["email_user"], self.config["email_password"])
         s.sendmail(sender, recipient_list, msg.as_string())
         s.quit()
+
+    def change_group_ownership(self, dir):
+        # Change group ownership in shared environments
+        if self.config["environment"] in ["dev", "test", "ops"]:
+            uid = pwd.getpwnam(pwd.getpwuid(os.getuid())[0]).pw_uid
+            gid = grp.getgrnam(self.config["instrument"] + "-" + self.config["environment"]).gr_gid
+            os.chown(dir, uid, gid)
+            for dirpath, dirnames, filenames in os.walk(dir):
+                for dname in dirnames:
+                    os.chown(os.path.join(dirpath, dname), uid, gid)
+                for fname in filenames:
+                    os.chown(os.path.join(dirpath, fname), uid, gid)

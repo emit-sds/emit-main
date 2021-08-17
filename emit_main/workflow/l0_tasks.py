@@ -19,7 +19,6 @@ from emit_main.workflow.workflow_manager import WorkflowManager
 logger = logging.getLogger("emit-main")
 
 
-# TODO: Full implementation TBD
 class L0StripHOSC(SlurmJobTask):
     """
     Strips HOSC ethernet headers from raw data in apid-specific ingest folder
@@ -93,6 +92,7 @@ class L0StripHOSC(SlurmJobTask):
         report_path = ccsds_path.replace(".bin", "_report.txt")
 
         # Copy scratch CCSDS file and report back to store
+        wm.change_group_ownership(self.tmp_dir)
         shutil.copy2(tmp_ccsds_path, ccsds_path)
         shutil.copy2(tmp_report_path, report_path)
 
