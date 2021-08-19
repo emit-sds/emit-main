@@ -379,7 +379,10 @@ class L1AFrameReport(SlurmJobTask):
         output_files = glob.glob(os.path.join(tmp_output_dir, "*.csv"))
         output_files += glob.glob(os.path.join(tmp_output_dir, "*.txt"))
         for file in output_files:
-            wm.copy(file, os.path.join(acq.decomp_dir, os.path.basename(file)))
+            if "allframesparsed.csv" in file or "allframesreport.txt" in file:
+                wm.copy(file, os.path.join(acq.decomp_dir, acq.acquisition_id + "_" + os.path.basename(file)))
+            else:
+                wm.copy(file, os.path.join(acq.decomp_dir, os.path.basename(file)))
 
         # PGE writes metadata to db
         dm = wm.database_manager
@@ -405,7 +408,7 @@ class L1AFrameReport(SlurmJobTask):
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
-                "l1a_decomp_dir": acq.decomp_dir
+                "l1a_all_frames_report_path": all_frames_report
             }
         }
 
