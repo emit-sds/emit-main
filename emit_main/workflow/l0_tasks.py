@@ -68,10 +68,6 @@ class L0StripHOSC(SlurmJobTask):
         env["AIT_ISS_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "sim.yaml")
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
-        if "ingest" in self.stream_path:
-            # Move HOSC file out of ingest folder
-            shutil.move(self.stream_path, stream.hosc_path)
-
         # Get tmp ccsds and log names
         tmp_ccsds_path = glob.glob(os.path.join(tmp_output_dir, stream.apid + "*.bin"))[0]
         tmp_report_path = glob.glob(os.path.join(tmp_output_dir, stream.apid + "*_report.txt"))[0]
@@ -99,6 +95,10 @@ class L0StripHOSC(SlurmJobTask):
         # Copy and rename log file
         log_path = ccsds_path.replace(".bin", "_pge.log")
         shutil.copy2(tmp_log, log_path)
+
+        if "ingest" in self.stream_path:
+            # Move HOSC file out of ingest folder
+            shutil.move(self.stream_path, stream.hosc_path)
 
         # Update DB
         metadata = {
