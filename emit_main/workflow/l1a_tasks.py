@@ -366,11 +366,11 @@ class L1AFrameReport(SlurmJobTask):
         tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
         os.makedirs(tmp_output_dir)
 
-        # Create symlinks of decompressed frames
+        # Copy decompressed frames to local tmp
         input_decomp_frame_paths = glob.glob(os.path.join(acq.decomp_dir, "*.decomp"))
         for decomp_frame_path in input_decomp_frame_paths:
-            decomp_frame_symlink = os.path.join(tmp_output_dir, os.path.basename(decomp_frame_path))
-            wm.symlink(decomp_frame_path, decomp_frame_symlink)
+            tmp_decomp_frame_path = os.path.join(tmp_output_dir, os.path.basename(decomp_frame_path))
+            wm.copy(decomp_frame_path, tmp_decomp_frame_path)
 
         ngis_check_list_exe = os.path.join(pge.repo_dir, "python", "ngis_check_list.py")
         cmd = ["python", ngis_check_list_exe, tmp_output_dir]
