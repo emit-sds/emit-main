@@ -115,7 +115,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
             # acquisition. There may be multiple stream files that contribute frames to a given acquisition
             if "associated_ccsds" in acq.metadata and acq.metadata["associated_ccsds"] is not None:
                 if stream.ccsds_path not in acq.metadata["associated_ccsds"]:
-                    acq.metadata["associated_ccsds"] += stream.ccsds_path
+                    acq.metadata["associated_ccsds"].append(stream.ccsds_path)
             else:
                 acq.metadata["associated_ccsds"] = [stream.ccsds_path]
             dm.update_acquisition_metadata(acq.acquisition_id, {"associated_ccsds": acq.metadata["associated_ccsds"]})

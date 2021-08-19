@@ -137,7 +137,7 @@ class WorkflowManager:
         if self.config["environment"] in ["dev", "test", "ops"]:
             uid = pwd.getpwnam(pwd.getpwuid(os.getuid())[0]).pw_uid
             gid = grp.getgrnam(self.config["instrument"] + "-" + self.config["environment"]).gr_gid
-            os.chown(path, uid, gid)
+            os.chown(path, uid, gid, follow_symlinks=False)
 
             # If this is a directory and not a symlink then apply group ownership recursively
             # if os.path.isdir(path) and not os.path.islink(path):
