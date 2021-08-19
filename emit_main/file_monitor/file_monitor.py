@@ -101,7 +101,7 @@ class FileMonitor:
                             logger.info("Moving smaller file for this two hour window to 'duplicates' subfolder: %s"
                                         % path)
                             base_name = os.path.basename(path)
-                            shutil.move(path, os.path.join(self.ingest_duplicates_dir, base_name))
+                            wm.move(path, os.path.join(self.ingest_duplicates_dir, base_name))
 
         if dry_run:
             return paths

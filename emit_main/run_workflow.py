@@ -124,13 +124,13 @@ def task_failure(task, e):
     # Move scratch tmp folder to errors folder
     error_task_dir = task.tmp_dir.replace("/tmp/", "/error/")
     logger.error("Moving scratch tmp folder %s to %s" % (task.tmp_dir, error_task_dir))
-    shutil.move(task.tmp_dir, error_task_dir)
+    wm.move(task.tmp_dir, error_task_dir)
 
     # Copy local tmp dir to error/tmp under scratch if exists
     if os.path.exists(task.local_tmp_dir):
         error_tmp_dir = error_task_dir + "_tmp"
         logger.error(f"Copying local tmp folder {task.local_tmp_dir} to {error_tmp_dir}")
-        shutil.copytree(task.local_tmp_dir, error_tmp_dir)
+        wm.copytree(task.local_tmp_dir, error_tmp_dir)
         logger.error(f"Deleting task's local tmp folder: {task.local_tmp_dir}")
         shutil.rmtree(task.local_tmp_dir)
 

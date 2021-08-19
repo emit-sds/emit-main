@@ -8,6 +8,7 @@ import grp
 import logging
 import os
 import pwd
+import shutil
 import smtplib
 
 from email.mime.text import MIMEText
@@ -137,10 +138,27 @@ class WorkflowManager:
             uid = pwd.getpwnam(pwd.getpwuid(os.getuid())[0]).pw_uid
             gid = grp.getgrnam(self.config["instrument"] + "-" + self.config["environment"]).gr_gid
             os.chown(path, uid, gid)
-            # If this is a directory then apply group ownership recursively
-            if os.path.isdir(path):
-                for dirpath, dirnames, filenames in os.walk(path):
-                    for dname in dirnames:
-                        os.chown(os.path.join(dirpath, dname), uid, gid)
-                    for fname in filenames:
-                        os.chown(os.path.join(dirpath, fname), uid, gid)
+
+            # If this is a directory and not a symlink then apply group ownership recursively
+            # if os.path.isdir(path) and not os.path.islink(path):
+            #     for dirpath, dirnames, filenames in os.walk(path):
+            #         for dname in dirnames:
+            #             os.chown(os.path.join(dirpath, dname), uid, gid)
+            #         for fname in filenames:
+            #             os.chown(os.path.join(dirpath, fname), uid, gid)
+
+    def copy(self, src, dst):
+        shutil.copy2(src, dst)
+        self.change_group_ownership(dst)
+
+    def copytree(self, src, dst):
+        shutil.copytree(src, dst)
+        self.change_group_ownership(dst)
+
+    def move(self, src, dst):
+        shutil.move(src, dst)
+        self.change_group_ownership(dst)
+
+    def symlink(self, source, link_name):
+        os.symlink(source, link_name)
+        self.change_group_ownership(link_name)

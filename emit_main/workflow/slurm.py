@@ -2,7 +2,6 @@ import datetime
 import logging
 import os
 import pickle
-import shutil
 import subprocess
 import time
 
@@ -152,7 +151,7 @@ class SlurmJobTask(luigi.Task):
             rel_config_dir = os.path.dirname(self.config_path)
             tmp_config_dir = os.path.join(self.tmp_dir, rel_config_dir)
             os.makedirs(tmp_config_dir)
-            shutil.copy2(self.config_path, tmp_config_dir)
+            wm.copy(self.config_path, tmp_config_dir)
 
         # Dump the code to be run into a pickle file
         logger.debug("Dumping pickled class")

@@ -21,7 +21,7 @@ def test_ingest_files(config_path):
     test_data_ingest_dir = os.path.join(wm.environment_dir, "test_data", "ingest")
     if os.path.exists(test_data_ingest_dir):
         for file in glob.glob(os.path.join(test_data_ingest_dir, "*_hsc.bin")):
-            shutil.copy(file, wm.ingest_dir)
+            shutil.copy2(file, wm.ingest_dir)
         fm = FileMonitor(config_path=config_path)
         paths = fm.ingest_files(dry_run=True)
         for file in glob.glob(os.path.join(wm.ingest_dir, "*_hsc.bin")):

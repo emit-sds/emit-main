@@ -10,7 +10,6 @@ import glob
 import logging
 import luigi
 import os
-import shutil
 
 from emit_main.workflow.stream_target import StreamTarget
 from emit_main.workflow.slurm import SlurmJobTask
@@ -88,18 +87,16 @@ class L0StripHOSC(SlurmJobTask):
         report_path = ccsds_path.replace(".bin", "_report.txt")
 
         # Copy scratch CCSDS file and report back to store
-        wm.change_group_ownership(self.tmp_dir)
-        shutil.copy2(tmp_ccsds_path, ccsds_path)
-        shutil.copy2(tmp_report_path, report_path)
+        wm.copy(tmp_ccsds_path, ccsds_path)
+        wm.copy(tmp_report_path, report_path)
 
         # Copy and rename log file
         log_path = ccsds_path.replace(".bin", "_pge.log")
-        shutil.copy2(tmp_log, log_path)
+        wm.copy(tmp_log, log_path)
 
         if "ingest" in self.stream_path:
             # Move HOSC file out of ingest folder
-            wm.change_group_ownership(self.stream_path)
-            shutil.move(self.stream_path, stream.hosc_path)
+            wm.move(self.stream_path, stream.hosc_path)
 
         # Update DB
         metadata = {

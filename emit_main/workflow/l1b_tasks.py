@@ -9,7 +9,6 @@ import glob
 import json
 import logging
 import os
-import shutil
 
 import luigi
 import spectral.io.envi as envi
@@ -89,7 +88,7 @@ class L1BCalibrate(SlurmJobTask):
 
         # Copy output files to l1b dir
         for file in glob.glob(os.path.join(tmp_output_dir, "*")):
-            shutil.copy2(file, acq.l1b_data_dir)
+            wm.copy(file, os.path.join(acq.l1b_data_dir, os.path.basename(file)))
 
         # Update hdr files
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]

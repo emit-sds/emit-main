@@ -7,7 +7,6 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 import datetime
 import logging
 import os
-import shutil
 
 import luigi
 import spectral.io.envi as envi
@@ -87,8 +86,8 @@ class L2BAbundance(SlurmJobTask):
         pge.run(cmd, cwd=pge.repo_dir, tmp_dir=self.tmp_dir)
 
         # Copy mask files to l2a dir
-        shutil.copy2(tmp_abun_path, acq.abun_img_path)
-        shutil.copy2(tmp_abun_hdr_path, acq.abun_hdr_path)
+        wm.copy(tmp_abun_path, acq.abun_img_path)
+        wm.copy(tmp_abun_hdr_path, acq.abun_hdr_path)
 
         # Update hdr files
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
