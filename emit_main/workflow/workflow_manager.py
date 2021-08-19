@@ -131,14 +131,16 @@ class WorkflowManager:
         s.sendmail(sender, recipient_list, msg.as_string())
         s.quit()
 
-    def change_group_ownership(self, dir):
+    def change_group_ownership(self, path):
         # Change group ownership in shared environments
         if self.config["environment"] in ["dev", "test", "ops"]:
             uid = pwd.getpwnam(pwd.getpwuid(os.getuid())[0]).pw_uid
             gid = grp.getgrnam(self.config["instrument"] + "-" + self.config["environment"]).gr_gid
-            os.chown(dir, uid, gid)
-            for dirpath, dirnames, filenames in os.walk(dir):
-                for dname in dirnames:
-                    os.chown(os.path.join(dirpath, dname), uid, gid)
-                for fname in filenames:
-                    os.chown(os.path.join(dirpath, fname), uid, gid)
+            os.chown(path, uid, gid)
+            # If this is a directory then apply group ownership recursively
+            if os.path.isdir(path):
+                for dirpath, dirnames, filenames in os.walk(path):
+                    for dname in dirnames:
+                        os.chown(os.path.join(dirpath, dname), uid, gid)
+                    for fname in filenames:
+                        os.chown(os.path.join(dirpath, fname), uid, gid)

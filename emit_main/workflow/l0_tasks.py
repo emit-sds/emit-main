@@ -98,6 +98,7 @@ class L0StripHOSC(SlurmJobTask):
 
         if "ingest" in self.stream_path:
             # Move HOSC file out of ingest folder
+            wm.change_group_ownership(self.stream_path)
             shutil.move(self.stream_path, stream.hosc_path)
 
         # Update DB
