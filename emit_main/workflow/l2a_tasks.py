@@ -7,7 +7,6 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 import datetime
 import logging
 import os
-import shutil
 
 import luigi
 import spectral.io.envi as envi
@@ -93,20 +92,20 @@ class L2AReflectance(SlurmJobTask):
         tmp_lbl_hdr_path = tmp_lbl_path + ".hdr"
         tmp_statesubs_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_subs_state")
         tmp_statesubs_hdr_path = tmp_statesubs_path + ".hdr"
-        shutil.copy2(tmp_rfl_path, acq.rfl_img_path)
-        shutil.copy2(tmp_rfl_hdr_path, acq.rfl_hdr_path)
-        shutil.copy2(tmp_uncert_path, acq.uncert_img_path)
-        shutil.copy2(tmp_uncert_hdr_path, acq.uncert_hdr_path)
-        shutil.copy2(tmp_lbl_path, acq.lbl_img_path)
-        shutil.copy2(tmp_lbl_hdr_path, acq.lbl_hdr_path)
-        shutil.copy2(tmp_statesubs_path, acq.statesubs_img_path)
-        shutil.copy2(tmp_statesubs_hdr_path, acq.statesubs_hdr_path)
+        wm.copy(tmp_rfl_path, acq.rfl_img_path)
+        wm.copy(tmp_rfl_hdr_path, acq.rfl_hdr_path)
+        wm.copy(tmp_uncert_path, acq.uncert_img_path)
+        wm.copy(tmp_uncert_hdr_path, acq.uncert_hdr_path)
+        wm.copy(tmp_lbl_path, acq.lbl_img_path)
+        wm.copy(tmp_lbl_hdr_path, acq.lbl_hdr_path)
+        wm.copy(tmp_statesubs_path, acq.statesubs_img_path)
+        wm.copy(tmp_statesubs_hdr_path, acq.statesubs_hdr_path)
         # TODO: Remove symlinks when possible
-        os.symlink(acq.rfl_hdr_path, acq.rfl_img_path + ".hdr")
-        os.symlink(acq.uncert_hdr_path, acq.uncert_img_path + ".hdr")
+        wm.symlink(acq.rfl_hdr_path, acq.rfl_img_path + ".hdr")
+        wm.symlink(acq.uncert_hdr_path, acq.uncert_img_path + ".hdr")
         # Copy log file and rename
         log_path = acq.rfl_img_path.replace(".img", "_pge.log")
-        shutil.copy2(tmp_log_path, log_path)
+        wm.copy(tmp_log_path, log_path)
 
         # Update hdr files
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
@@ -233,8 +232,8 @@ class L2AMask(SlurmJobTask):
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
         # Copy mask files to l2a dir
-        shutil.copy2(tmp_mask_path, acq.mask_img_path)
-        shutil.copy2(tmp_mask_hdr_path, acq.mask_hdr_path)
+        wm.copy(tmp_mask_path, acq.mask_img_path)
+        wm.copy(tmp_mask_hdr_path, acq.mask_hdr_path)
 
         # Update hdr files
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]

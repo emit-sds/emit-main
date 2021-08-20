@@ -10,7 +10,6 @@ import glob
 import logging
 import luigi
 import os
-import shutil
 
 from emit_main.workflow.stream_target import StreamTarget
 from emit_main.workflow.slurm import SlurmJobTask
@@ -19,7 +18,6 @@ from emit_main.workflow.workflow_manager import WorkflowManager
 logger = logging.getLogger("emit-main")
 
 
-# TODO: Full implementation TBD
 class L0StripHOSC(SlurmJobTask):
     """
     Strips HOSC ethernet headers from raw data in apid-specific ingest folder
@@ -69,10 +67,6 @@ class L0StripHOSC(SlurmJobTask):
         env["AIT_ISS_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "sim.yaml")
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
-        if "ingest" in self.stream_path:
-            # Move HOSC file out of ingest folder
-            shutil.move(self.stream_path, stream.hosc_path)
-
         # Get tmp ccsds and log names
         tmp_ccsds_path = glob.glob(os.path.join(tmp_output_dir, stream.apid + "*.bin"))[0]
         tmp_report_path = glob.glob(os.path.join(tmp_output_dir, stream.apid + "*_report.txt"))[0]
@@ -93,12 +87,16 @@ class L0StripHOSC(SlurmJobTask):
         report_path = ccsds_path.replace(".bin", "_report.txt")
 
         # Copy scratch CCSDS file and report back to store
-        shutil.copy2(tmp_ccsds_path, ccsds_path)
-        shutil.copy2(tmp_report_path, report_path)
+        wm.copy(tmp_ccsds_path, ccsds_path)
+        wm.copy(tmp_report_path, report_path)
 
         # Copy and rename log file
         log_path = ccsds_path.replace(".bin", "_pge.log")
-        shutil.copy2(tmp_log, log_path)
+        wm.copy(tmp_log, log_path)
+
+        if "ingest" in self.stream_path:
+            # Move HOSC file out of ingest folder
+            wm.move(self.stream_path, stream.hosc_path)
 
         # Update DB
         metadata = {

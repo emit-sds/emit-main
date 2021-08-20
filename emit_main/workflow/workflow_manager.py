@@ -8,6 +8,7 @@ import grp
 import logging
 import os
 import pwd
+import shutil
 import smtplib
 
 from email.mime.text import MIMEText
@@ -61,11 +62,7 @@ class WorkflowManager:
         for d in dirs:
             if not os.path.exists(d):
                 os.makedirs(d)
-                # Change group ownership in shared environments
-                if self.config["environment"] in ["dev", "test", "ops"]:
-                    uid = pwd.getpwnam(pwd.getpwuid(os.getuid())[0]).pw_uid
-                    gid = grp.getgrnam(self.config["instrument"] + "-" + self.config["environment"]).gr_gid
-                    os.chown(d, uid, gid)
+                self.change_group_ownership(d)
 
         # If we have an acquisition id and acquisition exists in db, initialize acquisition
         if self.acquisition_id and self.database_manager.find_acquisition_by_id(self.acquisition_id):
@@ -134,3 +131,34 @@ class WorkflowManager:
         s.login(self.config["email_user"], self.config["email_password"])
         s.sendmail(sender, recipient_list, msg.as_string())
         s.quit()
+
+    def change_group_ownership(self, path):
+        # Change group ownership in shared environments
+        if self.config["environment"] in ["dev", "test", "ops"]:
+            uid = pwd.getpwnam(pwd.getpwuid(os.getuid())[0]).pw_uid
+            gid = grp.getgrnam(self.config["instrument"] + "-" + self.config["environment"]).gr_gid
+            os.chown(path, uid, gid, follow_symlinks=False)
+
+            # If this is a directory and not a symlink then apply group ownership recursively
+            # if os.path.isdir(path) and not os.path.islink(path):
+            #     for dirpath, dirnames, filenames in os.walk(path):
+            #         for dname in dirnames:
+            #             os.chown(os.path.join(dirpath, dname), uid, gid)
+            #         for fname in filenames:
+            #             os.chown(os.path.join(dirpath, fname), uid, gid)
+
+    def copy(self, src, dst):
+        shutil.copy2(src, dst)
+        self.change_group_ownership(dst)
+
+    def copytree(self, src, dst):
+        shutil.copytree(src, dst)
+        self.change_group_ownership(dst)
+
+    def move(self, src, dst):
+        shutil.move(src, dst)
+        self.change_group_ownership(dst)
+
+    def symlink(self, source, link_name):
+        os.symlink(source, link_name)
+        self.change_group_ownership(link_name)

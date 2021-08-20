@@ -8,7 +8,6 @@ import datetime
 import glob
 import logging
 import os
-import shutil
 
 import luigi
 import spectral.io.envi as envi
@@ -92,13 +91,13 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
                 fname_tokens = os.path.basename(path).split("_")
                 fname_tokens[0] = acq.acquisition_id
                 acquisition_frame_path = os.path.join(acq.frames_dir, "_".join(fname_tokens))
-                shutil.copy2(path, acquisition_frame_path)
+                wm.copy(path, acquisition_frame_path)
                 acq_frame_paths.append(acquisition_frame_path)
 
             # Create a symlink from the stream l1a dir to the acquisition l1a frames dir
             acq_frame_symlink = os.path.join(stream.frames_dir, os.path.basename(acq.frames_dir))
             if not os.path.exists(acq_frame_symlink):
-                os.symlink(acq.frames_dir, acq_frame_symlink)
+                wm.symlink(acq.frames_dir, acq_frame_symlink)
 
             # Add frame paths to acquisition metadata
             if "frames" in acq.metadata["products"]["l1a"] and acq.metadata["products"]["l1a"]["frames"] is not None:
@@ -116,7 +115,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
             # acquisition. There may be multiple stream files that contribute frames to a given acquisition
             if "associated_ccsds" in acq.metadata and acq.metadata["associated_ccsds"] is not None:
                 if stream.ccsds_path not in acq.metadata["associated_ccsds"]:
-                    acq.metadata["associated_ccsds"] += stream.ccsds_path
+                    acq.metadata["associated_ccsds"].append(stream.ccsds_path)
             else:
                 acq.metadata["associated_ccsds"] = [stream.ccsds_path]
             dm.update_acquisition_metadata(acq.acquisition_id, {"associated_ccsds": acq.metadata["associated_ccsds"]})
@@ -134,8 +133,8 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
         sdp_log_name = stream.ccsds_name.replace("l0_ccsds", "l1a_frames").replace(".bin", "_pge.log")
         sdp_log_path = os.path.join(stream.l1a_dir, sdp_log_name)
         sdp_report_path = sdp_log_path.replace("_pge.log", "_report.txt")
-        shutil.copy2(tmp_log_path, sdp_log_path)
-        shutil.copy2(tmp_report_path, sdp_report_path)
+        wm.copy(tmp_log_path, sdp_log_path)
+        wm.copy(tmp_report_path, sdp_report_path)
 
         doc_version = "EMIT IOS SDS ICD JPL-D 104239, Initial"
         log_entry = {
@@ -229,11 +228,11 @@ class L1AReassembleRaw(SlurmJobTask):
         # Rename to "raw" or "dark" depending on submode flag, but leave log and report files as "raw"
         reassembled_img_path = acq.dark_img_path if acq.submode == "dark" else acq.raw_img_path
         reassembled_hdr_path = acq.dark_hdr_path if acq.submode == "dark" else acq.raw_hdr_path
-        shutil.copy2(tmp_raw_path, reassembled_img_path)
-        shutil.copy2(tmp_raw_hdr_path, reassembled_hdr_path)
-        shutil.copy2(tmp_log_path, acq.raw_img_path.replace(".img", "_pge.log"))
+        wm.copy(tmp_raw_path, reassembled_img_path)
+        wm.copy(tmp_raw_hdr_path, reassembled_hdr_path)
+        wm.copy(tmp_log_path, acq.raw_img_path.replace(".img", "_pge.log"))
         report_path = acq.raw_img_path.replace(".img", "_report.txt")
-        shutil.copy2(tmp_report_path, report_path)
+        wm.copy(tmp_report_path, report_path)
 
         # Create rawqa report file based on CCSDS depacketization report(s) and reassembly report
         rawqa_file = open(acq.rawqa_txt_path, "w")
@@ -265,7 +264,7 @@ class L1AReassembleRaw(SlurmJobTask):
         # Copy decompressed frames to /store
         tmp_decomp_frame_paths = glob.glob(os.path.join(tmp_output_dir, "*.decomp"))
         for path in tmp_decomp_frame_paths:
-            shutil.copy2(path, acq.decomp_dir)
+            wm.copy(path, os.path.join(acq.decomp_dir, os.path.basename(path)))
 
         # Update hdr files
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
@@ -367,11 +366,11 @@ class L1AFrameReport(SlurmJobTask):
         tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
         os.makedirs(tmp_output_dir)
 
-        # Create symlinks of decompressed frames
+        # Copy decompressed frames to local tmp
         input_decomp_frame_paths = glob.glob(os.path.join(acq.decomp_dir, "*.decomp"))
         for decomp_frame_path in input_decomp_frame_paths:
-            decomp_frame_symlink = os.path.join(tmp_output_dir, os.path.basename(decomp_frame_path))
-            os.symlink(decomp_frame_path, decomp_frame_symlink)
+            tmp_decomp_frame_path = os.path.join(tmp_output_dir, os.path.basename(decomp_frame_path))
+            wm.copy(decomp_frame_path, tmp_decomp_frame_path)
 
         ngis_check_list_exe = os.path.join(pge.repo_dir, "python", "ngis_check_list.py")
         cmd = ["python", ngis_check_list_exe, tmp_output_dir]
@@ -380,7 +379,10 @@ class L1AFrameReport(SlurmJobTask):
         output_files = glob.glob(os.path.join(tmp_output_dir, "*.csv"))
         output_files += glob.glob(os.path.join(tmp_output_dir, "*.txt"))
         for file in output_files:
-            shutil.copy2(file, acq.decomp_dir)
+            if "allframesparsed.csv" in file or "allframesreport.txt" in file:
+                wm.copy(file, os.path.join(acq.decomp_dir, acq.acquisition_id + "_" + os.path.basename(file)))
+            else:
+                wm.copy(file, os.path.join(acq.decomp_dir, os.path.basename(file)))
 
         # PGE writes metadata to db
         dm = wm.database_manager
@@ -406,7 +408,7 @@ class L1AFrameReport(SlurmJobTask):
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
-                "l1a_decomp_dir": acq.decomp_dir
+                "l1a_all_frames_report_path": all_frames_report
             }
         }
 
@@ -474,13 +476,13 @@ class L1AReformatEDP(SlurmJobTask):
         report_path = edp_path.replace(".csv", "_report.txt")
 
         # Copy scratch EDP file and report back to store
-        shutil.copy2(tmp_edp_path, edp_path)
-        shutil.copy2(tmp_report_path, report_path)
+        wm.copy(tmp_edp_path, edp_path)
+        wm.copy(tmp_report_path, report_path)
 
         # Copy and rename log file
         l1a_pge_log_path = edp_path.replace(".csv", "_pge.log")
         for file in glob.glob(os.path.join(tmp_log_dir, "*")):
-            shutil.copy2(file, l1a_pge_log_path)
+            wm.copy(file, l1a_pge_log_path)
 
         metadata = {
             "edp_name": edp_name,
