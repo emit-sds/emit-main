@@ -100,9 +100,9 @@ def task_failure(task, e):
                          "emit.L2AMask", "emit.L2BAbundance")
     stream_tasks = ("emit.L0StripHOSC", "emit.L1ADepacketizeScienceFrames", "emit.L1AReformatEDP")
     dm = wm.database_manager
-    if task.task_family in acquisition_tasks:
+    if task.task_family in acquisition_tasks and dm.find_acquisition_by_id(task.acquisition_id) is not None:
         dm.insert_acquisition_log_entry(task.acquisition_id, log_entry)
-    elif task.task_family in stream_tasks:
+    elif task.task_family in stream_tasks and dm.find_stream_by_name(os.path.basename(task.stream_path)):
         dm.insert_stream_log_entry(os.path.basename(task.stream_path), log_entry)
 
 

@@ -76,8 +76,9 @@ class L0StripHOSC(SlurmJobTask):
         ccsds_start_time_str = tmp_ccsds_name.split("_")[1]
         ccsds_start_time = datetime.datetime.strptime(ccsds_start_time_str, "%Y-%m-%dT%H:%M:%S")
         ccsds_name = "_".join([
+            wm.config["instrument"],
             stream.apid,
-            ccsds_start_time_str,
+            ccsds_start_time.strftime("%Y%m%dt%H%M%S"),
             "l0",
             "ccsds",
             "b" + wm.config["build_num"],
