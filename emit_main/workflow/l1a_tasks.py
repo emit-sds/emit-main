@@ -45,7 +45,8 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
     def output(self):
 
         logger.debug(self.task_family + " output")
-        return None
+        wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
+        return StreamTarget(stream=wm.stream, task_family=self.task_family)
 
     def work(self):
 

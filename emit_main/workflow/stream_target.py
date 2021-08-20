@@ -25,7 +25,7 @@ class StreamTarget(luigi.Target):
                         for v in val:
                             if not os.path.exists(v):
                                 return False
-                    if not os.path.exists(val):
+                    elif not os.path.exists(val):
                         return False
                 return True
         return False
