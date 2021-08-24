@@ -119,7 +119,9 @@ class WorkflowManager:
         # Create a text/plain message
         sender = self.config["email_sender"]
         recipient_list = self.config["email_recipient_list"]
-        msg_text = f"The following task failed:\n\n{task}"
+        cur_user = pwd.getpwuid(os.geteuid()).pw_name
+        scratch_error_dir = os.path.join(self.scratch_error_dir, os.path.basename(task.tmp_dir))
+        msg_text = f"Failed task: {task}\n\nUser: {cur_user}\n\nScratch error directory: {scratch_error_dir}"
         msg = MIMEText(msg_text)
         msg["Subject"] = f"EMIT SDS Task Failure: {task.task_family}"
         msg["From"] = sender

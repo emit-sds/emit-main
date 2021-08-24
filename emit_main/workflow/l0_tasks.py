@@ -172,7 +172,6 @@ class L0ProcessPlanningProduct(SlurmJobTask):
 
         logger.debug(self.task_family + " work")
         wm = WorkflowManager(config_path=self.config_path)
-        pge = wm.pges["emit-sds-l0b"]
         dm = wm.database_manager
         planning_prod_paths = glob.glob(os.path.join(wm.ingest_dir, "*csv"))
         for planning_prod_path in planning_prod_paths:
