@@ -20,7 +20,7 @@
   },
 
   "email_config": {
-    "email_user": "winstono",
+    "email_user": "emit-sds@jpl.nasa.gov",
     "email_sender": "emit-sds@jpl.nasa.gov",
     "email_recipient_list": [
       "winston.olson-duvall@jpl.nasa.gov"
