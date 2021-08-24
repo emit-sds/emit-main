@@ -56,11 +56,17 @@ class L0StripHOSC(SlurmJobTask):
         sds_l0_exe = os.path.join(pge.repo_dir, "run_l0.sh")
         sds_packet_count_exe = os.path.join(pge.repo_dir, "packet_cnt_check.py")
         ios_l0_proc = os.path.join(wm.pges["emit-l0edp"].repo_dir, "target", "release", "emit_l0_proc")
-        tmp_output_dir = os.path.join(self.tmp_dir, "output")
+        # Create input dir and copy stream file into dir
+        tmp_input_dir = os.path.join(self.local_tmp_dir, "input")
+        os.makedirs(tmp_input_dir)
+        tmp_input_path = os.path.join(tmp_input_dir, os.path.basename(self.stream_path))
+        wm.copy(self.stream_path, tmp_input_path)
+        # Create output dir and log file name
+        tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
         l0_pge_log_name = stream.hosc_name.replace(".bin", "_l0_pge.log")
         tmp_log = os.path.join(tmp_output_dir, l0_pge_log_name)
-
-        cmd = [sds_l0_exe, self.stream_path, tmp_output_dir, tmp_log, sds_packet_count_exe, ios_l0_proc]
+        # Set up command
+        cmd = [sds_l0_exe, tmp_input_dir, tmp_output_dir, tmp_log, sds_packet_count_exe, ios_l0_proc]
         env = os.environ.copy()
         env["AIT_ROOT"] = wm.pges["emit-ios"].repo_dir
         env["AIT_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "config.yaml")
@@ -166,6 +172,7 @@ class L0ProcessPlanningProduct(SlurmJobTask):
 
         logger.debug(self.task_family + " work")
         wm = WorkflowManager(config_path=self.config_path)
+        pge = wm.pges["emit-sds-l0b"]
         dm = wm.database_manager
         planning_prod_paths = glob.glob(os.path.join(wm.ingest_dir, "*csv"))
         for planning_prod_path in planning_prod_paths:
