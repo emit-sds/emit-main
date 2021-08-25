@@ -23,7 +23,7 @@
     "email_user": "emit-sds@jpl.nasa.gov",
     "email_sender": "emit-sds@jpl.nasa.gov",
     "email_recipient_list": [
-      "winston.olson-duvall@jpl.nasa.gov"
+      "emit-sds-admins@jpl.nasa.gov"
     ],
     "smtp_host": "smtp.jpl.nasa.gov",
     "smtp_port": 587

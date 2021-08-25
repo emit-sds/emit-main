@@ -123,7 +123,7 @@ class WorkflowManager:
         recipient_list = self.config["email_recipient_list"]
         cur_user = pwd.getpwuid(os.geteuid()).pw_name
         scratch_error_dir = os.path.join(self.scratch_error_dir, os.path.basename(task.tmp_dir))
-        msg_text = f"Failed task: {task}\n\nError: {error}\n\nUser: {cur_user}\n\n" \
+        msg_text = f"Failed task: {task}\n\nError: {type(error)}: {error}\n\nUser: {cur_user}\n\n" \
             f"Scratch error directory: {scratch_error_dir}"
         msg = MIMEText(msg_text)
         msg["Subject"] = f"EMIT SDS Task Failure: {task.task_family}"
