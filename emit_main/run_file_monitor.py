@@ -33,7 +33,9 @@ def parse_args():
     parser.add_argument("-l", "--level", default="INFO",
                         help="The log level (default: INFO)")
     parser.add_argument("--partition", default="emit",
-                        help="The slurm partition to be used - emit (default), debug, standard, patient ")
+                        help="The slurm partition to be used - emit (default), debug, standard, patient")
+    parser.add_argument("--miss_pkt_thresh", default="0.1",
+                        help="The threshold of missing packets to total packets which will cause a task to fail")
     parser.add_argument("-w", "--workers",
                         help="Number of luigi workers")
     parser.add_argument("--dry_run", action="store_true",
@@ -48,6 +50,8 @@ def parse_args():
 
     # Upper case the log level
     args.level = args.level.upper()
+
+    args.miss_pkt_thresh = float(args.miss_pkt_thresh)
 
     return args
 
@@ -73,7 +77,7 @@ def task_failure(task, e):
     wm = WorkflowManager(config_path=task.config_path)
 
     # Send failure notification
-    wm.send_failure_notification(task)
+    wm.send_failure_notification(task, e)
 
     # Move scratch tmp folder to errors folder
     error_task_dir = task.tmp_dir.replace("/tmp/", "/error/")
@@ -121,7 +125,8 @@ def main():
     """
     args = parse_args()
 
-    fm = FileMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
+    fm = FileMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
+                     miss_pkt_thresh=args.miss_pkt_thresh)
     set_up_logging(fm.logs_dir, args.level)
     logger.info("Running file monitor with cmd: %s" % str(" ".join(sys.argv)))
 

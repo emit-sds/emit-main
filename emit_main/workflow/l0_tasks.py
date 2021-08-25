@@ -28,6 +28,7 @@ class L0StripHOSC(SlurmJobTask):
     stream_path = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
+    miss_pkt_thresh = luigi.FloatParameter(default=0.1)
 
     task_namespace = "emit"
 
@@ -56,11 +57,17 @@ class L0StripHOSC(SlurmJobTask):
         sds_l0_exe = os.path.join(pge.repo_dir, "run_l0.sh")
         sds_packet_count_exe = os.path.join(pge.repo_dir, "packet_cnt_check.py")
         ios_l0_proc = os.path.join(wm.pges["emit-l0edp"].repo_dir, "target", "release", "emit_l0_proc")
-        tmp_output_dir = os.path.join(self.tmp_dir, "output")
+        # Create input dir and copy stream file into dir
+        tmp_input_dir = os.path.join(self.local_tmp_dir, "input")
+        os.makedirs(tmp_input_dir)
+        tmp_input_path = os.path.join(tmp_input_dir, os.path.basename(self.stream_path))
+        wm.copy(self.stream_path, tmp_input_path)
+        # Create output dir and log file name
+        tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
         l0_pge_log_name = stream.hosc_name.replace(".bin", "_l0_pge.log")
         tmp_log = os.path.join(tmp_output_dir, l0_pge_log_name)
-
-        cmd = [sds_l0_exe, self.stream_path, tmp_output_dir, tmp_log, sds_packet_count_exe, ios_l0_proc]
+        # Set up command
+        cmd = [sds_l0_exe, tmp_input_dir, tmp_output_dir, tmp_log, sds_packet_count_exe, ios_l0_proc]
         env = os.environ.copy()
         env["AIT_ROOT"] = wm.pges["emit-ios"].repo_dir
         env["AIT_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "config.yaml")
@@ -70,6 +77,20 @@ class L0StripHOSC(SlurmJobTask):
         # Get tmp ccsds and log names
         tmp_ccsds_path = glob.glob(os.path.join(tmp_output_dir, stream.apid + "*.bin"))[0]
         tmp_report_path = glob.glob(os.path.join(tmp_output_dir, stream.apid + "*_report.txt"))[0]
+
+        # Check report file to see if missing PSCs exceed threshold
+        packet_count = 0
+        missing_packets = 0
+        with open(tmp_report_path, "r") as f:
+            for line in f.readlines():
+                if "Packet Count" in line:
+                    packet_count = int(line.split(" ")[-1])
+                if "Missing PSC Count" in line:
+                    missing_packets = int(line.split(" ")[-1])
+        miss_pkt_percent = missing_packets / packet_count
+        if missing_packets / packet_count >= self.miss_pkt_thresh:
+            raise RuntimeError(f"Missing {missing_packets} packets out of {packet_count} total is greater than the "
+                               f"missing packet threshold of {self.miss_pkt_thresh}")
 
         # Get CCSDS start time and file name and report name
         tmp_ccsds_name = os.path.basename(tmp_ccsds_path)
