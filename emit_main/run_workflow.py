@@ -43,6 +43,8 @@ def parse_args():
                         help="The log level (default: INFO)")
     parser.add_argument("--partition", default="emit",
                         help="The slurm partition to be used - emit (default), debug, standard, patient ")
+    parser.add_argument("--miss_pkt_thresh", default="0.1",
+                        help="The threshold of missing packets to total packets which will cause a task to fail")
     parser.add_argument("--ignore_missing", action="store_true",
                         help="Ignore missing frames when reasssembling raw cube")
     parser.add_argument("-w", "--workers",
@@ -62,6 +64,8 @@ def parse_args():
     # Upper case the log level
     args.level = args.level.upper()
 
+    args.miss_pkt_thresh = float(args.miss_pkt_thresh)
+
     if args.products:
         product_list = args.products.split(",")
         for prod in product_list:
@@ -69,7 +73,7 @@ def parse_args():
                 print("ERROR: Product \"%s\" is not a valid product choice." % prod)
                 sys.exit(1)
     else:
-        args.products = "l1araw"
+        print("Please specify a product from the list: " + ", ".join(product_choices))
     return args
 
 
@@ -81,10 +85,13 @@ def get_tasks_from_args(args):
         "partition": args.partition
     }
     prod_task_map = {
-        "l0hosc": L0StripHOSC(stream_path=args.stream_path, **kwargs),
+        "l0hosc": L0StripHOSC(stream_path=args.stream_path, miss_pkt_thresh=args.miss_pkt_thresh,
+                              **kwargs),
         "l0plan": L0ProcessPlanningProduct(**kwargs),
-        "l1aeng": L1AReformatEDP(stream_path=args.stream_path, **kwargs),
-        "l1aframe": L1ADepacketizeScienceFrames(stream_path=args.stream_path, **kwargs),
+        "l1aeng": L1AReformatEDP(stream_path=args.stream_path, miss_pkt_thresh=args.miss_pkt_thresh,
+                                 **kwargs),
+        "l1aframe": L1ADepacketizeScienceFrames(stream_path=args.stream_path,
+                                                miss_pkt_thresh=args.miss_pkt_thresh, **kwargs),
         "l1aframereport": L1AFrameReport(acquisition_id=args.acquisition_id, **kwargs),
         "l1araw": L1AReassembleRaw(acquisition_id=args.acquisition_id, ignore_missing=args.ignore_missing, **kwargs),
         "l1bcal": L1BCalibrate(acquisition_id=args.acquisition_id, **kwargs),
@@ -119,7 +126,7 @@ def task_failure(task, e):
     wm = WorkflowManager(config_path=task.config_path)
 
     # Send failure notification
-    wm.send_failure_notification(task)
+    wm.send_failure_notification(task, e)
 
     # Move scratch tmp folder to errors folder
     error_task_dir = task.tmp_dir.replace("/tmp/", "/error/")

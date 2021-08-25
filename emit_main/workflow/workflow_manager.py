@@ -115,13 +115,14 @@ class WorkflowManager:
                 logger.warning("The \"emit-main\" code should be executing inside repository %s to ensure that the "
                                "correct version is running" % pge.repo_dir)
 
-    def send_failure_notification(self, task):
+    def send_failure_notification(self, task, error):
         # Create a text/plain message
         sender = self.config["email_sender"]
         recipient_list = self.config["email_recipient_list"]
         cur_user = pwd.getpwuid(os.geteuid()).pw_name
         scratch_error_dir = os.path.join(self.scratch_error_dir, os.path.basename(task.tmp_dir))
-        msg_text = f"Failed task: {task}\n\nUser: {cur_user}\n\nScratch error directory: {scratch_error_dir}"
+        msg_text = f"Failed task: {task}\n\nError: {error}\n\nUser: {cur_user}\n\n" \
+            f"Scratch error directory: {scratch_error_dir}"
         msg = MIMEText(msg_text)
         msg["Subject"] = f"EMIT SDS Task Failure: {task.task_family}"
         msg["From"] = sender

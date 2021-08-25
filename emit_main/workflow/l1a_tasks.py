@@ -31,6 +31,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
     stream_path = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
+    miss_pkt_thresh = luigi.FloatParameter()
 
     memory = 30000
     local_tmp_space = 125000
@@ -426,6 +427,7 @@ class L1AReformatEDP(SlurmJobTask):
     stream_path = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
+    miss_pkt_thresh = luigi.FloatParameter()
 
     memory = 30000
     local_tmp_space = 125000
@@ -436,7 +438,7 @@ class L1AReformatEDP(SlurmJobTask):
 
         logger.debug(self.task_family + " requires")
         return L0StripHOSC(config_path=self.config_path, stream_path=self.stream_path, level=self.level,
-                           partition=self.partition)
+                           partition=self.partition, miss_pkt_thresh=self.miss_pkt_thresh)
 
     def output(self):
 
