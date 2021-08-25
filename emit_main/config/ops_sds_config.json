@@ -1,7 +1,7 @@
 {
   "general_config": {
     "instrument": "emit",
-    "environment": "test",
+    "environment": "ops",
     "processing_version": "00",
     "luigi_local_scheduler": false,
     "luigi_workers": 2
@@ -15,8 +15,8 @@
   "database_config": {
     "db_host": "128.149.52.213",
     "db_port": 27017,
-    "db_name": "emitTestDB",
-    "db_user": "emit-test"
+    "db_name": "emitOpsDB",
+    "db_user": "emit-ops"
   },
 
   "email_config": {

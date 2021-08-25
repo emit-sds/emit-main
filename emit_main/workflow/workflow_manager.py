@@ -79,10 +79,12 @@ class WorkflowManager:
         # Create repository paths and PGEs based on build config
         self.pges = {}
         for repo in self.config["repositories"]:
+            conda_env = None
             if "conda_env" in repo and len(repo["conda_env"]) > 0:
-                conda_env = repo["conda_env"]
-            else:
-                conda_env = None
+                if self.config["environment"] in ("test", "ops"):
+                    conda_env = repo["conda_env"] + "-" + self.config["environment"]
+                else:
+                    conda_env = repo["conda_env"] + "-dev"
             if "tag" in repo and len(repo["tag"]) > 0:
                 version_tag = repo["tag"]
             else:
