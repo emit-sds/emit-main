@@ -54,7 +54,7 @@ class Acquisition:
         self.date_str = self.acquisition_id[len(instrument_prefix):(8 + len(instrument_prefix))]
         self.date_dir = os.path.join(self.acquisitions_dir, self.date_str)
         self.acquisition_id_dir = os.path.join(self.date_dir, self.acquisition_id)
-        self.dirs.extend([self.date_dir, self.acquisition_id_dir])
+        self.dirs.extend([self.acquisitions_dir, self.date_dir, self.acquisition_id_dir])
 
         self.__dict__.update(self._build_acquisition_paths())
 
