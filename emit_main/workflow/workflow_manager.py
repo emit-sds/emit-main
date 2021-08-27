@@ -11,6 +11,7 @@ import os
 import pwd
 import shutil
 import smtplib
+import socket
 
 from email.mime.text import MIMEText
 
@@ -131,12 +132,15 @@ class WorkflowManager:
         msg["From"] = sender
         msg["To"] = ", ".join(recipient_list)
 
-        # Send the message via our own SMTP server
-        s = smtplib.SMTP(self.config["smtp_host"], self.config["smtp_port"])
-        s.starttls()
-        s.login(self.config["email_user"], self.config["email_password"])
-        s.sendmail(sender, recipient_list, msg.as_string())
-        s.quit()
+        try:
+            # Send the message via our own SMTP server
+            s = smtplib.SMTP(self.config["smtp_host"], self.config["smtp_port"], timeout=300)
+            s.starttls()
+            s.login(self.config["email_user"], self.config["email_password"])
+            s.sendmail(sender, recipient_list, msg.as_string())
+            s.quit()
+        except socket.timeout:
+            logger.error(f"Timeout encountered while trying to send failure notification for task: {task}")
 
     def change_group_ownership(self, path):
         # Change group ownership in shared environments
