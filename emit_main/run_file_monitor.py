@@ -110,9 +110,9 @@ def task_failure(task, e):
         dm.insert_stream_log_entry(os.path.basename(task.stream_path), log_entry)
 
 
-def set_up_logging(logs_dir, level):
+def set_up_logging(log_path, level):
     # Add file handler logging to main logs directory
-    handler = logging.FileHandler(os.path.join(logs_dir, "file_monitor.log"))
+    handler = logging.FileHandler(log_path)
     handler.setLevel(level)
     formatter = logging.Formatter("%(asctime)s %(levelname)s [%(module)s]: %(message)s")
     handler.setFormatter(formatter)
@@ -125,10 +125,15 @@ def main():
     """
     args = parse_args()
 
+    # Set up logging and change group ownership
+    wm = WorkflowManager(config_path=args.config_path)
+    log_path = os.path.join(wm.logs_dir, "file_monitor.log")
+    set_up_logging(log_path, args.level)
+    logger.info("Running file monitor with cmd: %s" % str(" ".join(sys.argv)))
+    wm.change_group_ownership(log_path)
+
     fm = FileMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
                      miss_pkt_thresh=args.miss_pkt_thresh)
-    set_up_logging(fm.logs_dir, args.level)
-    logger.info("Running file monitor with cmd: %s" % str(" ".join(sys.argv)))
 
     # Get tasks from file monitor
     dry_run = args.dry_run

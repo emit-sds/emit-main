@@ -159,9 +159,9 @@ def task_failure(task, e):
         dm.insert_stream_log_entry(os.path.basename(task.stream_path), log_entry)
 
 
-def set_up_logging(logs_dir, level):
+def set_up_logging(log_path, level):
     # Add file handler logging to main logs directory
-    handler = logging.FileHandler(os.path.join(logs_dir, "workflow.log"))
+    handler = logging.FileHandler(log_path)
     handler.setLevel(level)
     formatter = logging.Formatter("%(asctime)s %(levelname)s [%(module)s]: %(message)s")
     handler.setFormatter(formatter)
@@ -173,9 +173,13 @@ def main():
     Parse command line arguments and initiate tasks
     """
     args = parse_args()
+
+    # Set up logging and change group ownership
     wm = WorkflowManager(config_path=args.config_path)
-    set_up_logging(wm.logs_dir, args.level)
+    log_path = os.path.join(wm.logs_dir, "workflow.log")
+    set_up_logging(log_path, args.level)
     logger.info("Running workflow with cmd: %s" % str(" ".join(sys.argv)))
+    wm.change_group_ownership(log_path)
 
     # Check out code if requested
     if args.checkout_build:
