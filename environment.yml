@@ -8,10 +8,23 @@ dependencies:
   - gdal=3.0.2
   - python-dateutil=2.8.1
   - mongodb=4.0.3
-  - pytest=6.2.1
+  - pytest=6.2.4
   - pytest-cov=2.10.1
   - pycodestyle=2.6.0
   - rust=1.46.0
-  - pip=20.2.2
+  - scipy=1.6.2
+  - matplotlib=2.2.3
+  - scikit-learn=0.24.1
+  - scikit-image=0.17.2
+  - sortedcontainers=2.4.0
+  - pep8=1.7.1
+  - pandas=0.25.3
+  - numpy=1.19.2
+  - pyyaml=5.1.2
+  - cryptography=3.4.7
+  - pip=21.0.1
   - pip:
-    - spectral==0.21
+    - spectral==0.22.2
+    - xxhash==1.4.4
+    - ray==1.2.0
+    - tensorflow==2.0.1

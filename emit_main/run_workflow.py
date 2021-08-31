@@ -5,16 +5,19 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
 import argparse
+import datetime
 import logging.config
 import os
 import shutil
 import sys
 
-from emit_main.workflow.l0_tasks import *
-from emit_main.workflow.l1a_tasks import *
-from emit_main.workflow.l1b_tasks import *
-from emit_main.workflow.l2a_tasks import *
-from emit_main.workflow.l2b_tasks import *
+import luigi
+
+from emit_main.workflow.l0_tasks import L0StripHOSC, L0ProcessPlanningProduct
+from emit_main.workflow.l1a_tasks import L1ADepacketizeScienceFrames, L1AReassembleRaw, L1AReformatEDP, L1AFrameReport
+from emit_main.workflow.l1b_tasks import L1BGeolocate, L1BCalibrate
+from emit_main.workflow.l2a_tasks import L2AMask, L2AReflectance
+from emit_main.workflow.l2b_tasks import L2BAbundance
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_main.workflow.workflow_manager import WorkflowManager
 
@@ -24,7 +27,8 @@ logger = logging.getLogger("emit-main")
 
 
 def parse_args():
-    product_choices = ["l0hosc", "l1aeng", "l1araw", "l1bcal", "l2arefl", "l2amask", "l2babun"]
+    product_choices = ["l0hosc", "l0plan", "l1aeng", "l1aframe", "l1aframereport", "l1araw", "l1bcal", "l2arefl",
+                       "l2amask", "l2babun"]
     parser = argparse.ArgumentParser()
     parser.add_argument("-a", "--acquisition_id", default="",
                         help="Acquisition ID")
@@ -35,7 +39,15 @@ def parse_args():
     parser.add_argument("-p", "--products",
                         help=("Comma delimited list of products to create (no spaces). \
                         Choose from " + ", ".join(product_choices)))
-    parser.add_argument("-w", "--workers", default=2,
+    parser.add_argument("-l", "--level", default="INFO",
+                        help="The log level (default: INFO)")
+    parser.add_argument("--partition", default="emit",
+                        help="The slurm partition to be used - emit (default), debug, standard, patient ")
+    parser.add_argument("--miss_pkt_thresh", default="0.1",
+                        help="The threshold of missing packets to total packets which will cause a task to fail")
+    parser.add_argument("--ignore_missing", action="store_true",
+                        help="Ignore missing frames when reasssembling raw cube")
+    parser.add_argument("-w", "--workers",
                         help="Number of luigi workers")
     parser.add_argument("--build_env", action="store_true",
                         help="Build the runtime environment (primarily used to setup dev environments)")
@@ -49,6 +61,11 @@ def parse_args():
 
     args.config_path = os.path.abspath(args.config_path)
 
+    # Upper case the log level
+    args.level = args.level.upper()
+
+    args.miss_pkt_thresh = float(args.miss_pkt_thresh)
+
     if args.products:
         product_list = args.products.split(",")
         for prod in product_list:
@@ -56,31 +73,32 @@ def parse_args():
                 print("ERROR: Product \"%s\" is not a valid product choice." % prod)
                 sys.exit(1)
     else:
-        args.products = "l1araw"
+        print("Please specify a product from the list: " + ", ".join(product_choices))
     return args
 
 
 def get_tasks_from_args(args):
     products = args.products.split(",")
-    stream_kwargs = {
+    kwargs = {
         "config_path": args.config_path,
-        "stream_path": args.stream_path
+        "level": args.level,
+        "partition": args.partition
     }
-    acquisition_kwargs = {
-        "config_path": args.config_path,
-        "acquisition_id": args.acquisition_id
-    }
-
     prod_task_map = {
-        "l0hosc": L0StripHOSC(**stream_kwargs),
-        "l1aeng": L1AReformatEDP(**stream_kwargs),
-        "l1araw": L1AReassembleRaw(**acquisition_kwargs),
-        "l1bcal": L1BCalibrate(**acquisition_kwargs),
-        "l2arefl": L2AReflectance(**acquisition_kwargs),
-        "l2amask": L2AMask(**acquisition_kwargs),
-        "l2babun": L2BAbundance(**acquisition_kwargs)
+        "l0hosc": L0StripHOSC(stream_path=args.stream_path, miss_pkt_thresh=args.miss_pkt_thresh,
+                              **kwargs),
+        "l0plan": L0ProcessPlanningProduct(**kwargs),
+        "l1aeng": L1AReformatEDP(stream_path=args.stream_path, miss_pkt_thresh=args.miss_pkt_thresh,
+                                 **kwargs),
+        "l1aframe": L1ADepacketizeScienceFrames(stream_path=args.stream_path,
+                                                miss_pkt_thresh=args.miss_pkt_thresh, **kwargs),
+        "l1aframereport": L1AFrameReport(acquisition_id=args.acquisition_id, **kwargs),
+        "l1araw": L1AReassembleRaw(acquisition_id=args.acquisition_id, ignore_missing=args.ignore_missing, **kwargs),
+        "l1bcal": L1BCalibrate(acquisition_id=args.acquisition_id, **kwargs),
+        "l2arefl": L2AReflectance(acquisition_id=args.acquisition_id, **kwargs),
+        "l2amask": L2AMask(acquisition_id=args.acquisition_id, **kwargs),
+        "l2babun": L2BAbundance(acquisition_id=args.acquisition_id, **kwargs)
     }
-
     tasks = []
     for prod in products:
         tasks.append(prod_task_map[prod])
@@ -91,57 +109,60 @@ def get_tasks_from_args(args):
 def task_success(task):
     logger.info("SUCCESS: %s" % task)
 
-    # TODO: Delete tmp folder
-#    logger.debug("Deleting tmp folder %s" % task.tmp_dir)
-#    shutil.rmtree(task.tmp_dir)
+    # If not in DEBUG mode, clean up scratch tmp and local tmp dirs
+    if task.level != "DEBUG":
+        logger.debug("Deleting scratch tmp folder %s" % task.tmp_dir)
+        shutil.rmtree(task.tmp_dir)
 
-    # TODO: Trigger higher level tasks?
+        # Remove local tmp dir if exists
+        if os.path.exists(task.local_tmp_dir):
+            logger.debug(f"Deleting task's local tmp folder: {task.local_tmp_dir}")
+            shutil.rmtree(task.local_tmp_dir)
 
 
 @SlurmJobTask.event_handler(luigi.Event.FAILURE)
 def task_failure(task, e):
-    # TODO: If additional debugging is needed, change exc_info to True
-    logger.error("FAILURE: %s failed with exception %s" % (task, str(e)), exc_info=False)
+    logger.error("TASK FAILURE: %s" % task)
+    wm = WorkflowManager(config_path=task.config_path)
 
-    # Move tmp folder to errors folder
-    error_dir = task.tmp_dir.replace("/tmp/", "/error/")
-    logger.error("Moving tmp folder %s to %s" % (task.tmp_dir, error_dir))
-    shutil.move(task.tmp_dir, error_dir)
+    # Send failure notification
+    wm.send_failure_notification(task, e)
+
+    # Move scratch tmp folder to errors folder
+    error_task_dir = task.tmp_dir.replace("/tmp/", "/error/")
+    logger.error("Moving scratch tmp folder %s to %s" % (task.tmp_dir, error_task_dir))
+    wm.move(task.tmp_dir, error_task_dir)
+
+    # Copy local tmp dir to error/tmp under scratch if exists
+    if os.path.exists(task.local_tmp_dir):
+        error_tmp_dir = error_task_dir + "_tmp"
+        logger.error(f"Copying local tmp folder {task.local_tmp_dir} to {error_tmp_dir}")
+        wm.copytree(task.local_tmp_dir, error_tmp_dir)
+        logger.error(f"Deleting task's local tmp folder: {task.local_tmp_dir}")
+        shutil.rmtree(task.local_tmp_dir)
 
     # Update DB processing_log with failure message
-    if task.task_family == "emit.L1AReassembleRaw":
-        wm = WorkflowManager(task.config_path, task.acquisition_id)
-        acq = wm.acquisition
-        pge = wm.pges["emit-sds-l1a"]
-        log_entry = {
-            "task": task.task_family,
-            "pge_name": pge.repo_url,
-            "pge_version": pge.version_tag,
-            "pge_input_files": {
-                "file1_key": "file1_value",
-                "file2_key": "file2_value",
-            },
-            "pge_run_command": "python l1a_run.py args",
-            "log_timestamp": datetime.datetime.now(),
-            "completion_status": "FAILURE",
-            "error_message": str(e)
-        }
-        acq.save_processing_log_entry(log_entry)
-    if task.task_family in ("emit.L0StripHOSC", "emit.L1AReformatEDP"):
-        log_entry = {
-            "task": task.task_family,
-            "log_timestamp": datetime.datetime.now(),
-            "completion_status": "FAILURE",
-            "error_message": str(e)
-        }
-        dm = WorkflowManager(task.config_path, task.acquisition_id).database_manager
+
+    log_entry = {
+        "task": task.task_family,
+        "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
+        "completion_status": "FAILURE",
+        "error_message": str(e)
+    }
+    acquisition_tasks = ("emit.L1AReassembleRaw", "emit.L1AFrameReport", "emit.L1BCalibrate", "emit.L2AReflectance",
+                         "emit.L2AMask", "emit.L2BAbundance")
+    stream_tasks = ("emit.L0StripHOSC", "emit.L1ADepacketizeScienceFrames", "emit.L1AReformatEDP")
+    dm = wm.database_manager
+    if task.task_family in acquisition_tasks and dm.find_acquisition_by_id(task.acquisition_id) is not None:
+        dm.insert_acquisition_log_entry(task.acquisition_id, log_entry)
+    elif task.task_family in stream_tasks and dm.find_stream_by_name(os.path.basename(task.stream_path)):
         dm.insert_stream_log_entry(os.path.basename(task.stream_path), log_entry)
 
 
-def set_up_logging(logs_dir):
+def set_up_logging(log_path, level):
     # Add file handler logging to main logs directory
-    handler = logging.FileHandler(os.path.join(logs_dir, "workflow.log"))
-    handler.setLevel(logging.INFO)
+    handler = logging.FileHandler(log_path)
+    handler.setLevel(level)
     formatter = logging.Formatter("%(asctime)s %(levelname)s [%(module)s]: %(message)s")
     handler.setFormatter(formatter)
     logger.addHandler(handler)
@@ -152,9 +173,13 @@ def main():
     Parse command line arguments and initiate tasks
     """
     args = parse_args()
+
+    # Set up logging and change group ownership
     wm = WorkflowManager(config_path=args.config_path)
-    set_up_logging(wm.logs_dir)
+    log_path = os.path.join(wm.logs_dir, "workflow.log")
+    set_up_logging(log_path, args.level)
     logger.info("Running workflow with cmd: %s" % str(" ".join(sys.argv)))
+    wm.change_group_ownership(log_path)
 
     # Check out code if requested
     if args.checkout_build:
@@ -173,11 +198,11 @@ def main():
     if args.workers:
         workers = args.workers
     else:
-        workers = wm.luigi_workers
+        workers = wm.config["luigi_workers"]
     # Build luigi logging.conf path
     luigi_logging_conf = os.path.join(os.path.dirname(__file__), "workflow", "luigi", "logging.conf")
 
-    luigi.build(tasks, workers=workers, local_scheduler=wm.luigi_local_scheduler,
+    luigi.build(tasks, workers=workers, local_scheduler=wm.config["luigi_local_scheduler"],
                 logging_conf_file=luigi_logging_conf)
 
 

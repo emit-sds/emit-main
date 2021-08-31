@@ -13,74 +13,41 @@
   },
 
   "database_config": {
-    "mongodb_host": "128.149.52.213",
-    "mongodb_port": 27017,
-    "mongodb_db_name": "emitDevDB"
+    "db_host": "128.149.52.213",
+    "db_port": 27017,
+    "db_name": "emitDevDB",
+    "db_user": "emit-dev"
+  },
+
+  "email_config": {
+    "email_user": "emit-sds@jpl.nasa.gov",
+    "email_sender": "emit-sds@jpl.nasa.gov",
+    "email_recipient_list": [
+      "emit-sds-admins@jpl.nasa.gov"
+    ],
+    "smtp_host": "smtp.jpl.nasa.gov",
+    "smtp_port": 587
   },
 
   "build_config": {
     "build_num": "0000",
-    "conda_base_dir": "/home/jenkins/anaconda3/",
-    "repositories": [
+    "conda_base_dir": "/home/jenkins/anaconda3/"
+  },
+
+  "ancillary_paths": {
+    "decompression_constants_path": "repos/emit-sds-l1a/decompression/constants.txt",
+    "decompression_init_data_path": "repos/emit-sds-l1a/decompression/init_data.bin",
+    "dem_path": "/shared/dem/TBD",
+    "isofit_wavelength_path": "repos/emit-sds-l2a/surface_v1/release_1_20170320_ang20170228_wavelength_fit.txt",
+    "isofit_surface_path": "repos/emit-sds-l2a/surface_v1/release_1_basic_surface.mat",
+    "isofit_emulator_base": "/shared/sRTMnet/sRTMnet_v100",
+    "isofit_sixs_dir": "/shared/sixs",
+    "specpr_path": "/shared/specpr",
+    "tetracorder_path": "/shared/tetracorder5.26",
+    "versions": [
       {
-        "url": "git@github.jpl.nasa.gov:emit-sds/emit-main.git",
-        "tag": "develop",
-        "conda_env": "emit-main-dev"
-      },
-      {
-        "url": "git@github.jpl.nasa.gov:emit-sds/emit-utils.git",
-        "tag": "develop",
-        "conda_env": "emit-main-dev"
-      },
-      {
-        "url": "git@github.jpl.nasa.gov:emit/emit-ios.git",
-        "tag": "0.2.0",
-        "conda_env": "emit-main-dev"
-      },
-      {
-        "url": "git@github.jpl.nasa.gov:emit/emit-l0edp.git",
-        "tag": "master",
-        "conda_env": "emit-main-dev"
-      },
-      {
-        "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l0.git",
-        "tag": "develop",
-        "conda_env": "emit-main-dev"
-      },
-      {
-        "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l1a.git",
-        "tag": "develop",
-        "conda_env": "emit-main-dev"
-      },
-      {
-        "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l1b.git",
-        "tag": "develop",
-        "conda_env": "emit-sds-l1b-dev"
-      },
-      {
-        "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l2a.git",
-        "tag": "develop",
-        "conda_env": "emit-main-dev"
-      },
-      {
-        "url": "https://github.com/isofit/isofit.git",
-        "tag": "v2.6.0",
-        "conda_env": "emit-main-dev"
-      },
-      {
-        "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l2b.git",
-        "tag": "develop",
-        "conda_env": "emit-main-dev"
-      },
-      {
-        "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l3.git",
-        "tag": "develop",
-        "conda_env": "emit-main-dev"
-      },
-      {
-        "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l4.git",
-        "tag": "develop",
-        "conda_env": "emit-main-dev"
+        "version_date_range": ["2021-01-01T00:00:00", "2022-01-01T00:00:00"],
+        "l1b_config_path": "repos/emit-sds-l1b/calibrations/config_20210101_20210131.json"
       }
     ]
   }

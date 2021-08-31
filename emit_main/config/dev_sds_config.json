@@ -1,7 +1,7 @@
 {
   "general_config": {
     "instrument": "emit",
-    "environment": "winstono",
+    "environment": "dev",
     "processing_version": "00",
     "luigi_local_scheduler": false,
     "luigi_workers": 2
@@ -31,7 +31,7 @@
 
   "build_config": {
     "build_num": "0000",
-    "conda_base_dir": "/home/winstono/anaconda3/"
+    "conda_base_dir": "/shared/anaconda3/"
   },
 
   "ancillary_paths": {

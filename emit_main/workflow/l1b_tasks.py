@@ -9,7 +9,6 @@ import glob
 import json
 import logging
 import os
-import shutil
 
 import luigi
 import spectral.io.envi as envi
@@ -23,7 +22,6 @@ from emit_main.workflow.slurm import SlurmJobTask
 logger = logging.getLogger("emit-main")
 
 
-# TODO: Full implementation TBD
 class L1BCalibrate(SlurmJobTask):
     """
     Performs calibration of raw data to produce radiance
@@ -32,13 +30,16 @@ class L1BCalibrate(SlurmJobTask):
 
     config_path = luigi.Parameter()
     acquisition_id = luigi.Parameter()
+    level = luigi.Parameter()
+    partition = luigi.Parameter()
 
     task_namespace = "emit"
 
     def requires(self):
 
         logger.debug(self.task_family + " requires")
-        return L1AReassembleRaw(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return L1AReassembleRaw(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+                                partition=self.partition)
 
     def output(self):
 
@@ -60,10 +61,7 @@ class L1BCalibrate(SlurmJobTask):
         tmp_rdn_img_path = os.path.join(tmp_output_dir, os.path.basename(acq.rdn_img_path))
         log_name = os.path.basename(acq.rdn_img_path.replace(".img", "_pge.log"))
         tmp_log_path = os.path.join(tmp_output_dir, log_name)
-        # TODO Add logic to check date ranges for proper config
-        calibrations_dir = os.path.join(pge.repo_dir, "calibrations")
-        l1b_config_path = os.path.join(calibrations_dir, "config_20210101_20210131.json")
-        with open(l1b_config_path, "r") as f:
+        with open(wm.config["l1b_config_path"], "r") as f:
             config = json.load(f)
         # Set input, dark, and output paths in config
         config["input_file"] = acq.raw_img_path
@@ -72,6 +70,7 @@ class L1BCalibrate(SlurmJobTask):
         config["output_file"] = tmp_rdn_img_path
 
         input_files = {}
+        calibrations_dir = os.path.join(pge.repo_dir, "calibrations")
         for key, value in config.items():
             if "_file" in key and not key.startswith("/"):
                 config[key] = os.path.abspath(os.path.join(calibrations_dir, value))
@@ -83,41 +82,45 @@ class L1BCalibrate(SlurmJobTask):
             json.dump(config, outfile)
 
         emitrdn_exe = os.path.join(pge.repo_dir, "emitrdn.py")
-        cmd = ["python", emitrdn_exe, tmp_config_path, acq.raw_img_path, tmp_rdn_img_path, "--log_file", tmp_log_path]
+        cmd = ["python", emitrdn_exe, tmp_config_path, acq.raw_img_path, tmp_rdn_img_path, "--log_file", tmp_log_path,
+               "--level", self.level]
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
         # Copy output files to l1b dir
         for file in glob.glob(os.path.join(tmp_output_dir, "*")):
-            shutil.copy2(file, acq.l1b_data_dir)
+            wm.copy(file, os.path.join(acq.l1b_data_dir, os.path.basename(file)))
 
         # Update hdr files
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
         doc_version = "EMIT SDS L1B JPL-D 104187, Initial"
         hdr = envi.read_envi_header(acq.rdn_hdr_path)
-        hdr["emit acquisition start time"] = datetime.datetime(2020, 1, 1, 0, 0, 0).strftime("%Y-%m-%dT%H:%M:%S")
-        hdr["emit acquisition stop time"] = datetime.datetime(2020, 1, 1, 0, 11, 26).strftime("%Y-%m-%dT%H:%M:%S")
+        hdr["emit acquisition start time"] = acq.start_time.strftime("%Y-%m-%dT%H:%M:%S%z")
+        hdr["emit acquisition stop time"] = acq.stop_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         hdr["emit pge name"] = pge.repo_url
         hdr["emit pge version"] = pge.version_tag
         hdr["emit pge input files"] = input_files_arr
         hdr["emit pge run command"] = " ".join(cmd)
-        hdr["emit software build version"] = wm.build_num
+        hdr["emit software build version"] = wm.config["build_num"]
         hdr["emit documentation version"] = doc_version
-        creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rdn_img_path))
-        hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S")
-        hdr["emit data product version"] = wm.processing_version
+        creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rdn_img_path), tz=datetime.timezone.utc)
+        hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
+        hdr["emit data product version"] = wm.config["processing_version"]
 
         envi.write_envi_header(acq.rdn_hdr_path, hdr)
 
         # PGE writes metadata to db
-        dimensions = {
-            "l1b": {
+        dm = wm.database_manager
+        product_dict = {
+            "img_path": acq.rdn_img_path,
+            "hdr_path": acq.rdn_hdr_path,
+            "created": creation_time,
+            "dimensions": {
                 "lines": hdr["lines"],
-                "bands": hdr["bands"],
                 "samples": hdr["samples"],
+                "bands": hdr["bands"]
             }
         }
-        dm = wm.database_manager
-        dm.update_acquisition_dimensions(self.acquisition_id, dimensions)
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn": product_dict})
 
         log_entry = {
             "task": self.task_family,
@@ -127,10 +130,10 @@ class L1BCalibrate(SlurmJobTask):
             "pge_run_command": " ".join(cmd),
             "documentation_version": doc_version,
             "product_creation_time": creation_time,
-            "log_timestamp": datetime.datetime.now(),
+            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
-                "l1b_rdn_path": acq.rdn_img_path,
+                "l1b_rdn_img_path": acq.rdn_img_path,
                 "l1b_rdn_hdr_path:": acq.rdn_hdr_path
             }
         }
@@ -147,13 +150,16 @@ class L1BGeolocate(SlurmJobTask):
 
     config_path = luigi.Parameter()
     acquisition_id = luigi.Parameter()
+    level = luigi.Parameter()
+    partition = luigi.Parameter()
 
     task_namespace = "emit"
 
     def requires(self):
 
         logger.debug(self.task_family + " requires")
-        return L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+                            partition=self.partition)
 
     def output(self):
 

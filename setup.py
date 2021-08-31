@@ -11,7 +11,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="emit_main",
-    version="0.1",
+    version="0.2",
     author="Winston Olson-Duvall",
     author_email="winston.olson-duvall@jpl.nasa.gov",
     description="Workflow and file management code for EMIT data processing",
@@ -26,12 +26,13 @@ setuptools.setup(
     ],
     python_requires=">=3",
     install_requires=[
-        "gdal==2.3.3",
-        "luigi==2.8.10",
-        "pymongo==3.9.0",
-        "spectral==0.21",
-        "pytest==6.2.1",
-        "pytest-cov==2.10.1",
-        "pycodestyle==2.6.0"
+        "gdal>=3.0.2",
+        "luigi>=2.8.10",
+        "pymongo>=3.9.0",
+        "spectral>=0.21",
+        "cryptography>=3.4.7",
+        "pytest>=6.2.4",
+        "pytest-cov>=2.10.1",
+        "pycodestyle>=2.6.0"
     ]
 )

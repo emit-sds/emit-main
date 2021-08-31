@@ -6,40 +6,38 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 
 import glob
 import grp
-import json
 import logging
 import os
 import pwd
 import shutil
 
-from emit_main.workflow.l1a_tasks import *
+from emit_main.config.config import Config
+from emit_main.workflow.l1a_tasks import L1AReformatEDP, L1ADepacketizeScienceFrames
 
 logger = logging.getLogger("emit-main")
 
 
 class FileMonitor:
 
-    def __init__(self, config_path):
+    def __init__(self, config_path, level="INFO", partition="emit", miss_pkt_thresh=0.1):
         """
         :param config_path: Path to config file containing environment settings
         """
 
-        self.config_path = config_path
-        # Read config file for environment specific paths
-        with open(config_path, "r") as f:
-            config = json.load(f)
-            self.__dict__.update(config["general_config"])
-            self.__dict__.update(config["filesystem_config"])
-            self.__dict__.update(config["build_config"])
-
         self.config_path = os.path.abspath(config_path)
+        self.level = level
+        self.partition = partition
+        self.miss_pkt_thresh = miss_pkt_thresh
+
+        # Get config properties
+        self.config = Config(config_path).get_dictionary()
+
         # Build path for ingest folder
-        self.ingest_dir = os.path.join(self.local_store_dir, self.instrument, self.environment, "ingest")
+        self.ingest_dir = os.path.join(self.config["local_store_dir"], self.config["instrument"],
+                                       self.config["environment"], "ingest")
         self.ingest_duplicates_dir = os.path.join(self.ingest_dir, "duplicates")
-        self.logs_dir = os.path.join(self.local_store_dir, self.instrument, self.environment, "logs")
-        # Build luigi logging.conf path
-        self.luigi_logging_conf = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "workflow", "luigi",
-                                                               "logging.conf"))
+        self.logs_dir = os.path.join(self.config["local_store_dir"], self.config["instrument"],
+                                     self.config["environment"], "logs")
         self.dirs = [self.ingest_dir, self.ingest_duplicates_dir, self.logs_dir]
 
         # Make directories if they don't exist
@@ -47,9 +45,9 @@ class FileMonitor:
             if not os.path.exists(d):
                 os.makedirs(d)
                 # Change group ownership in shared environments
-                if self.environment in ["dev", "test", "ops"]:
+                if self.config["environment"] in ["dev", "test", "ops"]:
                     uid = pwd.getpwnam(pwd.getpwuid(os.getuid())[0]).pw_uid
-                    gid = grp.getgrnam(self.instrument + "-" + self.environment).gr_gid
+                    gid = grp.getgrnam(self.config["instrument"] + "-" + self.config["environment"]).gr_gid
                     os.chown(d, uid, gid)
 
     def ingest_files(self, dry_run=False):
@@ -111,11 +109,21 @@ class FileMonitor:
         if dry_run:
             return paths
 
-        # Create luigi tasks and execute
+        # Return luigi tasks
         tasks = []
-        # TODO: Change task based on APID
         for p in paths:
-            tasks.append(L1AReformatEDP(config_path=self.config_path, stream_path=p))
-
-        return luigi.build(tasks, workers=4, local_scheduler=self.luigi_local_scheduler,
-                           logging_conf_file=self.luigi_logging_conf)
+            apid = os.path.basename(p).split("_")[1]
+            # Run different tasks based on apid (engineering or science). 1674 is engineering. 1675 is science.
+            if apid == "1674" or apid == "1482":
+                tasks.append(L1AReformatEDP(config_path=self.config_path,
+                                            stream_path=p,
+                                            level=self.level,
+                                            partition=self.partition,
+                                            miss_pkt_thresh=self.miss_pkt_thresh))
+            if apid == "1675":
+                tasks.append(L1ADepacketizeScienceFrames(config_path=self.config_path,
+                                                         stream_path=p,
+                                                         level=self.level,
+                                                         partition=self.partition,
+                                                         miss_pkt_thresh=self.miss_pkt_thresh))
+        return tasks

@@ -5,18 +5,20 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
 import datetime
+import os
 
 from emit_main.database.database_manager import DatabaseManager
 
 
 def test_acquisition_delete(config_path):
 
+    config_path = os.path.abspath(config_path)
     print("\nRunning test_acquisition_delete with config: %s" % config_path)
 
     dm = DatabaseManager(config_path=config_path)
 
     acquisitions = dm.db.acquisitions
-    acquisitions.delete_one({"acquisition_id": "emit20200101t000000", "build_num": dm.build_num})
+    acquisitions.delete_one({"acquisition_id": "emit20200101t000000", "build_num": dm.config["build_num"]})
 
     acquisition = dm.find_acquisition_by_id("emit20200101t000000")
     assert acquisition is None
@@ -24,14 +26,15 @@ def test_acquisition_delete(config_path):
 
 def test_acquisition_insert(config_path):
 
+    config_path = os.path.abspath(config_path)
     print("\nRunning test_acquisition_insert with config: %s" % config_path)
 
     dm = DatabaseManager(config_path=config_path)
 
     metadata = {
         "acquisition_id": "emit20200101t000000",
-        "build_num": dm.build_num,
-        "processing_version": dm.processing_version,
+        "build_num": dm.config["build_num"],
+        "processing_version": dm.config["processing_version"],
         "start_time": datetime.datetime(2020, 1, 1, 0, 0, 0),
         "stop_time": datetime.datetime(2020, 1, 1, 0, 11, 26),
         "orbit": "00000",
@@ -45,6 +48,7 @@ def test_acquisition_insert(config_path):
 
 def test_acquisition_update(config_path):
 
+    config_path = os.path.abspath(config_path)
     print("\nRunning test_acquisition_update with config: %s" % config_path)
 
     dm = DatabaseManager(config_path=config_path)
@@ -62,13 +66,14 @@ def test_acquisition_update(config_path):
 
 def test_stream_delete(config_path):
 
+    config_path = os.path.abspath(config_path)
     print("\nRunning test_stream_delete with config: %s" % config_path)
 
     dm = DatabaseManager(config_path=config_path)
 
     streams = dm.db.streams
     streams.delete_one({"hosc_name": "emit_1675_200101000000_200101020000_200101084102_hsc.bin",
-                        "build_num": dm.build_num})
+                        "build_num": dm.config["build_num"]})
 
     stream = dm.find_stream_by_name("emit_1675_200101000000_200101020000_200101084102_hsc.bin")
     assert stream is None
@@ -76,6 +81,7 @@ def test_stream_delete(config_path):
 
 def test_stream_insert(config_path):
 
+    config_path = os.path.abspath(config_path)
     print("\nRunning test_stream_insert with config: %s" % config_path)
 
     dm = DatabaseManager(config_path=config_path)
@@ -88,6 +94,7 @@ def test_stream_insert(config_path):
 
 def test_stream_update(config_path):
 
+    config_path = os.path.abspath(config_path)
     print("\nRunning test_stream_update with config: %s" % config_path)
 
     dm = DatabaseManager(config_path=config_path)
