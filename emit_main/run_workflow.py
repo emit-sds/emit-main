@@ -18,6 +18,7 @@ from emit_main.workflow.l1a_tasks import L1ADepacketizeScienceFrames, L1AReassem
 from emit_main.workflow.l1b_tasks import L1BGeolocate, L1BCalibrate
 from emit_main.workflow.l2a_tasks import L2AMask, L2AReflectance
 from emit_main.workflow.l2b_tasks import L2BAbundance
+from emit_main.workflow.l3_tasks import L3AUnmix
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_main.workflow.workflow_manager import WorkflowManager
 
@@ -97,7 +98,8 @@ def get_tasks_from_args(args):
         "l1bcal": L1BCalibrate(acquisition_id=args.acquisition_id, **kwargs),
         "l2arefl": L2AReflectance(acquisition_id=args.acquisition_id, **kwargs),
         "l2amask": L2AMask(acquisition_id=args.acquisition_id, **kwargs),
-        "l2babun": L2BAbundance(acquisition_id=args.acquisition_id, **kwargs)
+        "l2babun": L2BAbundance(acquisition_id=args.acquisition_id, **kwargs),
+        "l3aunmix": L3AUnmix(acquisition_id=args.acquisition_id, **kwargs)
     }
     tasks = []
     for prod in products:
@@ -150,7 +152,7 @@ def task_failure(task, e):
         "error_message": str(e)
     }
     acquisition_tasks = ("emit.L1AReassembleRaw", "emit.L1AFrameReport", "emit.L1BCalibrate", "emit.L2AReflectance",
-                         "emit.L2AMask", "emit.L2BAbundance")
+                         "emit.L2AMask", "emit.L2BAbundance", "emit.L3AUnmix")
     stream_tasks = ("emit.L0StripHOSC", "emit.L1ADepacketizeScienceFrames", "emit.L1AReformatEDP")
     dm = wm.database_manager
     if task.task_family in acquisition_tasks and dm.find_acquisition_by_id(task.acquisition_id) is not None:
