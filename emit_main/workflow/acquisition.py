@@ -118,6 +118,10 @@ class Acquisition:
             "l2b": {
                 "abun": ["img", "hdr"],
                 "abununcert": ["img", "hdr"]
+            },
+            "l3": {
+                "cover": ["img", "hdr"],
+                "coveruncert": ["img", "hdr"]
             }
         }
         paths = {}
