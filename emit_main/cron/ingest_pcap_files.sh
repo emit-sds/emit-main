@@ -9,18 +9,23 @@ source /shared/anaconda3/etc/profile.d/conda.sh
 conda activate $2
 
 TVAC_DIR=/store/emit/$1/tvac
+mkdir -p ${TVAC_DIR}/ingest
 mkdir -p ${TVAC_DIR}/processed
 mkdir -p ${TVAC_DIR}/tmp
+
+GROUP=emit-${1}
 
 export AIT_ROOT=/store/emit/$1/repos/emit-ios
 export AIT_CONFIG=/store/emit/$1/repos/emit-ios/config/config.yaml
 export AIT_ISS_CONFIG=/store/emit/$1/repos/emit-ios/config/sim.yaml
 
-for file in ${TVAC_DIR}/*.pcap; do
+for file in ${TVAC_DIR}/ingest/*.pcap; do
     if [[ -f "$file" ]]; then
         echo "$(date +"%F %T,%3N"): Processing ${file}..."
         python /store/emit/$1/repos/emit-sds-l0/emit_pcap_to_hosc_raw.py --input-file ${file} --output-dir ${TVAC_DIR}/tmp
         mv ${file} ${TVAC_DIR}/processed/
+        chgrp -R $GROUP ${TVAC_DIR}/tmp
+        chmod -R ug+rw ${TVAC_DIR}/tmp
         mv ${TVAC_DIR}/tmp/* /store/emit/$1/ingest/
         echo "$(date +"%F %T,%3N"): Moved ${file} to ${TVAC_DIR}/processed/ and output HOSC files to /store/emit/$1/ingest/"
     else
