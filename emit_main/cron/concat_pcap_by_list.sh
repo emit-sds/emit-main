@@ -25,7 +25,9 @@ CONCAT_FILE=emit-edd-${START_TIME}-${STOP_TIME}.pcap
 if [[ -f "$CONCAT_FILE" ]]; then
     rm -f $CONCAT_FILE
 fi
-cat $INPUT_LIST | while read line; do cat $line >> $CONCAT_FILE; done;
+
+# Use mergecap to combine pcap files
+mergecap -a -w $CONCAT_FILE -F pcap `cat $INPUT_LIST`
 
 # Update permissions
 chgrp $GROUP $CONCAT_FILE
