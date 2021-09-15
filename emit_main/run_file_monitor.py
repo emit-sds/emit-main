@@ -40,6 +40,8 @@ def parse_args():
                         help="Number of luigi workers")
     parser.add_argument("--dry_run", action="store_true",
                         help="Just return a list of paths to process from the ingest folder, but take no action")
+    parser.add_argument("--test_mode", action="store_true",
+                        help="Allows tasks to skip work during I&T by skipping certain checks")
     args = parser.parse_args()
 
     if args.config_path is None:
@@ -133,7 +135,7 @@ def main():
     wm.change_group_ownership(log_path)
 
     fm = FileMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
-                     miss_pkt_thresh=args.miss_pkt_thresh)
+                     miss_pkt_thresh=args.miss_pkt_thresh, test_mode=args.test_mode)
 
     # Get tasks from file monitor
     dry_run = args.dry_run

@@ -32,6 +32,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
     miss_pkt_thresh = luigi.FloatParameter()
+    test_mode = luigi.BoolParameter(default=False)
 
     memory = 30000
     local_tmp_space = 125000
@@ -67,6 +68,8 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
                "--out_dir", tmp_output_dir,
                "--level", self.level,
                "--log_path", tmp_log_path]
+        if self.test_mode:
+            cmd.append("--test_mode")
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
         # Based on DCIDs, copy frames to appropriate acquisition l1a frames directory.
