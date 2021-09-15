@@ -41,7 +41,8 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
     def requires(self):
 
         logger.debug(self.task_family + " requires")
-        return None
+        return L0StripHOSC(config_path=self.config_path, stream_path=self.stream_path, level=self.level,
+                           partition=self.partition, miss_pkt_thresh=self.miss_pkt_thresh)
 
     def output(self):
 
