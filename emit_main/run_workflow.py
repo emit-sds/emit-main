@@ -141,8 +141,14 @@ def task_failure(task, e):
         logger.error(f"Deleting task's local tmp folder: {task.local_tmp_dir}")
         shutil.rmtree(task.local_tmp_dir)
 
-    # Update DB processing_log with failure message
+    # If running L0StripHOSC task on ingest folder path, move file to ingest/errors
+    if task.task_family == "emit.L0StripHOSC" and "ingest" in task.stream_path:
+        # Move HOSC file to ingest/errors
+        ingest_errors_path = os.path.join(wm.ingest_errors_dir, os.path.basename(task.stream_path))
+        logger.error(f"Moving bad HOSC file to f{ingest_errors_path}")
+        wm.move(task.stream_path, ingest_errors_path)
 
+    # Update DB processing_log with failure message
     log_entry = {
         "task": task.task_family,
         "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),

@@ -37,9 +37,10 @@ class FileMonitor:
         self.ingest_dir = os.path.join(self.config["local_store_dir"], self.config["instrument"],
                                        self.config["environment"], "ingest")
         self.ingest_duplicates_dir = os.path.join(self.ingest_dir, "duplicates")
+        self.ingest_errors_dir = os.path.join(self.ingest_dir, "errors")
         self.logs_dir = os.path.join(self.config["local_store_dir"], self.config["instrument"],
                                      self.config["environment"], "logs")
-        self.dirs = [self.ingest_dir, self.ingest_duplicates_dir, self.logs_dir]
+        self.dirs = [self.ingest_dir, self.ingest_duplicates_dir, self.ingest_errors_dir, self.logs_dir]
 
         # Make directories if they don't exist
         for d in self.dirs:
