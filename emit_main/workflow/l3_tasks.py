@@ -20,9 +20,9 @@ from emit_main.workflow.slurm import SlurmJobTask
 logger = logging.getLogger("emit-main")
 
 
-class L3AUnmix(SlurmJobTask):
+class L3Unmix(SlurmJobTask):
     """
-    Creates L3A fractional cover estimates
+    Creates L3 fractional cover estimates
     :returns: Fractional cover file and uncertainties
     """
 
@@ -56,19 +56,27 @@ class L3AUnmix(SlurmJobTask):
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
-        pge = wm.pges["emit-sds-l3a"]
+        pge = wm.pges["emit-sds-l3"]
 
         # Build PGE commands for run_tetracorder_pge.sh
         unmix_exe = os.path.join(pge.repo_dir, "unmix.jl")
-        endmember_path = "" #\todo
-        endmember_key = "" #\todo
-        cmd_unmix = [unmix_exe, acq.rfl_img_path, endmember_path, endmember_key, acq.cover_img_path, "--normalization",
-                     "brightness", "--n_mc", 100, "--reflectance_uncertainty_file", acq.uncert_img_path]
-        #\todo update cmd_unmix / unmix.jl in l3 repo to have explicit output uncertainty path as argument
+        endmember_path = "data/endmember_library.csv"
+        endmember_key = "Class"
+        log_path = acq.cover_img_path.replace(".img", "_pge.log")
+        output_base = os.path.join(self.local_tmp_dir,"unmixing_output")
+
+        cmd_unmix = [unmix_exe, acq.rfl_img_path, endmember_path, endmember_key, output_base, "--normalization",
+                     "brightness", "--n_mc", "100", "--reflectance_uncertainty_file", acq.uncert_img_path,
+                     "--spectral_starting_column", "2", "--num_endmembers", "-1","--log-file", log_path]
+
         env = os.environ.copy()
         pge.run(cmd_unmix, tmp_dir=self.tmp_dir, env=env)
 
-        #\todo check/expand
+        wm.copy(f'{output_base}_fractional_cover', acq.cover_img_path)
+        wm.copy(f'{output_base}_fractional_cover.hdr', acq.cover_hdr_path)
+        wm.copy(f'{output_base}_fractional_cover_uncertainty', acq.coveruncert_img_path)
+        wm.copy(f'{output_base}_fractional_cover_uncertainty.hdr', acq.coveruncert_hdr_path)
+
         input_files = {
             "reflectance_file": acq.rfl_img_path,
             "reflectance_uncertainty_file": acq.uncert_img_path,
@@ -76,21 +84,22 @@ class L3AUnmix(SlurmJobTask):
         }
 
         # Update hdr files
-        input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
-        doc_version = "EMIT SDS L3A JPL-D 104237, Rev A" #\todo check
-        hdr = envi.read_envi_header(acq.abun_hdr_path)
-        hdr["emit acquisition start time"] = acq.start_time.strftime("%Y-%m-%dT%H:%M:%S%z")
-        hdr["emit acquisition stop time"] = acq.stop_time.strftime("%Y-%m-%dT%H:%M:%S%z")
-        hdr["emit pge name"] = pge.repo_url
-        hdr["emit pge version"] = pge.version_tag
-        hdr["emit pge input files"] = input_files_arr
-        hdr["emit pge run command"] = " ".join(cmd_unmix)
-        hdr["emit software build version"] = wm.config["build_num"]
-        hdr["emit documentation version"] = doc_version
-        creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.abun_img_path), tz=datetime.timezone.utc)
-        hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
-        hdr["emit data product version"] = wm.config["processing_version"]
-        envi.write_envi_header(acq.abun_hdr_path, hdr)
+        for header_to_update in [acq.cover_hdr_path, acq.coveruncert_hdr_path]:
+            input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
+            doc_version = "EMIT SDS L3 JPL-D 104238, Rev A" #\todo check
+            hdr = envi.read_envi_header(header_to_update)
+            hdr["emit acquisition start time"] = acq.start_time.strftime("%Y-%m-%dT%H:%M:%S%z")
+            hdr["emit acquisition stop time"] = acq.stop_time.strftime("%Y-%m-%dT%H:%M:%S%z")
+            hdr["emit pge name"] = pge.repo_url
+            hdr["emit pge version"] = pge.version_tag
+            hdr["emit pge input files"] = input_files_arr
+            hdr["emit pge run command"] = " ".join(cmd_unmix)
+            hdr["emit software build version"] = wm.config["build_num"]
+            hdr["emit documentation version"] = doc_version
+            creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.cover_img_path), tz=datetime.timezone.utc)
+            hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
+            hdr["emit data product version"] = wm.config["processing_version"]
+            envi.write_envi_header(header_to_update, hdr)
 
         # PGE writes metadata to db
         dm = wm.database_manager
@@ -117,8 +126,10 @@ class L3AUnmix(SlurmJobTask):
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
-                "l3_cover_img_path": acq.abun_img_path,
-                "l3_cover_hdr_path:": acq.abun_hdr_path
+                "l3_cover_img_path": acq.cover_img_path,
+                "l3_cover_hdr_path:": acq.cover_hdr_path,
+                "l3_coveruncert_img_path": acq.coveruncert_img_path,
+                "l3_coveruncert_hdr_path:": acq.coveruncert_hdr_path
             }
         }
 

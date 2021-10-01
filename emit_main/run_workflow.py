@@ -18,7 +18,7 @@ from emit_main.workflow.l1a_tasks import L1ADepacketizeScienceFrames, L1AReassem
 from emit_main.workflow.l1b_tasks import L1BGeolocate, L1BCalibrate
 from emit_main.workflow.l2a_tasks import L2AMask, L2AReflectance
 from emit_main.workflow.l2b_tasks import L2BAbundance
-from emit_main.workflow.l3_tasks import L3AUnmix
+from emit_main.workflow.l3_tasks import L3Unmix
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_main.workflow.workflow_manager import WorkflowManager
 
@@ -29,7 +29,7 @@ logger = logging.getLogger("emit-main")
 
 def parse_args():
     product_choices = ["l0hosc", "l0plan", "l1aeng", "l1aframe", "l1aframereport", "l1araw", "l1bcal", "l2arefl",
-                       "l2amask", "l2babun"]
+                       "l2amask", "l2babun","l3unmix"]
     parser = argparse.ArgumentParser()
     parser.add_argument("-a", "--acquisition_id", default="",
                         help="Acquisition ID")
@@ -99,7 +99,7 @@ def get_tasks_from_args(args):
         "l2arefl": L2AReflectance(acquisition_id=args.acquisition_id, **kwargs),
         "l2amask": L2AMask(acquisition_id=args.acquisition_id, **kwargs),
         "l2babun": L2BAbundance(acquisition_id=args.acquisition_id, **kwargs),
-        "l3aunmix": L3AUnmix(acquisition_id=args.acquisition_id, **kwargs)
+        "l3unmix": L3Unmix(acquisition_id=args.acquisition_id, **kwargs)
     }
     tasks = []
     for prod in products:
@@ -152,7 +152,7 @@ def task_failure(task, e):
         "error_message": str(e)
     }
     acquisition_tasks = ("emit.L1AReassembleRaw", "emit.L1AFrameReport", "emit.L1BCalibrate", "emit.L2AReflectance",
-                         "emit.L2AMask", "emit.L2BAbundance", "emit.L3AUnmix")
+                         "emit.L2AMask", "emit.L2BAbundance", "emit.L3Unmix")
     stream_tasks = ("emit.L0StripHOSC", "emit.L1ADepacketizeScienceFrames", "emit.L1AReformatEDP")
     dm = wm.database_manager
     if task.task_family in acquisition_tasks and dm.find_acquisition_by_id(task.acquisition_id) is not None:
