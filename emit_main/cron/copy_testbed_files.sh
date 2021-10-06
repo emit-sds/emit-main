@@ -6,13 +6,14 @@
 # $1 is the deployment environment (dev, test, ops)
 # $2 is the remote server hostname (emit-sim3, etc.)
 # $3 is how many minutes back to check for modified files
-# $4 Flag to execute concatenation (0 = False, 1 = True)
+# $4 Flag to decide follow-up task (0 = do nothing, 1 = concatenate pcaps, 2 = copy files to ingest folder)
 
 echo "$(date +"%F %T,%3N"): Executing copy_testbed_files.sh cron job in '$1' environment from '$2' using '$3' minutes \
 for '-mmin' and concat flag set to '$4'."
 
 SOURCE_DIR=/proj/emit/dev/data/$2
 TARGET_DIR=/store/emit/$1/tvac/testbed/$2
+INGEST_DIR=/store/emit/$1/tvac/ingest
 GROUP=emit-${1}
 
 # Create tmp file list of remote files that were modified recently
@@ -31,6 +32,10 @@ chmod -R ug+rw $TARGET_DIR
 
 # Perform concatenation of PCAP files
 if [[ $4 -eq 1 ]]; then
-    echo "Concatenation flag set to 1, concatenating files in $TMP_FILE_LIST..."
+    echo "Follow-up flag set to 1, concatenating files in $TMP_FILE_LIST..."
     ./concat_pcap_by_list.sh  $1 $2 $TMP_FILE_LIST
+elif [[ $4 -eq 2 ]]; then
+    echo "Follow-up flag set to 2, copying files in $TMP_FILE_LIST to tvac/ingest folder"
+    cd $TARGET_DIR
+    cat $TMP_FILE_LIST | while read line; do cp -pv $line $INGEST_DIR; done;
 fi
