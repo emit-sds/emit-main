@@ -63,11 +63,11 @@ class L3Unmix(SlurmJobTask):
         endmember_path = "data/endmember_library.csv"
         endmember_key = "Class"
         log_path = acq.cover_img_path.replace(".img", "_pge.log")
-        output_base = os.path.join(self.local_tmp_dir,"unmixing_output")
+        output_base = os.path.join(self.local_tmp_dir, "unmixing_output")
 
-        cmd_unmix = [unmix_exe, acq.rfl_img_path, endmember_path, endmember_key, output_base, "--normalization",
+        cmd_unmix = ['julia', unmix_exe, acq.rfl_img_path, endmember_path, endmember_key, output_base, "--normalization",
                      "brightness", "--n_mc", "100", "--reflectance_uncertainty_file", acq.uncert_img_path,
-                     "--spectral_starting_column", "2", "--num_endmembers", "-1","--log-file", log_path]
+                     "--spectral_starting_column", "2", "--num_endmembers", "-1", "--log-file", log_path]
 
         env = os.environ.copy()
         pge.run(cmd_unmix, tmp_dir=self.tmp_dir, env=env)
@@ -86,7 +86,7 @@ class L3Unmix(SlurmJobTask):
         # Update hdr files
         for header_to_update in [acq.cover_hdr_path, acq.coveruncert_hdr_path]:
             input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
-            doc_version = "EMIT SDS L3 JPL-D 104238, Rev A" #\todo check
+            doc_version = "EMIT SDS L3 JPL-D 104238, Rev A"  # \todo check
             hdr = envi.read_envi_header(header_to_update)
             hdr["emit acquisition start time"] = acq.start_time.strftime("%Y-%m-%dT%H:%M:%S%z")
             hdr["emit acquisition stop time"] = acq.stop_time.strftime("%Y-%m-%dT%H:%M:%S%z")
@@ -96,7 +96,8 @@ class L3Unmix(SlurmJobTask):
             hdr["emit pge run command"] = " ".join(cmd_unmix)
             hdr["emit software build version"] = wm.config["build_num"]
             hdr["emit documentation version"] = doc_version
-            creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.cover_img_path), tz=datetime.timezone.utc)
+            creation_time = datetime.datetime.fromtimestamp(
+                os.path.getmtime(acq.cover_img_path), tz=datetime.timezone.utc)
             hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
             hdr["emit data product version"] = wm.config["processing_version"]
             envi.write_envi_header(header_to_update, hdr)
