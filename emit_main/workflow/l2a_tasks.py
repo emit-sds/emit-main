@@ -87,11 +87,13 @@ class L2AReflectance(SlurmJobTask):
         # Copy output files to l2a dir and rename
         tmp_rfl_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_rfl")
         tmp_rfl_hdr_path = envi_header(tmp_rfl_path)
-        tmp_uncert_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_uncert")
+        tmp_uncert_path = os.path.join(self.local_tmp_dir, "output",
+                                       self.acquisition_id + "_uncert")
         tmp_uncert_hdr_path = envi_header(tmp_uncert_path)
         tmp_lbl_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_lbl")
         tmp_lbl_hdr_path = envi_header(tmp_lbl_path)
-        tmp_statesubs_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_subs_state")
+        tmp_statesubs_path = os.path.join(
+            self.local_tmp_dir, "output", self.acquisition_id + "_subs_state")
         tmp_statesubs_hdr_path = envi_header(tmp_statesubs_path)
         wm.copy(tmp_rfl_path, acq.rfl_img_path)
         wm.copy(tmp_rfl_hdr_path, acq.rfl_hdr_path)
@@ -122,7 +124,8 @@ class L2AReflectance(SlurmJobTask):
             hdr["emit pge run command"] = " ".join(cmd)
             hdr["emit software build version"] = wm.config["build_num"]
             hdr["emit documentation version"] = doc_version
-            creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(img_path), tz=datetime.timezone.utc)
+            creation_time = datetime.datetime.fromtimestamp(
+                os.path.getmtime(img_path), tz=datetime.timezone.utc)
             hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
             hdr["emit data product version"] = wm.config["processing_version"]
             envi.write_envi_header(hdr_path, hdr)
@@ -139,9 +142,11 @@ class L2AReflectance(SlurmJobTask):
                 }
             }
             if "_rfl_" in img_path:
-                dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2a.rfl": product_dict})
+                dm.update_acquisition_metadata(
+                    acq.acquisition_id, {"products.l2a.rfl": product_dict})
             elif "_uncert_" in img_path:
-                dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2a.uncert": product_dict})
+                dm.update_acquisition_metadata(
+                    acq.acquisition_id, {"products.l2a.uncert": product_dict})
 
         log_entry = {
             "task": self.task_family,
@@ -237,7 +242,8 @@ class L2AMask(SlurmJobTask):
         hdr["emit pge run command"] = " ".join(cmd)
         hdr["emit software build version"] = wm.config["build_num"]
         hdr["emit documentation version"] = doc_version
-        creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.mask_img_path), tz=datetime.timezone.utc)
+        creation_time = datetime.datetime.fromtimestamp(
+            os.path.getmtime(acq.mask_img_path), tz=datetime.timezone.utc)
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         hdr["emit data product version"] = wm.config["processing_version"]
         envi.write_envi_header(acq.mask_hdr_path, hdr)
