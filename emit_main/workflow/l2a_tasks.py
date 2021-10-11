@@ -15,6 +15,7 @@ from emit_main.workflow.envi_target import ENVITarget
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.l1b_tasks import L1BCalibrate, L1BGeolocate
 from emit_main.workflow.slurm import SlurmJobTask
+from emit_utils.file_checks import envi_header
 
 logger = logging.getLogger("emit-main")
 
@@ -85,13 +86,13 @@ class L2AReflectance(SlurmJobTask):
 
         # Copy output files to l2a dir and rename
         tmp_rfl_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_rfl")
-        tmp_rfl_hdr_path = tmp_rfl_path + ".hdr"
+        tmp_rfl_hdr_path = envi_header(tmp_rfl_path)
         tmp_uncert_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_uncert")
-        tmp_uncert_hdr_path = tmp_uncert_path + ".hdr"
+        tmp_uncert_hdr_path = envi_header(tmp_uncert_path)
         tmp_lbl_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_lbl")
-        tmp_lbl_hdr_path = tmp_lbl_path + ".hdr"
+        tmp_lbl_hdr_path = envi_header(tmp_lbl_path)
         tmp_statesubs_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_subs_state")
-        tmp_statesubs_hdr_path = tmp_statesubs_path + ".hdr"
+        tmp_statesubs_hdr_path = envi_header(tmp_statesubs_path)
         wm.copy(tmp_rfl_path, acq.rfl_img_path)
         wm.copy(tmp_rfl_hdr_path, acq.rfl_hdr_path)
         wm.copy(tmp_uncert_path, acq.uncert_img_path)
@@ -101,8 +102,8 @@ class L2AReflectance(SlurmJobTask):
         wm.copy(tmp_statesubs_path, acq.statesubs_img_path)
         wm.copy(tmp_statesubs_hdr_path, acq.statesubs_hdr_path)
         # TODO: Remove symlinks when possible
-        wm.symlink(acq.rfl_hdr_path, acq.rfl_img_path + ".hdr")
-        wm.symlink(acq.uncert_hdr_path, acq.uncert_img_path + ".hdr")
+        wm.symlink(acq.rfl_hdr_path, envi_header(acq.rfl_img_path))
+        wm.symlink(acq.uncert_hdr_path, envi_header(acq.uncert_img_path))
         # Copy log file and rename
         log_path = acq.rfl_img_path.replace(".img", "_pge.log")
         wm.copy(tmp_log_path, log_path)
@@ -198,36 +199,25 @@ class L2AMask(SlurmJobTask):
         acq = wm.acquisition
         pge = wm.pges["emit-sds-l2a"]
 
-        # Build PGE commands for apply_glt.py
+        # Build PGE command for make_masks.py
         tmp_output_dir = os.path.join(self.tmp_dir, "output")
         os.makedirs(tmp_output_dir)
-        tmp_rdnort_path = os.path.join(tmp_output_dir, os.path.basename(acq.rdnort_img_path))
-        tmp_locort_path = os.path.join(tmp_output_dir, os.path.basename(acq.locort_img_path))
-        tmp_lblort_path = os.path.join(tmp_output_dir, os.path.basename(acq.lblort_img_path))
-        apply_glt_exe = os.path.join(pge.repo_dir, "apply_glt.py")
 
-        cmd_rdn = ["python", apply_glt_exe, acq.rdn_img_path, acq.glt_img_path, tmp_rdnort_path]
-        cmd_loc = ["python", apply_glt_exe, acq.loc_img_path, acq.glt_img_path, tmp_locort_path]
-        cmd_lbl = ["python", apply_glt_exe, acq.lbl_img_path, acq.glt_img_path, tmp_lblort_path]
-        pge.run(cmd_rdn, tmp_dir=self.tmp_dir)
-        pge.run(cmd_loc, tmp_dir=self.tmp_dir)
-        pge.run(cmd_lbl, tmp_dir=self.tmp_dir)
-
-        # Build PGE command for make_masks.py
         tmp_rho_path = os.path.join(tmp_output_dir, self.acquisition_id + "_rho")
         tmp_mask_path = os.path.join(tmp_output_dir, os.path.basename(acq.mask_img_path))
-        tmp_mask_hdr_path = tmp_mask_path + ".hdr"
+        tmp_mask_hdr_path = envi_header(tmp_mask_path)
         solar_irradiance_path = os.path.join(pge.repo_dir, "data", "kurudz_0.1nm.dat")
         make_masks_exe = os.path.join(pge.repo_dir, "make_emit_masks.py")
+
         input_files = {
-            "ortho_radiance_file": tmp_rdnort_path,
-            "ortho_pixel_locations_file": tmp_locort_path,
-            "ortho_subset_labels_file": tmp_lblort_path,
+            "radiance_file": acq.rdn_img_path,
+            "pixel_locations_file": acq.loc_img_path,
+            "subset_labels_file": acq.lbl_img_path,
             "state_subset_file": acq.statesubs_img_path,
             "solar_irradiance_file": solar_irradiance_path
-
         }
-        cmd = ["python", make_masks_exe, tmp_rdnort_path, tmp_locort_path, tmp_lblort_path, acq.statesubs_img_path,
+
+        cmd = ["python", make_masks_exe, acq.rdn_img_path, acq.loc_img_path, acq.lbl_img_path, acq.statesubs_img_path,
                solar_irradiance_path, tmp_rho_path, tmp_mask_path]
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
