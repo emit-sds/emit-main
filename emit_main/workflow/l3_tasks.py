@@ -65,7 +65,7 @@ class L3Unmix(SlurmJobTask):
         log_path = acq.cover_img_path.replace(".img", "_pge.log")
         output_base = os.path.join(self.local_tmp_dir, "unmixing_output")
 
-        cmd_unmix = [unmix_exe, acq.rfl_img_path, endmember_path, endmember_key, output_base, "--normalization",
+        cmd_unmix = ['julia', unmix_exe, acq.rfl_img_path, endmember_path, endmember_key, output_base, "--normalization",
                      "brightness", "--n_mc", "100", "--reflectance_uncertainty_file", acq.uncert_img_path,
                      "--spectral_starting_column", "2", "--num_endmembers", "-1", "--log-file", log_path]
 
