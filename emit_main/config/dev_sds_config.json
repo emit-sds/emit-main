@@ -44,6 +44,8 @@
     "isofit_sixs_dir": "/shared/sixs",
     "specpr_path": "/shared/specpr",
     "tetracorder_path": "/shared/tetracorder5.26",
+    "tetracorder_research_library": "/beegfs/store/tetracorder/official_libraries/remitsyn",
+    "tetracorder_standard_library": "/beegfs/store/tetracorder/official_libraries/semitsyn",
     "versions": [
       {
         "version_date_range": ["2018-01-01T00:00:00", "2019-01-01T00:00:00"],
