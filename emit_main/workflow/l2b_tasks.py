@@ -80,9 +80,9 @@ class L2BAbundance(SlurmJobTask):
             "reflectance_uncertainty_file": acq.uncert_img_path
         }
         cmd = ["python", aggregator_exe, tetra_out_dir, tmp_abun_path,
-               "-calculate_uncertainty", "0",
-               "-reflectance_file", acq.rfl_img_path,
-               "-reflectance_uncertainty_file", acq.uncert_img_path]
+               "--calculate_uncertainty", "1",
+               "--reflectance_file", acq.rfl_img_path,
+               "--reflectance_uncertainty_file", acq.uncert_img_path]
         pge.run(cmd, cwd=pge.repo_dir, tmp_dir=self.tmp_dir)
 
         # Copy mask files to l2a dir
