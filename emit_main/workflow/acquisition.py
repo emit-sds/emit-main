@@ -116,6 +116,7 @@ class Acquisition:
                 "mask": ["img", "hdr"]
             },
             "l2b": {
+                "tetra": ["dir"],
                 "abun": ["img", "hdr"],
                 "abununcert": ["img", "hdr"]
             },
