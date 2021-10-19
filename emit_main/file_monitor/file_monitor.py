@@ -43,14 +43,19 @@ class FileMonitor:
         self.dirs = [self.ingest_dir, self.ingest_duplicates_dir, self.ingest_errors_dir, self.logs_dir]
 
         # Make directories if they don't exist
-        for d in self.dirs:
-            if not os.path.exists(d):
-                os.makedirs(d)
+        for path in self.dirs:
+            if not os.path.exists(path):
+                os.makedirs(path)
                 # Change group ownership in shared environments
                 if self.config["environment"] in ["dev", "test", "ops"]:
                     uid = pwd.getpwnam(pwd.getpwuid(os.getuid())[0]).pw_uid
                     gid = grp.getgrnam(self.config["instrument"] + "-" + self.config["environment"]).gr_gid
-                    os.chown(d, uid, gid)
+                    # Only the owner of a file or directory can change the group ownership
+                    owner = pwd.getpwuid(os.stat(path, follow_symlinks=False).st_uid).pw_name
+                    current_user = pwd.getpwuid(os.getuid()).pw_name
+                    # Only change ownership if the desired gid is different from the current one
+                    if owner == current_user and gid != os.stat(path, follow_symlinks=False).st_gid:
+                        os.chown(path, uid, gid, follow_symlinks=False)
 
     def ingest_files(self, dry_run=False):
         """

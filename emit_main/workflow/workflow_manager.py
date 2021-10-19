@@ -148,22 +148,12 @@ class WorkflowManager:
         if self.config["environment"] in ["dev", "test", "ops"]:
             uid = pwd.getpwnam(pwd.getpwuid(os.getuid())[0]).pw_uid
             gid = grp.getgrnam(self.config["instrument"] + "-" + self.config["environment"]).gr_gid
-
+            # Only the owner of a file or directory can change the group ownership
             owner = pwd.getpwuid(os.stat(path, follow_symlinks=False).st_uid).pw_name
             current_user = pwd.getpwuid(os.getuid()).pw_name
-            if owner == current_user:
+            # Only change ownership if the desired gid is different from the current one
+            if owner == current_user and gid != os.stat(path, follow_symlinks=False).st_gid:
                 os.chown(path, uid, gid, follow_symlinks=False)
-            else:
-                logger.warning(f"File {path} has owner {owner}, but the current user is {current_user}." \
-                                "Cannot modify file group ownership")
-
-            # If this is a directory and not a symlink then apply group ownership recursively
-            # if os.path.isdir(path) and not os.path.islink(path):
-            #     for dirpath, dirnames, filenames in os.walk(path):
-            #         for dname in dirnames:
-            #             os.chown(os.path.join(dirpath, dname), uid, gid)
-            #         for fname in filenames:
-            #             os.chown(os.path.join(dirpath, fname), uid, gid)
 
     def copy(self, src, dst):
         shutil.copy2(src, dst)
