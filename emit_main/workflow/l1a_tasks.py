@@ -83,109 +83,65 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
         logger.debug(f"Found frames {frames} and dcids {dcids}")
 
         # For each DCID, create a DCID folder and copy the frames there.  Keep track of all output paths.
+        dcid_frames_map = {}
         output_frame_paths = []
         for dcid in dcids:
+            # Insert DCID in database if it doesn't exist
+            if not dm.find_data_collection_by_id(dcid):
+                dcid_meta = {
+                    "dcid": dcid,
+                    "build_num": wm.config["build_num"],
+                    "processing_version": wm.config["processing_version"]
+                }
+                dm.insert_data_collection()
+                logger.debug(f"Inserted data collection in DB with {dcid_meta}")
+
+            # Now get workflow manager again containing data collection
+            wm = WorkflowManager(config_path=self.config_path, dcid=dcid)
+            dc = wm.data_collection
+
             # Copy the frames
             dcid_frame_paths = []
             for path in glob.glob(os.path.join(tmp_frames_dir, "*" + dcid + "*")):
-                # Replace dcid with acquisition id on copy
-                fname_tokens = os.path.basename(path).split("_")
-                fname_tokens[0] = acq.acquisition_id
-                acquisition_frame_path = os.path.join(acq.frames_dir, "_".join(fname_tokens))
-                wm.copy(path, acquisition_frame_path)
-                dcid_frame_paths.append(acquisition_frame_path)
+                dcid_frame_name = os.path.basename(path)
+                dcid_frame_path = os.path.join(dc.frames_dir, dcid_frame_name)
+                wm.copy(path, dcid_frame_path)
+                dcid_frame_paths.append(dcid_frame_path)
 
-            # Create a symlink from the stream l1a dir to the acquisition l1a frames dir
-            acq_frame_symlink = os.path.join(stream.frames_dir, os.path.basename(acq.frames_dir))
-            if not os.path.exists(acq_frame_symlink):
-                wm.symlink(acq.frames_dir, acq_frame_symlink)
+            # Create a symlink from the stream l1a dir to the dcid frames dir
+            dcid_frame_symlink = os.path.join(stream.frames_dir, os.path.basename(dc.frames_dir))
+            if not os.path.exists(dcid_frame_symlink):
+                wm.symlink(dc.frames_dir, dcid_frame_symlink)
 
             # Add frame paths to acquisition metadata
-            if "frames" in acq.metadata["products"]["l1a"] and acq.metadata["products"]["l1a"]["frames"] is not None:
+            if "frames" in dc.metadata["products"]["l1a"] and dc.metadata["products"]["l1a"]["frames"] is not None:
                 for path in dcid_frame_paths:
-                    if path not in acq.metadata["products"]["l1a"]["frames"]:
-                        acq.metadata["products"]["l1a"]["frames"] += [path]
+                    if path not in dc.metadata["products"]["l1a"]["frames"]:
+                        dc.metadata["products"]["l1a"]["frames"] += [path]
             else:
-                acq.metadata["products"]["l1a"]["frames"] = dcid_frame_paths
-            acq.metadata["products"]["l1a"]["frames"].sort()
-            dm.update_acquisition_metadata(
-                acq.acquisition_id,
-                {"products.l1a.frames": acq.metadata["products"]["l1a"]["frames"]})
+                dc.metadata["products"]["l1a"]["frames"] = dcid_frame_paths
+            dc.metadata["products"]["l1a"]["frames"].sort()
+            dm.update_data_collection_metadata(
+                dcid,
+                {"products.l1a.frames": dc.metadata["products"]["l1a"]["frames"]})
 
-            # Add stream file to acquisition metadata in DB so there is a link back to CCSDS packet stream for each
+            # Add stream file to data collection metadata in DB so there is a link back to CCSDS packet stream for each
             # acquisition. There may be multiple stream files that contribute frames to a given acquisition
-            if "associated_ccsds" in acq.metadata and acq.metadata["associated_ccsds"] is not None:
-                if stream.ccsds_path not in acq.metadata["associated_ccsds"]:
-                    acq.metadata["associated_ccsds"].append(stream.ccsds_path)
+            if "associated_ccsds" in dc.metadata and dc.metadata["associated_ccsds"] is not None:
+                if stream.ccsds_path not in dc.metadata["associated_ccsds"]:
+                    dc.metadata["associated_ccsds"].append(stream.ccsds_path)
             else:
-                acq.metadata["associated_ccsds"] = [stream.ccsds_path]
-            dm.update_acquisition_metadata(acq.acquisition_id, {"associated_ccsds": acq.metadata["associated_ccsds"]})
+                dc.metadata["associated_ccsds"] = [stream.ccsds_path]
+            dm.update_data_collection_metadata(dcid, {"associated_ccsds": dc.metadata["associated_ccsds"]})
 
             # Append frames to include in stream metadata
             dcid_frame_paths.sort()
-            acquisition_frames_map.update({acq.acquisition_id: dcid_frame_paths})
+            dcid_frames_map.update({dcid: dcid_frame_paths})
 
             # Keep track of all output paths for log entry
             output_frame_paths += dcid_frame_paths
 
-            # End of copy
-
-        acquisition_frames_map = {}
-        output_frame_paths = []
-        for dcid in dcids:
-            acq = dm.find_acquisition_by_dcid(dcid)
-            if acq is None:
-                raise RuntimeError(f"Unable to find acquisition in DB with dcid {dcid}")
-            wm = WorkflowManager(config_path=self.config_path, acquisition_id=acq["acquisition_id"],
-                                 stream_path=self.stream_path)
-            acq = wm.acquisition
-            stream = wm.stream
-
-            # Copy the frames
-            dcid_frame_paths = []
-            for path in glob.glob(os.path.join(tmp_frames_dir, dcid + "*")):
-                # TODO: Keep DCID here for future reference and rename on later step?
-                # Replace dcid with acquisition id on copy
-                fname_tokens = os.path.basename(path).split("_")
-                fname_tokens[0] = acq.acquisition_id
-                acquisition_frame_path = os.path.join(acq.frames_dir, "_".join(fname_tokens))
-                wm.copy(path, acquisition_frame_path)
-                dcid_frame_paths.append(acquisition_frame_path)
-
-            # Create a symlink from the stream l1a dir to the acquisition l1a frames dir
-            acq_frame_symlink = os.path.join(stream.frames_dir, os.path.basename(acq.frames_dir))
-            if not os.path.exists(acq_frame_symlink):
-                wm.symlink(acq.frames_dir, acq_frame_symlink)
-
-            # Add frame paths to acquisition metadata
-            if "frames" in acq.metadata["products"]["l1a"] and acq.metadata["products"]["l1a"]["frames"] is not None:
-                for path in dcid_frame_paths:
-                    if path not in acq.metadata["products"]["l1a"]["frames"]:
-                        acq.metadata["products"]["l1a"]["frames"] += [path]
-            else:
-                acq.metadata["products"]["l1a"]["frames"] = dcid_frame_paths
-            acq.metadata["products"]["l1a"]["frames"].sort()
-            dm.update_acquisition_metadata(
-                acq.acquisition_id,
-                {"products.l1a.frames": acq.metadata["products"]["l1a"]["frames"]})
-
-            # Add stream file to acquisition metadata in DB so there is a link back to CCSDS packet stream for each
-            # acquisition. There may be multiple stream files that contribute frames to a given acquisition
-            if "associated_ccsds" in acq.metadata and acq.metadata["associated_ccsds"] is not None:
-                if stream.ccsds_path not in acq.metadata["associated_ccsds"]:
-                    acq.metadata["associated_ccsds"].append(stream.ccsds_path)
-            else:
-                acq.metadata["associated_ccsds"] = [stream.ccsds_path]
-            dm.update_acquisition_metadata(acq.acquisition_id, {"associated_ccsds": acq.metadata["associated_ccsds"]})
-
-            # Append frames to include in stream metadata
-            dcid_frame_paths.sort()
-            acquisition_frames_map.update({acq.acquisition_id: dcid_frame_paths})
-
-            # Keep track of all output paths for log entry
-            output_frame_paths += dcid_frame_paths
-
-        dm.update_stream_metadata(stream.ccsds_name, {"products.l1a": acquisition_frames_map})
+        dm.update_stream_metadata(stream.ccsds_name, {"products.l1a": dcid_frames_map})
 
         # Copy log file and report file into the stream's l1a directory
         sdp_log_name = stream.ccsds_name.replace("l0_ccsds", "l1a_frames").replace(".bin", "_pge.log")

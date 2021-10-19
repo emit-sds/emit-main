@@ -18,6 +18,7 @@ from email.mime.text import MIMEText
 from emit_main.database.database_manager import DatabaseManager
 from emit_main.config.config import Config
 from emit_main.workflow.acquisition import Acquisition
+from emit_main.workflow.data_collection import DataCollection
 from emit_main.workflow.pge import PGE
 from emit_main.workflow.stream import Stream
 
@@ -26,7 +27,7 @@ logger = logging.getLogger("emit-main")
 
 class WorkflowManager:
 
-    def __init__(self, config_path, acquisition_id=None, stream_path=None):
+    def __init__(self, config_path, acquisition_id=None, stream_path=None, dcid=None):
         """
         :param config_path: Path to config file containing environment settings
         :param acquisition_id: The name of the acquisition with timestamp (eg. "emit20200519t140035")
@@ -35,6 +36,7 @@ class WorkflowManager:
         self.config_path = config_path
         self.acquisition_id = acquisition_id
         self.stream_path = stream_path
+        self.dcid = dcid
 
         # Get config properties
         self.config = Config(config_path, acquisition_id).get_dictionary()
@@ -78,6 +80,12 @@ class WorkflowManager:
             self.stream = Stream(self.config_path, self.stream_path)
         else:
             self.stream = None
+
+        # If we have a DCID and the data collection exists in db, initialize data collection
+        if self.dcid and self.database_manager.find_data_collection_by_id(self.dcid):
+            self.data_collection = DataCollection(self.config_path, self.dcid)
+        else:
+            self.data_collection = None
 
         # Create repository paths and PGEs based on build config
         self.pges = {}
