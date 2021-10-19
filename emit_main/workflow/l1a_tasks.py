@@ -88,13 +88,13 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
         for dcid in dcids:
             # Insert DCID in database if it doesn't exist
             if not dm.find_data_collection_by_id(dcid):
-                dcid_meta = {
+                dc_meta = {
                     "dcid": dcid,
                     "build_num": wm.config["build_num"],
                     "processing_version": wm.config["processing_version"]
                 }
-                dm.insert_data_collection()
-                logger.debug(f"Inserted data collection in DB with {dcid_meta}")
+                dm.insert_data_collection(dc_meta)
+                logger.debug(f"Inserted data collection in DB with {dc_meta}")
 
             # Now get workflow manager again containing data collection
             wm = WorkflowManager(config_path=self.config_path, dcid=dcid)

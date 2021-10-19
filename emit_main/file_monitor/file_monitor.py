@@ -128,11 +128,11 @@ class FileMonitor:
                                             partition=self.partition,
                                             miss_pkt_thresh=self.miss_pkt_thresh))
             # Temporarily remove science data processing until it is ready
-            # if apid == "1675":
-            #     tasks.append(L1ADepacketizeScienceFrames(config_path=self.config_path,
-            #                                              stream_path=p,
-            #                                              level=self.level,
-            #                                              partition=self.partition,
-            #                                              miss_pkt_thresh=self.miss_pkt_thresh,
-            #                                              test_mode=self.test_mode))
+            if apid == "1675":
+                tasks.append(L1ADepacketizeScienceFrames(config_path=self.config_path,
+                                                         stream_path=p,
+                                                         level=self.level,
+                                                         partition=self.partition,
+                                                         miss_pkt_thresh=self.miss_pkt_thresh,
+                                                         test_mode=self.test_mode))
         return tasks

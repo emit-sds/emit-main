@@ -37,9 +37,9 @@ class DataCollection:
         self.__dict__.update(self.metadata)
 
         # Add UTC tzinfo property to start/stop datetime objects for printing
-        if self.start_time:
+        if "start_time" in self.__dict__:
             self.start_time = pytz.utc.localize(self.start_time)
-        if self.stop_time:
+        if "stop_time" in self.__dict__:
             self.stop_time = pytz.utc.localize(self.stop_time)
 
         # Create base directories and add to list to create directories later
