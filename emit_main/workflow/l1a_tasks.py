@@ -105,7 +105,8 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
             for path in glob.glob(os.path.join(tmp_frames_dir, "*" + dcid + "*")):
                 dcid_frame_name = os.path.basename(path)
                 dcid_frame_path = os.path.join(dc.frames_dir, dcid_frame_name)
-                wm.copy(path, dcid_frame_path)
+                if not os.path.exists(dcid_frame_path):
+                    wm.copy(path, dcid_frame_path)
                 dcid_frame_paths.append(dcid_frame_path)
 
             # Create a symlink from the stream l1a dir to the dcid frames dir
@@ -114,16 +115,16 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
                 wm.symlink(dc.frames_dir, dcid_frame_symlink)
 
             # Add frame paths to acquisition metadata
-            if "frames" in dc.metadata["products"]["l1a"] and dc.metadata["products"]["l1a"]["frames"] is not None:
+            if "frames" in dc.metadata and dc.metadata["frames"] is not None:
                 for path in dcid_frame_paths:
-                    if path not in dc.metadata["products"]["l1a"]["frames"]:
-                        dc.metadata["products"]["l1a"]["frames"] += [path]
+                    if path not in dc.metadata["frames"]:
+                        dc.metadata["frames"] += [path]
             else:
-                dc.metadata["products"]["l1a"]["frames"] = dcid_frame_paths
-            dc.metadata["products"]["l1a"]["frames"].sort()
+                dc.metadata["frames"] = dcid_frame_paths
+            dc.metadata["frames"].sort()
             dm.update_data_collection_metadata(
                 dcid,
-                {"products.l1a.frames": dc.metadata["products"]["l1a"]["frames"]})
+                {"frames": dc.metadata["frames"]})
 
             # Add stream file to data collection metadata in DB so there is a link back to CCSDS packet stream for each
             # acquisition. There may be multiple stream files that contribute frames to a given acquisition

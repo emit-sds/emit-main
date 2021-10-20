@@ -33,7 +33,6 @@ class DataCollection:
 
         dm = DatabaseManager(config_path)
         self.metadata = dm.find_data_collection_by_id(self.dcid)
-        self._initialize_metadata()
         self.__dict__.update(self.metadata)
 
         # Add UTC tzinfo property to start/stop datetime objects for printing
@@ -71,15 +70,6 @@ class DataCollection:
                     # Only change ownership if the desired gid is different from the current one
                     if owner == current_user and gid != os.stat(path, follow_symlinks=False).st_gid:
                         os.chown(path, uid, gid, follow_symlinks=False)
-
-    def _initialize_metadata(self):
-        # Insert some placeholder fields so that we don't get missing keys on updates
-        if "processing_log" not in self.metadata:
-            self.metadata["processing_log"] = []
-        if "products" not in self.metadata:
-            self.metadata["products"] = {}
-        if "l1a" not in self.metadata["products"]:
-            self.metadata["products"]["l1a"] = {}
 
     def has_complete_set_of_frames(self):
         frames = [os.path.basename(frame) for frame in glob.glob(os.path.join(self.frames_dir, "*"))]
