@@ -68,6 +68,35 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
                "--work_dir", self.local_tmp_dir,
                "--level", self.level,
                "--log_path", tmp_log_path]
+
+        # Get previous stream path if exists
+        logger.info(f"stream.start_time is {stream.start_time}")
+        datetime.timedelta(minutes=1)
+        prev_streams = dm.find_streams_by_date_range("1675", "stop_time",
+                                                     stream.start_time - datetime.timedelta(minutes=1),
+                                                     stream.start_time)
+        prev_stream_path = None
+        bytes_read = None
+        if prev_streams is not None and len(prev_streams) > 0:
+            try:
+                prev_stream_path = prev_streams[0]["products"]["l0"]["ccsds_path"]
+                wm_tmp = WorkflowManager(config_path=self.config_path, stream_path=prev_stream_path)
+                prev_stream_report = wm_tmp.stream.frames_dir + "_report.txt"
+                if os.path.exists(prev_stream_report):
+                    with open(prev_stream_report, "r") as f:
+                        for line in f.readlines():
+                            if "Bytes read since last index" in line:
+                                bytes_read = int(line.split(" ")[-1])
+                                break
+            except:
+                logger.warning(f"Found previous stream files in DB, but unable to get the previous stream's path.")
+                pass
+
+        # Append optional args and run
+        if prev_stream_path is not None:
+            cmd.extend(["--prev_stream_path", prev_stream_path])
+        if bytes_read is not None:
+            cmd.extend(["--prev_bytes_to_read", str(bytes_read)])
         if self.test_mode:
             cmd.append("--test_mode")
         pge.run(cmd, tmp_dir=self.tmp_dir)

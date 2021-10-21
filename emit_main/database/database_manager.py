@@ -71,6 +71,15 @@ class DatabaseManager:
             query = {"ccsds_name": name, "build_num": self.config["build_num"]}
         return streams_coll.find_one(query)
 
+    def find_streams_by_date_range(self, apid, field, start, stop, sort=1):
+        streams_coll = self.db.streams
+        query = {
+            "apid": apid,
+            field: {"$gte": start, "$lte": stop},
+            "build_num": self.config["build_num"]
+        }
+        return list(streams_coll.find(query).sort(field, sort))
+
     def insert_hosc_stream(self, hosc_name):
         if self.find_stream_by_name(hosc_name) is None:
             if "_hsc.bin" not in hosc_name:
@@ -139,16 +148,5 @@ class DatabaseManager:
         data_collections_coll = self.db.data_collections
         query = {"dcid": dcid, "build_num": self.config["build_num"]}
         metadata["last_modified"] = datetime.datetime.now(tz=datetime.timezone.utc)
-        set_value = {"$set": metadata}
-        data_collections_coll.update_one(query, set_value, upsert=True)
-
-    def insert_data_collection_log_entry(self, dcid, entry):
-        data_collections_coll = self.db.data_collections
-        query = {"dcid": dcid, "build_num": self.config["build_num"]}
-        push_value = {"$push": {"processing_log": entry}}
-        data_collections_coll.update_one(query, push_value)
-
-        # Update last modified
-        metadata = {"last_modified": entry["log_timestamp"]}
         set_value = {"$set": metadata}
         data_collections_coll.update_one(query, set_value, upsert=True)
