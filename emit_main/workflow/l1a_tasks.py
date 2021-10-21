@@ -217,7 +217,7 @@ class L1AReassembleRaw(SlurmJobTask):
 
         pge = wm.pges["emit-sds-l1a"]
         tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
-        os.makedirs(tmp_output_dir)
+        wm.makedirs(tmp_output_dir)
 
         reassemble_raw_pge = os.path.join(pge.repo_dir, "reassemble_raw_cube.py")
         flex_pge = wm.pges["EMIT_FLEX_codec"]
@@ -384,7 +384,7 @@ class L1AFrameReport(SlurmJobTask):
         pge = wm.pges["NGIS_Check_Line_Frame"]
 
         tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
-        os.makedirs(tmp_output_dir)
+        wm.makedirs(tmp_output_dir)
 
         # Copy decompressed frames to local tmp
         input_decomp_frame_paths = glob.glob(os.path.join(acq.decomp_dir, "*.decomp"))

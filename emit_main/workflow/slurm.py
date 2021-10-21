@@ -143,15 +143,14 @@ class SlurmJobTask(luigi.Task):
         wm = WorkflowManager(config_path=self.config_path)
         # Create tmp folder
         self.tmp_dir = os.path.join(wm.scratch_tmp_dir, self.task_instance_id)
-        os.makedirs(self.tmp_dir)
-        wm.change_group_ownership(self.tmp_dir)
+        wm.makedirs(self.tmp_dir)
         logger.info("Created scratch tmp dir: %s", self.tmp_dir)
 
         # If config file is relative path, copy config file to tmp dir
         if not self.config_path.startswith("/"):
             rel_config_dir = os.path.dirname(self.config_path)
             tmp_config_dir = os.path.join(self.tmp_dir, rel_config_dir)
-            os.makedirs(tmp_config_dir)
+            wm.makedirs(tmp_config_dir)
             wm.copy(self.config_path, tmp_config_dir)
 
         # Dump the code to be run into a pickle file
@@ -226,8 +225,7 @@ class SlurmJobTask(luigi.Task):
             logger.debug("Running task locally: %s" % self.task_family)
             # Set up local tmp dir
             self.local_tmp_dir = os.path.join(wm.local_tmp_dir, self.task_instance_id)
-            os.makedirs(self.local_tmp_dir)
-            wm.change_group_ownership(self.local_tmp_dir)
+            wm.makedirs(self.local_tmp_dir)
             logger.info("Created local tmp dir: %s", self.local_tmp_dir)
             # Run the job
             self.work()

@@ -206,7 +206,7 @@ class L2AMask(SlurmJobTask):
 
         # Build PGE command for make_masks.py
         tmp_output_dir = os.path.join(self.tmp_dir, "output")
-        os.makedirs(tmp_output_dir)
+        wm.makedirs(tmp_output_dir)
 
         tmp_rho_path = os.path.join(tmp_output_dir, self.acquisition_id + "_rho")
         tmp_mask_path = os.path.join(tmp_output_dir, os.path.basename(acq.mask_img_path))

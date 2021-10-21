@@ -22,8 +22,7 @@ def _do_work_on_compute_node(work_dir):
     # Set up local tmp dir
     wm = WorkflowManager(config_path=job.config_path)
     job.local_tmp_dir = os.path.join(wm.local_tmp_dir, job.task_instance_id)
-    os.makedirs(job.local_tmp_dir)
-    wm.change_group_ownership(job.local_tmp_dir)
+    wm.makedirs(job.local_tmp_dir)
     print(f"Created local tmp dir: {job.local_tmp_dir}")
 
     # Do the work contained

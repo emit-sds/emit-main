@@ -59,7 +59,7 @@ class L0StripHOSC(SlurmJobTask):
         ios_l0_proc = os.path.join(wm.pges["emit-l0edp"].repo_dir, "target", "release", "emit_l0_proc")
         # Create input dir and copy stream file into dir
         tmp_input_dir = os.path.join(self.local_tmp_dir, "input")
-        os.makedirs(tmp_input_dir)
+        wm.makedirs(tmp_input_dir)
         tmp_input_path = os.path.join(tmp_input_dir, os.path.basename(self.stream_path))
         wm.copy(self.stream_path, tmp_input_path)
         # Create output dir and log file name
