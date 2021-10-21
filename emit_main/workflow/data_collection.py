@@ -5,10 +5,8 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
 import glob
-import grp
 import logging
 import os
-import pwd
 import pytz
 
 from emit_main.database.database_manager import DatabaseManager
@@ -36,9 +34,9 @@ class DataCollection:
         self.__dict__.update(self.metadata)
 
         # Add UTC tzinfo property to start/stop datetime objects for printing
-        if "start_time" in self.__dict__:
+        if "start_time" in self.__dict__ and self.start_time is not None:
             self.start_time = pytz.utc.localize(self.start_time)
-        if "stop_time" in self.__dict__:
+        if "stop_time" in self.__dict__ and self.stop_time is not None:
             self.stop_time = pytz.utc.localize(self.stop_time)
 
         # Create base directories and add to list to create directories later
@@ -47,29 +45,37 @@ class DataCollection:
         self.environment_dir = os.path.join(self.instrument_dir, self.config["environment"])
         self.data_dir = os.path.join(self.environment_dir, "data")
         self.data_collections_dir = os.path.join(self.data_dir, "data_collections")
-        self.dcid_prefix_dir = os.path.join(self.data_collections_dir, self.dcid[:5])
-        self.dcid_dir = os.path.join(self.dcid_prefix_dir, self.dcid)
 
+        # Create directory structure for "by_dcid"
+        self.by_dcid_dir = os.path.join(self.data_collections_dir, "by_dcid")
+        self.dcid_hash_dir = os.path.join(self.by_dcid_dir, self.dcid[:5])
+        self.dcid_dir = os.path.join(self.dcid_hash_dir, self.dcid)
         self.frames_dir = os.path.join(
             self.dcid_dir,
             "_".join([self.dcid, "frames", "b" + self.config["build_num"], "v" + self.config["processing_version"]]))
+        self.dirs.extend([self.data_collections_dir, self.by_dcid_dir, self.dcid_hash_dir, self.dcid_dir,
+                          self.frames_dir])
 
-        self.dirs.extend([self.data_collections_dir, self.dcid_prefix_dir, self.dcid_dir, self.frames_dir])
+        # Create directory structure for "by_date" and symlink to frames dir above
+        if "start_time" in self.__dict__ and self.start_time is not None:
+            self.by_date_dir = os.path.join(self.by_date, "by_date")
+            start_date_str = self.start_time.strftime("%Y%m%d")
+            self.date_dir = os.path.join(self.by_date_dir, start_date_str)
+            self.date_dcid_dir = os.path.join(self.date_dir, f"{start_date_str}_{self.dcid}")
+            self.dirs.extend([self.by_date_dir, self.date_dir, self.date_dcid_dir])
+            # Create symlink to frames dir above
+            self.frames_symlink = os.path.join(
+                self.date_dcid_dir,
+                "_".join([self.dcid, "frames", "b" + self.config["build_num"], "v" + self.config["processing_version"]])
+            )
 
-        # Make directories if they don't exist
-        for path in self.dirs:
-            if not os.path.exists(path):
-                os.makedirs(path)
-                # Change group ownership in shared environments
-                if self.config["environment"] in ["dev", "test", "ops"]:
-                    uid = pwd.getpwnam(pwd.getpwuid(os.getuid())[0]).pw_uid
-                    gid = grp.getgrnam(self.config["instrument"] + "-" + self.config["environment"]).gr_gid
-                    # Only the owner of a file or directory can change the group ownership
-                    owner = pwd.getpwuid(os.stat(path, follow_symlinks=False).st_uid).pw_name
-                    current_user = pwd.getpwuid(os.getuid()).pw_name
-                    # Only change ownership if the desired gid is different from the current one
-                    if owner == current_user and gid != os.stat(path, follow_symlinks=False).st_gid:
-                        os.chown(path, uid, gid, follow_symlinks=False)
+        # Make directories and symlinks if they don't exist
+        from emit_main.workflow.workflow_manager import WorkflowManager
+        wm = WorkflowManager(config_path=config_path)
+        for d in self.dirs:
+            wm.makedirs(d)
+        if "start_time" in self.__dict__ and self.start_time is not None:
+            wm.symlink(self.frames_dir, self.frames_symlink)
 
     def has_complete_set_of_frames(self):
         frames = [os.path.basename(frame) for frame in glob.glob(os.path.join(self.frames_dir, "*"))]

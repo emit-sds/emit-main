@@ -73,16 +73,14 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
         # Based on DCIDs, copy frames to appropriate acquisition l1a frames directory.
-        # Also, attach stream files to acquisition object in DB and add frames as well
+        # Also, attach stream files to data collection object in DB and add frames as well
         frames = [os.path.basename(file) for file in glob.glob(os.path.join(tmp_frames_dir, "*"))]
         frames.sort()
-        # Use test_mode_offset for handling different file naming between test mode and normal operations.
-        # In test_mode, frame names are prefixed with a number indicating the depacketization order
-        test_mode_offset = 1 if self.test_mode else 0
-        dcids = set([frame.split("_")[0 + test_mode_offset] for frame in frames])
+
+        dcids = set([frame.split("_")[0] for frame in frames])
         logger.debug(f"Found frames {frames} and dcids {dcids}")
 
-        # For each DCID, create a DCID folder and copy the frames there.  Keep track of all output paths.
+        # For each DCID, copy the frames to its dcid-specific frames folder.  Keep track of all output paths.
         dcid_frames_map = {}
         output_frame_paths = []
         for dcid in dcids:
@@ -137,7 +135,14 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
 
             # Append frames to include in stream metadata
             dcid_frame_paths.sort()
-            dcid_frames_map.update({dcid: dcid_frame_paths})
+            dcid_frames_map.update(
+                {
+                    dcid: {
+                        "dcid_frame_paths": dcid_frame_paths,
+                        "created": datetime.datetime.now(tz=datetime.timezone.utc)
+                    }
+                }
+            )
 
             # Keep track of all output paths for log entry
             output_frame_paths += dcid_frame_paths

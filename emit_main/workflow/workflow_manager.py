@@ -39,7 +39,7 @@ class WorkflowManager:
         self.dcid = dcid
 
         # Get config properties
-        self.config = Config(config_path, acquisition_id).get_dictionary()
+        self.config = Config(config_path, acquisition_id=acquisition_id).get_dictionary()
 
         self.database_manager = DatabaseManager(config_path)
 
@@ -65,9 +65,7 @@ class WorkflowManager:
 
         # Make directories if they don't exist
         for d in dirs:
-            if not os.path.exists(d):
-                os.makedirs(d)
-                self.change_group_ownership(d)
+            self.makedirs(d)
 
         # If we have an acquisition id and acquisition exists in db, initialize acquisition
         if self.acquisition_id and self.database_manager.find_acquisition_by_id(self.acquisition_id):
@@ -162,6 +160,12 @@ class WorkflowManager:
             # Only change ownership if the desired gid is different from the current one
             if owner == current_user and gid != os.stat(path, follow_symlinks=False).st_gid:
                 os.chown(path, uid, gid, follow_symlinks=False)
+
+    def makedirs(self, d):
+        # Make directory if it doesn't exist
+        if not os.path.exists(d):
+            os.makedirs(d)
+            self.change_group_ownership(d)
 
     def copy(self, src, dst):
         shutil.copy2(src, dst)
