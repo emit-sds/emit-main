@@ -67,22 +67,26 @@ class L2BAbundance(SlurmJobTask):
         env["TETRA"] = wm.config["tetracorder_path"]
         env["PATH"] = "${PATH}:${SP_LOCAL}/bin:${TETRA}/bin:/usr/bin"
 
-        tmp_rfl_path = os.path.join(self.local_tmp_dir, os.path.basename(acq.rfl_img_path))
+        # This has to be a bit truncated because of character limitations
+        tmp_rfl_path = os.path.join(self.local_tmp_dir, 'r')
         tmp_rfl_path_hdr = envi_header(tmp_rfl_path)
 
         wm.symlink(acq.rfl_img_path, tmp_rfl_path)
         wm.symlink(acq.rfl_hdr_path, tmp_rfl_path_hdr)
 
         # This has to be a bit truncated because of character limitations
-        tmp_tetra_output_path = os.path.join(self.local_tmp_dir, os.path.basename(acq.abun_img_path).split('_')[0])
+        tmp_tetra_output_path = os.path.join(self.local_tmp_dir, os.path.basename(acq.abun_img_path).split('_')[0] + '_tetra')
 
         cmd_tetra_setup = [wm.config["tetracorder_setup_cmd_path"], tmp_tetra_output_path,
                            wm.config["tetracorder_library_cmdname"], "cube", tmp_rfl_path, "1", "-T", "-20", "80", "C",
                            "-P", ".5", "1.5", "bar"]
         pge.run(cmd_tetra_setup, tmp_dir=self.tmp_dir, env=env)
 
-        cmd_tetra = [os.path.join(tmp_tetra_output_path, "cmd.runtet"), "cube", tmp_rfl_path]
+        current_pwd = os.getcwd()
+        os.chdir(tmp_tetra_output_path)
+        cmd_tetra = [os.path.join(tmp_tetra_output_path, "cmd.runtet"), "cube", tmp_rfl_path, 'band', '20', 'gif']
         pge.run(cmd_tetra, tmp_dir=self.tmp_dir, env=env)
+        os.chdir(current_pwd)
 
         # Build aggregator cmd
         aggregator_exe = os.path.join(pge.repo_dir, "aggregator.py")

@@ -4,7 +4,9 @@
     "environment": "dev",
     "processing_version": "00",
     "luigi_local_scheduler": false,
-    "luigi_workers": 2
+    "luigi_workers": 2,
+    "tetracorder_library_basename": "emitsyn",
+    "tetracorder_library_cmdname": "emit_synt"
   },
 
   "filesystem_config": {
@@ -45,8 +47,6 @@
     "specpr_path": "/shared/specpr",
     "tetracorder_path": "/shared/tetracorder5.26",
     "tetracorder_library_dir": "/beegfs/store/tetracorder/official_libraries",
-    "tetracorder_library_basename": "emitsyn",
-    "tetracorder_library_cmdname": "emit_synt",
     "tetracorder_setup_cmd_path": "/shared/tetracorder5.26a.cmds/cmd-setup-tetrun",
     "versions": [
       {
