@@ -29,7 +29,7 @@ logger = logging.getLogger("emit-main")
 
 def parse_args():
     product_choices = ["l0hosc", "l0plan", "l1aeng", "l1aframe", "l1aframereport", "l1araw", "l1bcal", "l2arefl",
-                       "l2amask", "l2babun","l3unmix"]
+                       "l2amask", "l2babun", "l3unmix"]
     parser = argparse.ArgumentParser()
     parser.add_argument("-a", "--acquisition_id", default="",
                         help="Acquisition ID")
@@ -46,8 +46,6 @@ def parse_args():
                         help="The slurm partition to be used - emit (default), debug, standard, patient ")
     parser.add_argument("--miss_pkt_thresh", default="0.1",
                         help="The threshold of missing packets to total packets which will cause a task to fail")
-    parser.add_argument("--ignore_prev_stream", action="store_true",
-                        help="When depacketizing science frames do not require a previous stream file ")
     parser.add_argument("--ignore_missing", action="store_true",
                         help="Ignore missing frames when reasssembling raw cube")
     parser.add_argument("-w", "--workers",
@@ -95,7 +93,6 @@ def get_tasks_from_args(args):
                                  **kwargs),
         "l1aframe": L1ADepacketizeScienceFrames(stream_path=args.stream_path,
                                                 miss_pkt_thresh=args.miss_pkt_thresh,
-                                                ignore_prev_stream=args.ignore_prev_stream,
                                                 **kwargs),
         "l1aframereport": L1AFrameReport(acquisition_id=args.acquisition_id, **kwargs),
         "l1araw": L1AReassembleRaw(acquisition_id=args.acquisition_id, ignore_missing=args.ignore_missing, **kwargs),

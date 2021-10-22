@@ -32,7 +32,6 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
     miss_pkt_thresh = luigi.FloatParameter()
-    ignore_prev_stream = luigi.BoolParameter(default=False)
     test_mode = luigi.BoolParameter(default=False)
 
     memory = 30000
@@ -73,26 +72,18 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
 
         # Get previous stream path if exists
         # TODO: What should the search window be here for finding previous stream files?
-        if not self.ignore_prev_stream:
-            prev_streams = dm.find_streams_by_date_range("1675", "stop_time",
-                                                         stream.start_time - datetime.timedelta(minutes=1),
-                                                         stream.start_time + datetime.timedelta(minutes=1))
-            prev_stream_path = None
-            if prev_streams is not None and len(prev_streams) > 0:
-                try:
-                    prev_stream_path = prev_streams[0]["products"]["l0"]["ccsds_path"]
-                except KeyError:
-                    logger.warning(f"Found previous stream files in DB, but unable to get the previous stream's path.")
-                    pass
+        prev_streams = dm.find_streams_by_date_range("1675", "stop_time",
+                                                     stream.start_time - datetime.timedelta(seconds=1),
+                                                     stream.start_time + datetime.timedelta(minutes=1))
+        prev_stream_path = None
+        if prev_streams is not None and len(prev_streams) > 0:
+            try:
+                prev_stream_path = prev_streams[0]["products"]["l0"]["ccsds_path"]
+            except KeyError:
+                logger.warning(f"Could not find a previous stream path for {stream.ccsds_path} in DB.")
+                pass
 
-            if prev_stream_path is None:
-                raise RuntimeError(f"Could not find a previous stream path for {stream.ccsds_path} in DB. Stopping "
-                                   f"execution to prevent the loss of a frame spanning CCSDS files.")
-            if not os.path.exists(prev_stream_path):
-                raise RuntimeError(f"Found previous stream path for {stream.ccsds_path} in DB.  However, the file "
-                                   f"{prev_stream_path} does not exist. Stopping execution to prevent the loss of a "
-                                   f"frame spanning CCSDS files.")
-
+        if prev_stream_path is not None:
             wm_tmp = WorkflowManager(config_path=self.config_path, stream_path=prev_stream_path)
             prev_stream_report = wm_tmp.stream.frames_dir + "_report.txt"
             bytes_read = None

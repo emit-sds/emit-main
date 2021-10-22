@@ -36,8 +36,6 @@ def parse_args():
                         help="The slurm partition to be used - emit (default), debug, standard, patient")
     parser.add_argument("--miss_pkt_thresh", default="0.1",
                         help="The threshold of missing packets to total packets which will cause a task to fail")
-    parser.add_argument("--ignore_prev_stream", action="store_true",
-                        help="When depacketizing science frames do not require a previous stream file ")
     parser.add_argument("-w", "--workers",
                         help="Number of luigi workers")
     parser.add_argument("--dry_run", action="store_true",
@@ -143,8 +141,7 @@ def main():
     wm.change_group_ownership(log_path)
 
     fm = FileMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
-                     miss_pkt_thresh=args.miss_pkt_thresh, ignore_prev_stream=args.ignore_prev_stream,
-                     test_mode=args.test_mode)
+                     miss_pkt_thresh=args.miss_pkt_thresh, test_mode=args.test_mode)
 
     # Get tasks from file monitor
     dry_run = args.dry_run

@@ -17,8 +17,7 @@ logger = logging.getLogger("emit-main")
 
 class FileMonitor:
 
-    def __init__(self, config_path, level="INFO", partition="emit", miss_pkt_thresh=0.1, ignore_prev_stream=False,
-                 test_mode=False):
+    def __init__(self, config_path, level="INFO", partition="emit", miss_pkt_thresh=0.1, test_mode=False):
         """
         :param config_path: Path to config file containing environment settings
         """
@@ -27,7 +26,6 @@ class FileMonitor:
         self.level = level
         self.partition = partition
         self.miss_pkt_thresh = miss_pkt_thresh
-        self.ignore_prev_stream = ignore_prev_stream
         self.test_mode = test_mode
 
         # Get config properties
@@ -104,6 +102,7 @@ class FileMonitor:
                             base_name = os.path.basename(path)
                             shutil.move(path, os.path.join(self.ingest_duplicates_dir, base_name))
 
+        paths.sort()
         if dry_run:
             return paths
 
@@ -125,6 +124,5 @@ class FileMonitor:
                                                          level=self.level,
                                                          partition=self.partition,
                                                          miss_pkt_thresh=self.miss_pkt_thresh,
-                                                         ignore_prev_stream=self.ignore_prev_stream,
                                                          test_mode=self.test_mode))
         return tasks
