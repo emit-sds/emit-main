@@ -61,79 +61,125 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
 
         # Build command and run
         sds_l1a_science_packet_exe = os.path.join(pge.repo_dir, "depacketize_science_frames.py")
-        tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
+        tmp_frames_dir = os.path.join(self.local_tmp_dir, "frames")
         tmp_log_path = os.path.join(self.local_tmp_dir, "depacketize_science_frames.log")
         tmp_report_path = tmp_log_path.replace(".log", "_report.txt")
+        input_files = {"ccsds_path": stream.ccsds_path}
         cmd = ["python", sds_l1a_science_packet_exe, stream.ccsds_path,
-               "--out_dir", tmp_output_dir,
+               "--work_dir", self.local_tmp_dir,
                "--level", self.level,
                "--log_path", tmp_log_path]
+
+        # Get previous stream path if exists
+        # TODO: What should the search window be here for finding previous stream files?
+        prev_streams = dm.find_streams_by_date_range("1675", "stop_time",
+                                                     stream.start_time - datetime.timedelta(seconds=1),
+                                                     stream.start_time + datetime.timedelta(minutes=1))
+        prev_stream_path = None
+        if prev_streams is not None and len(prev_streams) > 0:
+            try:
+                prev_stream_path = prev_streams[0]["products"]["l0"]["ccsds_path"]
+            except KeyError:
+                logger.warning(f"Could not find a previous stream path for {stream.ccsds_path} in DB.")
+                pass
+
+        if prev_stream_path is not None:
+            wm_tmp = WorkflowManager(config_path=self.config_path, stream_path=prev_stream_path)
+            prev_stream_report = wm_tmp.stream.frames_dir + "_report.txt"
+            bytes_read = None
+            if os.path.exists(prev_stream_report):
+                with open(prev_stream_report, "r") as f:
+                    for line in f.readlines():
+                        if "Bytes read since last index" in line:
+                            bytes_read = int(line.split(" ")[-1])
+                            break
+
+            # Append optional args and run
+            cmd.extend(["--prev_stream_path", prev_stream_path])
+            input_files["prev_stream_path"] = prev_stream_path
+            if bytes_read is not None:
+                cmd.extend(["--prev_bytes_to_read", str(bytes_read)])
+
         if self.test_mode:
             cmd.append("--test_mode")
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
         # Based on DCIDs, copy frames to appropriate acquisition l1a frames directory.
-        # Also, attach stream files to acquisition object in DB and add frames as well
-        frames = [os.path.basename(file) for file in glob.glob(os.path.join(tmp_output_dir, "*"))]
+        # Also, attach stream files to data collection object in DB and add frames as well
+        frames = [os.path.basename(file) for file in glob.glob(os.path.join(tmp_frames_dir, "*"))]
         frames.sort()
+
         dcids = set([frame.split("_")[0] for frame in frames])
         logger.debug(f"Found frames {frames} and dcids {dcids}")
-        acquisition_frames_map = {}
+
+        # For each DCID, copy the frames to its dcid-specific frames folder.  Keep track of all output paths.
+        dcid_frames_map = {}
         output_frame_paths = []
         for dcid in dcids:
-            acq = dm.find_acquisition_by_dcid(dcid)
-            if acq is None:
-                raise RuntimeError(f"Unable to find acquisition in DB with dcid {dcid}")
-            wm = WorkflowManager(config_path=self.config_path, acquisition_id=acq["acquisition_id"],
-                                 stream_path=self.stream_path)
-            acq = wm.acquisition
-            stream = wm.stream
+            # Insert DCID in database if it doesn't exist
+            if not dm.find_data_collection_by_id(dcid):
+                dc_meta = {
+                    "dcid": dcid,
+                    "build_num": wm.config["build_num"],
+                    "processing_version": wm.config["processing_version"]
+                }
+                dm.insert_data_collection(dc_meta)
+                logger.debug(f"Inserted data collection in DB with {dc_meta}")
+
+            # Now get workflow manager again containing data collection
+            wm = WorkflowManager(config_path=self.config_path, dcid=dcid)
+            dc = wm.data_collection
 
             # Copy the frames
-            acq_frame_paths = []
-            for path in glob.glob(os.path.join(tmp_output_dir, dcid + "*")):
-                # TODO: Keep DCID here for future reference and rename on later step?
-                # Replace dcid with acquisition id on copy
-                fname_tokens = os.path.basename(path).split("_")
-                fname_tokens[0] = acq.acquisition_id
-                acquisition_frame_path = os.path.join(acq.frames_dir, "_".join(fname_tokens))
-                wm.copy(path, acquisition_frame_path)
-                acq_frame_paths.append(acquisition_frame_path)
+            dcid_frame_paths = []
+            for path in glob.glob(os.path.join(tmp_frames_dir, "*" + dcid + "*")):
+                dcid_frame_name = os.path.basename(path)
+                dcid_frame_path = os.path.join(dc.frames_dir, dcid_frame_name)
+                if not os.path.exists(dcid_frame_path):
+                    wm.copy(path, dcid_frame_path)
+                dcid_frame_paths.append(dcid_frame_path)
 
-            # Create a symlink from the stream l1a dir to the acquisition l1a frames dir
-            acq_frame_symlink = os.path.join(stream.frames_dir, os.path.basename(acq.frames_dir))
-            if not os.path.exists(acq_frame_symlink):
-                wm.symlink(acq.frames_dir, acq_frame_symlink)
+            # Create a symlink from the stream l1a dir to the dcid frames dir
+            dcid_frame_symlink = os.path.join(stream.frames_dir, os.path.basename(dc.frames_dir))
+            if not os.path.exists(dcid_frame_symlink):
+                wm.symlink(dc.frames_dir, dcid_frame_symlink)
 
             # Add frame paths to acquisition metadata
-            if "frames" in acq.metadata["products"]["l1a"] and acq.metadata["products"]["l1a"]["frames"] is not None:
-                for path in acq_frame_paths:
-                    if path not in acq.metadata["products"]["l1a"]["frames"]:
-                        acq.metadata["products"]["l1a"]["frames"] += [path]
+            if "frames" in dc.metadata and dc.metadata["frames"] is not None:
+                for path in dcid_frame_paths:
+                    if path not in dc.metadata["frames"]:
+                        dc.metadata["frames"] += [path]
             else:
-                acq.metadata["products"]["l1a"]["frames"] = acq_frame_paths
-            acq.metadata["products"]["l1a"]["frames"].sort()
-            dm.update_acquisition_metadata(
-                acq.acquisition_id,
-                {"products.l1a.frames": acq.metadata["products"]["l1a"]["frames"]})
+                dc.metadata["frames"] = dcid_frame_paths
+            dc.metadata["frames"].sort()
+            dm.update_data_collection_metadata(
+                dcid,
+                {"frames": dc.metadata["frames"]})
 
-            # Add stream file to acquisition metadata in DB so there is a link back to CCSDS packet stream for each
+            # Add stream file to data collection metadata in DB so there is a link back to CCSDS packet stream for each
             # acquisition. There may be multiple stream files that contribute frames to a given acquisition
-            if "associated_ccsds" in acq.metadata and acq.metadata["associated_ccsds"] is not None:
-                if stream.ccsds_path not in acq.metadata["associated_ccsds"]:
-                    acq.metadata["associated_ccsds"].append(stream.ccsds_path)
+            if "associated_ccsds" in dc.metadata and dc.metadata["associated_ccsds"] is not None:
+                if stream.ccsds_path not in dc.metadata["associated_ccsds"]:
+                    dc.metadata["associated_ccsds"].append(stream.ccsds_path)
             else:
-                acq.metadata["associated_ccsds"] = [stream.ccsds_path]
-            dm.update_acquisition_metadata(acq.acquisition_id, {"associated_ccsds": acq.metadata["associated_ccsds"]})
+                dc.metadata["associated_ccsds"] = [stream.ccsds_path]
+            dm.update_data_collection_metadata(dcid, {"associated_ccsds": dc.metadata["associated_ccsds"]})
 
             # Append frames to include in stream metadata
-            acq_frame_paths.sort()
-            acquisition_frames_map.update({acq.acquisition_id: acq_frame_paths})
+            dcid_frame_paths.sort()
+            dcid_frames_map.update(
+                {
+                    dcid: {
+                        "dcid_frame_paths": dcid_frame_paths,
+                        "created": datetime.datetime.now(tz=datetime.timezone.utc)
+                    }
+                }
+            )
 
             # Keep track of all output paths for log entry
-            output_frame_paths += acq_frame_paths
+            output_frame_paths += dcid_frame_paths
 
-        dm.update_stream_metadata(stream.ccsds_name, {"products.l1a": acquisition_frames_map})
+        dm.update_stream_metadata(stream.ccsds_name, {"products.l1a": dcid_frames_map})
 
         # Copy log file and report file into the stream's l1a directory
         sdp_log_name = stream.ccsds_name.replace("l0_ccsds", "l1a_frames").replace(".bin", "_pge.log")
@@ -147,9 +193,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
             "task": self.task_family,
             "pge_name": pge.repo_url,
             "pge_version": pge.version_tag,
-            "pge_input_files": {
-                "ccsds_path": stream.ccsds_path,
-            },
+            "pge_input_files": input_files,
             "pge_run_command": " ".join(cmd),
             "documentation_version": doc_version,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
@@ -203,7 +247,7 @@ class L1AReassembleRaw(SlurmJobTask):
 
         pge = wm.pges["emit-sds-l1a"]
         tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
-        os.makedirs(tmp_output_dir)
+        wm.makedirs(tmp_output_dir)
 
         reassemble_raw_pge = os.path.join(pge.repo_dir, "reassemble_raw_cube.py")
         flex_pge = wm.pges["EMIT_FLEX_codec"]
@@ -370,7 +414,7 @@ class L1AFrameReport(SlurmJobTask):
         pge = wm.pges["NGIS_Check_Line_Frame"]
 
         tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
-        os.makedirs(tmp_output_dir)
+        wm.makedirs(tmp_output_dir)
 
         # Copy decompressed frames to local tmp
         input_decomp_frame_paths = glob.glob(os.path.join(acq.decomp_dir, "*.decomp"))

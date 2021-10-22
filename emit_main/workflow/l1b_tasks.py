@@ -57,7 +57,7 @@ class L1BCalibrate(SlurmJobTask):
 
         # PGE writes to tmp folder
         tmp_output_dir = os.path.join(self.tmp_dir, "output")
-        os.makedirs(tmp_output_dir)
+        wm.makedirs(tmp_output_dir)
         tmp_rdn_img_path = os.path.join(tmp_output_dir, os.path.basename(acq.rdn_img_path))
         log_name = os.path.basename(acq.rdn_img_path.replace(".img", "_pge.log"))
         tmp_log_path = os.path.join(tmp_output_dir, log_name)

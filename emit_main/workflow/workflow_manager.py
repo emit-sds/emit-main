@@ -18,6 +18,7 @@ from email.mime.text import MIMEText
 from emit_main.database.database_manager import DatabaseManager
 from emit_main.config.config import Config
 from emit_main.workflow.acquisition import Acquisition
+from emit_main.workflow.data_collection import DataCollection
 from emit_main.workflow.pge import PGE
 from emit_main.workflow.stream import Stream
 
@@ -26,7 +27,7 @@ logger = logging.getLogger("emit-main")
 
 class WorkflowManager:
 
-    def __init__(self, config_path, acquisition_id=None, stream_path=None):
+    def __init__(self, config_path, acquisition_id=None, stream_path=None, dcid=None):
         """
         :param config_path: Path to config file containing environment settings
         :param acquisition_id: The name of the acquisition with timestamp (eg. "emit20200519t140035")
@@ -35,9 +36,10 @@ class WorkflowManager:
         self.config_path = config_path
         self.acquisition_id = acquisition_id
         self.stream_path = stream_path
+        self.dcid = dcid
 
         # Get config properties
-        self.config = Config(config_path, acquisition_id).get_dictionary()
+        self.config = Config(config_path, acquisition_id=acquisition_id).get_dictionary()
 
         self.database_manager = DatabaseManager(config_path)
 
@@ -63,9 +65,7 @@ class WorkflowManager:
 
         # Make directories if they don't exist
         for d in dirs:
-            if not os.path.exists(d):
-                os.makedirs(d)
-                self.change_group_ownership(d)
+            self.makedirs(d)
 
         # If we have an acquisition id and acquisition exists in db, initialize acquisition
         if self.acquisition_id and self.database_manager.find_acquisition_by_id(self.acquisition_id):
@@ -78,6 +78,12 @@ class WorkflowManager:
             self.stream = Stream(self.config_path, self.stream_path)
         else:
             self.stream = None
+
+        # If we have a DCID and the data collection exists in db, initialize data collection
+        if self.dcid and self.database_manager.find_data_collection_by_id(self.dcid):
+            self.data_collection = DataCollection(self.config_path, self.dcid)
+        else:
+            self.data_collection = None
 
         # Create repository paths and PGEs based on build config
         self.pges = {}
@@ -148,22 +154,18 @@ class WorkflowManager:
         if self.config["environment"] in ["dev", "test", "ops"]:
             uid = pwd.getpwnam(pwd.getpwuid(os.getuid())[0]).pw_uid
             gid = grp.getgrnam(self.config["instrument"] + "-" + self.config["environment"]).gr_gid
-
+            # Only the owner of a file or directory can change the group ownership
             owner = pwd.getpwuid(os.stat(path, follow_symlinks=False).st_uid).pw_name
             current_user = pwd.getpwuid(os.getuid()).pw_name
-            if owner == current_user:
+            # Only change ownership if the desired gid is different from the current one
+            if owner == current_user and gid != os.stat(path, follow_symlinks=False).st_gid:
                 os.chown(path, uid, gid, follow_symlinks=False)
-            else:
-                logger.warning(f"File {path} has owner {owner}, but the current user is {current_user}." \
-                                "Cannot modify file group ownership")
 
-            # If this is a directory and not a symlink then apply group ownership recursively
-            # if os.path.isdir(path) and not os.path.islink(path):
-            #     for dirpath, dirnames, filenames in os.walk(path):
-            #         for dname in dirnames:
-            #             os.chown(os.path.join(dirpath, dname), uid, gid)
-            #         for fname in filenames:
-            #             os.chown(os.path.join(dirpath, fname), uid, gid)
+    def makedirs(self, d):
+        # Make directory if it doesn't exist
+        if not os.path.exists(d):
+            os.makedirs(d)
+            self.change_group_ownership(d)
 
     def copy(self, src, dst):
         shutil.copy2(src, dst)

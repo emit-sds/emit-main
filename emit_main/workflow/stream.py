@@ -4,10 +4,8 @@ This code contains the Stream class that manages HOSC and CCSDS data
 Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
-import grp
 import logging
 import os
-import pwd
 
 from emit_main.database.database_manager import DatabaseManager
 from emit_main.config.config import Config
@@ -66,14 +64,10 @@ class Stream:
                 self.dirs.append(self.frames_dir)
 
         # Make directories if they don't exist
+        from emit_main.workflow.workflow_manager import WorkflowManager
+        wm = WorkflowManager(config_path=config_path)
         for d in self.dirs:
-            if not os.path.exists(d):
-                os.makedirs(d)
-                # Change group ownership in shared environments
-                if self.config["environment"] in ["dev", "test", "ops"]:
-                    uid = pwd.getpwnam(pwd.getpwuid(os.getuid())[0]).pw_uid
-                    gid = grp.getgrnam(self.config["instrument"] + "-" + self.config["environment"]).gr_gid
-                    os.chown(d, uid, gid)
+            wm.makedirs(d)
 
     def _initialize_metadata(self):
         # Insert some placeholder fields so that we don't get missing keys on updates

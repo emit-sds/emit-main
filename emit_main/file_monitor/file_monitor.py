@@ -5,10 +5,8 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
 import glob
-import grp
 import logging
 import os
-import pwd
 import shutil
 
 from emit_main.config.config import Config
@@ -43,14 +41,10 @@ class FileMonitor:
         self.dirs = [self.ingest_dir, self.ingest_duplicates_dir, self.ingest_errors_dir, self.logs_dir]
 
         # Make directories if they don't exist
+        from emit_main.workflow.workflow_manager import WorkflowManager
+        wm = WorkflowManager(config_path=config_path)
         for d in self.dirs:
-            if not os.path.exists(d):
-                os.makedirs(d)
-                # Change group ownership in shared environments
-                if self.config["environment"] in ["dev", "test", "ops"]:
-                    uid = pwd.getpwnam(pwd.getpwuid(os.getuid())[0]).pw_uid
-                    gid = grp.getgrnam(self.config["instrument"] + "-" + self.config["environment"]).gr_gid
-                    os.chown(d, uid, gid)
+            wm.makedirs(d)
 
     def ingest_files(self, dry_run=False):
         """
@@ -108,6 +102,7 @@ class FileMonitor:
                             base_name = os.path.basename(path)
                             shutil.move(path, os.path.join(self.ingest_duplicates_dir, base_name))
 
+        paths.sort()
         if dry_run:
             return paths
 
@@ -123,11 +118,11 @@ class FileMonitor:
                                             partition=self.partition,
                                             miss_pkt_thresh=self.miss_pkt_thresh))
             # Temporarily remove science data processing until it is ready
-            # if apid == "1675":
-            #     tasks.append(L1ADepacketizeScienceFrames(config_path=self.config_path,
-            #                                              stream_path=p,
-            #                                              level=self.level,
-            #                                              partition=self.partition,
-            #                                              miss_pkt_thresh=self.miss_pkt_thresh,
-            #                                              test_mode=self.test_mode))
+            if apid == "1675":
+                tasks.append(L1ADepacketizeScienceFrames(config_path=self.config_path,
+                                                         stream_path=p,
+                                                         level=self.level,
+                                                         partition=self.partition,
+                                                         miss_pkt_thresh=self.miss_pkt_thresh,
+                                                         test_mode=self.test_mode))
         return tasks

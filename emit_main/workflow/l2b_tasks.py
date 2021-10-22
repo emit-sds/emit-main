@@ -91,7 +91,7 @@ class L2BAbundance(SlurmJobTask):
         # Build aggregator cmd
         aggregator_exe = os.path.join(pge.repo_dir, "aggregator.py")
         tmp_output_dir = os.path.join(self.local_tmp_dir, "l2b_aggregation_output")
-        os.makedirs(tmp_output_dir)
+        wm.makedirs(tmp_output_dir)
         tmp_abun_path = os.path.join(tmp_output_dir, os.path.basename(acq.abun_img_path))
         tmp_abun_hdr_path = envi_header(tmp_abun_path)
         standard_library = os.path.join(
