@@ -102,7 +102,12 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
 
         if self.test_mode:
             cmd.append("--test_mode")
-        pge.run(cmd, tmp_dir=self.tmp_dir)
+
+        env = os.environ.copy()
+        env["AIT_ROOT"] = wm.pges["emit-ios"].repo_dir
+        env["AIT_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "config.yaml")
+        env["AIT_ISS_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "sim.yaml")
+        pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
         # Based on DCIDs, copy frames to appropriate acquisition l1a frames directory.
         # Also, attach stream files to data collection object in DB and add frames as well
@@ -269,7 +274,11 @@ class L1AReassembleRaw(SlurmJobTask):
                "--out_dir", tmp_output_dir,
                "--level", self.level,
                "--log_path", tmp_log_path]
-        pge.run(cmd, tmp_dir=self.tmp_dir)
+        env = os.environ.copy()
+        env["AIT_ROOT"] = wm.pges["emit-ios"].repo_dir
+        env["AIT_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "config.yaml")
+        env["AIT_ISS_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "sim.yaml")
+        pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
         # Copy raw file and log back to l1a data dir
         tmp_raw_path = os.path.join(tmp_output_dir, acq.acquisition_id + "_raw.img")
