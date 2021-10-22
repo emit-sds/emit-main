@@ -60,7 +60,7 @@ class L3Unmix(SlurmJobTask):
 
         # Build PGE commands for run_tetracorder_pge.sh
         unmix_exe = os.path.join(pge.repo_dir, "unmix.jl")
-        endmember_path = os.path.join(pge.repo_dir, "data","endmember_library.csv")
+        endmember_path = os.path.join(pge.repo_dir, "data", "endmember_library.csv")
         endmember_key = "Class"
         log_path = acq.cover_img_path.replace(".img", "_pge.log")
         output_base = os.path.join(self.local_tmp_dir, "unmixing_output")

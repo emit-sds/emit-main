@@ -81,13 +81,17 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
             if prev_streams is not None and len(prev_streams) > 0:
                 try:
                     prev_stream_path = prev_streams[0]["products"]["l0"]["ccsds_path"]
-                except:
+                except KeyError:
                     logger.warning(f"Found previous stream files in DB, but unable to get the previous stream's path.")
                     pass
 
             if prev_stream_path is None:
-                raise RuntimeError(f"Could not find a previous stream file for {stream.ccsds_path}. Stopping execution "
-                                   f"to prevent the loss of a frame spanning CCSDS files.")
+                raise RuntimeError(f"Could not find a previous stream path for {stream.ccsds_path} in DB. Stopping "
+                                   f"execution to prevent the loss of a frame spanning CCSDS files.")
+            if not os.path.exists(prev_stream_path):
+                raise RuntimeError(f"Found previous stream path for {stream.ccsds_path} in DB.  However, the file "
+                                   f"{prev_stream_path} does not exist. Stopping execution to prevent the loss of a "
+                                   f"frame spanning CCSDS files.")
 
             wm_tmp = WorkflowManager(config_path=self.config_path, stream_path=prev_stream_path)
             prev_stream_report = wm_tmp.stream.frames_dir + "_report.txt"
