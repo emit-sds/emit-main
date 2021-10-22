@@ -32,6 +32,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
     miss_pkt_thresh = luigi.FloatParameter()
+    ignore_prev_stream = luigi.BoolParameter(default=False)
     test_mode = luigi.BoolParameter(default=False)
 
     memory = 30000
@@ -64,39 +65,46 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
         tmp_frames_dir = os.path.join(self.local_tmp_dir, "frames")
         tmp_log_path = os.path.join(self.local_tmp_dir, "depacketize_science_frames.log")
         tmp_report_path = tmp_log_path.replace(".log", "_report.txt")
+        input_files = {"ccsds_path": stream.ccsds_path}
         cmd = ["python", sds_l1a_science_packet_exe, stream.ccsds_path,
                "--work_dir", self.local_tmp_dir,
                "--level", self.level,
                "--log_path", tmp_log_path]
 
         # Get previous stream path if exists
-        logger.info(f"stream.start_time is {stream.start_time}")
-        datetime.timedelta(minutes=1)
-        prev_streams = dm.find_streams_by_date_range("1675", "stop_time",
-                                                     stream.start_time - datetime.timedelta(minutes=1),
-                                                     stream.start_time)
-        prev_stream_path = None
-        bytes_read = None
-        if prev_streams is not None and len(prev_streams) > 0:
-            try:
-                prev_stream_path = prev_streams[0]["products"]["l0"]["ccsds_path"]
-                wm_tmp = WorkflowManager(config_path=self.config_path, stream_path=prev_stream_path)
-                prev_stream_report = wm_tmp.stream.frames_dir + "_report.txt"
-                if os.path.exists(prev_stream_report):
-                    with open(prev_stream_report, "r") as f:
-                        for line in f.readlines():
-                            if "Bytes read since last index" in line:
-                                bytes_read = int(line.split(" ")[-1])
-                                break
-            except:
-                logger.warning(f"Found previous stream files in DB, but unable to get the previous stream's path.")
-                pass
+        # TODO: What should the search window be here for finding previous stream files?
+        if not self.ignore_prev_stream:
+            prev_streams = dm.find_streams_by_date_range("1675", "stop_time",
+                                                         stream.start_time - datetime.timedelta(minutes=1),
+                                                         stream.start_time + datetime.timedelta(minutes=1))
+            prev_stream_path = None
+            if prev_streams is not None and len(prev_streams) > 0:
+                try:
+                    prev_stream_path = prev_streams[0]["products"]["l0"]["ccsds_path"]
+                except:
+                    logger.warning(f"Found previous stream files in DB, but unable to get the previous stream's path.")
+                    pass
 
-        # Append optional args and run
-        if prev_stream_path is not None:
+            if prev_stream_path is None:
+                raise RuntimeError(f"Could not find a previous stream file for {stream.ccsds_path}. Stopping execution "
+                                   f"to prevent the loss of a frame spanning CCSDS files.")
+
+            wm_tmp = WorkflowManager(config_path=self.config_path, stream_path=prev_stream_path)
+            prev_stream_report = wm_tmp.stream.frames_dir + "_report.txt"
+            bytes_read = None
+            if os.path.exists(prev_stream_report):
+                with open(prev_stream_report, "r") as f:
+                    for line in f.readlines():
+                        if "Bytes read since last index" in line:
+                            bytes_read = int(line.split(" ")[-1])
+                            break
+
+            # Append optional args and run
             cmd.extend(["--prev_stream_path", prev_stream_path])
-        if bytes_read is not None:
-            cmd.extend(["--prev_bytes_to_read", str(bytes_read)])
+            input_files["prev_stream_path"] = prev_stream_path
+            if bytes_read is not None:
+                cmd.extend(["--prev_bytes_to_read", str(bytes_read)])
+
         if self.test_mode:
             cmd.append("--test_mode")
         pge.run(cmd, tmp_dir=self.tmp_dir)
@@ -190,9 +198,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
             "task": self.task_family,
             "pge_name": pge.repo_url,
             "pge_version": pge.version_tag,
-            "pge_input_files": {
-                "ccsds_path": stream.ccsds_path,
-            },
+            "pge_input_files": input_files,
             "pge_run_command": " ".join(cmd),
             "documentation_version": doc_version,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
