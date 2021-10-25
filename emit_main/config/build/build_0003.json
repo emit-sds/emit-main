@@ -1,0 +1,39 @@
+{
+  "repositories": [
+    {
+      "url": "git@github.jpl.nasa.gov:emit-sds/emit-main.git",
+      "tag": "v0.3",
+      "conda_env": "emit-main-20210825"
+    },
+    {
+      "url": "git@github.jpl.nasa.gov:emit/emit-ios.git",
+      "tag": "0.5.0",
+      "conda_env": "emit-main-20210825"
+    },
+    {
+      "url": "git@github.jpl.nasa.gov:emit/emit-l0edp.git",
+      "tag": "1.0.2",
+      "conda_env": "emit-main-20210825"
+    },
+    {
+      "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l0.git",
+      "tag": "v0.3.0",
+      "conda_env": "emit-main-20210825"
+    },
+    {
+      "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l1a.git",
+      "tag": "v0.3.0",
+      "conda_env": "emit-main-20210825"
+    },
+    {
+      "url": "git@github.jpl.nasa.gov:flex-data-compression/EMIT_FLEX_codec.git",
+      "tag": "EMIT_flexcodec_1_0",
+      "conda_env": "emit-main-20210825"
+    },
+    {
+      "url": "git@github.jpl.nasa.gov:aviris/NGIS_Check_Line_Frame.git",
+      "tag": "emit-sds-0.2.0",
+      "conda_env": "emit-check-line-frame"
+    }
+  ]
+}
