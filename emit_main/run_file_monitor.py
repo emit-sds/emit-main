@@ -159,8 +159,11 @@ def main():
     # Set up luigi tasks and execute
     if args.workers:
         workers = int(args.workers)
-    else:
+    elif len(tasks) > 0:
         workers = min(30, len(tasks))
+    else:
+        workers = fm.config["luigi_workers"]
+
     luigi_logging_conf = os.path.join(os.path.dirname(__file__), "workflow", "luigi", "logging.conf")
     luigi.build(tasks, workers=workers, local_scheduler=fm.config["luigi_local_scheduler"],
                 logging_conf_file=luigi_logging_conf)
