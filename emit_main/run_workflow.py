@@ -205,7 +205,7 @@ def main():
     # Set up tasks and run
     tasks = get_tasks_from_args(args)
     if args.workers:
-        workers = args.workers
+        workers = int(args.workers)
     else:
         workers = wm.config["luigi_workers"]
     # Build luigi logging.conf path
