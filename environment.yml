@@ -28,3 +28,5 @@ dependencies:
     - xxhash==1.4.4
     - ray==1.2.0
     - tensorflow==2.0.1
+    - ait-core==2.3.5
+    - ait-gui==2.3.1

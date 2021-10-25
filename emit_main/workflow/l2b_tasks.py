@@ -16,6 +16,7 @@ from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.l1b_tasks import L1BGeolocate
 from emit_main.workflow.l2a_tasks import L2AMask, L2AReflectance
 from emit_main.workflow.slurm import SlurmJobTask
+from emit_utils.file_checks import envi_header
 
 logger = logging.getLogger("emit-main")
 
@@ -60,32 +61,59 @@ class L2BAbundance(SlurmJobTask):
 
         # Build PGE commands for run_tetracorder_pge.sh
         run_tetra_exe = os.path.join(pge.repo_dir, "run_tetracorder_pge.sh")
-        cmd_tetra = [run_tetra_exe, self.local_tmp_dir, acq.rfl_img_path]
         env = os.environ.copy()
         env["SP_LOCAL"] = wm.config["specpr_path"]
         env["SP_BIN"] = "${SP_LOCAL}/bin"
         env["TETRA"] = wm.config["tetracorder_path"]
         env["PATH"] = "${PATH}:${SP_LOCAL}/bin:${TETRA}/bin:/usr/bin"
+
+        # This has to be a bit truncated because of character limitations
+        tmp_rfl_path = os.path.join(self.local_tmp_dir, 'r')
+        tmp_rfl_path_hdr = envi_header(tmp_rfl_path)
+
+        wm.symlink(acq.rfl_img_path, tmp_rfl_path)
+        wm.symlink(acq.rfl_hdr_path, tmp_rfl_path_hdr)
+
+        # This has to be a bit truncated because of character limitations
+        tmp_tetra_output_path = os.path.join(self.local_tmp_dir, os.path.basename(acq.abun_img_path).split('_')[0] + '_tetra')
+
+        cmd_tetra_setup = [wm.config["tetracorder_setup_cmd_path"], tmp_tetra_output_path,
+                           wm.config["tetracorder_library_cmdname"], "cube", tmp_rfl_path, "1", "-T", "-20", "80", "C",
+                           "-P", ".5", "1.5", "bar"]
+        pge.run(cmd_tetra_setup, tmp_dir=self.tmp_dir, env=env)
+
+        current_pwd = os.getcwd()
+        os.chdir(tmp_tetra_output_path)
+        cmd_tetra = [os.path.join(tmp_tetra_output_path, "cmd.runtet"), "cube", tmp_rfl_path, 'band', '20', 'gif']
         pge.run(cmd_tetra, tmp_dir=self.tmp_dir, env=env)
+        os.chdir(current_pwd)
 
         # Build aggregator cmd
         aggregator_exe = os.path.join(pge.repo_dir, "aggregator.py")
-        tetra_out_dir = os.path.join(self.local_tmp_dir, "tetra_out")
-        tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
-        os.makedirs(tmp_output_dir)
+        tmp_output_dir = os.path.join(self.local_tmp_dir, "l2b_aggregation_output")
+        wm.makedirs(tmp_output_dir)
         tmp_abun_path = os.path.join(tmp_output_dir, os.path.basename(acq.abun_img_path))
-        tmp_abun_hdr_path = tmp_abun_path + ".hdr"
+        tmp_abun_hdr_path = envi_header(tmp_abun_path)
+        standard_library = os.path.join(
+            wm.config['tetracorder_library_dir'], f's{wm.config["tetracorder_library_basename"]}_envi')
+        research_library = os.path.join(
+            wm.config['tetracorder_library_dir'], f'r{wm.config["tetracorder_library_basename"]}_envi')
         input_files = {
             "reflectance_file": acq.rfl_img_path,
-            "reflectance_uncertainty_file": acq.uncert_img_path
+            "reflectance_uncertainty_file": acq.uncert_img_path,
+            "tetracorder_library_basename": wm.config["tetracorder_library_basename"]
         }
-        cmd = ["python", aggregator_exe, tetra_out_dir, tmp_abun_path,
-               "-calculate_uncertainty", "0",
-               "-reflectance_file", acq.rfl_img_path,
-               "-reflectance_uncertainty_file", acq.uncert_img_path]
+        cmd = ["python", aggregator_exe, tmp_tetra_output_path, tmp_abun_path,
+               "--calculate_uncertainty", "1",
+               "--reflectance_file", acq.rfl_img_path,
+               "--reflectance_uncertainty_file", acq.uncert_img_path,
+               "--reference_library", standard_library,
+               "--research_library", research_library,
+               ]
         pge.run(cmd, cwd=pge.repo_dir, tmp_dir=self.tmp_dir)
 
         # Copy mask files to l2a dir
+        wm.copytree(tmp_tetra_output_path, acq.tetra_dir_path)
         wm.copy(tmp_abun_path, acq.abun_img_path)
         wm.copy(tmp_abun_hdr_path, acq.abun_hdr_path)
 
@@ -101,7 +129,8 @@ class L2BAbundance(SlurmJobTask):
         hdr["emit pge run command"] = " ".join(cmd)
         hdr["emit software build version"] = wm.config["build_num"]
         hdr["emit documentation version"] = doc_version
-        creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.abun_img_path), tz=datetime.timezone.utc)
+        creation_time = datetime.datetime.fromtimestamp(
+            os.path.getmtime(acq.abun_img_path), tz=datetime.timezone.utc)
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         hdr["emit data product version"] = wm.config["processing_version"]
         envi.write_envi_header(acq.abun_hdr_path, hdr)

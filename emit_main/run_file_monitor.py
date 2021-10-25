@@ -40,6 +40,8 @@ def parse_args():
                         help="Number of luigi workers")
     parser.add_argument("--dry_run", action="store_true",
                         help="Just return a list of paths to process from the ingest folder, but take no action")
+    parser.add_argument("--test_mode", action="store_true",
+                        help="Allows tasks to skip work during I&T by skipping certain checks")
     args = parser.parse_args()
 
     if args.config_path is None:
@@ -92,8 +94,14 @@ def task_failure(task, e):
         logger.error(f"Deleting task's local tmp folder: {task.local_tmp_dir}")
         shutil.rmtree(task.local_tmp_dir)
 
-    # Update DB processing_log with failure message
+    # If running L0StripHOSC task on ingest folder path, move file to ingest/errors
+    if task.task_family == "emit.L0StripHOSC" and "ingest" in task.stream_path:
+        # Move HOSC file to ingest/errors
+        ingest_errors_path = os.path.join(wm.ingest_errors_dir, os.path.basename(task.stream_path))
+        logger.error(f"Moving bad HOSC file to f{ingest_errors_path}")
+        wm.move(task.stream_path, ingest_errors_path)
 
+    # Update DB processing_log with failure message
     log_entry = {
         "task": task.task_family,
         "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
@@ -133,7 +141,7 @@ def main():
     wm.change_group_ownership(log_path)
 
     fm = FileMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
-                     miss_pkt_thresh=args.miss_pkt_thresh)
+                     miss_pkt_thresh=args.miss_pkt_thresh, test_mode=args.test_mode)
 
     # Get tasks from file monitor
     dry_run = args.dry_run
@@ -150,9 +158,12 @@ def main():
 
     # Set up luigi tasks and execute
     if args.workers:
-        workers = args.workers
+        workers = int(args.workers)
+    elif len(tasks) > 0:
+        workers = min(30, len(tasks))
     else:
         workers = fm.config["luigi_workers"]
+
     luigi_logging_conf = os.path.join(os.path.dirname(__file__), "workflow", "luigi", "logging.conf")
     luigi.build(tasks, workers=workers, local_scheduler=fm.config["luigi_local_scheduler"],
                 logging_conf_file=luigi_logging_conf)

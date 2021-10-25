@@ -4,7 +4,9 @@
     "environment": "dev",
     "processing_version": "00",
     "luigi_local_scheduler": false,
-    "luigi_workers": 2
+    "luigi_workers": 2,
+    "tetracorder_library_basename": "emitsyn",
+    "tetracorder_library_cmdname": "emit_synt"
   },
 
   "filesystem_config": {
@@ -44,6 +46,8 @@
     "isofit_sixs_dir": "/shared/sixs",
     "specpr_path": "/shared/specpr",
     "tetracorder_path": "/shared/tetracorder5.26",
+    "tetracorder_library_dir": "/beegfs/store/tetracorder/official_libraries",
+    "tetracorder_setup_cmd_path": "/shared/tetracorder5.26a.cmds/cmd-setup-tetrun",
     "versions": [
       {
         "version_date_range": ["2018-01-01T00:00:00", "2019-01-01T00:00:00"],
@@ -51,8 +55,10 @@
         "isofit_surface_path": "/beegfs/scratch/brodrick/emit/megabox/support/EMIT_synth_surface.mat"
       },
       {
-        "version_date_range": ["2021-01-01T00:00:00", "2022-01-01T00:00:00"],
-        "l1b_config_path": "repos/emit-sds-l1b/calibrations/config_20210101_20210131.json"
+        "version_date_range": ["2021-07-01T00:00:00", "2022-03-01T00:00:00"],
+        "l1b_config_path": "repos/emit-sds-l1b/calibrations/config_20210101_20210131.json",
+        "decompression_constants_path": "repos/emit-sds-l1a/decompression/constants.txt",
+        "decompression_init_data_path": "FPGA_Data_Initialization_File_CREATE_COMPRESSION_INIT_DATA_328_e0.bin"
       }
     ]
   }

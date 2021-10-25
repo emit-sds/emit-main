@@ -5,10 +5,8 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
 import glob
-import grp
 import logging
 import os
-import pwd
 import pytz
 
 from emit_main.database.database_manager import DatabaseManager
@@ -64,14 +62,10 @@ class Acquisition:
         self.dirs.extend([self.frames_dir, self.decomp_dir])
 
         # Make directories if they don't exist
+        from emit_main.workflow.workflow_manager import WorkflowManager
+        wm = WorkflowManager(config_path=config_path)
         for d in self.dirs:
-            if not os.path.exists(d):
-                os.makedirs(d)
-                # Change group ownership in shared environments
-                if self.config["environment"] in ["dev", "test", "ops"]:
-                    uid = pwd.getpwnam(pwd.getpwuid(os.getuid())[0]).pw_uid
-                    gid = grp.getgrnam(self.config["instrument"] + "-" + self.config["environment"]).gr_gid
-                    os.chown(d, uid, gid)
+            wm.makedirs(d)
 
     def _initialize_metadata(self):
         # Insert some placeholder fields so that we don't get missing keys on updates
@@ -116,8 +110,13 @@ class Acquisition:
                 "mask": ["img", "hdr"]
             },
             "l2b": {
+                "tetra": ["dir"],
                 "abun": ["img", "hdr"],
                 "abununcert": ["img", "hdr"]
+            },
+            "l3": {
+                "cover": ["img", "hdr"],
+                "coveruncert": ["img", "hdr"]
             }
         }
         paths = {}

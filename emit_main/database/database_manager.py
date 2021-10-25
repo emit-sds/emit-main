@@ -71,6 +71,15 @@ class DatabaseManager:
             query = {"ccsds_name": name, "build_num": self.config["build_num"]}
         return streams_coll.find_one(query)
 
+    def find_streams_by_date_range(self, apid, field, start, stop, sort=1):
+        streams_coll = self.db.streams
+        query = {
+            "apid": apid,
+            field: {"$gte": start, "$lte": stop},
+            "build_num": self.config["build_num"]
+        }
+        return list(streams_coll.find(query).sort(field, sort))
+
     def insert_hosc_stream(self, hosc_name):
         if self.find_stream_by_name(hosc_name) is None:
             if "_hsc.bin" not in hosc_name:
@@ -122,3 +131,22 @@ class DatabaseManager:
         metadata = {"last_modified": entry["log_timestamp"]}
         set_value = {"$set": metadata}
         streams_coll.update_one(query, set_value, upsert=True)
+
+    def find_data_collection_by_id(self, dcid):
+        data_collections_coll = self.db.data_collections
+        return data_collections_coll.find_one({"dcid": dcid, "build_num": self.config["build_num"]})
+
+    def insert_data_collection(self, metadata):
+        if self.find_data_collection_by_id(metadata["dcid"]) is None:
+            utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
+            metadata["created"] = utc_now
+            metadata["last_modified"] = utc_now
+            data_collections_coll = self.db.data_collections
+            data_collections_coll.insert_one(metadata)
+
+    def update_data_collection_metadata(self, dcid, metadata):
+        data_collections_coll = self.db.data_collections
+        query = {"dcid": dcid, "build_num": self.config["build_num"]}
+        metadata["last_modified"] = datetime.datetime.now(tz=datetime.timezone.utc)
+        set_value = {"$set": metadata}
+        data_collections_coll.update_one(query, set_value, upsert=True)
