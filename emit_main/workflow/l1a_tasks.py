@@ -42,6 +42,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
     def requires(self):
 
         logger.debug(self.task_family + " requires")
+        # TODO: Add dependency on previous stream file (if one is found in DB)
         return L0StripHOSC(config_path=self.config_path, stream_path=self.stream_path, level=self.level,
                            partition=self.partition, miss_pkt_thresh=self.miss_pkt_thresh)
 
@@ -217,10 +218,11 @@ class L1AReassembleRaw(SlurmJobTask):
     """
 
     config_path = luigi.Parameter()
-    acquisition_id = luigi.Parameter()
-    ignore_missing = luigi.BoolParameter(default=False)
+    dcid = luigi.Parameter()
+    ignore_missing_frames = luigi.BoolParameter(default=False)
     level = luigi.Parameter()
     partition = luigi.Parameter()
+    test_mode = luigi.BoolParameter(default=False)
 
     memory = 30000
     local_tmp_space = 125000
@@ -229,6 +231,7 @@ class L1AReassembleRaw(SlurmJobTask):
 
     def requires(self):
         # This task requires a complete set of frames
+        # TODO: Add dependency for Planning Product except in test_mode
         logger.debug(self.task_family + " requires")
 
         return None
@@ -236,6 +239,7 @@ class L1AReassembleRaw(SlurmJobTask):
     def output(self):
 
         logger.debug(self.task_family + " output")
+        # TODO: Look for acquisitions in dcid object and iterate?
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         return ENVITarget(acquisition=wm.acquisition, task_family=self.task_family)
 
@@ -243,12 +247,12 @@ class L1AReassembleRaw(SlurmJobTask):
 
         logger.debug(self.task_family + " run")
 
-        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        acq = wm.acquisition
-        # Check for missing frames before proceeding. Override with --ignore_missing arg
-        if self.ignore_missing is False and acq.has_complete_set_of_frames() is False:
-            raise RuntimeError(f"Unable to run {self.task_family} on {self.acquisition_id} due to missing frames in "
-                               f"{acq.frames_dir}")
+        wm = WorkflowManager(config_path=self.config_path, dcid=self.dcid)
+        dc = wm.data_collection
+        # Check for missing frames before proceeding. Override with --ignore_missing_frames arg
+        if self.ignore_missing_frames is False and dc.has_complete_set_of_frames() is False:
+            raise RuntimeError(f"Unable to run {self.task_family} on {self.dcid} due to missing frames in "
+                               f"{dc.frames_dir}")
 
         pge = wm.pges["emit-sds-l1a"]
         tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
@@ -257,17 +261,19 @@ class L1AReassembleRaw(SlurmJobTask):
         reassemble_raw_pge = os.path.join(pge.repo_dir, "reassemble_raw_cube.py")
         flex_pge = wm.pges["EMIT_FLEX_codec"]
         flex_codec_exe = os.path.join(flex_pge.repo_dir, "flexcodec")
+        # TODO: Need to get these based on dcid date!!!
         constants_path = wm.config["decompression_constants_path"]
         init_data_path = wm.config["decompression_init_data_path"]
         tmp_log_path = os.path.join(self.local_tmp_dir, "reassemble_raw_pge.log")
         tmp_report_path = tmp_log_path.replace(".log", "_report.txt")
         input_files = {
-            "frames_dir": acq.frames_dir,
+            "frames_dir": dc.frames_dir,
             "flexcodec_exe_path": flex_codec_exe,
             "constants_path": constants_path,
             "init_data_path": init_data_path
         }
-        cmd = ["python", reassemble_raw_pge, acq.frames_dir,
+        # TODO: Add chunksize (use param?)
+        cmd = ["python", reassemble_raw_pge, dc.frames_dir,
                "--flexcodec_exe", flex_codec_exe,
                "--constants_path", constants_path,
                "--init_data_path", init_data_path,
@@ -280,6 +286,7 @@ class L1AReassembleRaw(SlurmJobTask):
         env["AIT_ISS_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "sim.yaml")
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
+        # TODO: Loop through outputs and do copy back and DB insertion
         # Copy raw file and log back to l1a data dir
         tmp_raw_path = os.path.join(tmp_output_dir, acq.acquisition_id + "_raw.img")
         tmp_raw_hdr_path = tmp_raw_path.replace(".img", ".hdr")

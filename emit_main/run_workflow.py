@@ -46,7 +46,7 @@ def parse_args():
                         help="The slurm partition to be used - emit (default), debug, standard, patient ")
     parser.add_argument("--miss_pkt_thresh", default="0.1",
                         help="The threshold of missing packets to total packets which will cause a task to fail")
-    parser.add_argument("--ignore_missing", action="store_true",
+    parser.add_argument("--ignore_missing_frames", action="store_true",
                         help="Ignore missing frames when reasssembling raw cube")
     parser.add_argument("-w", "--workers",
                         help="Number of luigi workers")
@@ -95,7 +95,7 @@ def get_tasks_from_args(args):
                                                 miss_pkt_thresh=args.miss_pkt_thresh,
                                                 **kwargs),
         "l1aframereport": L1AFrameReport(acquisition_id=args.acquisition_id, **kwargs),
-        "l1araw": L1AReassembleRaw(acquisition_id=args.acquisition_id, ignore_missing=args.ignore_missing, **kwargs),
+        "l1araw": L1AReassembleRaw(acquisition_id=args.acquisition_id, ignore_missing_frames=args.ignore_missing_frames, **kwargs),
         "l1bcal": L1BCalibrate(acquisition_id=args.acquisition_id, **kwargs),
         "l2arefl": L2AReflectance(acquisition_id=args.acquisition_id, **kwargs),
         "l2amask": L2AMask(acquisition_id=args.acquisition_id, **kwargs),

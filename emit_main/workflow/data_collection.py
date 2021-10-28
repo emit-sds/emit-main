@@ -80,22 +80,27 @@ class DataCollection:
     def has_complete_set_of_frames(self):
         frames = [os.path.basename(frame) for frame in glob.glob(os.path.join(self.frames_dir, "*"))]
         frames.sort()
+        # Check that we have nonzero frames
+        if len(frames) == 0:
+            logger.warning(f"No frames found in {self.frames_dir}")
+            return False
+        # Check that we have the expected number of frames
+        expected_num = int(frames[0].split("_")[3])
+        if len(frames) != expected_num:
+            logger.warning(f"Number of frames, {len(frames)}, does not match expected number, {expected_num}")
+            return False
         # Check incrementing frame num
-        frame_nums = [int(frame.split("_")[1]) for frame in frames]
-        if frame_nums != list(range(frame_nums[0], frame_nums[0] + len(frame_nums))):
+        frame_nums = [int(frame.split("_")[2]) for frame in frames]
+        if frame_nums != list(range(0, expected_num)):
             logger.warning("Set of frames is not sequential!")
             return False
         # Check that first frame has status 1 or 5
-        if frames[0].split("_")[3] not in ("1", "5"):
+        if frames[0].split("_")[4] not in ("1", "5"):
             logger.warning("First frame in set does not begin with status 1 or 5!")
             return False
         # Check that all subsequent frames have status 0 or 4
         for frame in frames[1:]:
-            if frame.split("_")[3] not in ("0", "4"):
+            if frame.split("_")[4] not in ("0", "4"):
                 logger.warning("One of the frames in the set (after the first) does not have status 0 or 4!")
                 return False
-        # Check that we have the expected number of frames
-        expected_num = int(frames[0].split("_")[2])
-        if len(frames) != expected_num:
-            logger.warning(f"Number of frames, {len(frames)}, does not match expected number, {expected_num}")
         return True
