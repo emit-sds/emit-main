@@ -16,7 +16,7 @@ logger = logging.getLogger("emit-main")
 
 class Config:
 
-    def __init__(self, config_path, acquisition_id=None):
+    def __init__(self, config_path, timestamp=None):
         """
         :param config_path: Path to config file containing environment settings
         """
@@ -42,25 +42,23 @@ class Config:
                 self.dictionary.update(build_config)
 
             # Read in ancillary paths
-            self.dictionary.update(self._get_ancillary_file_paths(config["ancillary_paths"], acquisition_id))
+            self.dictionary.update(self._get_ancillary_file_paths(config["ancillary_paths"], timestamp))
 
             # Get passwords from resources/credentials directory
             self.dictionary.update(self._get_passwords())
 
-    def _get_ancillary_file_paths(self, anc_files_config, acquisition_id):
+    def _get_ancillary_file_paths(self, anc_files_config, timestamp):
         # Get the ancillary paths that are either absolute paths or relative to the environment directory
         # (eg. /store/emit/ops).
         if "versions" in anc_files_config:
-            if acquisition_id is not None:
+            if timestamp is not None:
                 versions = anc_files_config["versions"]
-                acquisition_date = self._get_date_from_acquisition(acquisition_id)
-
                 # Look for matching date range and update top level dictionary with those key/value pairs
                 for version in versions:
                     # These dates are all in UTC by default and do not require any timezone conversion
                     start_date = datetime.datetime.strptime(version["version_date_range"][0], "%Y-%m-%dT%H:%M:%S")
                     end_date = datetime.datetime.strptime(version["version_date_range"][1], "%Y-%m-%dT%H:%M:%S")
-                    if start_date <= acquisition_date < end_date:
+                    if start_date <= timestamp < end_date:
                         anc_files_config.update(version)
 
             # Remove "versions" and return dictionary

@@ -4,6 +4,7 @@ This code contains the Acquisition class that manages acquisitions and their met
 Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
+import datetime
 import glob
 import logging
 import os
@@ -25,17 +26,18 @@ class Acquisition:
         self.config_path = config_path
         self.acquisition_id = acquisition_id
 
-        # Get config properties
-        self.config = Config(config_path, acquisition_id).get_dictionary()
-
+        # Read metadata from db
         dm = DatabaseManager(config_path)
         self.metadata = dm.find_acquisition_by_id(self.acquisition_id)
         self._initialize_metadata()
         self.__dict__.update(self.metadata)
 
-        # Add UTC tzinfo property to start/stop datetime objects for printing
-        self.start_time = pytz.utc.localize(self.start_time)
-        self.stop_time = pytz.utc.localize(self.stop_time)
+        # Get config properties
+        self.config = Config(config_path, self.start_time).get_dictionary()
+
+        # Create start/stop time date objects with UTC tzinfo property for printing
+        self.start_time_with_tz = pytz.utc.localize(self.start_time)
+        self.stop_time_with_tz = pytz.utc.localize(self.stop_time)
 
         # Create base directories and add to list to create directories later
         self.dirs = []
@@ -45,11 +47,7 @@ class Acquisition:
         self.acquisitions_dir = os.path.join(self.data_dir, "acquisitions")
 
         # Check for instrument again based on filename
-        instrument_prefix = self.config["instrument"]
-        if self.acquisition_id.startswith("ang"):
-            instrument_prefix = "ang"
-        # Get date from acquisition string
-        self.date_str = self.acquisition_id[len(instrument_prefix):(8 + len(instrument_prefix))]
+        self.date_str = self.start_time.strftime("%Y%m%d")
         self.date_dir = os.path.join(self.acquisitions_dir, self.date_str)
         self.acquisition_id_dir = os.path.join(self.date_dir, self.acquisition_id)
         self.dirs.extend([self.acquisitions_dir, self.date_dir, self.acquisition_id_dir])

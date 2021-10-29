@@ -38,10 +38,33 @@ class WorkflowManager:
         self.stream_path = stream_path
         self.dcid = dcid
 
-        # Get config properties
-        self.config = Config(config_path, acquisition_id=acquisition_id).get_dictionary()
-
         self.database_manager = DatabaseManager(config_path)
+
+        # Initialize acquisition, stream, or data collection objects along with config dictionary
+        self.config = None
+        # If we have an acquisition id and acquisition exists in db, initialize acquisition
+        if self.acquisition_id and self.database_manager.find_acquisition_by_id(self.acquisition_id):
+            self.acquisition = Acquisition(config_path, self.acquisition_id)
+            self.config = Config(config_path, self.acquisition.start_time).get_dictionary()
+        else:
+            self.acquisition = None
+
+        # If we have a stream path and stream exists in db, initialize a stream object
+        if self.stream_path and self.database_manager.find_stream_by_name(os.path.basename(stream_path)):
+            self.stream = Stream(self.config_path, self.stream_path)
+            self.config = Config(config_path, self.stream.start_time).get_dictionary()
+        else:
+            self.stream = None
+
+        # If we have a DCID and the data collection exists in db, initialize data collection
+        if self.dcid and self.database_manager.find_data_collection_by_id(self.dcid):
+            self.data_collection = DataCollection(self.config_path, self.dcid)
+            self.config = Config(config_path, self.data_collection.start_time).get_dictionary()
+        else:
+            self.data_collection = None
+        if self.config is None:
+            # Get config properties with no timestamp specific fields
+            self.config = Config(config_path).get_dictionary()
 
         # Create base directories and add to list to create directories later
         dirs = []
@@ -66,24 +89,6 @@ class WorkflowManager:
         # Make directories if they don't exist
         for d in dirs:
             self.makedirs(d)
-
-        # If we have an acquisition id and acquisition exists in db, initialize acquisition
-        if self.acquisition_id and self.database_manager.find_acquisition_by_id(self.acquisition_id):
-            self.acquisition = Acquisition(config_path, self.acquisition_id)
-        else:
-            self.acquisition = None
-
-        # If we have a stream path and stream exists in db, initialize a stream object
-        if self.stream_path and self.database_manager.find_stream_by_name(os.path.basename(stream_path)):
-            self.stream = Stream(self.config_path, self.stream_path)
-        else:
-            self.stream = None
-
-        # If we have a DCID and the data collection exists in db, initialize data collection
-        if self.dcid and self.database_manager.find_data_collection_by_id(self.dcid):
-            self.data_collection = DataCollection(self.config_path, self.dcid)
-        else:
-            self.data_collection = None
 
         # Create repository paths and PGEs based on build config
         self.pges = {}

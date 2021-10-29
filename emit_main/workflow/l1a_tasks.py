@@ -122,12 +122,21 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
         dcid_frames_map = {}
         output_frame_paths = []
         for dcid in dcids:
+            # Get the earliest start_time and latest start_time from this group of frames
+            tmp_dcid_frame_paths = glob.glob(os.path.join(tmp_frames_dir, dcid + "*"))
+            start_time_strs = [os.path.basename(p).split("_")[1] for p in tmp_dcid_frame_paths]
+            start_time_strs.sort()
+            start_time = datetime.datetime.strptime(start_time_strs[0], "%Y%m%dt%H%M%S")
+            stop_time = datetime.datetime.strptime(start_time_strs[-1], "%Y%m%dt%H%M%S")
+
             # Insert DCID in database if it doesn't exist
             if not dm.find_data_collection_by_id(dcid):
                 dc_meta = {
                     "dcid": dcid,
                     "build_num": wm.config["build_num"],
-                    "processing_version": wm.config["processing_version"]
+                    "processing_version": wm.config["processing_version"],
+                    "start_time": start_time,
+                    "stop_time": stop_time
                 }
                 dm.insert_data_collection(dc_meta)
                 logger.debug(f"Inserted data collection in DB with {dc_meta}")
@@ -136,9 +145,15 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
             wm = WorkflowManager(config_path=self.config_path, dcid=dcid)
             dc = wm.data_collection
 
+            # Check start and stop times to see if this group of frames has an earlier or later one
+            if dc.start_time < start_time:
+                start_time = dc.start_time
+            if dc.stop_time > stop_time:
+                stop_time = dc.stop_time
+
             # Copy the frames
             dcid_frame_paths = []
-            for path in glob.glob(os.path.join(tmp_frames_dir, "*" + dcid + "*")):
+            for path in tmp_dcid_frame_paths:
                 dcid_frame_name = os.path.basename(path)
                 dcid_frame_path = os.path.join(dc.frames_dir, dcid_frame_name)
                 if not os.path.exists(dcid_frame_path):
@@ -150,6 +165,15 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
             if not os.path.exists(dcid_frame_symlink):
                 wm.symlink(dc.frames_dir, dcid_frame_symlink)
 
+            # Create a symlink from the dcid/by_date dir structure to the dcid/by_dcid dir structure
+            by_dcid_date_dir = os.path.join(dc.by_date_dir, start_time.strftime("%Y%m%d"))
+            date_to_dcid_dir = os.path.join(by_dcid_date_dir, f'{start_time.strftime("%Y%m%dt%H%M%S")}_{dcid}')
+            date_to_dcid_frame_symlink = os.path.join(date_to_dcid_dir, os.path.basename(dc.frames_dir))
+            wm.makedirs(by_dcid_date_dir)
+            wm.makedirs(date_to_dcid_dir)
+            if not os.path.exists(date_to_dcid_frame_symlink):
+                wm.symlink(dc.frames_dir, date_to_dcid_frame_symlink)
+
             # Add frame paths to acquisition metadata
             if "frames" in dc.metadata and dc.metadata["frames"] is not None:
                 for path in dcid_frame_paths:
@@ -158,9 +182,14 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
             else:
                 dc.metadata["frames"] = dcid_frame_paths
             dc.metadata["frames"].sort()
+
             dm.update_data_collection_metadata(
                 dcid,
-                {"frames": dc.metadata["frames"]})
+                {
+                    "start_time": start_time,
+                    "stop_time": stop_time,
+                    "frames": dc.metadata["frames"]
+                })
 
             # Add stream file to data collection metadata in DB so there is a link back to CCSDS packet stream for each
             # acquisition. There may be multiple stream files that contribute frames to a given acquisition
@@ -336,8 +365,8 @@ class L1AReassembleRaw(SlurmJobTask):
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
         doc_version = "EMIT SDS L1A JPL-D 104186, Initial"
         hdr = envi.read_envi_header(reassembled_hdr_path)
-        hdr["emit acquisition start time"] = acq.start_time.strftime("%Y-%m-%dT%H:%M:%S%z")
-        hdr["emit acquisition stop time"] = acq.stop_time.strftime("%Y-%m-%dT%H:%M:%S%z")
+        hdr["emit acquisition start time"] = acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
+        hdr["emit acquisition stop time"] = acq.stop_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
         hdr["emit pge name"] = pge.repo_url
         hdr["emit pge version"] = pge.version_tag
         hdr["emit pge input files"] = input_files_arr

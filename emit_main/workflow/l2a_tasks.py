@@ -116,8 +116,8 @@ class L2AReflectance(SlurmJobTask):
         dm = wm.database_manager
         for img_path, hdr_path in [(acq.rfl_img_path, acq.rfl_hdr_path), (acq.uncert_img_path, acq.uncert_hdr_path)]:
             hdr = envi.read_envi_header(hdr_path)
-            hdr["emit acquisition start time"] = acq.start_time.strftime("%Y-%m-%dT%H:%M:%S%z")
-            hdr["emit acquisition stop time"] = acq.stop_time.strftime("%Y-%m-%dT%H:%M:%S%z")
+            hdr["emit acquisition start time"] = acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
+            hdr["emit acquisition stop time"] = acq.stop_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
             hdr["emit pge name"] = pge.repo_url
             hdr["emit pge version"] = pge.version_tag
             hdr["emit pge input files"] = input_files_arr
@@ -234,8 +234,8 @@ class L2AMask(SlurmJobTask):
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
         doc_version = "EMIT SDS L2A JPL-D 104236, Rev B"
         hdr = envi.read_envi_header(acq.mask_hdr_path)
-        hdr["emit acquisition start time"] = acq.start_time.strftime("%Y-%m-%dT%H:%M:%S%z")
-        hdr["emit acquisition stop time"] = acq.stop_time.strftime("%Y-%m-%dT%H:%M:%S%z")
+        hdr["emit acquisition start time"] = acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
+        hdr["emit acquisition stop time"] = acq.stop_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
         hdr["emit pge name"] = pge.repo_url
         hdr["emit pge version"] = pge.version_tag
         hdr["emit pge input files"] = input_files_arr
