@@ -251,6 +251,7 @@ class L1AReassembleRaw(SlurmJobTask):
     ignore_missing_frames = luigi.BoolParameter(default=False)
     level = luigi.Parameter()
     partition = luigi.Parameter()
+    acq_chunksize = luigi.IntParameter(default=1280)
     test_mode = luigi.BoolParameter(default=False)
 
     memory = 30000
@@ -278,19 +279,17 @@ class L1AReassembleRaw(SlurmJobTask):
 
         wm = WorkflowManager(config_path=self.config_path, dcid=self.dcid)
         dc = wm.data_collection
+        dm = wm.database_manager
+
         # Check for missing frames before proceeding. Override with --ignore_missing_frames arg
         if self.ignore_missing_frames is False and dc.has_complete_set_of_frames() is False:
             raise RuntimeError(f"Unable to run {self.task_family} on {self.dcid} due to missing frames in "
                                f"{dc.frames_dir}")
 
         pge = wm.pges["emit-sds-l1a"]
-        tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
-        wm.makedirs(tmp_output_dir)
-
         reassemble_raw_pge = os.path.join(pge.repo_dir, "reassemble_raw_cube.py")
         flex_pge = wm.pges["EMIT_FLEX_codec"]
         flex_codec_exe = os.path.join(flex_pge.repo_dir, "flexcodec")
-        # TODO: Need to get these based on dcid date!!!
         constants_path = wm.config["decompression_constants_path"]
         init_data_path = wm.config["decompression_init_data_path"]
         tmp_log_path = os.path.join(self.local_tmp_dir, "reassemble_raw_pge.log")
@@ -301,125 +300,177 @@ class L1AReassembleRaw(SlurmJobTask):
             "constants_path": constants_path,
             "init_data_path": init_data_path
         }
-        # TODO: Add chunksize (use param?)
         cmd = ["python", reassemble_raw_pge, dc.frames_dir,
                "--flexcodec_exe", flex_codec_exe,
                "--constants_path", constants_path,
                "--init_data_path", init_data_path,
-               "--out_dir", tmp_output_dir,
+               "--work_dir", self.local_tmp_dir,
                "--level", self.level,
-               "--log_path", tmp_log_path]
+               "--log_path", tmp_log_path,
+               "--chunksize", self.acq_chunksize]
+        if self.test_mode:
+            cmd.append("--test_mode")
         env = os.environ.copy()
         env["AIT_ROOT"] = wm.pges["emit-ios"].repo_dir
         env["AIT_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "config.yaml")
         env["AIT_ISS_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "sim.yaml")
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
-        # TODO: Loop through outputs and do copy back and DB insertion
-        # Copy raw file and log back to l1a data dir
-        tmp_raw_path = os.path.join(tmp_output_dir, acq.acquisition_id + "_raw.img")
-        tmp_raw_hdr_path = tmp_raw_path.replace(".img", ".hdr")
-        # TODO: Just use "raw" and not "dark"?
-        # Rename to "raw" or "dark" depending on submode flag, but leave log and report files as "raw"
-        reassembled_img_path = acq.dark_img_path if acq.submode == "dark" else acq.raw_img_path
-        reassembled_hdr_path = acq.dark_hdr_path if acq.submode == "dark" else acq.raw_hdr_path
-        wm.copy(tmp_raw_path, reassembled_img_path)
-        wm.copy(tmp_raw_hdr_path, reassembled_hdr_path)
-        wm.copy(tmp_log_path, acq.raw_img_path.replace(".img", "_pge.log"))
-        report_path = acq.raw_img_path.replace(".img", "_report.txt")
-        wm.copy(tmp_report_path, report_path)
+        # Find unique acquisitions in tmp output folder
+        tmp_image_dir = os.path.join(self.local_tmp_dir, "image")
+        acquisition_files = [os.path.basename(file) for file in glob.glob(os.path.join(tmp_image_dir, "emit*"))]
+        acquisition_files.sort()
+        acq_ids = set([a.split("_")[0] for a in acquisition_files])
 
-        # Create rawqa report file based on CCSDS depacketization report(s) and reassembly report
-        rawqa_file = open(acq.rawqa_txt_path, "w")
+        # Loop through acquisition ids and process
+        for acq_id in acq_ids:
+            # Look up planning product info
+            orbit = "00000"
+            scene = "000"
+            submode = "raw"
+            # TODO: Add lookup for planning product
 
-        # Get depacketization report from associated CCSDS files
-        for path in acq.associated_ccsds:
-            depacket_report_path = path.replace("l0", "l1a").replace("ccsds", "frames").replace(".bin", "_report.txt")
-            if os.path.exists(depacket_report_path):
-                with open(depacket_report_path, "r") as f:
+            # Get start/stop times from reassembly report
+            tmp_report_path = os.path.join(tmp_image_dir, f"{acq_id}_report.txt")
+            start_time = None
+            stop_time = None
+            with open(tmp_report_path, "r") as f:
+                for line in f.readlines():
+                    if "Start time" in line:
+                        start_time = datetime.datetime.strptime(line.split(": ")[1], "%Y-%m-%d %H:%M:%S.%f")
+                    if "Stop time" in line:
+                        stop_time = datetime.datetime.strptime(line.split(": ")[1], "%Y-%m-%d %H:%M:%S.%f")
+
+            # TODO: Check valid date?
+            if start_time is None or stop_time is None:
+                raise RuntimeError("Could not find start or stop time for acquisition!")
+
+            # Define acquisition metadata
+            acq_meta = {
+                "acquisition_id": acq_id,
+                "build_num": wm.config["build_num"],
+                "processing_version": wm.config["processing_version"],
+                "associated_dcid": self.dcid,
+                "start_time": start_time,
+                "stop_time": stop_time,
+                "orbit": orbit,
+                "scene": scene,
+                "submode": submode.lower()
+            }
+
+            # Insert acquisition into DB
+            if not dm.find_acquisition_by_id(acq_id):
+                dm.insert_acquisition(acq_meta)
+                logger.debug(f"Inserted acquisition in DB with {acq_meta}")
+
+            wm = WorkflowManager(config_path=self.config_path, acquisition_id=acq_id)
+            acq = wm.acquisition
+
+            # Copy raw file and log back to l1a data dir
+            tmp_raw_path = os.path.join(tmp_image_dir, acq.acquisition_id + "_raw.img")
+            tmp_raw_hdr_path = tmp_raw_path.replace(".img", ".hdr")
+            wm.copy(tmp_raw_path, acq.raw_img_path)
+            wm.copy(tmp_raw_hdr_path, acq.raw_hdr_path)
+            wm.copy(tmp_log_path, acq.raw_img_path.replace(".img", "_pge.log"))
+            report_path = acq.raw_img_path.replace(".img", "_report.txt")
+            wm.copy(tmp_report_path, report_path)
+
+            # Create rawqa report file based on CCSDS depacketization report(s) and reassembly report
+            rawqa_file = open(acq.rawqa_txt_path, "w")
+
+            # Get depacketization report from associated CCSDS files
+            for path in dc.associated_ccsds:
+                depacket_report_path = path.replace(
+                    "l0", "l1a").replace("ccsds", "frames").replace(".bin", "_report.txt")
+                if os.path.exists(depacket_report_path):
+                    with open(depacket_report_path, "r") as f:
+                        rawqa_file.write("===========\n")
+                        rawqa_file.write("SOURCE FILE\n")
+                        rawqa_file.write("===========\n")
+                        rawqa_file.write(f"{depacket_report_path}\n\n")
+                        rawqa_file.write(f.read() + "\n\n")
+                else:
+                    logger.warning(f"Unable to find depacketization report located at {depacket_report_path}")
+
+            # Get reassembly report
+            if os.path.exists(report_path):
+                with open(tmp_report_path, "r") as f:
+                    rawqa_file.write("===========\n")
                     rawqa_file.write("SOURCE FILE\n")
                     rawqa_file.write("===========\n")
-                    rawqa_file.write(f"{depacket_report_path}\n\n")
-                    rawqa_file.write(f.read() + "\n\n")
+                    rawqa_file.write(f"{report_path}\n\n")
+                    rawqa_file.write(f.read())
             else:
-                logger.warning(f"Unable to find depacketization report located at {depacket_report_path}")
+                logger.warning(f"Unable to find reassembly report located at {report_path}")
 
-        # Get reassembly report
-        if os.path.exists(report_path):
-            with open(tmp_report_path, "r") as f:
-                rawqa_file.write("SOURCE FILE\n")
-                rawqa_file.write("===========\n")
-                rawqa_file.write(f"{report_path}\n\n")
-                rawqa_file.write(f.read())
-        else:
-            logger.warning(f"Unable to find reassembly report located at {report_path}")
+            rawqa_file.close()
+            wm.change_group_ownership(acq.rawqa_txt_path)
 
-        rawqa_file.close()
+            # TODO: What to do here?  Copy these to DCID instead and do outside of loop
+            # Copy decompressed frames to /store
+            tmp_decomp_frame_paths = glob.glob(os.path.join(tmp_output_dir, "*.decomp"))
+            for path in tmp_decomp_frame_paths:
+                wm.copy(path, os.path.join(acq.decomp_dir, os.path.basename(path)))
 
-        # Copy decompressed frames to /store
-        tmp_decomp_frame_paths = glob.glob(os.path.join(tmp_output_dir, "*.decomp"))
-        for path in tmp_decomp_frame_paths:
-            wm.copy(path, os.path.join(acq.decomp_dir, os.path.basename(path)))
+            # Update hdr files
+            input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
+            doc_version = "EMIT SDS L1A JPL-D 104186, Initial"
+            hdr = envi.read_envi_header(reassembled_hdr_path)
+            hdr["emit acquisition start time"] = acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
+            hdr["emit acquisition stop time"] = acq.stop_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
+            hdr["emit pge name"] = pge.repo_url
+            hdr["emit pge version"] = pge.version_tag
+            hdr["emit pge input files"] = input_files_arr
+            hdr["emit pge run command"] = " ".join(cmd)
+            hdr["emit software build version"] = wm.config["build_num"]
+            hdr["emit documentation version"] = doc_version
+            creation_time = datetime.datetime.fromtimestamp(
+                os.path.getmtime(reassembled_img_path), tz=datetime.timezone.utc)
+            hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
+            hdr["emit data product version"] = wm.config["processing_version"]
+            envi.write_envi_header(reassembled_hdr_path, hdr)
 
-        # Update hdr files
-        input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
-        doc_version = "EMIT SDS L1A JPL-D 104186, Initial"
-        hdr = envi.read_envi_header(reassembled_hdr_path)
-        hdr["emit acquisition start time"] = acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
-        hdr["emit acquisition stop time"] = acq.stop_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
-        hdr["emit pge name"] = pge.repo_url
-        hdr["emit pge version"] = pge.version_tag
-        hdr["emit pge input files"] = input_files_arr
-        hdr["emit pge run command"] = " ".join(cmd)
-        hdr["emit software build version"] = wm.config["build_num"]
-        hdr["emit documentation version"] = doc_version
-        creation_time = datetime.datetime.fromtimestamp(
-            os.path.getmtime(reassembled_img_path), tz=datetime.timezone.utc)
-        hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
-        hdr["emit data product version"] = wm.config["processing_version"]
-        envi.write_envi_header(reassembled_hdr_path, hdr)
+            # PGE writes metadata to db
+            dm = wm.database_manager
 
-        # PGE writes metadata to db
-        dm = wm.database_manager
-
-        # Update raw product dictionary
-        product_dict_raw = {
-            "img_path": reassembled_img_path,
-            "hdr_path": reassembled_hdr_path,
-            "created": creation_time,
-            "dimensions": {
-                "lines": hdr["lines"],
-                "samples": hdr["samples"],
-                "bands": hdr["bands"]
+            # Update raw product dictionary
+            product_dict_raw = {
+                "img_path": reassembled_img_path,
+                "hdr_path": reassembled_hdr_path,
+                "created": creation_time,
+                "dimensions": {
+                    "lines": hdr["lines"],
+                    "samples": hdr["samples"],
+                    "bands": hdr["bands"]
+                }
             }
-        }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1a.raw": product_dict_raw})
+            dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1a.raw": product_dict_raw})
 
-        # Update rawqa product dictionary
-        product_dict_rawqa = {
-            "txt_path": acq.rawqa_txt_path,
-            "created": datetime.datetime.fromtimestamp(os.path.getmtime(acq.rawqa_txt_path), tz=datetime.timezone.utc)
-        }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1a.rawqa": product_dict_rawqa})
-
-        log_entry = {
-            "task": self.task_family,
-            "pge_name": pge.repo_url,
-            "pge_version": pge.version_tag,
-            "pge_input_files": input_files,
-            "pge_run_command": " ".join(cmd),
-            "documentation_version": doc_version,
-            "product_creation_time": creation_time,
-            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
-            "completion_status": "SUCCESS",
-            "output": {
-                "l1a_raw_img_path": reassembled_img_path,
-                "l1a_raw_hdr_path:": reassembled_hdr_path,
-                "l1a_rawqa_txt_path": acq.rawqa_txt_path
+            # Update rawqa product dictionary
+            product_dict_rawqa = {
+                "txt_path": acq.rawqa_txt_path,
+                "created": datetime.datetime.fromtimestamp(os.path.getmtime(acq.rawqa_txt_path), tz=datetime.timezone.utc)
             }
-        }
+            dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1a.rawqa": product_dict_rawqa})
 
-        dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
+            log_entry = {
+                "task": self.task_family,
+                "pge_name": pge.repo_url,
+                "pge_version": pge.version_tag,
+                "pge_input_files": input_files,
+                "pge_run_command": " ".join(cmd),
+                "documentation_version": doc_version,
+                "product_creation_time": creation_time,
+                "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
+                "completion_status": "SUCCESS",
+                "output": {
+                    "l1a_raw_img_path": reassembled_img_path,
+                    "l1a_raw_hdr_path:": reassembled_hdr_path,
+                    "l1a_rawqa_txt_path": acq.rawqa_txt_path
+                }
+            }
+
+            dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
 
 
 class L1AFrameReport(SlurmJobTask):

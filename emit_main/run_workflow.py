@@ -48,6 +48,8 @@ def parse_args():
                         help="The threshold of missing packets to total packets which will cause a task to fail")
     parser.add_argument("--ignore_missing_frames", action="store_true",
                         help="Ignore missing frames when reasssembling raw cube")
+    parser.add_argument("--acq_chunksize", default=1280,
+                        help="The number of lines in which to split acquisitions")
     parser.add_argument("-w", "--workers",
                         help="Number of luigi workers")
     parser.add_argument("--build_env", action="store_true",
@@ -95,7 +97,9 @@ def get_tasks_from_args(args):
                                                 miss_pkt_thresh=args.miss_pkt_thresh,
                                                 **kwargs),
         "l1aframereport": L1AFrameReport(acquisition_id=args.acquisition_id, **kwargs),
-        "l1araw": L1AReassembleRaw(acquisition_id=args.acquisition_id, ignore_missing_frames=args.ignore_missing_frames, **kwargs),
+        "l1araw": L1AReassembleRaw(acquisition_id=args.acquisition_id,
+                                   ignore_missing_frames=args.ignore_missing_frames, acq_chunksize=args.acq_chunksize,
+                                   **kwargs),
         "l1bcal": L1BCalibrate(acquisition_id=args.acquisition_id, **kwargs),
         "l2arefl": L2AReflectance(acquisition_id=args.acquisition_id, **kwargs),
         "l2amask": L2AMask(acquisition_id=args.acquisition_id, **kwargs),
