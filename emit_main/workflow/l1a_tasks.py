@@ -357,8 +357,12 @@ class L1AReassembleRaw(SlurmJobTask):
             # Get list of paths to frames for this acquisition
             acq_frame_nums = [str(i).zfill(5) for i in list(range(start_index, stop_index + 1))]
             frame_paths = glob.glob(os.path.join(dc.frames_dir, "*"))
+            decomp_frame_paths = glob.glob(os.path.join(dc.decomp_dir, "*.decomp"))
             acq_frame_paths = [p for p in frame_paths if os.path.basename(p).split("_")[2] in acq_frame_nums]
             acq_frame_paths.sort()
+            acq_decomp_frame_paths = [p for p in decomp_frame_paths if os.path.basename(p).split("_")[2] in
+                                      acq_frame_nums]
+            acq_decomp_frame_paths.sort()
 
             # Define acquisition metadata
             acq_meta = {
@@ -372,7 +376,8 @@ class L1AReassembleRaw(SlurmJobTask):
                 "scene": scene,
                 "submode": submode.lower(),
                 "associated_dcid": self.dcid,
-                "associated_frames": acq_frame_paths
+                "associated_frames": acq_frame_paths,
+                "associated_decompressed_frames": acq_decomp_frame_paths
             }
 
             # Insert acquisition into DB
@@ -396,6 +401,9 @@ class L1AReassembleRaw(SlurmJobTask):
             for p in acq_frame_paths:
                 frame_path_symlink = os.path.join(acq.frames_dir, os.path.basename(p))
                 wm.symlink(p, frame_path_symlink)
+            for p in acq_decomp_frame_paths:
+                decomp_frame_path_symlink = os.path.join(acq.decomp_dir, os.path.basename(p))
+                wm.symlink(p, decomp_frame_path_symlink)
 
             # Create rawqa report file based on CCSDS depacketization report(s) and reassembly report
             rawqa_file = open(acq.rawqa_txt_path, "w")
