@@ -185,5 +185,6 @@ class WorkflowManager:
         self.change_group_ownership(dst)
 
     def symlink(self, source, link_name):
-        os.symlink(source, link_name)
-        self.change_group_ownership(link_name)
+        if not os.path.exists(link_name):
+            os.symlink(source, link_name)
+            self.change_group_ownership(link_name)

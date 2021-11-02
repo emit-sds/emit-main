@@ -162,8 +162,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
 
             # Create a symlink from the stream l1a dir to the dcid frames dir
             dcid_frame_symlink = os.path.join(stream.frames_dir, os.path.basename(dc.frames_dir))
-            if not os.path.exists(dcid_frame_symlink):
-                wm.symlink(dc.frames_dir, dcid_frame_symlink)
+            wm.symlink(dc.frames_dir, dcid_frame_symlink)
 
             # Create a symlink from the dcid/by_date dir structure to the dcid/by_dcid dir structure
             by_dcid_date_dir = os.path.join(dc.by_date_dir, start_time.strftime("%Y%m%d"))
@@ -171,8 +170,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
             date_to_dcid_frame_symlink = os.path.join(date_to_dcid_dir, os.path.basename(dc.frames_dir))
             wm.makedirs(by_dcid_date_dir)
             wm.makedirs(date_to_dcid_dir)
-            if not os.path.exists(date_to_dcid_frame_symlink):
-                wm.symlink(dc.frames_dir, date_to_dcid_frame_symlink)
+            wm.symlink(dc.frames_dir, date_to_dcid_frame_symlink)
 
             # Add frame paths to acquisition metadata
             if "frames" in dc.metadata and dc.metadata["frames"] is not None:
@@ -316,8 +314,13 @@ class L1AReassembleRaw(SlurmJobTask):
         env["AIT_ISS_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "sim.yaml")
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
-        # Find unique acquisitions in tmp output folder
+        # Copy decompressed frames to /store
         tmp_image_dir = os.path.join(self.local_tmp_dir, "image")
+        tmp_decomp_frame_paths = glob.glob(os.path.join(tmp_image_dir, "*.decomp"))
+        for path in tmp_decomp_frame_paths:
+            wm.copy(path, os.path.join(dc.decomp_dir, os.path.basename(path)))
+
+        # Find unique acquisitions in tmp output folder
         acquisition_files = [os.path.basename(file) for file in glob.glob(os.path.join(tmp_image_dir, "emit*"))]
         acquisition_files.sort()
         acq_ids = set([a.split("_")[0] for a in acquisition_files])
@@ -334,16 +337,28 @@ class L1AReassembleRaw(SlurmJobTask):
             tmp_report_path = os.path.join(tmp_image_dir, f"{acq_id}_report.txt")
             start_time = None
             stop_time = None
+            start_index = None
+            stop_index = None
             with open(tmp_report_path, "r") as f:
                 for line in f.readlines():
                     if "Start time" in line:
                         start_time = datetime.datetime.strptime(line.split(": ")[1], "%Y-%m-%d %H:%M:%S.%f")
                     if "Stop time" in line:
                         stop_time = datetime.datetime.strptime(line.split(": ")[1], "%Y-%m-%d %H:%M:%S.%f")
+                    if "First frame number in acquisition" in line:
+                        start_index = int(line.split(": ")[1])
+                    if "Last frame number in acquisition" in line:
+                        stop_index = int(line.split(": ")[1])
 
             # TODO: Check valid date?
             if start_time is None or stop_time is None:
                 raise RuntimeError("Could not find start or stop time for acquisition!")
+
+            # Get list of paths to frames for this acquisition
+            acq_frame_nums = [str(i).zfill(5) for i in list(range(start_index, stop_index + 1))]
+            frame_paths = glob.glob(os.path.join(dc.frames_dir, "*"))
+            acq_frame_paths = [p for p in frame_paths if os.path.basename(p).split("_")[2] in acq_frame_nums]
+            acq_frame_paths.sort()
 
             # Define acquisition metadata
             acq_meta = {
@@ -355,7 +370,9 @@ class L1AReassembleRaw(SlurmJobTask):
                 "stop_time": stop_time,
                 "orbit": orbit,
                 "scene": scene,
-                "submode": submode.lower()
+                "submode": submode.lower(),
+                "associated_dcid": self.dcid,
+                "associated_frames": acq_frame_paths
             }
 
             # Insert acquisition into DB
@@ -374,6 +391,11 @@ class L1AReassembleRaw(SlurmJobTask):
             wm.copy(tmp_log_path, acq.raw_img_path.replace(".img", "_pge.log"))
             report_path = acq.raw_img_path.replace(".img", "_report.txt")
             wm.copy(tmp_report_path, report_path)
+
+            # Create symlinks from the acquisition to the specific frames that are associated with it.
+            for p in acq_frame_paths:
+                frame_path_symlink = os.path.join(acq.frames_dir, os.path.basename(p))
+                wm.symlink(p, frame_path_symlink)
 
             # Create rawqa report file based on CCSDS depacketization report(s) and reassembly report
             rawqa_file = open(acq.rawqa_txt_path, "w")
@@ -406,16 +428,10 @@ class L1AReassembleRaw(SlurmJobTask):
             rawqa_file.close()
             wm.change_group_ownership(acq.rawqa_txt_path)
 
-            # TODO: What to do here?  Copy these to DCID instead and do outside of loop
-            # Copy decompressed frames to /store
-            tmp_decomp_frame_paths = glob.glob(os.path.join(tmp_output_dir, "*.decomp"))
-            for path in tmp_decomp_frame_paths:
-                wm.copy(path, os.path.join(acq.decomp_dir, os.path.basename(path)))
-
             # Update hdr files
             input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
             doc_version = "EMIT SDS L1A JPL-D 104186, Initial"
-            hdr = envi.read_envi_header(reassembled_hdr_path)
+            hdr = envi.read_envi_header(acq.raw_hdr_path)
             hdr["emit acquisition start time"] = acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
             hdr["emit acquisition stop time"] = acq.stop_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
             hdr["emit pge name"] = pge.repo_url
@@ -425,18 +441,15 @@ class L1AReassembleRaw(SlurmJobTask):
             hdr["emit software build version"] = wm.config["build_num"]
             hdr["emit documentation version"] = doc_version
             creation_time = datetime.datetime.fromtimestamp(
-                os.path.getmtime(reassembled_img_path), tz=datetime.timezone.utc)
+                os.path.getmtime(acq.raw_img_path), tz=datetime.timezone.utc)
             hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
             hdr["emit data product version"] = wm.config["processing_version"]
-            envi.write_envi_header(reassembled_hdr_path, hdr)
-
-            # PGE writes metadata to db
-            dm = wm.database_manager
+            envi.write_envi_header(acq.raw_hdr_path, hdr)
 
             # Update raw product dictionary
             product_dict_raw = {
-                "img_path": reassembled_img_path,
-                "hdr_path": reassembled_hdr_path,
+                "img_path": acq.raw_img_path,
+                "hdr_path": acq.raw_hdr_path,
                 "created": creation_time,
                 "dimensions": {
                     "lines": hdr["lines"],
@@ -449,7 +462,8 @@ class L1AReassembleRaw(SlurmJobTask):
             # Update rawqa product dictionary
             product_dict_rawqa = {
                 "txt_path": acq.rawqa_txt_path,
-                "created": datetime.datetime.fromtimestamp(os.path.getmtime(acq.rawqa_txt_path), tz=datetime.timezone.utc)
+                "created": datetime.datetime.fromtimestamp(os.path.getmtime(acq.rawqa_txt_path),
+                                                           tz=datetime.timezone.utc)
             }
             dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1a.rawqa": product_dict_rawqa})
 
@@ -464,8 +478,8 @@ class L1AReassembleRaw(SlurmJobTask):
                 "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
                 "completion_status": "SUCCESS",
                 "output": {
-                    "l1a_raw_img_path": reassembled_img_path,
-                    "l1a_raw_hdr_path:": reassembled_hdr_path,
+                    "l1a_raw_img_path": acq.raw_img_path,
+                    "l1a_raw_hdr_path:": acq.raw_hdr_path,
                     "l1a_rawqa_txt_path": acq.rawqa_txt_path
                 }
             }
