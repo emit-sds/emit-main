@@ -15,7 +15,7 @@ import luigi
 
 from emit_main.workflow.l0_tasks import L0StripHOSC, L0ProcessPlanningProduct
 from emit_main.workflow.l1a_tasks import L1ADepacketizeScienceFrames, L1AReassembleRaw, L1AReformatEDP, L1AFrameReport
-from emit_main.workflow.l1b_tasks import L1BGeolocate, L1BCalibrate
+from emit_main.workflow.l1b_tasks import L1BGeolocate, L1BCalibrate, L1BFormat
 from emit_main.workflow.l2a_tasks import L2AMask, L2AReflectance
 from emit_main.workflow.l2b_tasks import L2BAbundance
 from emit_main.workflow.l3_tasks import L3Unmix
@@ -100,7 +100,11 @@ def get_tasks_from_args(args):
         "l2arefl": L2AReflectance(acquisition_id=args.acquisition_id, **kwargs),
         "l2amask": L2AMask(acquisition_id=args.acquisition_id, **kwargs),
         "l2babun": L2BAbundance(acquisition_id=args.acquisition_id, **kwargs),
-        "l3unmix": L3Unmix(acquisition_id=args.acquisition_id, **kwargs)
+        "l3unmix": L3Unmix(acquisition_id=args.acquisition_id, **kwargs),
+        "l1bformat": L1BFormat(acquisition_id=args.acquisition_id, **kwargs),
+        "l2aformat": L2AFormat(acquisition_id=args.acquisition_id, **kwargs),
+        "l2bformat": L2BFormat(acquisition_id=args.acquisition_id, **kwargs),
+        "l3unmixformat": L3UnmixFormat(acquisition_id=args.acquisition_id, **kwargs)
     }
     tasks = []
     for prod in products:

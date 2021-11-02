@@ -14,7 +14,7 @@ import luigi
 import spectral.io.envi as envi
 
 from emit_main.workflow.acquisition import Acquisition
-from emit_main.workflow.envi_target import ENVITarget
+from emit_main.workflow.output_targets import ENVITarget, NetCDFTarget, UMMGTarget
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.l1a_tasks import L1AReassembleRaw
 from emit_main.workflow.slurm import SlurmJobTask
@@ -189,3 +189,45 @@ class L1BGeolocate(SlurmJobTask):
         pge.run(cmd, tmp_dir=self.tmp_dir)
         cmd = ["touch", acq.glt_hdr_path]
         pge.run(cmd, tmp_dir=self.tmp_dir)
+
+
+class L1BFormat(SlurmJobTask):
+    """
+    Converts L1B (geolocation and radiance) to netcdf files
+    :returns: L1B netcdf output for delivery
+    """
+
+    config_path = luigi.Parameter()
+    acquisition_id = luigi.Parameter()
+    level = luigi.Parameter()
+    partition = luigi.Parameter()
+
+    task_namespace = "emit"
+    n_cores = 1
+    memory = 40000 #TODO: determine
+
+    def requires(self):
+
+        logger.debug(self.task_family + " requires")
+        return (L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+                             partition=self.partition),
+                L1BGeolocate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+                             partition=self.partition))
+
+    def output(self):
+
+        logger.debug(self.task_family + " output")
+        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return (NetCDFTarget(acq.loc_img_path), UMMGTarget(acq.loc_img_path)) ###############TODO: update path
+
+    def work(self):
+
+        logger.debug(self.task_family + " run")
+
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        acq = wm.acquisition
+
+        pge = wm.pges["emit-utils"]
+
+        cmd = ["touch", acq.loc_img_path] ####TODO: update path name
+        pge.run(cmd, tmp_dir=self.tmp_dir) ####TODO: update run call

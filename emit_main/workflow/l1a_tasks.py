@@ -12,8 +12,7 @@ import os
 import luigi
 import spectral.io.envi as envi
 
-from emit_main.workflow.stream_target import StreamTarget
-from emit_main.workflow.envi_target import ENVITarget
+from emit_main.workflow.output_targets import ENVITarget, StreamTarget
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.l0_tasks import L0StripHOSC
 from emit_main.workflow.slurm import SlurmJobTask
