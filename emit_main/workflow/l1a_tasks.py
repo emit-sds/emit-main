@@ -323,7 +323,18 @@ class L1AReassembleRaw(SlurmJobTask):
         # Find unique acquisitions in tmp output folder
         acquisition_files = [os.path.basename(file) for file in glob.glob(os.path.join(tmp_image_dir, "emit*"))]
         acquisition_files.sort()
-        acq_ids = set([a.split("_")[0] for a in acquisition_files])
+        acq_ids = list(set([a.split("_")[0] for a in acquisition_files]))
+
+        # Update DB with associated acquisitions
+        if "associated_acquisitions" in dc.metadata:
+            assoc_acqs = dc.metadata["associated_acquisitions"]
+            for a in acq_ids:
+                if a not in assoc_acqs:
+                    assoc_acqs.append(a)
+        else:
+            assoc_acqs = acq_ids
+        dc_meta = {"associated_acquisitions": assoc_acqs}
+        dm.update_data_collection_metadata(self.dcid, dc_meta)
 
         # Loop through acquisition ids and process
         for acq_id in acq_ids:
