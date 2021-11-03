@@ -28,6 +28,7 @@ class DataCollection:
         # Read metadata from db
         dm = DatabaseManager(config_path)
         self.metadata = dm.find_data_collection_by_id(self.dcid)
+        self._initialize_metadata()
         self.__dict__.update(self.metadata)
 
         # Get config properties
@@ -57,6 +58,15 @@ class DataCollection:
         wm = WorkflowManager(config_path=config_path)
         for d in self.dirs:
             wm.makedirs(d)
+
+    def _initialize_metadata(self):
+        # Insert some placeholder fields so that we don't get missing keys on updates
+        if "processing_log" not in self.metadata:
+            self.metadata["processing_log"] = []
+        if "products" not in self.metadata:
+            self.metadata["products"] = {}
+        if "l1a" not in self.metadata["products"]:
+            self.metadata["products"]["l1a"] = {}
 
     def has_complete_set_of_frames(self):
         frames = [os.path.basename(frame) for frame in glob.glob(os.path.join(self.frames_dir, "*"))]

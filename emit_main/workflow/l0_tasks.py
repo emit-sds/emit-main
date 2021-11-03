@@ -84,9 +84,9 @@ class L0StripHOSC(SlurmJobTask):
         with open(tmp_report_path, "r") as f:
             for line in f.readlines():
                 if "Packet Count" in line:
-                    packet_count = int(line.split(" ")[-1])
+                    packet_count = int(line.rstrip("\n").split(" ")[-1])
                 if "Missing PSC Count" in line:
-                    missing_packets = int(line.split(" ")[-1])
+                    missing_packets = int(line.rstrip("\n").split(" ")[-1])
         miss_pkt_percent = missing_packets / packet_count
         if missing_packets / packet_count >= self.miss_pkt_thresh:
             raise RuntimeError(f"Missing {missing_packets} packets out of {packet_count} total is greater than the "

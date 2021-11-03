@@ -12,11 +12,12 @@ import os
 import luigi
 import spectral.io.envi as envi
 
-from emit_main.workflow.stream_target import StreamTarget
+from emit_main.workflow.data_collection_target import DataCollectionTarget
 from emit_main.workflow.envi_target import ENVITarget
-from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.l0_tasks import L0StripHOSC
 from emit_main.workflow.slurm import SlurmJobTask
+from emit_main.workflow.stream_target import StreamTarget
+from emit_main.workflow.workflow_manager import WorkflowManager
 
 logger = logging.getLogger("emit-main")
 
@@ -41,20 +42,42 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
 
     def requires(self):
 
-        logger.debug(self.task_family + " requires")
+        logger.debug(f"{self.task_family} requires: {self.stream_path}")
         # TODO: Add dependency on previous stream file (if one is found in DB)
-        return L0StripHOSC(config_path=self.config_path, stream_path=self.stream_path, level=self.level,
-                           partition=self.partition, miss_pkt_thresh=self.miss_pkt_thresh)
+        wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
+        dm = wm.database_manager
+        stream = wm.stream
+        prev_streams = dm.find_streams_by_date_range("1675", "stop_time",
+                                                     stream.start_time - datetime.timedelta(seconds=1),
+                                                     stream.start_time + datetime.timedelta(minutes=1))
+        prev_stream_path = None
+        if prev_streams is not None and len(prev_streams) > 0:
+            try:
+                prev_stream_path = prev_streams[0]["products"]["raw"]["hosc_path"]
+            except KeyError:
+                logger.warning(f"Could not find a previous stream path for {stream.ccsds_path} in DB.")
+                pass
+
+        if prev_stream_path is None:
+            return L0StripHOSC(config_path=self.config_path, stream_path=self.stream_path, level=self.level,
+                               partition=self.partition, miss_pkt_thresh=self.miss_pkt_thresh)
+        else:
+            logger.debug(f"Found dependency on previous stream path of {prev_stream_path}.")
+            return [L0StripHOSC(config_path=self.config_path, stream_path=self.stream_path, level=self.level,
+                                partition=self.partition, miss_pkt_thresh=self.miss_pkt_thresh),
+                    L1ADepacketizeScienceFrames(config_path=self.config_path, stream_path=prev_stream_path,
+                                                level=self.level, partition=self.partition,
+                                                miss_pkt_thresh=self.miss_pkt_thresh, test_mode=self.test_mode)]
 
     def output(self):
 
-        logger.debug(self.task_family + " output")
+        logger.debug(f"{self.task_family} output: {self.stream_path}")
         wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
         return StreamTarget(stream=wm.stream, task_family=self.task_family)
 
     def work(self):
 
-        logger.debug(self.task_family + " work")
+        logger.debug(f"{self.task_family} work: {self.stream_path}")
         wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
         dm = wm.database_manager
         stream = wm.stream
@@ -92,7 +115,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
                 with open(prev_stream_report, "r") as f:
                     for line in f.readlines():
                         if "Bytes read since last index" in line:
-                            bytes_read = int(line.split(" ")[-1])
+                            bytes_read = int(line.rstrip("\n").split(" ")[-1])
                             break
 
             # Append optional args and run
@@ -173,20 +196,20 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
             wm.symlink(dc.frames_dir, date_to_dcid_frame_symlink)
 
             # Add frame paths to acquisition metadata
-            if "frames" in dc.metadata and dc.metadata["frames"] is not None:
+            if "frames" in dc.metadata["products"]["l1a"] and dc.metadata["products"]["l1a"]["frames"] is not None:
                 for path in dcid_frame_paths:
-                    if path not in dc.metadata["frames"]:
-                        dc.metadata["frames"] += [path]
+                    if path not in dc.metadata["products"]["l1a"]["frames"]:
+                        dc.metadata["products"]["l1a"]["frames"] += [path]
             else:
-                dc.metadata["frames"] = dcid_frame_paths
-            dc.metadata["frames"].sort()
+                dc.metadata["products"]["l1a"]["frames"] = dcid_frame_paths
+            dc.metadata["products"]["l1a"]["frames"].sort()
 
             dm.update_data_collection_metadata(
                 dcid,
                 {
                     "start_time": start_time,
                     "stop_time": stop_time,
-                    "frames": dc.metadata["frames"]
+                    "products.l1a.frames": dc.metadata["products"]["l1a"]["frames"]
                 })
 
             # Add stream file to data collection metadata in DB so there is a link back to CCSDS packet stream for each
@@ -202,17 +225,16 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
             dcid_frame_paths.sort()
             dcid_frames_map.update(
                 {
-                    dcid: {
-                        "dcid_frame_paths": dcid_frame_paths,
-                        "created": datetime.datetime.now(tz=datetime.timezone.utc)
-                    }
+                    "dcid": dcid,
+                    "dcid_frame_paths": dcid_frame_paths,
+                    "created": datetime.datetime.now(tz=datetime.timezone.utc)
                 }
             )
 
             # Keep track of all output paths for log entry
             output_frame_paths += dcid_frame_paths
 
-        dm.update_stream_metadata(stream.ccsds_name, {"products.l1a": dcid_frames_map})
+        dm.update_stream_metadata(stream.ccsds_name, {"products.l1a.data_collections": dcid_frames_map})
 
         # Copy log file and report file into the stream's l1a directory
         sdp_log_name = stream.ccsds_name.replace("l0_ccsds", "l1a_frames").replace(".bin", "_pge.log")
@@ -267,9 +289,8 @@ class L1AReassembleRaw(SlurmJobTask):
     def output(self):
 
         logger.debug(self.task_family + " output")
-        # TODO: Look for acquisitions in dcid object and iterate?
-        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return ENVITarget(acquisition=wm.acquisition, task_family=self.task_family)
+        wm = WorkflowManager(config_path=self.config_path, dcid=self.dcid)
+        return DataCollectionTarget(data_collection=wm.data_collection, task_family=self.task_family)
 
     def work(self):
 
@@ -305,7 +326,7 @@ class L1AReassembleRaw(SlurmJobTask):
                "--work_dir", self.local_tmp_dir,
                "--level", self.level,
                "--log_path", tmp_log_path,
-               "--chunksize", self.acq_chunksize]
+               "--chunksize", str(self.acq_chunksize)]
         if self.test_mode:
             cmd.append("--test_mode")
         env = os.environ.copy()
@@ -326,22 +347,27 @@ class L1AReassembleRaw(SlurmJobTask):
         acq_ids = list(set([a.split("_")[0] for a in acquisition_files]))
 
         # Update DB with associated acquisitions
-        if "associated_acquisitions" in dc.metadata:
-            assoc_acqs = dc.metadata["associated_acquisitions"]
+        if "associated_acquisitions" in dc.metadata and dc.metadata["associated_acquisitions"] is not None:
             for a in acq_ids:
-                if a not in assoc_acqs:
-                    assoc_acqs.append(a)
+                if a not in dc.metadata["associated_acquisitions"]:
+                    dc.metadata["associated_acquisitions"].append(a)
         else:
-            assoc_acqs = acq_ids
-        dc_meta = {"associated_acquisitions": assoc_acqs}
+            dc.metadata["associated_acquisitions"] = acq_ids
+        dc_meta = {"associated_acquisitions": dc.metadata["associated_acquisitions"]}
         dm.update_data_collection_metadata(self.dcid, dc_meta)
 
         # Loop through acquisition ids and process
+        output_paths = {
+            "l1a_raw_img_paths": [],
+            "l1a_raw_hdr_paths": [],
+            "l1a_rawqa_txt_paths": []
+        }
+        acq_product_map = {}
         for acq_id in acq_ids:
             # Look up planning product info
             orbit = "00000"
             scene = "000"
-            submode = "raw"
+            submode = "science"
             # TODO: Add lookup for planning product
 
             # Get start/stop times from reassembly report
@@ -353,13 +379,15 @@ class L1AReassembleRaw(SlurmJobTask):
             with open(tmp_report_path, "r") as f:
                 for line in f.readlines():
                     if "Start time" in line:
-                        start_time = datetime.datetime.strptime(line.split(": ")[1], "%Y-%m-%d %H:%M:%S.%f")
+                        start_time = datetime.datetime.strptime(
+                            line.rstrip("\n").split(": ")[1], "%Y-%m-%d %H:%M:%S.%f")
                     if "Stop time" in line:
-                        stop_time = datetime.datetime.strptime(line.split(": ")[1], "%Y-%m-%d %H:%M:%S.%f")
+                        stop_time = datetime.datetime.strptime(
+                            line.rstrip("\n").split(": ")[1], "%Y-%m-%d %H:%M:%S.%f")
                     if "First frame number in acquisition" in line:
-                        start_index = int(line.split(": ")[1])
+                        start_index = int(line.rstrip("\n").split(": ")[1])
                     if "Last frame number in acquisition" in line:
-                        stop_index = int(line.split(": ")[1])
+                        stop_index = int(line.rstrip("\n").split(": ")[1])
 
             # TODO: Check valid date?
             if start_time is None or stop_time is None:
@@ -380,15 +408,12 @@ class L1AReassembleRaw(SlurmJobTask):
                 "acquisition_id": acq_id,
                 "build_num": wm.config["build_num"],
                 "processing_version": wm.config["processing_version"],
-                "associated_dcid": self.dcid,
                 "start_time": start_time,
                 "stop_time": stop_time,
                 "orbit": orbit,
                 "scene": scene,
                 "submode": submode.lower(),
-                "associated_dcid": self.dcid,
-                "associated_frames": acq_frame_paths,
-                "associated_decompressed_frames": acq_decomp_frame_paths
+                "associated_dcid": self.dcid
             }
 
             # Insert acquisition into DB
@@ -465,6 +490,11 @@ class L1AReassembleRaw(SlurmJobTask):
             hdr["emit data product version"] = wm.config["processing_version"]
             envi.write_envi_header(acq.raw_hdr_path, hdr)
 
+            # Update products with frames and decompressed frames:
+            dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1a.frames": acq_frame_paths})
+            dm.update_acquisition_metadata(acq.acquisition_id,
+                                           {"products.l1a.decompressed_frames": acq_decomp_frame_paths})
+
             # Update raw product dictionary
             product_dict_raw = {
                 "img_path": acq.raw_img_path,
@@ -486,24 +516,33 @@ class L1AReassembleRaw(SlurmJobTask):
             }
             dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1a.rawqa": product_dict_rawqa})
 
-            log_entry = {
-                "task": self.task_family,
-                "pge_name": pge.repo_url,
-                "pge_version": pge.version_tag,
-                "pge_input_files": input_files,
-                "pge_run_command": " ".join(cmd),
-                "documentation_version": doc_version,
-                "product_creation_time": creation_time,
-                "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
-                "completion_status": "SUCCESS",
-                "output": {
-                    "l1a_raw_img_path": acq.raw_img_path,
-                    "l1a_raw_hdr_path:": acq.raw_hdr_path,
-                    "l1a_rawqa_txt_path": acq.rawqa_txt_path
-                }
-            }
+            # Keep track of output paths and acquisition product map for dc update
+            output_paths["l1a_raw_img_paths"].append(acq.raw_img_path)
+            output_paths["l1a_raw_hdr_paths"].append(acq.raw_hdr_path)
+            output_paths["l1a_rawqa_txt_paths"].append(acq.rawqa_txt_path)
+            acq_product_map.update({
+                "acquisition_id": acq_id,
+                "raw": product_dict_raw,
+                "rawqa": product_dict_rawqa
+                })
 
-            dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
+        # Add log entry to DB
+        log_entry = {
+            "task": self.task_family,
+            "pge_name": pge.repo_url,
+            "pge_version": pge.version_tag,
+            "pge_input_files": input_files,
+            "pge_run_command": " ".join(cmd),
+            "documentation_version": doc_version,
+            "product_creation_time": creation_time,
+            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
+            "completion_status": "SUCCESS",
+            "output": output_paths
+        }
+
+        dm.insert_data_collection_log_entry(self.dcid, log_entry)
+
+        dm.update_data_collection_metadata(self.dcid, {"products.l1a.acquisitions": acq_product_map})
 
 
 class L1AFrameReport(SlurmJobTask):
