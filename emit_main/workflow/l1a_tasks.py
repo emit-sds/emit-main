@@ -44,30 +44,8 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
 
         logger.debug(f"{self.task_family} requires: {self.stream_path}")
         # TODO: Add dependency on previous stream file (if one is found in DB)
-        wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
-        dm = wm.database_manager
-        stream = wm.stream
-        prev_streams = dm.find_streams_by_date_range("1675", "stop_time",
-                                                     stream.start_time - datetime.timedelta(seconds=1),
-                                                     stream.start_time + datetime.timedelta(minutes=1))
-        prev_stream_path = None
-        if prev_streams is not None and len(prev_streams) > 0:
-            try:
-                prev_stream_path = prev_streams[0]["products"]["raw"]["hosc_path"]
-            except KeyError:
-                logger.warning(f"Could not find a previous stream path for {stream.ccsds_path} in DB.")
-                pass
-
-        if prev_stream_path is None:
-            return L0StripHOSC(config_path=self.config_path, stream_path=self.stream_path, level=self.level,
-                               partition=self.partition, miss_pkt_thresh=self.miss_pkt_thresh)
-        else:
-            logger.debug(f"Found dependency on previous stream path of {prev_stream_path}.")
-            return [L0StripHOSC(config_path=self.config_path, stream_path=self.stream_path, level=self.level,
-                                partition=self.partition, miss_pkt_thresh=self.miss_pkt_thresh),
-                    L1ADepacketizeScienceFrames(config_path=self.config_path, stream_path=prev_stream_path,
-                                                level=self.level, partition=self.partition,
-                                                miss_pkt_thresh=self.miss_pkt_thresh, test_mode=self.test_mode)]
+        return L0StripHOSC(config_path=self.config_path, stream_path=self.stream_path, level=self.level,
+                           partition=self.partition, miss_pkt_thresh=self.miss_pkt_thresh)
 
     def output(self):
 
@@ -225,9 +203,10 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
             dcid_frame_paths.sort()
             dcid_frames_map.update(
                 {
-                    "dcid": dcid,
-                    "dcid_frame_paths": dcid_frame_paths,
-                    "created": datetime.datetime.now(tz=datetime.timezone.utc)
+                    dcid: {
+                        "dcid_frame_paths": dcid_frame_paths,
+                        "created": datetime.datetime.now(tz=datetime.timezone.utc)
+                    }
                 }
             )
 
@@ -353,6 +332,7 @@ class L1AReassembleRaw(SlurmJobTask):
                     dc.metadata["associated_acquisitions"].append(a)
         else:
             dc.metadata["associated_acquisitions"] = acq_ids
+        dc.metadata["associated_acquisitions"].sort()
         dc_meta = {"associated_acquisitions": dc.metadata["associated_acquisitions"]}
         dm.update_data_collection_metadata(self.dcid, dc_meta)
 
@@ -521,10 +501,11 @@ class L1AReassembleRaw(SlurmJobTask):
             output_paths["l1a_raw_hdr_paths"].append(acq.raw_hdr_path)
             output_paths["l1a_rawqa_txt_paths"].append(acq.rawqa_txt_path)
             acq_product_map.update({
-                "acquisition_id": acq_id,
-                "raw": product_dict_raw,
-                "rawqa": product_dict_rawqa
-                })
+                acq_id: {
+                    "raw": product_dict_raw,
+                    "rawqa": product_dict_rawqa
+                }
+            })
 
         # Add log entry to DB
         log_entry = {
