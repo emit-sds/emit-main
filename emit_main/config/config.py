@@ -72,14 +72,6 @@ class Config:
                 anc_files_config[key] = os.path.join(environment_dir, path)
         return anc_files_config
 
-    def _get_date_from_acquisition(self, acquisition_id):
-        instrument_prefix = self.dictionary["instrument"]
-        if acquisition_id.startswith("ang"):
-            instrument_prefix = "ang"
-        # Get date from acquisition string
-        date_str = acquisition_id[len(instrument_prefix):(15 + len(instrument_prefix))]
-        return datetime.datetime.strptime(date_str, "%Y%m%dt%H%M%S")
-
     def _get_passwords(self):
         # Get encrypted passwords
         passwords_path = os.path.join(self.dictionary["local_store_dir"], self.dictionary["instrument"],

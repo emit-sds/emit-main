@@ -529,13 +529,16 @@ class L1AReassembleRaw(SlurmJobTask):
 class L1AFrameReport(SlurmJobTask):
     """
     Runs the ngis_check_frame.py script.
-    :returns: A frame report, frame header and line header CSVs for all frames in an acquisition
+    :returns: A frame report, frame header and line header CSVs for all frames in a data collection
     """
 
     config_path = luigi.Parameter()
-    acquisition_id = luigi.Parameter()
+    dcid = luigi.Parameter()
+    ignore_missing_frames = luigi.BoolParameter(default=False)
     level = luigi.Parameter()
     partition = luigi.Parameter()
+    acq_chunksize = luigi.IntParameter(default=1280)
+    test_mode = luigi.BoolParameter(default=False)
 
     memory = 30000
     local_tmp_space = 125000
@@ -545,28 +548,29 @@ class L1AFrameReport(SlurmJobTask):
     def requires(self):
 
         logger.debug(self.task_family + " requires")
-        return L1AReassembleRaw(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
-                                partition=self.partition)
+        return L1AReassembleRaw(config_path=self.config_path, dcid=self.dcid, level=self.level,
+                                partition=self.partition, ignore_missing_frames=self.ignore_missing_frames,
+                                acq_chunksize=self.acq_chunksize, test_mode=self.test_mode)
 
     def output(self):
 
         logger.debug(self.task_family + " output")
-        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return ENVITarget(acquisition=wm.acquisition, task_family=self.task_family)
+        wm = WorkflowManager(config_path=self.config_path, dcid=self.dcid)
+        return DataCollectionTarget(data_collection=wm.data_collection, task_family=self.task_family)
 
     def work(self):
 
         logger.debug(self.task_family + " run")
 
-        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        acq = wm.acquisition
+        wm = WorkflowManager(config_path=self.config_path, dcid=self.dcid)
+        dc = wm.data_collection
         pge = wm.pges["NGIS_Check_Line_Frame"]
 
         tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
         wm.makedirs(tmp_output_dir)
 
         # Copy decompressed frames to local tmp
-        input_decomp_frame_paths = glob.glob(os.path.join(acq.decomp_dir, "*.decomp"))
+        input_decomp_frame_paths = glob.glob(os.path.join(dc.decomp_dir, "*.decomp"))
         for decomp_frame_path in input_decomp_frame_paths:
             tmp_decomp_frame_path = os.path.join(tmp_output_dir, os.path.basename(decomp_frame_path))
             wm.copy(decomp_frame_path, tmp_decomp_frame_path)
@@ -579,14 +583,14 @@ class L1AFrameReport(SlurmJobTask):
         output_files += glob.glob(os.path.join(tmp_output_dir, "*.txt"))
         for file in output_files:
             if "allframesparsed.csv" in file or "allframesreport.txt" in file:
-                wm.copy(file, os.path.join(acq.decomp_dir, acq.acquisition_id + "_" + os.path.basename(file)))
+                wm.copy(file, os.path.join(dc.decomp_dir, dc.dcid + "_" + os.path.basename(file)))
             else:
-                wm.copy(file, os.path.join(acq.decomp_dir, os.path.basename(file)))
+                wm.copy(file, os.path.join(dc.decomp_dir, os.path.basename(file)))
 
         # PGE writes metadata to db
         dm = wm.database_manager
 
-        all_frames_report = glob.glob(os.path.join(acq.decomp_dir, "*allframesreport.txt"))[0]
+        all_frames_report = glob.glob(os.path.join(dc.decomp_dir, "*allframesreport.txt"))[0]
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(all_frames_report), tz=datetime.timezone.utc)
 
         # Update frames_report product dictionary
@@ -594,13 +598,13 @@ class L1AFrameReport(SlurmJobTask):
             "txt_path": all_frames_report,
             "created": creation_time
         }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1a.frames_report": product_dict})
+        dm.update_data_collection_metadata(dc.dcid, {"products.l1a.frames_report": product_dict})
 
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
             "pge_version": pge.version_tag,
-            "pge_input_files": {"decomp_dir": acq.decomp_dir},
+            "pge_input_files": {"decomp_dir": dc.decomp_dir},
             "pge_run_command": " ".join(cmd),
             "documentation_version": "N/A",
             "product_creation_time": creation_time,
@@ -611,7 +615,7 @@ class L1AFrameReport(SlurmJobTask):
             }
         }
 
-        dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
+        dm.insert_data_collection_log_entry(dc.dcid, log_entry)
 
 
 class L1AReformatEDP(SlurmJobTask):
