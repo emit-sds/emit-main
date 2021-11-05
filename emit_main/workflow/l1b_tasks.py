@@ -1,7 +1,8 @@
 """
 This code contains tasks for executing EMIT Level 1B PGEs and helper utilities.
 
-Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
+Authors: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
+         Philip G. Brodrick, philip.brodrick@jpl.nasa.gov
 """
 
 import datetime
@@ -18,6 +19,7 @@ from emit_main.workflow.output_targets import ENVITarget, NetCDFTarget, UMMGTarg
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.l1a_tasks import L1AReassembleRaw
 from emit_main.workflow.slurm import SlurmJobTask
+from emit_utils.file_checks import netcdf_ext
 
 logger = logging.getLogger("emit-main")
 
@@ -218,7 +220,7 @@ class L1BFormat(SlurmJobTask):
 
         logger.debug(self.task_family + " output")
         acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return (NetCDFTarget(acq.loc_img_path), UMMGTarget(acq.loc_img_path)) ###############TODO: update path
+        return NetCDFTarget(acq.daac_nc_path), UMMGTarget(acq.daac_json_path)
 
     def work(self):
 
@@ -229,5 +231,8 @@ class L1BFormat(SlurmJobTask):
 
         pge = wm.pges["emit-utils"]
 
-        cmd = ["touch", acq.loc_img_path] ####TODO: update path name
-        pge.run(cmd, tmp_dir=self.tmp_dir) ####TODO: update run call
+        output_generator_exe = os.path.join(pge.repo_dir, "output_conversion.py")
+
+        cmd = ["python", acq.daac_nc_path, output_generator_exe, acq.rdn_img_path, acq.obs_img_path, acq.loc_img_path,
+               acq.glt_img_path, "--ummg_file", acq.daac_json_path]
+        pge.run(cmd, tmp_dir=self.tmp_dir)

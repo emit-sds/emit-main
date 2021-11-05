@@ -93,13 +93,10 @@ class Acquisition:
             },
             "l1b": {
                 "rdn": ["img", "hdr", "png", "kmz"],
-                "rdnort": ["img", "hdr"],
                 "loc": ["img", "hdr"],
-                "locort": ["img", "hdr"],
                 "obs": ["img", "hdr"],
                 "glt": ["img", "hdr"],
-                "att": ["nc"],
-                "geoqa": ["txt"]
+                "daac": ["nc", "json"]
             },
             "l2a": {
                 "rfl": ["img", "hdr"],
