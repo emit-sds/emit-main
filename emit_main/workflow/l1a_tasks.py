@@ -107,9 +107,6 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
             if bytes_read is not None:
                 cmd.extend(["--prev_bytes_to_read", str(bytes_read)])
 
-        if self.test_mode:
-            cmd.append("--test_mode")
-
         env = os.environ.copy()
         env["AIT_ROOT"] = wm.pges["emit-ios"].repo_dir
         env["AIT_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "config.yaml")

@@ -105,7 +105,7 @@ class SlurmJobTask(luigi.Task):
     partition = luigi.Parameter(default="emit")
     acquisition_id = luigi.Parameter(default="")
     stream_path = luigi.Parameter(default="")
-    dcid_= luigi.Parameter(default="")
+    dcid = luigi.Parameter(default="")
 
     # Resource management parameters to be overridden as needed by subclass tasks
     n_nodes = 1
