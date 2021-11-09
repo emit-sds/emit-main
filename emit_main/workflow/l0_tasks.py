@@ -92,6 +92,8 @@ class L0StripHOSC(SlurmJobTask):
             raise RuntimeError(f"Missing {missing_packets} packets out of {packet_count} total is greater than the "
                                f"missing packet threshold of {self.miss_pkt_thresh}")
 
+        # TODO: Add check for "File Size Match" in PGE
+
         # Get CCSDS start time and file name and report name
         tmp_ccsds_name = os.path.basename(tmp_ccsds_path)
         ccsds_start_time_str = tmp_ccsds_name.split("_")[1]
@@ -196,32 +198,31 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                 header_row = next(csvreader)
                 for row in csvreader:
                     # These times are already in UTC and will be stored in DB as UTC by default
-                    start_time = datetime.datetime.strptime(row[1], "%Y%m%dT%H%M%S")
-                    stop_time = datetime.datetime.strptime(row[2], "%Y%m%dT%H%M%S")
-                    acquisition_id = wm.config["instrument"] + start_time.strftime("%Y%m%dt%H%M%S")
-                    acq_meta = {
-                        "acquisition_id": acquisition_id,
+                    dcid = row[0]
+                    planned_start_time = datetime.datetime.strptime(row[1], "%Y%m%dT%H%M%S")
+                    planned_stop_time = datetime.datetime.strptime(row[2], "%Y%m%dT%H%M%S")
+                    dc_meta = {
+                        "dcid": dcid,
                         "build_num": wm.config["build_num"],
                         "processing_version": wm.config["processing_version"],
-                        "dcid": row[0],
-                        "start_time": start_time,
-                        "stop_time": stop_time,
+                        "planned_start_time": planned_start_time,
+                        "planned_stop_time": planned_stop_time,
                         "orbit": row[3],
                         "scene": row[4],
                         "submode": row[5].lower()
                     }
 
-                    # TODO: Do lookup and update by DCID to prevent duplicates. Or look for duplicates and handle?
-                    if dm.find_acquisition_by_id(acquisition_id):
-                        dm.update_acquisition_metadata(acquisition_id, acq_meta)
-                        logger.debug(f"Updated acquisition in DB with {acq_meta}")
+                    if dm.find_data_collection_by_id(dcid):
+                        dm.update_data_collection_metadata(dcid, dc_meta)
+                        logger.debug(f"Updated data collection in DB with DCID {dc_meta}")
                     else:
-                        dm.insert_acquisition(acq_meta)
-                        logger.debug(f"Inserted acquisition in DB with {acq_meta}")
+                        dm.insert_data_collection(dc_meta)
+                        logger.debug(f"Inserted data collection in DB with DCID {dc_meta}")
+
                     # Add processing log entry
                     log_entry = {
                         "task": self.task_family,
                         "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
                         "completion_status": "SUCCESS"
                     }
-                    dm.insert_acquisition_log_entry(acquisition_id, log_entry)
+                    dm.insert_data_collection_log_entry(dcid, log_entry)

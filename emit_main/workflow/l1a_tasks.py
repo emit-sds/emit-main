@@ -130,8 +130,9 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
             start_time = datetime.datetime.strptime(start_time_strs[0], "%Y%m%dt%H%M%S")
             stop_time = datetime.datetime.strptime(start_time_strs[-1], "%Y%m%dt%H%M%S")
 
-            # Insert DCID in database if it doesn't exist
-            if not dm.find_data_collection_by_id(dcid):
+            dc_lookup = dm.find_data_collection_by_id(dcid)
+            if dc_lookup is None or "start_time" not in dc_lookup:
+                # Insert DCID in database if it doesn't exist or if only the planning product has been inserted
                 dc_meta = {
                     "dcid": dcid,
                     "build_num": wm.config["build_num"],
@@ -140,7 +141,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
                     "stop_time": stop_time
                 }
                 dm.insert_data_collection(dc_meta)
-                logger.debug(f"Inserted data collection in DB with {dc_meta}")
+                logger.debug(f"Inserted data collection in DB with DCID {dc_meta}")
 
             # Now get workflow manager again containing data collection
             wm = WorkflowManager(config_path=self.config_path, dcid=dcid)
@@ -260,7 +261,6 @@ class L1AReassembleRaw(SlurmJobTask):
 
     def requires(self):
         # This task requires a complete set of frames
-        # TODO: Add dependency for Planning Product except in test_mode
         logger.debug(self.task_family + " requires")
 
         return None
@@ -283,6 +283,14 @@ class L1AReassembleRaw(SlurmJobTask):
         if self.ignore_missing_frames is False and dc.has_complete_set_of_frames() is False:
             raise RuntimeError(f"Unable to run {self.task_family} on {self.dcid} due to missing frames in "
                                f"{dc.frames_dir}")
+
+        # If not in test mode raise runtime error if we are missing orbit, scene, or submode.  These are needed
+        # for creating the output acquisition filenames
+        if not self.test_mode:
+            if "orbit" not in dc.metadata["orbit"] or "scene" not in dc.metadata["scene"] or \
+                    "submode" not in dc.metadata["submode"]:
+                raise RuntimeError(f"Attempting to create acquisitions without orbit, scene, or submode! "
+                                   f"It appears that there was no planning product for DCID {self.dcid}")
 
         pge = wm.pges["emit-sds-l1a"]
         reassemble_raw_pge = os.path.join(pge.repo_dir, "reassemble_raw_cube.py")
@@ -344,11 +352,9 @@ class L1AReassembleRaw(SlurmJobTask):
         }
         acq_product_map = {}
         for acq_id in acq_ids:
-            # Look up planning product info
-            orbit = "00000"
-            scene = "000"
-            submode = "science"
-            # TODO: Add lookup for planning product
+            orbit = dc.metadata["orbit"] if "orbit" in dc.metadata else "00000"
+            scene = dc.metadata["scene"] if "scene" in dc.metadata else"000"
+            submode = dc.metadata["submode"] if "submode" in dc.metadata else "science"
 
             # Get start/stop times from reassembly report
             tmp_report_path = os.path.join(tmp_image_dir, f"{acq_id}_report.txt")
