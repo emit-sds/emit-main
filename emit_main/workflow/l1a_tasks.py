@@ -34,6 +34,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
     partition = luigi.Parameter()
     miss_pkt_thresh = luigi.FloatParameter()
     test_mode = luigi.BoolParameter(default=False)
+    override_output = luigi.BoolParameter(default=False)
 
     memory = 30000
     local_tmp_space = 125000
@@ -50,6 +51,10 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
     def output(self):
 
         logger.debug(f"{self.task_family} output: {self.stream_path}")
+
+        if self.override_output:
+            return None
+
         wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
         return StreamTarget(stream=wm.stream, task_family=self.task_family)
 

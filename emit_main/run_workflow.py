@@ -54,6 +54,8 @@ def parse_args():
                         help="The number of lines in which to split acquisitions")
     parser.add_argument("--test_mode", action="store_true",
                         help="Allows tasks to skip work during I&T by skipping certain checks")
+    parser.add_argument("--override_output", action="store_true",
+                        help="Ignore outputs of a task and run it on demand")
     parser.add_argument("-w", "--workers",
                         help="Number of luigi workers")
     parser.add_argument("--build_env", action="store_true",
@@ -99,6 +101,7 @@ def get_tasks_from_args(args):
                                  **kwargs),
         "l1aframe": L1ADepacketizeScienceFrames(stream_path=args.stream_path,
                                                 miss_pkt_thresh=args.miss_pkt_thresh,
+                                                override_output=args.override_output,
                                                 **kwargs),
         "l1aframereport": L1AFrameReport(dcid=args.dcid, ignore_missing_frames=args.ignore_missing_frames,
                                          acq_chunksize=args.acq_chunksize, test_mode=args.test_mode,  **kwargs),
