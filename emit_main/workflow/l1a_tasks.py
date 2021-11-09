@@ -131,8 +131,8 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
             stop_time = datetime.datetime.strptime(start_time_strs[-1], "%Y%m%dt%H%M%S")
 
             dc_lookup = dm.find_data_collection_by_id(dcid)
-            if dc_lookup is None or "start_time" not in dc_lookup:
-                # Insert DCID in database if it doesn't exist or if only the planning product has been inserted
+            if dc_lookup is None:
+                # Insert DCID in database if it doesn't exist
                 dc_meta = {
                     "dcid": dcid,
                     "build_num": wm.config["build_num"],
@@ -141,7 +141,15 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
                     "stop_time": stop_time
                 }
                 dm.insert_data_collection(dc_meta)
-                logger.debug(f"Inserted data collection in DB with DCID {dc_meta}")
+                logger.debug(f"Inserted data collection in DB with {dc_meta}")
+            elif dc_lookup is not None and "start_time" not in dc_lookup:
+                # If only the planning product has been inserted, then add start_time
+                dc_meta = {
+                    "start_time": start_time,
+                    "stop_time": stop_time
+                }
+                dm.update_data_collection_metadata(dcid, dc_meta)
+                logger.debug(f"Updated data collection in DB with {dc_meta}")
 
             # Now get workflow manager again containing data collection
             wm = WorkflowManager(config_path=self.config_path, dcid=dcid)

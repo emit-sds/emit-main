@@ -214,10 +214,10 @@ class L0ProcessPlanningProduct(SlurmJobTask):
 
                     if dm.find_data_collection_by_id(dcid):
                         dm.update_data_collection_metadata(dcid, dc_meta)
-                        logger.debug(f"Updated data collection in DB with DCID {dc_meta}")
+                        logger.debug(f"Updated data collection in DB with {dc_meta}")
                     else:
                         dm.insert_data_collection(dc_meta)
-                        logger.debug(f"Inserted data collection in DB with DCID {dc_meta}")
+                        logger.debug(f"Inserted data collection in DB with {dc_meta}")
 
                     # Add processing log entry
                     log_entry = {
