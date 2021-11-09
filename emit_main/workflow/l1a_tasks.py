@@ -295,8 +295,7 @@ class L1AReassembleRaw(SlurmJobTask):
         # If not in test mode raise runtime error if we are missing orbit, scene, or submode.  These are needed
         # for creating the output acquisition filenames
         if not self.test_mode:
-            if "orbit" not in dc.metadata["orbit"] or "scene" not in dc.metadata["scene"] or \
-                    "submode" not in dc.metadata["submode"]:
+            if "orbit" not in dc.metadata or "scene" not in dc.metadata or "submode" not in dc.metadata:
                 raise RuntimeError(f"Attempting to create acquisitions without orbit, scene, or submode! "
                                    f"It appears that there was no planning product for DCID {self.dcid}")
 
@@ -307,7 +306,6 @@ class L1AReassembleRaw(SlurmJobTask):
         constants_path = wm.config["decompression_constants_path"]
         init_data_path = wm.config["decompression_init_data_path"]
         tmp_log_path = os.path.join(self.local_tmp_dir, "reassemble_raw_pge.log")
-        tmp_report_path = tmp_log_path.replace(".log", "_report.txt")
         input_files = {
             "frames_dir": dc.frames_dir,
             "flexcodec_exe_path": flex_codec_exe,
