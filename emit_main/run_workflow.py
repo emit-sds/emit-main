@@ -28,8 +28,8 @@ logger = logging.getLogger("emit-main")
 
 
 def parse_args():
-    product_choices = ["l0hosc", "l0plan", "l1aeng", "l1aframe", "l1aframereport", "l1araw", "l1bcal", "l2arefl",
-                       "l2amask", "l2babun", "l3unmix"]
+    product_choices = ["l0hosc", "l0plan", "l1aeng", "l1aframe", "l1aframereport", "l1araw", "l1bcal", "l1bformat",
+                       "l2arefl", "l2amask", "l2babun", "l3unmix"]
     parser = argparse.ArgumentParser()
     parser.add_argument("-a", "--acquisition_id", default="",
                         help="Acquisition ID")
@@ -102,9 +102,9 @@ def get_tasks_from_args(args):
         "l2babun": L2BAbundance(acquisition_id=args.acquisition_id, **kwargs),
         "l3unmix": L3Unmix(acquisition_id=args.acquisition_id, **kwargs),
         "l1bformat": L1BFormat(acquisition_id=args.acquisition_id, **kwargs),
-        "l2aformat": L2AFormat(acquisition_id=args.acquisition_id, **kwargs),
-        "l2bformat": L2BFormat(acquisition_id=args.acquisition_id, **kwargs),
-        "l3unmixformat": L3UnmixFormat(acquisition_id=args.acquisition_id, **kwargs)
+        #"l2aformat": L2AFormat(acquisition_id=args.acquisition_id, **kwargs),
+        #"l2bformat": L2BFormat(acquisition_id=args.acquisition_id, **kwargs),
+        #"l3unmixformat": L3UnmixFormat(acquisition_id=args.acquisition_id, **kwargs)
     }
     tasks = []
     for prod in products:

@@ -167,9 +167,7 @@ class L1BGeolocate(SlurmJobTask):
 
         logger.debug(self.task_family + " output")
         acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return (ENVITarget(acq.loc_img_path),
-                ENVITarget(acq.obs_img_path),
-                ENVITarget(acq.glt_img_path))
+        return ENVITarget(acquisition=acq, task_family=self.task_family)
 
     def work(self):
 
@@ -220,7 +218,8 @@ class L1BFormat(SlurmJobTask):
 
         logger.debug(self.task_family + " output")
         acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return NetCDFTarget(acq.daac_nc_path), UMMGTarget(acq.daac_json_path)
+        return (NetCDFTarget(acquisition=acq, task_family=self.task_family), 
+                UMMGTarget(acquisition=acq, task_family=self.task_family))
 
     def work(self):
 
@@ -229,10 +228,10 @@ class L1BFormat(SlurmJobTask):
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
 
-        pge = wm.pges["emit-utils"]
+        pge = wm.pges["emit-sds-l1b"]
 
         output_generator_exe = os.path.join(pge.repo_dir, "output_conversion.py")
 
-        cmd = ["python", acq.daac_nc_path, output_generator_exe, acq.rdn_img_path, acq.obs_img_path, acq.loc_img_path,
+        cmd = ["python", output_generator_exe, acq.daac_nc_path, acq.rdn_img_path, acq.obs_img_path, acq.loc_img_path,
                acq.glt_img_path, "--ummg_file", acq.daac_json_path]
         pge.run(cmd, tmp_dir=self.tmp_dir)
