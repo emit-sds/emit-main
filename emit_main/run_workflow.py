@@ -33,6 +33,8 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("-a", "--acquisition_id", default="",
                         help="Acquisition ID")
+    parser.add_argument("-d", "--dcid", default="",
+                        help="Data Collection ID")
     parser.add_argument("-s", "--stream_path", default="",
                         help="Path to HOSC or CCSDS stream file")
     parser.add_argument("-c", "--config_path",
@@ -46,8 +48,14 @@ def parse_args():
                         help="The slurm partition to be used - emit (default), debug, standard, patient ")
     parser.add_argument("--miss_pkt_thresh", default="0.1",
                         help="The threshold of missing packets to total packets which will cause a task to fail")
-    parser.add_argument("--ignore_missing", action="store_true",
+    parser.add_argument("--ignore_missing_frames", action="store_true",
                         help="Ignore missing frames when reasssembling raw cube")
+    parser.add_argument("--acq_chunksize", default=1280,
+                        help="The number of lines in which to split acquisitions")
+    parser.add_argument("--test_mode", action="store_true",
+                        help="Allows tasks to skip work during I&T by skipping certain checks")
+    parser.add_argument("--override_output", action="store_true",
+                        help="Ignore outputs of a task and run it on demand")
     parser.add_argument("-w", "--workers",
                         help="Number of luigi workers")
     parser.add_argument("--build_env", action="store_true",
@@ -93,9 +101,12 @@ def get_tasks_from_args(args):
                                  **kwargs),
         "l1aframe": L1ADepacketizeScienceFrames(stream_path=args.stream_path,
                                                 miss_pkt_thresh=args.miss_pkt_thresh,
+                                                override_output=args.override_output,
                                                 **kwargs),
-        "l1aframereport": L1AFrameReport(acquisition_id=args.acquisition_id, **kwargs),
-        "l1araw": L1AReassembleRaw(acquisition_id=args.acquisition_id, ignore_missing=args.ignore_missing, **kwargs),
+        "l1aframereport": L1AFrameReport(dcid=args.dcid, ignore_missing_frames=args.ignore_missing_frames,
+                                         acq_chunksize=args.acq_chunksize, test_mode=args.test_mode, **kwargs),
+        "l1araw": L1AReassembleRaw(dcid=args.dcid, ignore_missing_frames=args.ignore_missing_frames,
+                                   acq_chunksize=args.acq_chunksize, test_mode=args.test_mode, **kwargs),
         "l1bcal": L1BCalibrate(acquisition_id=args.acquisition_id, **kwargs),
         "l2arefl": L2AReflectance(acquisition_id=args.acquisition_id, **kwargs),
         "l2amask": L2AMask(acquisition_id=args.acquisition_id, **kwargs),
@@ -158,14 +169,18 @@ def task_failure(task, e):
         "completion_status": "FAILURE",
         "error_message": str(e)
     }
-    acquisition_tasks = ("emit.L1AReassembleRaw", "emit.L1AFrameReport", "emit.L1BCalibrate", "emit.L2AReflectance",
-                         "emit.L2AMask", "emit.L2BAbundance", "emit.L3Unmix")
+
     stream_tasks = ("emit.L0StripHOSC", "emit.L1ADepacketizeScienceFrames", "emit.L1AReformatEDP")
+    data_collection_tasks = {"emit.L1AReassembleRaw", "emit.L1AFrameReport"}
+    acquisition_tasks = ("emit.L1BCalibrate", "emit.L2AReflectance",
+                         "emit.L2AMask", "emit.L2BAbundance", "emit.L3Unmix")
     dm = wm.database_manager
     if task.task_family in acquisition_tasks and dm.find_acquisition_by_id(task.acquisition_id) is not None:
         dm.insert_acquisition_log_entry(task.acquisition_id, log_entry)
     elif task.task_family in stream_tasks and dm.find_stream_by_name(os.path.basename(task.stream_path)):
         dm.insert_stream_log_entry(os.path.basename(task.stream_path), log_entry)
+    elif task.task_family in data_collection_tasks and dm.find_data_collection_by_id(task.dcid):
+        dm.insert_data_collection_log_entry(task.dcid, log_entry)
 
 
 def set_up_logging(log_path, level):
