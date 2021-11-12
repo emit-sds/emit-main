@@ -271,19 +271,19 @@ class L1AReassembleRaw(SlurmJobTask):
 
     def requires(self):
         # This task requires a complete set of frames
-        logger.debug(self.task_family + " requires")
+        logger.debug(f"{self.task_family} requires: {self.dcid}")
 
         return None
 
     def output(self):
 
-        logger.debug(self.task_family + " output")
+        logger.debug(f"{self.task_family} output: {self.dcid}")
         wm = WorkflowManager(config_path=self.config_path, dcid=self.dcid)
         return DataCollectionTarget(data_collection=wm.data_collection, task_family=self.task_family)
 
     def work(self):
 
-        logger.debug(self.task_family + " run")
+        logger.debug(f"{self.task_family} run: {self.dcid}")
 
         wm = WorkflowManager(config_path=self.config_path, dcid=self.dcid)
         dc = wm.data_collection
@@ -356,6 +356,7 @@ class L1AReassembleRaw(SlurmJobTask):
         output_paths = {
             "l1a_raw_img_paths": [],
             "l1a_raw_hdr_paths": [],
+            "l1a_raw_line_timestamps": [],
             "l1a_rawqa_txt_paths": []
         }
         acq_product_map = {}
@@ -418,7 +419,7 @@ class L1AReassembleRaw(SlurmJobTask):
             wm = WorkflowManager(config_path=self.config_path, acquisition_id=acq_id)
             acq = wm.acquisition
 
-            # Copy raw file and log back to l1a data dir
+            # Copy raw file, report file, timestamps file, and log back to l1a data dir
             tmp_raw_path = os.path.join(tmp_image_dir, acq.acquisition_id + "_raw.img")
             tmp_raw_hdr_path = tmp_raw_path.replace(".img", ".hdr")
             wm.copy(tmp_raw_path, acq.raw_img_path)
@@ -426,6 +427,9 @@ class L1AReassembleRaw(SlurmJobTask):
             wm.copy(tmp_log_path, acq.raw_img_path.replace(".img", "_pge.log"))
             report_path = acq.raw_img_path.replace(".img", "_report.txt")
             wm.copy(tmp_report_path, report_path)
+            tmp_line_timestamps_path = tmp_raw_path.replace("_raw.img", "_line_timestamps.txt")
+            line_timestamps_path = acq.raw_img_path.replace(".img", "_line_timestamps.txt")
+            wm.copy(tmp_line_timestamps_path, line_timestamps_path)
 
             # Create symlinks from the acquisition to the specific frames that are associated with it.
             for p in acq_frame_paths:
@@ -502,6 +506,15 @@ class L1AReassembleRaw(SlurmJobTask):
             }
             dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1a.raw": product_dict_raw})
 
+            # Update line timestamps product dictionary
+            product_dict_line_timestamps = {
+                "txt_path": line_timestamps_path,
+                "created": datetime.datetime.fromtimestamp(os.path.getmtime(line_timestamps_path),
+                                                           tz=datetime.timezone.utc)
+            }
+            dm.update_acquisition_metadata(acq.acquisition_id,
+                                           {"products.l1a.raw_line_timestamps": product_dict_line_timestamps})
+
             # Update rawqa product dictionary
             product_dict_rawqa = {
                 "txt_path": acq.rawqa_txt_path,
@@ -513,10 +526,12 @@ class L1AReassembleRaw(SlurmJobTask):
             # Keep track of output paths and acquisition product map for dc update
             output_paths["l1a_raw_img_paths"].append(acq.raw_img_path)
             output_paths["l1a_raw_hdr_paths"].append(acq.raw_hdr_path)
+            output_paths["l1a_raw_line_timestamps"].append(line_timestamps_path)
             output_paths["l1a_rawqa_txt_paths"].append(acq.rawqa_txt_path)
             acq_product_map.update({
                 acq_id: {
                     "raw": product_dict_raw,
+                    "raw_line_timestamps": product_dict_line_timestamps,
                     "rawqa": product_dict_rawqa
                 }
             })
@@ -561,20 +576,20 @@ class L1AFrameReport(SlurmJobTask):
 
     def requires(self):
 
-        logger.debug(self.task_family + " requires")
+        logger.debug(f"{self.task_family} requires: {self.dcid}")
         return L1AReassembleRaw(config_path=self.config_path, dcid=self.dcid, level=self.level,
                                 partition=self.partition, ignore_missing_frames=self.ignore_missing_frames,
                                 acq_chunksize=self.acq_chunksize, test_mode=self.test_mode)
 
     def output(self):
 
-        logger.debug(self.task_family + " output")
+        logger.debug(f"{self.task_family} output: {self.dcid}")
         wm = WorkflowManager(config_path=self.config_path, dcid=self.dcid)
         return DataCollectionTarget(data_collection=wm.data_collection, task_family=self.task_family)
 
     def work(self):
 
-        logger.debug(self.task_family + " run")
+        logger.debug(f"{self.task_family} run: {self.dcid}")
 
         wm = WorkflowManager(config_path=self.config_path, dcid=self.dcid)
         dc = wm.data_collection
