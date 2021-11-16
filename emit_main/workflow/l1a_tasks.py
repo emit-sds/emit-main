@@ -178,11 +178,8 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
 
             # Create a symlink from the dcid/by_date dir structure to the dcid/by_dcid dir structure
             by_dcid_date_dir = os.path.join(dc.by_date_dir, start_time.strftime("%Y%m%d"))
-            date_to_dcid_dir = os.path.join(by_dcid_date_dir, f'{start_time.strftime("%Y%m%dt%H%M%S")}_{dcid}')
-            date_to_dcid_frame_symlink = os.path.join(date_to_dcid_dir, os.path.basename(dc.frames_dir))
-            wm.makedirs(by_dcid_date_dir)
-            wm.makedirs(date_to_dcid_dir)
-            wm.symlink(dc.frames_dir, date_to_dcid_frame_symlink)
+            date_to_dcid_symlink = os.path.join(by_dcid_date_dir, f'{start_time.strftime("%Y%m%dt%H%M%S")}_{dcid}')
+            wm.symlink(dc.dcid_dir, date_to_dcid_symlink)
 
             # Add frame paths to acquisition metadata
             if "frames" in dc.metadata["products"]["l1a"] and dc.metadata["products"]["l1a"]["frames"] is not None:
@@ -244,7 +241,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
-                "frame_paths": output_frame_paths
+                "l1a_frame_paths": output_frame_paths
             }
         }
         dm.insert_stream_log_entry(stream.ccsds_name, log_entry)
@@ -746,7 +743,7 @@ class L1AReformatEDP(SlurmJobTask):
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
-                "edp_path": edp_path
+                "l1a_edp_path": edp_path
             }
         }
         dm.insert_stream_log_entry(stream.hosc_name, log_entry)

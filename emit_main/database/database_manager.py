@@ -161,3 +161,33 @@ class DatabaseManager:
         metadata = {"last_modified": entry["log_timestamp"]}
         set_value = {"$set": metadata}
         data_collections_coll.update_one(query, set_value, upsert=True)
+
+    def find_orbit_by_id(self, orbit_id):
+        orbits_coll = self.db.orbits
+        return orbits_coll.find_one({"orbit_id": orbit_id, "build_num": self.config["build_num"]})
+
+    def insert_orbit(self, metadata):
+        if self.find_orbit_by_id(metadata["orbit_id"]) is None:
+            utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
+            metadata["created"] = utc_now
+            metadata["last_modified"] = utc_now
+            orbits_coll = self.db.orbits
+            orbits_coll.insert_one(metadata)
+
+    def update_orbit_metadata(self, orbit_id, metadata):
+        orbits_coll = self.db.orbits
+        query = {"orbit_id": orbit_id, "build_num": self.config["build_num"]}
+        metadata["last_modified"] = datetime.datetime.now(tz=datetime.timezone.utc)
+        set_value = {"$set": metadata}
+        orbits_coll.update_one(query, set_value, upsert=True)
+
+    def insert_orbit_log_entry(self, orbit_id, entry):
+        orbits_coll = self.db.orbits
+        query = {"orbit_id": orbit_id, "build_num": self.config["build_num"]}
+        push_value = {"$push": {"processing_log": entry}}
+        orbits_coll.update_one(query, push_value)
+
+        # Update last modified
+        metadata = {"last_modified": entry["log_timestamp"]}
+        set_value = {"$set": metadata}
+        orbits_coll.update_one(query, set_value, upsert=True)

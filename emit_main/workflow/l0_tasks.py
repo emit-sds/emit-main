@@ -4,9 +4,9 @@ This code contains tasks for executing EMIT Level 0 PGEs and helper utilities.
 Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
-import csv
 import datetime
 import glob
+import json
 import logging
 import luigi
 import os
@@ -157,8 +157,8 @@ class L0StripHOSC(SlurmJobTask):
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
-                "hosc_path": stream.hosc_path,
-                "ccsds_path": ccsds_path,
+                "raw_hosc_path": stream.hosc_path,
+                "l0_ccsds_path": ccsds_path,
             }
         }
         dm.insert_stream_log_entry(stream.hosc_name, log_entry)
@@ -170,6 +170,7 @@ class L0ProcessPlanningProduct(SlurmJobTask):
     """
 
     config_path = luigi.Parameter()
+    plan_prod_path = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
 
@@ -190,28 +191,85 @@ class L0ProcessPlanningProduct(SlurmJobTask):
         logger.debug(self.task_family + " work")
         wm = WorkflowManager(config_path=self.config_path)
         dm = wm.database_manager
-        planning_prod_paths = glob.glob(os.path.join(wm.ingest_dir, "*csv"))
-        for planning_prod_path in planning_prod_paths:
-            with open(planning_prod_path, "r") as csvfile:
-                logger.debug(f"Processing planned observations from file {planning_prod_path}")
-                csvreader = csv.reader(csvfile)
-                header_row = next(csvreader)
-                for row in csvreader:
-                    # These times are already in UTC and will be stored in DB as UTC by default
-                    dcid = row[0]
-                    planned_start_time = datetime.datetime.strptime(row[1], "%Y%m%dT%H%M%S")
-                    planned_stop_time = datetime.datetime.strptime(row[2], "%Y%m%dT%H%M%S")
+        pge = wm.pges["emit-main"]
+
+        horizon_start_time = None
+        with open(self.plan_prod_path, "r") as f:
+            events = json.load(f)
+            orbit_num = None
+            orbit_ids = []
+            dcids = []
+            for e in events:
+                # Check for starting orbit number
+                if e["name"].lower() == "planning horizon start":
+                    orbit_num = e["orbitId"]
+                    horizon_start_time = e["datetime"]
+
+                # Check for orbit object
+                if e["name"].lower() == "start orbit":
+                    # Raise error if we don't have a starting orbit number
+                    if orbit_num is None:
+                        raise RuntimeError(f"Planning product {self.plan_prod_path} is missing starting orbit number")
+
+                    # Construct orbit object
+                    orbit_id = str(orbit_num).zfill(5)
+                    start_time = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S")
+                    orbit_meta = {
+                        "orbit_id": orbit_id,
+                        "build_num": wm.config["build_num"],
+                        "processing_version": wm.config["processing_version"],
+                        "start_time": start_time
+                    }
+
+                    # Insert or update orbit in DB
+                    if dm.find_orbit_by_id(orbit_id):
+                        dm.update_orbit_metadata(orbit_id, orbit_meta)
+                        logger.debug(f"Updated orbit in DB with {orbit_meta}")
+                    else:
+                        dm.insert_orbit(orbit_meta)
+                        logger.debug(f"Inserted orbit in DB with {orbit_meta}")
+
+                    # Update the stop_time of the previous orbit in DB
+                    if orbit_num > 0:
+                        prev_orbit_id = str(orbit_num - 1).zfill(5)
+                        prev_orbit = dm.find_orbit_by_id(prev_orbit_id)
+                        # TODO throw error if not found?
+                        prev_orbit["stop_time"] = start_time
+                        dm.update_orbit_metadata(prev_orbit_id, prev_orbit)
+
+                    # Keep track of orbit_ids for log entry
+                    orbit_ids.append(orbit_id)
+
+                    # Increment orbit_num to continue processing file
+                    orbit_num += 1
+
+                # Check for data collection (i.e. acquisition)
+                # TODO: Add "dark" in when its ready
+                if e["name"].lower() in ("science",):
+                    # Raise error if we don't have a starting orbit number
+                    if orbit_num is None:
+                        raise RuntimeError(f"Planning product {self.plan_prod_path} is missing starting orbit number")
+
+                    # Construct data collection metadata
+                    dcid = str(e["dcid"]).zfill(10)
                     dc_meta = {
                         "dcid": dcid,
                         "build_num": wm.config["build_num"],
                         "processing_version": wm.config["processing_version"],
-                        "planned_start_time": planned_start_time,
-                        "planned_stop_time": planned_stop_time,
-                        "orbit": row[3],
-                        "scene": row[4],
-                        "submode": row[5].lower()
+                        "planned_start_time": datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S"),
+                        "planned_stop_time": datetime.datetime.strptime(e["endDatetime"], "%Y-%m-%dT%H:%M:%S"),
+                        "orbit": str(e["orbit number"]).zfill(5),
+                        "scene": str(e["scene number"]).zfill(3),
+                        "submode": e["name"].lower(),
+                        "betaangle": e["betaangle"],
+                        "comments": e["comments"],
+                        "latboresightstart": e["latboresightstart"],
+                        "lonboresightstart": e["lonboresightstart"],
+                        "parameters": e["parameters"],
+                        "sza": e["sza"]
                     }
 
+                    # Insert or update data collection in DB
                     if dm.find_data_collection_by_id(dcid):
                         dm.update_data_collection_metadata(dcid, dc_meta)
                         logger.debug(f"Updated data collection in DB with {dc_meta}")
@@ -219,10 +277,30 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                         dm.insert_data_collection(dc_meta)
                         logger.debug(f"Inserted data collection in DB with {dc_meta}")
 
-                    # Add processing log entry
-                    log_entry = {
-                        "task": self.task_family,
-                        "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
-                        "completion_status": "SUCCESS"
-                    }
-                    dm.insert_data_collection_log_entry(dcid, log_entry)
+                    # Keep track of dcid for log entry
+                    dcids.append(dcid)
+
+        # Copy/move processed file to archive
+        # TODO: Is there some unique portion of the name we can use here based on input file name?
+        target_pp_path = os.path.join(
+            wm.planning_products_dir,
+            f"emit_{horizon_start_time.replace('-', '').replace('T', 't').replace(':', '')}_"
+            f"raw_plan_b{wm.config['build_num']}_v{wm.config['processing_version']}.json")
+        wm.move(self.plan_prod_path, target_pp_path)
+
+        # Add processing log entry
+        log_entry = {
+            "task": self.task_family,
+            "pge_name": pge.repo_url,
+            "pge_version": pge.version_tag,
+            "pge_input_files": planning_prod_path,
+            "pge_run_command": "N/A - database updates only",
+            "documentation_version": "N/A",
+            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
+            "completion_status": "SUCCESS",
+            "output": {
+                "raw_planning_product_path": target_pp_path
+            }
+        }
+        dm.insert_orbit_log_entry(orbit_id, log_entry)
+        dm.insert_data_collection_log_entry(dcid, log_entry)

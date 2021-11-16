@@ -82,9 +82,11 @@ class WorkflowManager:
         self.scratch_error_dir = os.path.join(self.config["local_scratch_dir"], self.config["instrument"],
                                               self.config["environment"], "error")
         self.local_tmp_dir = os.path.join("/tmp", self.config["instrument"], self.config["environment"])
+        self.planning_products_dir = os.path.join(self.data_dir, "planning_products")
+
         dirs.extend([self.instrument_dir, self.environment_dir, self.data_dir, self.ingest_dir,
                      self.ingest_duplicates_dir, self.ingest_errors_dir, self.logs_dir, self.repos_dir,
-                     self.resources_dir, self.scratch_tmp_dir, self.scratch_error_dir])
+                     self.resources_dir, self.scratch_tmp_dir, self.scratch_error_dir, self.planning_products_dir])
 
         # Make directories if they don't exist
         for d in dirs:

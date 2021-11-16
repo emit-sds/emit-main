@@ -98,8 +98,15 @@ def task_failure(task, e):
     if task.task_family == "emit.L0StripHOSC" and "ingest" in task.stream_path:
         # Move HOSC file to ingest/errors
         ingest_errors_path = os.path.join(wm.ingest_errors_dir, os.path.basename(task.stream_path))
-        logger.error(f"Moving bad HOSC file to f{ingest_errors_path}")
+        logger.error(f"Moving bad HOSC file to {ingest_errors_path}")
         wm.move(task.stream_path, ingest_errors_path)
+
+    # If running L0ProcessPlanningProduct on ingest folder path, move file to ingest/errors
+    if task.task_family == "emit.L0ProcessPlanningProduct" and "ingest" in task.plan_prod_path:
+        # Move planning product to ingest/errors
+        ingest_errors_path = os.path.join(wm.ingest_errors_dir, os.path.basename(task.plan_prod_path))
+        logger.error(f"Moving bad Planning Product file to {ingest_errors_path}")
+        wm.move(task.plan_prod_path, ingest_errors_path)
 
     # Update DB processing_log with failure message
     log_entry = {
