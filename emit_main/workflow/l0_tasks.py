@@ -233,7 +233,9 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                     if orbit_num > 0:
                         prev_orbit_id = str(orbit_num - 1).zfill(5)
                         prev_orbit = dm.find_orbit_by_id(prev_orbit_id)
-                        # TODO throw error if not found?
+                        if prev_orbit is None:
+                            raise RuntimeError(f"Unable to find previous orbit stop time while trying to update orbit "
+                                               f"{orbit_id}")
                         prev_orbit["stop_time"] = start_time
                         dm.update_orbit_metadata(prev_orbit_id, prev_orbit)
 
@@ -280,27 +282,30 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                     # Keep track of dcid for log entry
                     dcids.append(dcid)
 
-        # Copy/move processed file to archive
-        # TODO: Is there some unique portion of the name we can use here based on input file name?
-        target_pp_path = os.path.join(
-            wm.planning_products_dir,
-            f"emit_{horizon_start_time.replace('-', '').replace('T', 't').replace(':', '')}_"
-            f"raw_plan_b{wm.config['build_num']}_v{wm.config['processing_version']}.json")
-        wm.move(self.plan_prod_path, target_pp_path)
+            # Copy/move processed file to archive
+            # TODO: Is there some unique portion of the name we can use here based on input file name?
+            target_pp_path = os.path.join(
+                wm.planning_products_dir,
+                f"emit_{horizon_start_time.replace('-', '').replace('T', 't').replace(':', '')}_"
+                f"raw_plan_b{wm.config['build_num']}_v{wm.config['processing_version']}.json")
+            wm.move(self.plan_prod_path, target_pp_path)
 
-        # Add processing log entry
-        log_entry = {
-            "task": self.task_family,
-            "pge_name": pge.repo_url,
-            "pge_version": pge.version_tag,
-            "pge_input_files": planning_prod_path,
-            "pge_run_command": "N/A - database updates only",
-            "documentation_version": "N/A",
-            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
-            "completion_status": "SUCCESS",
-            "output": {
-                "raw_planning_product_path": target_pp_path
+            # Add processing log entry
+            log_entry = {
+                "task": self.task_family,
+                "pge_name": pge.repo_url,
+                "pge_version": pge.version_tag,
+                "pge_input_files": self.plan_prod_path,
+                "pge_run_command": "N/A - database updates only",
+                "documentation_version": "N/A",
+                "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
+                "completion_status": "SUCCESS",
+                "output": {
+                    "raw_planning_product_path": target_pp_path
+                }
             }
-        }
-        dm.insert_orbit_log_entry(orbit_id, log_entry)
-        dm.insert_data_collection_log_entry(dcid, log_entry)
+
+            for orbit_id in orbit_ids:
+                dm.insert_orbit_log_entry(orbit_id, log_entry)
+            for dcid in dcids:
+                dm.insert_data_collection_log_entry(dcid, log_entry)
