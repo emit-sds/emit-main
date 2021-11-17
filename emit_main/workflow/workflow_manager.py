@@ -19,6 +19,7 @@ from emit_main.database.database_manager import DatabaseManager
 from emit_main.config.config import Config
 from emit_main.workflow.acquisition import Acquisition
 from emit_main.workflow.data_collection import DataCollection
+from emit_main.workflow.orbit import Orbit
 from emit_main.workflow.pge import PGE
 from emit_main.workflow.stream import Stream
 
@@ -27,7 +28,7 @@ logger = logging.getLogger("emit-main")
 
 class WorkflowManager:
 
-    def __init__(self, config_path, acquisition_id=None, stream_path=None, dcid=None):
+    def __init__(self, config_path, acquisition_id=None, stream_path=None, dcid=None, orbit_id=None):
         """
         :param config_path: Path to config file containing environment settings
         :param acquisition_id: The name of the acquisition with timestamp (eg. "emit20200519t140035")
@@ -37,6 +38,7 @@ class WorkflowManager:
         self.acquisition_id = acquisition_id
         self.stream_path = stream_path
         self.dcid = dcid
+        self.orbit_id = orbit_id
 
         self.database_manager = DatabaseManager(config_path)
 
@@ -62,8 +64,17 @@ class WorkflowManager:
             self.config = Config(config_path, self.data_collection.start_time).get_dictionary()
         else:
             self.data_collection = None
+
+        # If we have an orbit_id and the orbit exists in db, initialize orbit
+        if self.orbit_id and self.database_manager.find_orbit_by_id(self.orbit_id):
+            self.orbit = Orbit(self.config_path, self.orbit_id)
+            self.config = Config(config_path, self.orbit.start_time).get_dictionary()
+        else:
+            self.orbit = None
+
+        # If we made it this far and haven't populated config, then get the config properties with no timestamp
+        # specific fields
         if self.config is None:
-            # Get config properties with no timestamp specific fields
             self.config = Config(config_path).get_dictionary()
 
         # Create base directories and add to list to create directories later

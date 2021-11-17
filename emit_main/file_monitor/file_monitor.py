@@ -10,7 +10,7 @@ import os
 import shutil
 
 from emit_main.config.config import Config
-from emit_main.workflow.l0_tasks import L0ProcessPlanningProduct
+from emit_main.workflow.l0_tasks import L0ProcessPlanningProduct, L0IngestBAD
 from emit_main.workflow.l1a_tasks import L1AReformatEDP, L1ADepacketizeScienceFrames
 
 logger = logging.getLogger("emit-main")
@@ -104,6 +104,10 @@ class FileMonitor:
 
             # Process BAD STO files
             if p.endswith(".sto"):
-                pass
+                logger.info(f"Creating L0IngestBAD task for path {p}")
+                tasks.append(L0IngestBAD(config_path=self.config_path,
+                                         stream_path=p,
+                                         level=self.level,
+                                         partition=self.partition))
 
         return tasks

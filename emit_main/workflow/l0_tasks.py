@@ -33,7 +33,7 @@ class L0StripHOSC(SlurmJobTask):
     task_namespace = "emit"
 
     def requires(self):
-        logger.debug(self.task_family + " requires")
+        logger.debug(f"{self.task_family} requires: {self.stream_path}")
         wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
         if wm.stream is None:
             # Insert new stream in db
@@ -42,12 +42,12 @@ class L0StripHOSC(SlurmJobTask):
         return None
 
     def output(self):
-        logger.debug(self.task_family + " output")
+        logger.debug(f"{self.task_family} output: {self.stream_path}")
         wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
         return StreamTarget(stream=wm.stream, task_family=self.task_family)
 
     def work(self):
-        logger.debug(self.task_family + " work")
+        logger.debug(f"{self.task_family} work: {self.stream_path}")
 
         wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
         stream = wm.stream
@@ -164,6 +164,80 @@ class L0StripHOSC(SlurmJobTask):
         dm.insert_stream_log_entry(stream.hosc_name, log_entry)
 
 
+class L0IngestBAD(SlurmJobTask):
+    """
+    Ingests BAD STO files
+    """
+
+    config_path = luigi.Parameter()
+    stream_path = luigi.Parameter()
+    level = luigi.Parameter()
+    partition = luigi.Parameter()
+
+    task_namespace = "emit"
+
+    def requires(self):
+        logger.debug(f"{self.task_family} requires: {self.stream_path}")
+
+        return None
+
+    def output(self):
+        logger.debug(f"{self.task_family} output: {self.stream_path}")
+        wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
+        return StreamTarget(stream=wm.stream, task_family=self.task_family)
+
+    def work(self):
+        logger.debug(f"{self.task_family} work: {self.stream_path}")
+
+        # Insert BAD stream into DB
+        wm = WorkflowManager(config_path=self.config_path)
+        dm = wm.database_manager
+        dm.insert_bad_stream(os.path.basename(self.stream_path))
+        logger.debug(f"Inserted BAD stream file into DB using path {self.stream_path}")
+
+        # Get workflow manager again, now with stream_path
+        wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
+        stream = wm.stream
+        pge = wm.pges["emit-main"]
+
+        # TODO: Do something here?  Get stop_time?
+
+        # Move BAD file out of ingest folder
+        if "ingest" in self.stream_path:
+            wm.move(self.stream_path, stream.bad_path)
+
+        # Update DB
+        creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(stream.bad_path), tz=datetime.timezone.utc)
+        metadata = {
+            "products": {
+                "raw": {
+                    "bad_path": stream.bad_path,
+                    "created": creation_time
+                }
+            }
+        }
+        dm = wm.database_manager
+        dm.update_stream_metadata(stream.bad_name, metadata)
+
+        log_entry = {
+            "task": self.task_family,
+            "pge_name": pge.repo_url,
+            "pge_version": pge.version_tag,
+            "pge_input_files": {
+                "ingested_bad_path": self.stream_path,
+            },
+            "pge_run_command": "N/A - database updates only",
+            "documentation_version": "N/A",
+            "product_creation_time": creation_time,
+            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
+            "completion_status": "SUCCESS",
+            "output": {
+                "raw_bad_path": stream.bad_path
+            }
+        }
+        dm.insert_stream_log_entry(stream.bad_name, log_entry)
+
+
 class L0ProcessPlanningProduct(SlurmJobTask):
     """
     Reads planning product and inserts/updates acquisitions in the DB
@@ -178,17 +252,17 @@ class L0ProcessPlanningProduct(SlurmJobTask):
 
     def requires(self):
 
-        logger.debug(self.task_family + " requires")
+        logger.debug(f"{self.task_family} requires: {self.plan_prod_path}")
         return None
 
     def output(self):
 
-        logger.debug(self.task_family + " output")
+        logger.debug(f"{self.task_family} output: {self.plan_prod_path}")
         return None
 
     def work(self):
 
-        logger.debug(self.task_family + " work")
+        logger.debug(f"{self.task_family} work: {self.plan_prod_path}")
         wm = WorkflowManager(config_path=self.config_path)
         dm = wm.database_manager
         pge = wm.pges["emit-main"]
