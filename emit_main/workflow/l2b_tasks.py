@@ -11,7 +11,7 @@ import os
 import luigi
 import spectral.io.envi as envi
 
-from emit_main.workflow.envi_target import ENVITarget
+from emit_main.workflow.output_targets import ENVITarget
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.l1b_tasks import L1BGeolocate
 from emit_main.workflow.l2a_tasks import L2AMask, L2AReflectance

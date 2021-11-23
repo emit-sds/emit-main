@@ -1,7 +1,8 @@
 """
 This code contains tasks for executing EMIT Level 1B PGEs and helper utilities.
 
-Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
+Authors: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
+         Philip G. Brodrick, philip.brodrick@jpl.nasa.gov
 """
 
 import datetime
@@ -14,10 +15,11 @@ import luigi
 import spectral.io.envi as envi
 
 from emit_main.workflow.acquisition import Acquisition
-from emit_main.workflow.envi_target import ENVITarget
+from emit_main.workflow.output_targets import ENVITarget, NetCDFTarget, UMMGTarget
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.l1a_tasks import L1AReassembleRaw
 from emit_main.workflow.slurm import SlurmJobTask
+from emit_utils.file_checks import netcdf_ext
 
 logger = logging.getLogger("emit-main")
 
@@ -165,9 +167,7 @@ class L1BGeolocate(SlurmJobTask):
 
         logger.debug(self.task_family + " output")
         acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return (ENVITarget(acq.loc_img_path),
-                ENVITarget(acq.obs_img_path),
-                ENVITarget(acq.glt_img_path))
+        return ENVITarget(acquisition=acq, task_family=self.task_family)
 
     def work(self):
 
@@ -188,4 +188,50 @@ class L1BGeolocate(SlurmJobTask):
         cmd = ["touch", acq.glt_img_path]
         pge.run(cmd, tmp_dir=self.tmp_dir)
         cmd = ["touch", acq.glt_hdr_path]
+        pge.run(cmd, tmp_dir=self.tmp_dir)
+
+
+class L1BFormat(SlurmJobTask):
+    """
+    Converts L1B (geolocation and radiance) to netcdf files
+    :returns: L1B netcdf output for delivery
+    """
+
+    config_path = luigi.Parameter()
+    acquisition_id = luigi.Parameter()
+    level = luigi.Parameter()
+    partition = luigi.Parameter()
+
+    task_namespace = "emit"
+    n_cores = 1
+    memory = 40000 #TODO: determine
+
+    def requires(self):
+
+        logger.debug(self.task_family + " requires")
+        return (L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+                             partition=self.partition),
+                L1BGeolocate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+                             partition=self.partition))
+
+    def output(self):
+
+        logger.debug(self.task_family + " output")
+        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return (NetCDFTarget(acquisition=acq, task_family=self.task_family), 
+                UMMGTarget(acquisition=acq, task_family=self.task_family))
+
+    def work(self):
+
+        logger.debug(self.task_family + " run")
+
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        acq = wm.acquisition
+
+        pge = wm.pges["emit-sds-l1b"]
+
+        output_generator_exe = os.path.join(pge.repo_dir, "output_conversion.py")
+
+        cmd = ["python", output_generator_exe, acq.daac_nc_path, acq.rdn_img_path, acq.obs_img_path, acq.loc_img_path,
+               acq.glt_img_path, "--ummg_file", acq.daac_json_path]
         pge.run(cmd, tmp_dir=self.tmp_dir)
