@@ -9,15 +9,6 @@ import os
 from emit_main.workflow.workflow_manager import WorkflowManager
 
 
-def test_check_runtime_environment(config_path):
-
-    config_path = os.path.abspath(config_path)
-    print("\nRunning test_check_runtime_environment with config: %s" % config_path)
-
-    wm = WorkflowManager(config_path=config_path)
-    assert wm.check_runtime_environment() is True
-
-
 def test_acquisition(config_path):
 
     config_path = os.path.abspath(config_path)

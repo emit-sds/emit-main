@@ -27,14 +27,14 @@ class Stream:
         self.hosc_name = None
         self.ccsds_name = None
 
-        # Get config properties
-        self.config = Config(config_path).get_dictionary()
-
         # Read metadata from db
         dm = DatabaseManager(config_path)
         self.metadata = dm.find_stream_by_name(os.path.basename(stream_path))
         self._initialize_metadata()
         self.__dict__.update(self.metadata)
+
+        # Get config properties
+        self.config = Config(config_path, self.start_time).get_dictionary()
 
         # Create base directories and add to list to create directories later
         self.dirs = []
