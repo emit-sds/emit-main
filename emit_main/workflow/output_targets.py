@@ -13,6 +13,28 @@ import luigi
 logger = logging.getLogger("emit-main")
 
 
+class DataCollectionTarget(luigi.Target):
+    def __init__(self, data_collection, task_family):
+        self._dc = data_collection
+        self._task_family = task_family
+
+    def exists(self):
+        if self._dc is None:
+            return False
+        for log in reversed(self._dc.processing_log):
+            if log["task"] == self._task_family and log["completion_status"] == "SUCCESS":
+                # Check that outputs exist on filesystem
+                for val in log["output"].values():
+                    if type(val) == list:
+                        for v in val:
+                            if not os.path.exists(v):
+                                return False
+                    elif not os.path.exists(val):
+                        return False
+                return True
+        return False
+
+
 class ENVITarget(luigi.Target):
     """This class specifies success criteria to determine if an envi file was processed correctly"""
     def __init__(self, acquisition, task_family):
