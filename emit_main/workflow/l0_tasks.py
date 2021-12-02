@@ -11,7 +11,7 @@ import logging
 import luigi
 import os
 
-from emit_main.workflow.stream_target import StreamTarget
+from emit_main.workflow.output_targets import StreamTarget
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_main.workflow.workflow_manager import WorkflowManager
 

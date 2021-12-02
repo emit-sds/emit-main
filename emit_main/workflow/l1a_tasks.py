@@ -12,11 +12,10 @@ import os
 import luigi
 import spectral.io.envi as envi
 
-from emit_main.workflow.data_collection_target import DataCollectionTarget
-from emit_main.workflow.envi_target import ENVITarget
+
+from emit_main.workflow.output_targets import StreamTarget, DataCollectionTarget, OrbitTarget
 from emit_main.workflow.l0_tasks import L0StripHOSC
 from emit_main.workflow.slurm import SlurmJobTask
-from emit_main.workflow.stream_target import StreamTarget
 from emit_main.workflow.workflow_manager import WorkflowManager
 
 logger = logging.getLogger("emit-main")
@@ -769,18 +768,18 @@ class L1AReformatBAD(SlurmJobTask):
 
     def requires(self):
 
-        logger.debug(f"{self.task_family} requires: {self.stream_path}")
+        logger.debug(f"{self.task_family} requires: {self.orbit_id}")
         return None
 
     def output(self):
 
-        logger.debug(f"{self.task_family} output: {self.stream_path}")
-        wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
-        return StreamTarget(stream=wm.stream, task_family=self.task_family)
+        logger.debug(f"{self.task_family} output: {self.orbit_id}")
+        wm = WorkflowManager(config_path=self.config_path, orbit_id=self.orbit_id)
+        return OrbitTarget(orbit=wm.orbit, task_family=self.task_family)
 
     def work(self):
 
-        logger.debug(f"{self.task_family} work: {self.stream_path}")
+        logger.debug(f"{self.task_family} work: {self.orbit_id}")
         wm = WorkflowManager(config_path=self.config_path, orbit_id=self.orbit_id)
         dm = wm.database_manager
         orbit = wm.orbit

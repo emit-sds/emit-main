@@ -11,7 +11,7 @@ import os
 import luigi
 import spectral.io.envi as envi
 
-from emit_main.workflow.envi_target import ENVITarget
+from emit_main.workflow.output_targets import AcquisitionTarget
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.l1b_tasks import L1BCalibrate, L1BGeolocate
 from emit_main.workflow.slurm import SlurmJobTask
@@ -47,7 +47,7 @@ class L2AReflectance(SlurmJobTask):
 
         logger.debug(self.task_family + " output")
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return ENVITarget(acquisition=wm.acquisition, task_family=self.task_family)
+        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family)
 
     def work(self):
 
@@ -194,7 +194,7 @@ class L2AMask(SlurmJobTask):
 
         logger.debug(self.task_family + " output")
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return ENVITarget(acquisition=wm.acquisition, task_family=self.task_family)
+        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family)
 
     def work(self):
 
