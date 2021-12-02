@@ -14,7 +14,8 @@ import sys
 import luigi
 
 from emit_main.workflow.l0_tasks import L0StripHOSC, L0ProcessPlanningProduct
-from emit_main.workflow.l1a_tasks import L1ADepacketizeScienceFrames, L1AReassembleRaw, L1AReformatEDP, L1AFrameReport
+from emit_main.workflow.l1a_tasks import L1ADepacketizeScienceFrames, L1AReassembleRaw, L1AReformatEDP, \
+    L1AFrameReport, L1AReformatBAD
 from emit_main.workflow.l1b_tasks import L1BGeolocate, L1BCalibrate
 from emit_main.workflow.l2a_tasks import L2AMask, L2AReflectance
 from emit_main.workflow.l2b_tasks import L2BAbundance
@@ -28,8 +29,8 @@ logger = logging.getLogger("emit-main")
 
 
 def parse_args():
-    product_choices = ["l0hosc", "l0plan", "l1aeng", "l1aframe", "l1aframereport", "l1araw", "l1bcal", "l2arefl",
-                       "l2amask", "l2babun", "l3unmix"]
+    product_choices = ["l0hosc", "l0plan", "l1aeng", "l1aframe", "l1aframereport", "l1araw", "l1abad", "l1bcal",
+                       "l2arefl", "l2amask", "l2babun", "l3unmix"]
     parser = argparse.ArgumentParser()
     parser.add_argument("-a", "--acquisition_id", default="",
                         help="Acquisition ID")
@@ -37,6 +38,8 @@ def parse_args():
                         help="Data Collection ID")
     parser.add_argument("-s", "--stream_path", default="",
                         help="Path to HOSC or CCSDS stream file")
+    parser.add_argument("-o", "--orbit_id", default="",
+                        help="Orbit number in the padded format XXXXX")
     parser.add_argument("--plan_prod_path", default="",
                         help="Path to planning product file")
     parser.add_argument("-c", "--config_path",
@@ -109,6 +112,7 @@ def get_tasks_from_args(args):
                                          acq_chunksize=args.acq_chunksize, test_mode=args.test_mode, **kwargs),
         "l1araw": L1AReassembleRaw(dcid=args.dcid, ignore_missing_frames=args.ignore_missing_frames,
                                    acq_chunksize=args.acq_chunksize, test_mode=args.test_mode, **kwargs),
+        "l1abad": L1AReformatBAD(orbit_id=args.orbit_id, **kwargs),
         "l1bcal": L1BCalibrate(acquisition_id=args.acquisition_id, **kwargs),
         "l2arefl": L2AReflectance(acquisition_id=args.acquisition_id, **kwargs),
         "l2amask": L2AMask(acquisition_id=args.acquisition_id, **kwargs),
@@ -171,6 +175,13 @@ def task_failure(task, e):
         logger.error(f"Moving bad Planning Product file to {ingest_errors_path}")
         wm.move(task.plan_prod_path, ingest_errors_path)
 
+    # If running L0IngestBAD on ingest folder path, move file to ingest/errors
+    if task.task_family == "emit.L0IngestBAD" and "ingest" in task.stream_path:
+        # Move BAD STO file to ingest/errors
+        ingest_errors_path = os.path.join(wm.ingest_errors_dir, os.path.basename(task.stream_path))
+        logger.error(f"Moving erroneous BAD STO file to {ingest_errors_path}")
+        wm.move(task.stream_path, ingest_errors_path)
+
     # Update DB processing_log with failure message
     log_entry = {
         "task": task.task_family,
@@ -179,10 +190,12 @@ def task_failure(task, e):
         "error_message": str(e)
     }
 
-    stream_tasks = ("emit.L0StripHOSC", "emit.L1ADepacketizeScienceFrames", "emit.L1AReformatEDP")
-    data_collection_tasks = {"emit.L1AReassembleRaw", "emit.L1AFrameReport"}
+    stream_tasks = ("emit.L0StripHOSC", "emit.L1ADepacketizeScienceFrames", "emit.L1AReformatEDP", "emit.L0IngestBAD")
+    data_collection_tasks = ("emit.L1AReassembleRaw", "emit.L1AFrameReport")
     acquisition_tasks = ("emit.L1BCalibrate", "emit.L2AReflectance",
                          "emit.L2AMask", "emit.L2BAbundance", "emit.L3Unmix")
+    orbit_tasks = ("emit.L1AReformatBAD")
+
     dm = wm.database_manager
     if task.task_family in acquisition_tasks and dm.find_acquisition_by_id(task.acquisition_id) is not None:
         dm.insert_acquisition_log_entry(task.acquisition_id, log_entry)
@@ -190,6 +203,8 @@ def task_failure(task, e):
         dm.insert_stream_log_entry(os.path.basename(task.stream_path), log_entry)
     elif task.task_family in data_collection_tasks and dm.find_data_collection_by_id(task.dcid):
         dm.insert_data_collection_log_entry(task.dcid, log_entry)
+    elif task.task_family in orbit_tasks and dm.find_orbit_by_id(task.orbit_id):
+        dm.insert_orbit_log_entry(task.orbit_id, log_entry)
 
 
 def set_up_logging(log_path, level):

@@ -108,6 +108,13 @@ def task_failure(task, e):
         logger.error(f"Moving bad Planning Product file to {ingest_errors_path}")
         wm.move(task.plan_prod_path, ingest_errors_path)
 
+    # If running L0IngestBAD on ingest folder path, move file to ingest/errors
+    if task.task_family == "emit.L0IngestBAD" and "ingest" in task.stream_path:
+        # Move BAD STO file to ingest/errors
+        ingest_errors_path = os.path.join(wm.ingest_errors_dir, os.path.basename(task.stream_path))
+        logger.error(f"Moving erroneous BAD STO file to {ingest_errors_path}")
+        wm.move(task.stream_path, ingest_errors_path)
+
     # Update DB processing_log with failure message
     log_entry = {
         "task": task.task_family,
@@ -117,7 +124,7 @@ def task_failure(task, e):
     }
     acquisition_tasks = ("emit.L1AReassembleRaw", "emit.L1AFrameReport", "emit.L1BCalibrate", "emit.L2AReflectance",
                          "emit.L2AMask", "emit.L2BAbundance")
-    stream_tasks = ("emit.L0StripHOSC", "emit.L1ADepacketizeScienceFrames", "emit.L1AReformatEDP")
+    stream_tasks = ("emit.L0StripHOSC", "emit.L1ADepacketizeScienceFrames", "emit.L1AReformatEDP", "emit.L0IngestBAD")
     dm = wm.database_manager
     if task.task_family in acquisition_tasks and dm.find_acquisition_by_id(task.acquisition_id) is not None:
         dm.insert_acquisition_log_entry(task.acquisition_id, log_entry)

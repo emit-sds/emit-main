@@ -533,6 +533,8 @@ class L1AReassembleRaw(SlurmJobTask):
                 }
             })
 
+        # TODO: Add symlinks to acquisitions for easy access
+
         # Add log entry to DB
         log_entry = {
             "task": self.task_family,
@@ -780,21 +782,44 @@ class L1AReformatBAD(SlurmJobTask):
 
         logger.debug(f"{self.task_family} work: {self.stream_path}")
         wm = WorkflowManager(config_path=self.config_path, orbit_id=self.orbit_id)
+        dm = wm.database_manager
         orbit = wm.orbit
         pge = wm.pges["emit-sds-l1a"]
 
         # Find all BAD STO files in an orbit
-        # TODO: Need to "ingest" sto files and copy them somewhere
+        bad_streams = dm.find_streams_by_date_range("bad", "start_time", orbit.start_time, orbit.stop_time) + \
+                      dm.find_streams_by_date_range("bad", "stop_time", orbit.start_time, orbit.stop_time)
+        bad_sto_paths = []
+        if bad_streams is not None:
+            bad_path = None
+            for stream in bad_streams:
+                try:
+                    bad_path = stream["products"]["raw"]["bad_path"]
+                except KeyError:
+                    logger.warning(f"Could not find the raw product path for {stream['bad_name']}.")
+                    pass
+                if bad_path is not None:
+                    bad_sto_paths.append(bad_path)
+        # Remove duplicates and sort (assuming the filenames can be sorted)
+        bad_sto_paths = list(set(bad_sto_paths))
+        bad_sto_paths.sort()
+
+        if len(bad_sto_paths) == 0:
+            raise RuntimeError(f"Unable to find any BAD STO files for orbit {self.orbit_id}!")
+
+        # Copy sto files to an input directory and call PGE
+        tmp_bad_sto_dir = os.path.join(self.local_tmp_dir, f"o{self.orbit_id}_bad_sto_files")
+        wm.makedirs(tmp_bad_sto_dir)
+        for p in bad_sto_paths:
+            wm.copy(p, os.path.join(tmp_bad_sto_dir, os.path.basename(p)))
 
         # Build command and run
-        sds_l1a_eng_exe = os.path.join(pge.repo_dir, "run_l1a_eng.sh")
-        ios_l1_edp_exe = os.path.join(wm.pges["emit-ios"].repo_dir, "emit", "bin", "emit_l1_edp.py")
-        tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
-        tmp_log_dir = os.path.join(self.local_tmp_dir, "logs")
-
-        tmp_log = os.path.join(tmp_output_dir, stream.hosc_name + ".log")
-
-        cmd = [sds_l1a_eng_exe, stream.ccsds_path, self.local_tmp_dir, ios_l1_edp_exe]
+        reformat_bad_exe = os.path.join(pge.repo_dir, "reformat_bad.py")
+        tmp_log_path = os.path.join(self.local_tmp_dir, "reformat_bad_pge.log")
+        cmd = ["python", reformat_bad_exe, tmp_bad_sto_dir,
+               "--work_dir", self.local_tmp_dir,
+               "--level", self.level,
+               "--log_path", tmp_log_path]
         env = os.environ.copy()
         env["AIT_ROOT"] = wm.pges["emit-ios"].repo_dir
         # TODO: Convert these to ancillary file paths?
@@ -802,54 +827,43 @@ class L1AReformatBAD(SlurmJobTask):
         env["AIT_ISS_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "sim.yaml")
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
-        # Get tmp edp and log names
-        tmp_edp_path = glob.glob(os.path.join(tmp_output_dir, "*.csv"))[0]
-        tmp_report_path = glob.glob(os.path.join(tmp_output_dir, "*_report.txt"))[0]
+        # Copy output files back
+        tmp_output_path = glob.glob(os.path.join(self.local_tmp_dir, "output", "*"))[0]
+        wm.copy(tmp_output_path, orbit.uncorr_att_eph_path)
+        wm.copy(tmp_log_path, orbit.uncorr_att_eph_path.replace(".nc", "_pge.log"))
 
-        # Construct EDP filename and report name based on ccsds name
-        edp_name = stream.ccsds_name.replace("l0_ccsds", "l1a_eng").replace(".bin", ".csv")
-        edp_path = os.path.join(stream.l1a_dir, edp_name)
-        report_path = edp_path.replace(".csv", "_report.txt")
+        # Symlink from orbits directory back to associated BAD files
+        for p in bad_sto_paths:
+            wm.symlink(p, os.path.join(orbit.raw_dir, os.path.basename(p)))
 
-        # Copy scratch EDP file and report back to store
-        wm.copy(tmp_edp_path, edp_path)
-        wm.copy(tmp_report_path, report_path)
-
-        # Copy and rename log file
-        l1a_pge_log_path = edp_path.replace(".csv", "_pge.log")
-        for file in glob.glob(os.path.join(tmp_log_dir, "*")):
-            wm.copy(file, l1a_pge_log_path)
-
-        metadata = {
-            "edp_name": edp_name,
-
-        }
-        dm = wm.database_manager
-        dm.update_stream_metadata(stream.hosc_name, metadata)
-
+        creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(orbit.uncorr_att_eph_path),
+                                                        tz=datetime.timezone.utc)
         product_dict = {
-            "edp_path": edp_path,
-            "created": datetime.datetime.fromtimestamp(os.path.getmtime(edp_path), tz=datetime.timezone.utc)
+            "uncorr_att_eph_path": orbit.uncorr_att_eph_path,
+            "created": creation_time
+        }
+        metadata = {
+            "associated_bad_sto_files": bad_sto_paths,
+            "products.l1a": product_dict
         }
 
-        dm.update_stream_metadata(stream.hosc_name, {"products.l1a": product_dict})
+        dm.update_orbit_metadata(orbit.orbit_id, metadata)
 
-        doc_version = "EMIT IOS SDS ICD JPL-D 104239, Initial"
+        doc_version = "N/A"
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
             "pge_version": pge.version_tag,
             "pge_input_files": {
-                "ccsds_path": stream.ccsds_path,
+                "bad_sto_paths": bad_sto_paths,
             },
             "pge_run_command": " ".join(cmd),
             "documentation_version": doc_version,
-            "product_creation_time": datetime.datetime.fromtimestamp(
-                os.path.getmtime(edp_path), tz=datetime.timezone.utc),
+            "product_creation_time": creation_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
-                "l1a_edp_path": edp_path
+                "l1a_ucorr_att_eph_path": orbit.uncorr_att_eph_path
             }
         }
-        dm.insert_stream_log_entry(stream.hosc_name, log_entry)
+        dm.insert_orbit_log_entry(orbit.orbit_id, log_entry)

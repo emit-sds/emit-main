@@ -41,9 +41,16 @@ class Orbit:
         self.data_dir = os.path.join(self.environment_dir, "data")
         self.orbits_dir = os.path.join(self.data_dir, "orbits")
         self.orbit_id_dir = os.path.join(self.orbits_dir, self.orbit_id)
-        self.raw_dir = os.path.join(self.orbit_id, "raw")
-        self.l0_dir = os.path.join(self.orbits_dir, "l1a")
-        self.dirs.extend([self.orbits_dir, self.orbit_id_dir, self.raw_dir, self.l0_dir])
+        self.raw_dir = os.path.join(self.orbit_id_dir, "raw")
+        self.l1a_dir = os.path.join(self.orbit_id_dir, "l1a")
+        self.dirs.extend([self.orbits_dir, self.orbit_id_dir, self.raw_dir, self.l1a_dir])
+
+        # Create product names
+        uncorr_fname = "_".join(["emit", self.start_time.strftime("%Y%m%dt%H%M%S"), f"o{self.orbit_id}",
+                                 "l1a", "att", f"b{self.config['build_num']}",
+                                 f"v{self.config['processing_version']}.nc"])
+        self.uncorr_att_eph_path = os.path.join(self.l1a_dir, uncorr_fname)
+        self.corr_att_eph_path = self.uncorr_att_eph_path.replace("l1a", "l1b")
 
         # Make directories and symlinks if they don't exist
         from emit_main.workflow.workflow_manager import WorkflowManager
