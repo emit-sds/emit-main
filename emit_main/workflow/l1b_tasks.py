@@ -204,7 +204,7 @@ class L1BFormat(SlurmJobTask):
 
     task_namespace = "emit"
     n_cores = 1
-    memory = 40000 #TODO: determine
+    memory = 40000  # TODO: determine
 
     def requires(self):
 

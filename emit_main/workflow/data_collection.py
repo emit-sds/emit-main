@@ -50,8 +50,9 @@ class DataCollection:
             self.dcid_dir,
             "_".join([self.dcid, "frames", "b" + self.config["build_num"], "v" + self.config["processing_version"]]))
         self.decomp_dir = self.frames_dir.replace("_frames_", "_decomp_")
+        self.acquisitions_dir = self.frames_dir.replace("_frames_", "_acquisitions_")
         self.dirs.extend([self.data_collections_dir, self.by_dcid_dir, self.by_date_dir, self.dcid_hash_dir,
-                          self.dcid_dir, self.frames_dir, self.decomp_dir])
+                          self.dcid_dir, self.frames_dir, self.decomp_dir, self.acquisitions_dir])
 
         # Make directories and symlinks if they don't exist
         from emit_main.workflow.workflow_manager import WorkflowManager

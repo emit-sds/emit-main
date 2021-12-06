@@ -177,10 +177,11 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
 
             # Create a symlink from the dcid/by_date dir structure to the dcid/by_dcid dir structure
             by_dcid_date_dir = os.path.join(dc.by_date_dir, start_time.strftime("%Y%m%d"))
+            wm.makedirs(by_dcid_date_dir)
             date_to_dcid_symlink = os.path.join(by_dcid_date_dir, f'{start_time.strftime("%Y%m%dt%H%M%S")}_{dcid}')
             wm.symlink(dc.dcid_dir, date_to_dcid_symlink)
 
-            # Add frame paths to acquisition metadata
+            # Add frame paths to data collection metadata
             if "frames" in dc.metadata["products"]["l1a"] and dc.metadata["products"]["l1a"]["frames"] is not None:
                 for path in dcid_frame_paths:
                     if path not in dc.metadata["products"]["l1a"]["frames"]:
@@ -532,7 +533,8 @@ class L1AReassembleRaw(SlurmJobTask):
                 }
             })
 
-        # TODO: Add symlinks to acquisitions for easy access
+            # TODO: Add symlinks to acquisitions for easy access
+            wm.symlink(acq.acquisition_id_dir, os.path.join(dc.acquisitions_dir, acq_id))
 
         # Add log entry to DB
         log_entry = {
@@ -787,7 +789,7 @@ class L1AReformatBAD(SlurmJobTask):
 
         # Find all BAD STO files in an orbit
         bad_streams = dm.find_streams_by_date_range("bad", "start_time", orbit.start_time, orbit.stop_time) + \
-                      dm.find_streams_by_date_range("bad", "stop_time", orbit.start_time, orbit.stop_time)
+            dm.find_streams_by_date_range("bad", "stop_time", orbit.start_time, orbit.stop_time)
         bad_sto_paths = []
         if bad_streams is not None:
             bad_path = None

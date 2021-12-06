@@ -119,9 +119,9 @@ def get_tasks_from_args(args):
         "l2babun": L2BAbundance(acquisition_id=args.acquisition_id, **kwargs),
         "l3unmix": L3Unmix(acquisition_id=args.acquisition_id, **kwargs),
         "l1bformat": L1BFormat(acquisition_id=args.acquisition_id, **kwargs),
-        #"l2aformat": L2AFormat(acquisition_id=args.acquisition_id, **kwargs),
-        #"l2bformat": L2BFormat(acquisition_id=args.acquisition_id, **kwargs),
-        #"l3unmixformat": L3UnmixFormat(acquisition_id=args.acquisition_id, **kwargs)
+        # "l2aformat": L2AFormat(acquisition_id=args.acquisition_id, **kwargs),
+        # "l2bformat": L2BFormat(acquisition_id=args.acquisition_id, **kwargs),
+        # "l3unmixformat": L3UnmixFormat(acquisition_id=args.acquisition_id, **kwargs)
     }
     tasks = []
     for prod in products:
