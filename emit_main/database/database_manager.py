@@ -67,8 +67,10 @@ class DatabaseManager:
         streams_coll = self.db.streams
         if "hsc.bin" in name:
             query = {"hosc_name": name, "build_num": self.config["build_num"]}
-        else:
+        elif "ccsds" in name:
             query = {"ccsds_name": name, "build_num": self.config["build_num"]}
+        elif ".sto" in name:
+            query = {"bad_name": name, "build_num": self.config["build_num"]}
         return streams_coll.find_one(query)
 
     def find_streams_by_date_range(self, apid, field, start, stop, sort=1):
@@ -108,12 +110,36 @@ class DatabaseManager:
             streams_coll = self.db.streams
             streams_coll.insert_one(metadata)
 
+    def insert_bad_stream(self, bad_name):
+        if self.find_stream_by_name(bad_name) is None:
+            if ".sto" not in bad_name:
+                raise RuntimeError(f"Attempting to insert BAD stream file in DB with name {bad_name}. Does not "
+                                   f"appear to be a BAD STO file")
+            # TODO: This format is not defined yet
+            tokens = bad_name.split(".")[0].split("_")
+            start_time = datetime.datetime.strptime(tokens[-1], "%Y%m%dT%H%M%S")
+            utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
+            metadata = {
+                "apid": "bad",
+                "start_time": start_time,
+                "build_num": self.config["build_num"],
+                "processing_version": self.config["processing_version"],
+                "bad_name": bad_name,
+                "processing_log": [],
+                "created": utc_now,
+                "last_modified": utc_now
+            }
+            streams_coll = self.db.streams
+            streams_coll.insert_one(metadata)
+
     def update_stream_metadata(self, name, metadata):
         streams_coll = self.db.streams
         if "hsc.bin" in name:
             query = {"hosc_name": name, "build_num": self.config["build_num"]}
-        else:
+        elif "ccsds" in name:
             query = {"ccsds_name": name, "build_num": self.config["build_num"]}
+        elif ".sto" in name:
+            query = {"bad_name": name, "build_num": self.config["build_num"]}
         metadata["last_modified"] = datetime.datetime.now(tz=datetime.timezone.utc)
         set_value = {"$set": metadata}
         streams_coll.update_one(query, set_value, upsert=True)
@@ -122,8 +148,10 @@ class DatabaseManager:
         streams_coll = self.db.streams
         if "hsc.bin" in name:
             query = {"hosc_name": name, "build_num": self.config["build_num"]}
-        else:
+        elif "ccsds" in name:
             query = {"ccsds_name": name, "build_num": self.config["build_num"]}
+        elif ".sto" in name:
+            query = {"bad_name": name, "build_num": self.config["build_num"]}
         push_value = {"$push": {"processing_log": entry}}
         streams_coll.update_one(query, push_value)
 
@@ -161,3 +189,33 @@ class DatabaseManager:
         metadata = {"last_modified": entry["log_timestamp"]}
         set_value = {"$set": metadata}
         data_collections_coll.update_one(query, set_value, upsert=True)
+
+    def find_orbit_by_id(self, orbit_id):
+        orbits_coll = self.db.orbits
+        return orbits_coll.find_one({"orbit_id": orbit_id, "build_num": self.config["build_num"]})
+
+    def insert_orbit(self, metadata):
+        if self.find_orbit_by_id(metadata["orbit_id"]) is None:
+            utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
+            metadata["created"] = utc_now
+            metadata["last_modified"] = utc_now
+            orbits_coll = self.db.orbits
+            orbits_coll.insert_one(metadata)
+
+    def update_orbit_metadata(self, orbit_id, metadata):
+        orbits_coll = self.db.orbits
+        query = {"orbit_id": orbit_id, "build_num": self.config["build_num"]}
+        metadata["last_modified"] = datetime.datetime.now(tz=datetime.timezone.utc)
+        set_value = {"$set": metadata}
+        orbits_coll.update_one(query, set_value, upsert=True)
+
+    def insert_orbit_log_entry(self, orbit_id, entry):
+        orbits_coll = self.db.orbits
+        query = {"orbit_id": orbit_id, "build_num": self.config["build_num"]}
+        push_value = {"$push": {"processing_log": entry}}
+        orbits_coll.update_one(query, push_value)
+
+        # Update last modified
+        metadata = {"last_modified": entry["log_timestamp"]}
+        set_value = {"$set": metadata}
+        orbits_coll.update_one(query, set_value, upsert=True)

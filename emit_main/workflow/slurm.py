@@ -106,6 +106,8 @@ class SlurmJobTask(luigi.Task):
     acquisition_id = luigi.Parameter(default="")
     stream_path = luigi.Parameter(default="")
     dcid = luigi.Parameter(default="")
+    plan_prod_path = luigi.Parameter(default="")
+    orbit_id = luigi.Parameter(default="")
 
     # Resource management parameters to be overridden as needed by subclass tasks
     n_nodes = 1
@@ -134,6 +136,10 @@ class SlurmJobTask(luigi.Task):
             self.task_tmp_id = os.path.basename(self.stream_path)
         elif len(self.dcid) > 0:
             self.task_tmp_id = self.dcid
+        elif len(self.plan_prod_path) > 0:
+            self.task_tmp_id = os.path.basename(self.plan_prod_path)
+        elif len(self.orbit_id) > 0:
+            self.task_tmp_id = "o" + self.orbit_id
 
     def _set_task_instance_id(self):
         timestamp = datetime.datetime.now().strftime("%Y%m%dt%H%M%S")

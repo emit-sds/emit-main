@@ -35,7 +35,27 @@ class DataCollectionTarget(luigi.Target):
         return False
 
 
-class ENVITarget(luigi.Target):
+class OrbitTarget(luigi.Target):
+    """This class specifies success criteria to determine if an orbit file was processed correctly"""
+    def __init__(self, orbit, task_family):
+        self._orbit = orbit
+        self._task_family = task_family
+
+    def exists(self):
+        if self._orbit is None:
+            logger.debug("Checking output for %s - Failed to find orbit in DB" % self._task_family)
+            return False
+        for log in reversed(self._orbit.processing_log):
+            if log["task"] == self._task_family and log["completion_status"] == "SUCCESS":
+                # Check that outputs exist on filesystem
+                for path in log["output"].values():
+                    if not os.path.exists(path):
+                        return False
+                return True
+        return False
+
+
+class AcquisitionTarget(luigi.Target):
     """This class specifies success criteria to determine if an envi file was processed correctly"""
     def __init__(self, acquisition, task_family):
         self._acquisition = acquisition
@@ -49,9 +69,7 @@ class ENVITarget(luigi.Target):
             if log["task"] == self._task_family and log["completion_status"] == "SUCCESS":
                 # Check that outputs exist on filesystem
                 for path in log["output"].values():
-                    if os.path.splitext(path)[-1] in [".img", ".hdr"] and not os.path.exists(path):
-                        logger.debug("Checking output for %s - Failed to find acquisition path %s" %
-                                     (self._task_family, path))
+                    if not os.path.exists(path):
                         return False
                 return True
         return False
@@ -75,50 +93,6 @@ class StreamTarget(luigi.Target):
                             if not os.path.exists(v):
                                 return False
                     elif not os.path.exists(val):
-                        return False
-                return True
-        return False
-
-
-class NetCDFTarget(luigi.Target):
-    """This class specifies success criteria to determine if a NetCDF file was processed correctly"""
-    def __init__(self, acquisition, task_family):
-        self._acquisition = acquisition
-        self._task_family = task_family
-
-    def exists(self):
-        if self._acquisition is None:
-            logger.debug("Checking output for %s - Failed to find acquisition in DB" % self._task_family)
-            return False
-        for log in reversed(self._acquisition.processing_log):
-            if log["task"] == self._task_family and log["completion_status"] == "SUCCESS":
-                # Check that outputs exist on filesystem
-                for path in log["output"].values():
-                    if os.path.splitext(path)[-1] in [".nc"] and not os.path.exists(path):
-                        logger.debug("Checking output for %s - Failed to find acquisition path %s" %
-                                     (self._task_family, path))
-                        return False
-                return True
-        return False
-
-
-class UMMGTarget(luigi.Target):
-    """This class specifies success criteria to determine if a NetCDF file was processed correctly"""
-    def __init__(self, acquisition, task_family):
-        self._acquisition = acquisition
-        self._task_family = task_family
-
-    def exists(self):
-        if self._acquisition is None:
-            logger.debug("Checking output for %s - Failed to find acquisition in DB" % self._task_family)
-            return False
-        for log in reversed(self._acquisition.processing_log):
-            if log["task"] == self._task_family and log["completion_status"] == "SUCCESS":
-                # Check that outputs exist on filesystem
-                for path in log["output"].values():
-                    if os.path.splitext(path)[-1] in [".json"] and not os.path.exists(path):
-                        logger.debug("Checking output for %s - Failed to find acquisition path %s" %
-                                     (self._task_family, path))
                         return False
                 return True
         return False

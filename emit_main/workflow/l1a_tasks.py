@@ -13,7 +13,7 @@ import luigi
 import spectral.io.envi as envi
 
 
-from emit_main.workflow.output_targets import StreamTarget, DataCollectionTarget
+from emit_main.workflow.output_targets import StreamTarget, DataCollectionTarget, OrbitTarget
 from emit_main.workflow.l0_tasks import L0StripHOSC
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_main.workflow.workflow_manager import WorkflowManager
@@ -177,13 +177,11 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
 
             # Create a symlink from the dcid/by_date dir structure to the dcid/by_dcid dir structure
             by_dcid_date_dir = os.path.join(dc.by_date_dir, start_time.strftime("%Y%m%d"))
-            date_to_dcid_dir = os.path.join(by_dcid_date_dir, f'{start_time.strftime("%Y%m%dt%H%M%S")}_{dcid}')
-            date_to_dcid_frame_symlink = os.path.join(date_to_dcid_dir, os.path.basename(dc.frames_dir))
             wm.makedirs(by_dcid_date_dir)
-            wm.makedirs(date_to_dcid_dir)
-            wm.symlink(dc.frames_dir, date_to_dcid_frame_symlink)
+            date_to_dcid_symlink = os.path.join(by_dcid_date_dir, f'{start_time.strftime("%Y%m%dt%H%M%S")}_{dcid}')
+            wm.symlink(dc.dcid_dir, date_to_dcid_symlink)
 
-            # Add frame paths to acquisition metadata
+            # Add frame paths to data collection metadata
             if "frames" in dc.metadata["products"]["l1a"] and dc.metadata["products"]["l1a"]["frames"] is not None:
                 for path in dcid_frame_paths:
                     if path not in dc.metadata["products"]["l1a"]["frames"]:
@@ -243,7 +241,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
-                "frame_paths": output_frame_paths
+                "l1a_frame_paths": output_frame_paths
             }
         }
         dm.insert_stream_log_entry(stream.ccsds_name, log_entry)
@@ -535,6 +533,9 @@ class L1AReassembleRaw(SlurmJobTask):
                 }
             })
 
+            # TODO: Add symlinks to acquisitions for easy access
+            wm.symlink(acq.acquisition_id_dir, os.path.join(dc.acquisitions_dir, acq_id))
+
         # Add log entry to DB
         log_entry = {
             "task": self.task_family,
@@ -665,19 +666,19 @@ class L1AReformatEDP(SlurmJobTask):
 
     def requires(self):
 
-        logger.debug(self.task_family + " requires")
+        logger.debug(f"{self.task_family} requires: {self.stream_path}")
         return L0StripHOSC(config_path=self.config_path, stream_path=self.stream_path, level=self.level,
                            partition=self.partition, miss_pkt_thresh=self.miss_pkt_thresh)
 
     def output(self):
 
-        logger.debug(self.task_family + " output")
+        logger.debug(f"{self.task_family} output: {self.stream_path}")
         wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
         return StreamTarget(stream=wm.stream, task_family=self.task_family)
 
     def work(self):
 
-        logger.debug(self.task_family + " work")
+        logger.debug(f"{self.task_family} work: {self.stream_path}")
         wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
         stream = wm.stream
         pge = wm.pges["emit-sds-l1a"]
@@ -745,7 +746,125 @@ class L1AReformatEDP(SlurmJobTask):
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
-                "edp_path": edp_path
+                "l1a_edp_path": edp_path
             }
         }
         dm.insert_stream_log_entry(stream.hosc_name, log_entry)
+
+
+class L1AReformatBAD(SlurmJobTask):
+    """
+    Creates reformatted NetCDF BAD file with attitude and ephemeris from input BAD STO file
+    :returns: Reformatted BAD data product
+    """
+
+    config_path = luigi.Parameter()
+    orbit_id = luigi.Parameter()
+    level = luigi.Parameter()
+    partition = luigi.Parameter()
+
+    memory = 30000
+    local_tmp_space = 125000
+
+    task_namespace = "emit"
+
+    def requires(self):
+
+        logger.debug(f"{self.task_family} requires: {self.orbit_id}")
+        return None
+
+    def output(self):
+
+        logger.debug(f"{self.task_family} output: {self.orbit_id}")
+        wm = WorkflowManager(config_path=self.config_path, orbit_id=self.orbit_id)
+        return OrbitTarget(orbit=wm.orbit, task_family=self.task_family)
+
+    def work(self):
+
+        logger.debug(f"{self.task_family} work: {self.orbit_id}")
+        wm = WorkflowManager(config_path=self.config_path, orbit_id=self.orbit_id)
+        dm = wm.database_manager
+        orbit = wm.orbit
+        pge = wm.pges["emit-sds-l1a"]
+
+        # Find all BAD STO files in an orbit
+        bad_streams = dm.find_streams_by_date_range("bad", "start_time", orbit.start_time, orbit.stop_time) + \
+            dm.find_streams_by_date_range("bad", "stop_time", orbit.start_time, orbit.stop_time)
+        bad_sto_paths = []
+        if bad_streams is not None:
+            bad_path = None
+            for stream in bad_streams:
+                try:
+                    bad_path = stream["products"]["raw"]["bad_path"]
+                except KeyError:
+                    logger.warning(f"Could not find the raw product path for {stream['bad_name']}.")
+                    pass
+                if bad_path is not None:
+                    bad_sto_paths.append(bad_path)
+        # Remove duplicates and sort (assuming the filenames can be sorted)
+        bad_sto_paths = list(set(bad_sto_paths))
+        bad_sto_paths.sort()
+
+        if len(bad_sto_paths) == 0:
+            raise RuntimeError(f"Unable to find any BAD STO files for orbit {self.orbit_id}!")
+
+        # Copy sto files to an input directory and call PGE
+        tmp_bad_sto_dir = os.path.join(self.local_tmp_dir, f"o{self.orbit_id}_bad_sto_files")
+        wm.makedirs(tmp_bad_sto_dir)
+        for p in bad_sto_paths:
+            wm.copy(p, os.path.join(tmp_bad_sto_dir, os.path.basename(p)))
+
+        # Build command and run
+        reformat_bad_exe = os.path.join(pge.repo_dir, "reformat_bad.py")
+        tmp_log_path = os.path.join(self.local_tmp_dir, "reformat_bad_pge.log")
+        cmd = ["python", reformat_bad_exe, tmp_bad_sto_dir,
+               "--work_dir", self.local_tmp_dir,
+               "--level", self.level,
+               "--log_path", tmp_log_path]
+        env = os.environ.copy()
+        env["AIT_ROOT"] = wm.pges["emit-ios"].repo_dir
+        # TODO: Convert these to ancillary file paths?
+        env["AIT_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "config.yaml")
+        env["AIT_ISS_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "sim.yaml")
+        pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
+
+        # Copy output files back
+        tmp_output_path = glob.glob(os.path.join(self.local_tmp_dir, "output", "*"))[0]
+        wm.copy(tmp_output_path, orbit.uncorr_att_eph_path)
+        wm.copy(tmp_log_path, orbit.uncorr_att_eph_path.replace(".nc", "_pge.log"))
+
+        # Symlink from orbits directory back to associated BAD files
+        for p in bad_sto_paths:
+            wm.symlink(p, os.path.join(orbit.raw_dir, os.path.basename(p)))
+
+        creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(orbit.uncorr_att_eph_path),
+                                                        tz=datetime.timezone.utc)
+        product_dict = {
+            "uncorr_att_eph_path": orbit.uncorr_att_eph_path,
+            "created": creation_time
+        }
+        metadata = {
+            "associated_bad_sto_files": bad_sto_paths,
+            "products.l1a": product_dict
+        }
+
+        dm.update_orbit_metadata(orbit.orbit_id, metadata)
+
+        doc_version = "N/A"
+        log_entry = {
+            "task": self.task_family,
+            "pge_name": pge.repo_url,
+            "pge_version": pge.version_tag,
+            "pge_input_files": {
+                "bad_sto_paths": bad_sto_paths,
+            },
+            "pge_run_command": " ".join(cmd),
+            "documentation_version": doc_version,
+            "product_creation_time": creation_time,
+            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
+            "completion_status": "SUCCESS",
+            "output": {
+                "l1a_ucorr_att_eph_path": orbit.uncorr_att_eph_path
+            }
+        }
+        dm.insert_orbit_log_entry(orbit.orbit_id, log_entry)

@@ -15,7 +15,7 @@ import luigi
 import spectral.io.envi as envi
 
 from emit_main.workflow.acquisition import Acquisition
-from emit_main.workflow.output_targets import ENVITarget, NetCDFTarget, UMMGTarget
+from emit_main.workflow.output_targets import AcquisitionTarget
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.l1a_tasks import L1AReassembleRaw
 from emit_main.workflow.slurm import SlurmJobTask
@@ -47,7 +47,7 @@ class L1BCalibrate(SlurmJobTask):
 
         logger.debug(self.task_family + " output")
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return ENVITarget(acquisition=wm.acquisition, task_family=self.task_family)
+        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family)
 
     def work(self):
 
@@ -167,7 +167,7 @@ class L1BGeolocate(SlurmJobTask):
 
         logger.debug(self.task_family + " output")
         acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return ENVITarget(acquisition=acq, task_family=self.task_family)
+        return AcquisitionTarget(acquisition=acq, task_family=self.task_family)
 
     def work(self):
 
@@ -204,7 +204,7 @@ class L1BFormat(SlurmJobTask):
 
     task_namespace = "emit"
     n_cores = 1
-    memory = 40000 #TODO: determine
+    memory = 40000  # TODO: determine
 
     def requires(self):
 
@@ -218,8 +218,7 @@ class L1BFormat(SlurmJobTask):
 
         logger.debug(self.task_family + " output")
         acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return (NetCDFTarget(acquisition=acq, task_family=self.task_family), 
-                UMMGTarget(acquisition=acq, task_family=self.task_family))
+        return AcquisitionTarget(acquisition=acq, task_family=self.task_family)
 
     def work(self):
 
