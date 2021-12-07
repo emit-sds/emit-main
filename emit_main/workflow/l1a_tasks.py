@@ -533,7 +533,7 @@ class L1AReassembleRaw(SlurmJobTask):
                 }
             })
 
-            # TODO: Add symlinks to acquisitions for easy access
+            # Add symlinks to acquisitions for easy access
             wm.symlink(acq.acquisition_id_dir, os.path.join(dc.acquisitions_dir, acq_id))
 
         # Add log entry to DB

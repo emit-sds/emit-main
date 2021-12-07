@@ -33,6 +33,7 @@ class Config:
             self.dictionary.update(config["database_config"])
             self.dictionary.update(config["email_config"])
             self.dictionary.update(config["build_config"])
+            self.dictionary.update(config["daac_config"])
 
             # Use build_num to read in build config
             config_dir = os.path.dirname(config_path)

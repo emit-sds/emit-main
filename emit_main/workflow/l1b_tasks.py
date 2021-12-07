@@ -10,6 +10,7 @@ import glob
 import json
 import logging
 import os
+import subprocess
 
 import luigi
 import spectral.io.envi as envi
@@ -19,7 +20,9 @@ from emit_main.workflow.output_targets import AcquisitionTarget
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.l1a_tasks import L1AReassembleRaw
 from emit_main.workflow.slurm import SlurmJobTask
+from emit_utils.daac_converter import calc_checksum
 from emit_utils.file_checks import netcdf_ext
+
 
 logger = logging.getLogger("emit-main")
 
@@ -39,19 +42,19 @@ class L1BCalibrate(SlurmJobTask):
 
     def requires(self):
 
-        logger.debug(self.task_family + " requires")
+        logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
         return L1AReassembleRaw(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
                                 partition=self.partition)
 
     def output(self):
 
-        logger.debug(self.task_family + " output")
+        logger.debug(f"{self.task_family} output: {self.acquisition_id}")
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family)
 
     def work(self):
 
-        logger.debug(self.task_family + " run")
+        logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
@@ -159,19 +162,19 @@ class L1BGeolocate(SlurmJobTask):
 
     def requires(self):
 
-        logger.debug(self.task_family + " requires")
+        logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
         return L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
                             partition=self.partition)
 
     def output(self):
 
-        logger.debug(self.task_family + " output")
+        logger.debug(f"{self.task_family} output: {self.acquisition_id}")
         acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
         return AcquisitionTarget(acquisition=acq, task_family=self.task_family)
 
     def work(self):
 
-        logger.debug(self.task_family + " run")
+        logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
@@ -203,26 +206,22 @@ class L1BFormat(SlurmJobTask):
     partition = luigi.Parameter()
 
     task_namespace = "emit"
-    n_cores = 1
-    memory = 40000  # TODO: determine
 
     def requires(self):
 
-        logger.debug(self.task_family + " requires")
-        return (L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
-                             partition=self.partition),
-                L1BGeolocate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
-                             partition=self.partition))
+        logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
+        return L1BFormat(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+                         partition=self.partition)
 
     def output(self):
 
-        logger.debug(self.task_family + " output")
+        logger.debug(f"{self.task_family} output: {self.acquisition_id}")
         acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
         return AcquisitionTarget(acquisition=acq, task_family=self.task_family)
 
     def work(self):
 
-        logger.debug(self.task_family + " run")
+        logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
@@ -230,7 +229,175 @@ class L1BFormat(SlurmJobTask):
         pge = wm.pges["emit-sds-l1b"]
 
         output_generator_exe = os.path.join(pge.repo_dir, "output_conversion.py")
+        tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
+        tmp_daac_nc_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l1b_rdn.nc")
+        tmp_ummg_json_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l1b_rdn_ummg.json")
+        tmp_log_path = os.path.join(self.local_tmp_dir, "output_conversion_pge.log")
 
-        cmd = ["python", output_generator_exe, acq.daac_nc_path, acq.rdn_img_path, acq.obs_img_path, acq.loc_img_path,
-               acq.glt_img_path, "--ummg_file", acq.daac_json_path]
+        cmd = ["python", output_generator_exe, tmp_daac_nc_path, acq.rdn_img_path, acq.obs_img_path, acq.loc_img_path,
+               acq.glt_img_path, "--ummg_file", tmp_ummg_json_path, "--log_file", tmp_log_path]
         pge.run(cmd, tmp_dir=self.tmp_dir)
+
+        # Copy and rename output files back to /store
+        # EMITL1B_RAD.vVV_yyyymmddthhmmss_oOOOOO_sSSS_yyyymmddthhmmss.nc
+        utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
+        daac_nc_path = f"{acq.daac_l1b_prefix}_{utc_now.strftime('%Y%m%dt%H%M%S')}.nc"
+        daac_ummg_json_path = daac_nc_path.replace(".nc", "_ummg.json")
+        log_path = daac_nc_path.replace(".nc", "_pge.log")
+        wm.copy(tmp_daac_nc_path, daac_nc_path)
+        wm.copy(tmp_ummg_json_path, daac_ummg_json_path)
+        wm.copy(tmp_log_path, log_path)
+
+        # PGE writes metadata to db
+        dm = wm.database_manager
+        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(daac_nc_path), tz=datetime.timezone.utc)
+        product_dict_netcdf = {
+            "netcdf_path": daac_nc_path,
+            "created": nc_creation_time
+        }
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn_netcdf": product_dict_netcdf})
+
+        product_dict_ummg = {
+            "ummg_json_path": daac_ummg_json_path,
+            "created": datetime.datetime.fromtimestamp(os.path.getmtime(daac_ummg_json_path), tz=datetime.timezone.utc)
+        }
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn_ummg": product_dict_ummg})
+
+        log_entry = {
+            "task": self.task_family,
+            "pge_name": pge.repo_url,
+            "pge_version": pge.version_tag,
+            "pge_input_files": [acq.rdn_img_path, acq.obs_img_path, acq.loc_img_path, acq.glt_img_path],
+            "pge_run_command": " ".join(cmd),
+            "documentation_version": "TBD",
+            "product_creation_time": nc_creation_time,
+            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
+            "completion_status": "SUCCESS",
+            "output": {
+                "l1b_rdn_netcdf_path": daac_nc_path,
+                "l1b_rdn_ummg_path:": daac_ummg_json_path
+            }
+        }
+
+        dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
+
+
+class L1BDeliver(SlurmJobTask):
+    """
+    Stages NetCDF and UMM-G files and submits notification to DAAC interface
+    :returns: Staged L1B files
+    """
+
+    config_path = luigi.Parameter()
+    acquisition_id = luigi.Parameter()
+    level = luigi.Parameter()
+    partition = luigi.Parameter()
+
+    task_namespace = "emit"
+    n_cores = 1
+    memory = 30000
+
+    def requires(self):
+
+        logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
+        return None
+
+    def output(self):
+
+        logger.debug(f"{self.task_family} output: {self.acquisition_id}")
+        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return AcquisitionTarget(acquisition=acq, task_family=self.task_family)
+
+    def work(self):
+
+        logger.debug(f"{self.task_family} work: {self.acquisition_id}")
+
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        acq = wm.acquisition
+        pge = wm.pges["emit-main"]
+
+        # Locate matching NetCDF and UMM-G files for this acquisition. If there is more than 1, get most recent
+        daac_nc_path = sorted(glob.glob(os.path.join(acq.l1b_data_dir, acq.daac_l1b_prefix + "*.nc")))[-1]
+        daac_ummg_json_path = sorted(glob.glob(os.path.join(acq.l1b_data_dir, acq.daac_l1b_prefix + "*ummg.json")))[-1]
+        utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
+        cnm_submission_id = os.path.basename(daac_nc_path).replace(".nc", f"_{utc_now.strftime('%Y%m%dt%H%M%S')}")
+        cnm_submission_path = os.path.join(acq.l1b_data_dir, cnm_submission_id + ".json")
+
+        # Copy files to staging server
+        partial_dir_arg = f"--partial-dir={acq.partial_dir}"
+        log_file_arg= f"--log-file={os.path.join(self.tmp_dir, 'rsync.log')}"
+        target = f"{wm.config['daac_server_internal']}:{acq.daac_staging_dir}"
+        cmd_nc = ["rysync", "-azv", partial_dir_arg, log_file_arg, daac_nc_path, target]
+        cmd_json = ["rysync", "-azv", partial_dir_arg, log_file_arg, daac_ummg_json_path, target]
+        pge.run(cmd_nc, tmp_dir=self.tmp_dir)
+        pge.run(cmd_json, tmp_dir=self.tmp_dir)
+
+        # Build notification dictionary
+        notification = {
+            "collection": wm.config["collections"]["l1brad"],
+            "provider": wm.config["daac_provider"],
+            "identifier": cnm_submission_id,
+            "version": wm.config["cnm_version"],
+            "product": {
+                "name": os.path.basename(daac_nc_path).replace(".nc", ""),
+                "dataVersion": wm.config["processing_version"],
+                "files": [
+                    {
+                        "name": os.path.basename(daac_nc_path),
+                        "uri": acq.daac_uri_base + daac_nc_path,
+                        "type": "data",
+                        "size": os.path.getsize(daac_nc_path),
+                        "checksumType": "sha512",
+                        "checksum": calc_checksum(daac_nc_path, "sha512")
+                    },
+                    {
+                        "name": os.path.basename(daac_ummg_json_path),
+                        "uri": acq.daac_uri_base + daac_ummg_json_path,
+                        "type": "metadata",
+                        "size": os.path.getsize(daac_ummg_json_path),
+                        "checksumType": "sha512",
+                        "checksum": calc_checksum(daac_ummg_json_path, "sha512")
+                    }
+                ]
+            }
+        }
+
+        # Write notification submission to file
+        with open(cnm_submission_path, "w") as f:
+            json.dump(notification, f)
+        wm.change_group_ownership(cnm_submission_path)
+
+        # Submit notification via AWS SQS
+        cmd_aws = ["aws", "sqs", "send-message", "--queue-url", wm.config["daac_submission_url"], "--message-body",
+                   f"file://{cnm_submission_path}", "--profile", "default"]
+        pge.run(cmd_aws, tmp_dir=self.tmp_dir)
+        cnm_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(cnm_submission_path),
+                                                            tz=datetime.timezone.utc)
+
+        # Update db with log entry
+        dm = wm.database_manager
+        if "rdn_daac_submissions" in acq.metadata["products"]["l1b"] and \
+                acq.metadata["products"]["l1b"]["rdn_daac_submissions"] is not None:
+            acq.metadata["products"]["l1b"]["rdn_daac_submissions"].append(cnm_submission_path)
+        else:
+            acq.metadata["products"]["l1b"]["rdn_daac_submissions"] = [cnm_submission_path]
+        dm.update_acquisition_metadata(
+            acq.acquisition_id,
+            {"products.l1b.rdn_daac_submissions": acq.metadata["products"]["l1b"]["rdn_daac_submissions"]})
+
+        log_entry = {
+            "task": self.task_family,
+            "pge_name": pge.repo_url,
+            "pge_version": pge.version_tag,
+            "pge_input_files": [daac_nc_path, daac_ummg_json_path],
+            "pge_run_command": " ".join(cmd_aws),
+            "documentation_version": "TBD",
+            "product_creation_time": cnm_creation_time,
+            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
+            "completion_status": "SUCCESS",
+            "output": {
+                "l1b_rdn_cnm_submission_path": cnm_submission_path
+            }
+        }
+
+        dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
