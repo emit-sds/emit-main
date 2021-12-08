@@ -39,8 +39,8 @@
   "daac_config": {
     "cnm_version": "1.4",
     "daac_submission_url": "https://sqs.us-west-2.amazonaws.com/560130786230/lp-uat-ingest-forward-processing",
-    "daac_provider": "EMIT_SDS",
-    "daac_server_internal": "ngis-data.jpl.nasa.gov",
+    "daac_provider": "JPL_EMIT_SDS",
+    "daac_server_internal": "137.79.132.213",
     "daac_server_external": "popo.jpl.nasa.gov",
     "daac_base_dir": "/data/emit/lp_daac",
     "cmr_collections": {

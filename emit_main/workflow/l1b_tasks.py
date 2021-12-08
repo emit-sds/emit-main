@@ -241,7 +241,7 @@ class L1BFormat(SlurmJobTask):
         # Copy and rename output files back to /store
         # EMITL1B_RAD.vVV_yyyymmddthhmmss_oOOOOO_sSSS_yyyymmddthhmmss.nc
         utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
-        daac_nc_path = f"{acq.daac_l1b_prefix}_{utc_now.strftime('%Y%m%dt%H%M%S')}.nc"
+        daac_nc_path = f"{acq.daac_l1brad_prefix}_{utc_now.strftime('%Y%m%dt%H%M%S')}.nc"
         daac_ummg_json_path = daac_nc_path.replace(".nc", "_ummg.json")
         log_path = daac_nc_path.replace(".nc", "_pge.log")
         wm.copy(tmp_daac_nc_path, daac_nc_path)
@@ -267,7 +267,12 @@ class L1BFormat(SlurmJobTask):
             "task": self.task_family,
             "pge_name": pge.repo_url,
             "pge_version": pge.version_tag,
-            "pge_input_files": [acq.rdn_img_path, acq.obs_img_path, acq.loc_img_path, acq.glt_img_path],
+            "pge_input_files": {
+                "rdn_img_path": acq.rdn_img_path,
+                "obs_img_path": acq.obs_img_path,
+                "loc_img_path": acq.loc_img_path,
+                "glt_img_path": acq.glt_img_path
+            },
             "pge_run_command": " ".join(cmd),
             "documentation_version": "TBD",
             "product_creation_time": nc_creation_time,
@@ -317,24 +322,24 @@ class L1BDeliver(SlurmJobTask):
         pge = wm.pges["emit-main"]
 
         # Locate matching NetCDF and UMM-G files for this acquisition. If there is more than 1, get most recent
-        daac_nc_path = sorted(glob.glob(os.path.join(acq.l1b_data_dir, acq.daac_l1b_prefix + "*.nc")))[-1]
-        daac_ummg_json_path = sorted(glob.glob(os.path.join(acq.l1b_data_dir, acq.daac_l1b_prefix + "*ummg.json")))[-1]
+        daac_nc_path = sorted(glob.glob(os.path.join(acq.l1b_data_dir, acq.daac_l1brad_prefix + "*.nc")))[-1]
+        daac_ummg_json_path = sorted(glob.glob(os.path.join(acq.l1b_data_dir, acq.daac_l1brad_prefix + "*ummg.json")))[-1]
         utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
         cnm_submission_id = os.path.basename(daac_nc_path).replace(".nc", f"_{utc_now.strftime('%Y%m%dt%H%M%S')}")
         cnm_submission_path = os.path.join(acq.l1b_data_dir, cnm_submission_id + ".json")
 
         # Copy files to staging server
-        partial_dir_arg = f"--partial-dir={acq.partial_dir}"
+        partial_dir_arg = f"--partial-dir={acq.daac_partial_dir}"
         log_file_arg= f"--log-file={os.path.join(self.tmp_dir, 'rsync.log')}"
         target = f"{wm.config['daac_server_internal']}:{acq.daac_staging_dir}"
-        cmd_nc = ["rysync", "-azv", partial_dir_arg, log_file_arg, daac_nc_path, target]
-        cmd_json = ["rysync", "-azv", partial_dir_arg, log_file_arg, daac_ummg_json_path, target]
+        cmd_nc = ["rsync", "-azv", partial_dir_arg, log_file_arg, daac_nc_path, target]
+        cmd_json = ["rsync", "-azv", partial_dir_arg, log_file_arg, daac_ummg_json_path, target]
         pge.run(cmd_nc, tmp_dir=self.tmp_dir)
         pge.run(cmd_json, tmp_dir=self.tmp_dir)
 
         # Build notification dictionary
         notification = {
-            "collection": wm.config["collections"]["l1brad"],
+            "collection": wm.config["cmr_collections"]["l1brad"],
             "provider": wm.config["daac_provider"],
             "identifier": cnm_submission_id,
             "version": wm.config["cnm_version"],
@@ -344,7 +349,7 @@ class L1BDeliver(SlurmJobTask):
                 "files": [
                     {
                         "name": os.path.basename(daac_nc_path),
-                        "uri": acq.daac_uri_base + daac_nc_path,
+                        "uri": acq.daac_uri_base + os.path.basename(daac_nc_path),
                         "type": "data",
                         "size": os.path.getsize(daac_nc_path),
                         "checksumType": "sha512",
@@ -352,7 +357,7 @@ class L1BDeliver(SlurmJobTask):
                     },
                     {
                         "name": os.path.basename(daac_ummg_json_path),
-                        "uri": acq.daac_uri_base + daac_ummg_json_path,
+                        "uri": acq.daac_uri_base + os.path.basename(daac_ummg_json_path),
                         "type": "metadata",
                         "size": os.path.getsize(daac_ummg_json_path),
                         "checksumType": "sha512",
@@ -364,7 +369,7 @@ class L1BDeliver(SlurmJobTask):
 
         # Write notification submission to file
         with open(cnm_submission_path, "w") as f:
-            json.dump(notification, f)
+            f.write(json.dumps(notification, indent=4))
         wm.change_group_ownership(cnm_submission_path)
 
         # Submit notification via AWS SQS
@@ -389,7 +394,10 @@ class L1BDeliver(SlurmJobTask):
             "task": self.task_family,
             "pge_name": pge.repo_url,
             "pge_version": pge.version_tag,
-            "pge_input_files": [daac_nc_path, daac_ummg_json_path],
+            "pge_input_files": {
+                "daac_netcdf_path": daac_nc_path,
+                "daac_ummg_json_path": daac_ummg_json_path
+            },
             "pge_run_command": " ".join(cmd_aws),
             "documentation_version": "TBD",
             "product_creation_time": cnm_creation_time,
