@@ -330,7 +330,7 @@ class L1BDeliver(SlurmJobTask):
 
         # Copy files to staging server
         partial_dir_arg = f"--partial-dir={acq.daac_partial_dir}"
-        log_file_arg= f"--log-file={os.path.join(self.tmp_dir, 'rsync.log')}"
+        log_file_arg = f"--log-file={os.path.join(self.tmp_dir, 'rsync.log')}"
         target = f"{wm.config['daac_server_internal']}:{acq.daac_staging_dir}"
         cmd_nc = ["rsync", "-azv", partial_dir_arg, log_file_arg, daac_nc_path, target]
         cmd_json = ["rsync", "-azv", partial_dir_arg, log_file_arg, daac_ummg_json_path, target]
