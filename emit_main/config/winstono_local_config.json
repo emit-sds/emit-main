@@ -36,6 +36,25 @@
     "conda_base_dir": "/Users/winstono/opt/anaconda3/"
   },
 
+  "daac_config": {
+    "cnm_version": "1.4",
+    "daac_submission_url": "https://sqs.us-west-2.amazonaws.com/560130786230/lp-uat-ingest-forward-processing",
+    "daac_provider": "JPL_EMIT_SDS",
+    "daac_server_internal": "ngis-data.jpl.nasa.gov",
+    "daac_server_external": "popo.jpl.nasa.gov",
+    "daac_base_dir": "/data/emit/lp_daac",
+    "cmr_collections": {
+      "l0": "EMITL0",
+      "l1araw": "EMITL1ARAW",
+      "l1batt": "EMITL1B_ATT",
+      "l1brad": "EMITL1B_RAD",
+      "l2a": "EMITL2A_RFL",
+      "l2b": "EMITL2B_MIN",
+      "l3": "EMITL3_AGMIN",
+      "l4": "EMITL4_MODEL"
+    }
+  },
+
   "ancillary_paths": {
     "decompression_constants_path": "repos/emit-sds-l1a/decompression/constants.txt",
     "decompression_init_data_path": "repos/emit-sds-l1a/decompression/init_data.bin",

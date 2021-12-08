@@ -16,7 +16,7 @@ import luigi
 from emit_main.workflow.l0_tasks import L0StripHOSC, L0ProcessPlanningProduct
 from emit_main.workflow.l1a_tasks import L1ADepacketizeScienceFrames, L1AReassembleRaw, L1AReformatEDP, \
     L1AFrameReport, L1AReformatBAD
-from emit_main.workflow.l1b_tasks import L1BGeolocate, L1BCalibrate, L1BFormat
+from emit_main.workflow.l1b_tasks import L1BGeolocate, L1BCalibrate, L1BFormat, L1BDeliver
 from emit_main.workflow.l2a_tasks import L2AMask, L2AReflectance
 from emit_main.workflow.l2b_tasks import L2BAbundance
 from emit_main.workflow.l3_tasks import L3Unmix
@@ -30,7 +30,7 @@ logger = logging.getLogger("emit-main")
 
 def parse_args():
     product_choices = ["l0hosc", "l0plan", "l1aeng", "l1aframe", "l1aframereport", "l1araw", "l1abad", "l1bcal",
-                       "l1bformat", "l2arefl", "l2amask", "l2babun", "l3unmix"]
+                       "l1bformat", "l1bdaac", "l2arefl", "l2amask", "l2babun", "l3unmix"]
     parser = argparse.ArgumentParser()
     parser.add_argument("-a", "--acquisition_id", default="",
                         help="Acquisition ID")
@@ -114,6 +114,7 @@ def get_tasks_from_args(args):
                                    acq_chunksize=args.acq_chunksize, test_mode=args.test_mode, **kwargs),
         "l1abad": L1AReformatBAD(orbit_id=args.orbit_id, **kwargs),
         "l1bcal": L1BCalibrate(acquisition_id=args.acquisition_id, **kwargs),
+        "l1bdaac": L1BDeliver(acquisition_id=args.acquisition_id, **kwargs),
         "l2arefl": L2AReflectance(acquisition_id=args.acquisition_id, **kwargs),
         "l2amask": L2AMask(acquisition_id=args.acquisition_id, **kwargs),
         "l2babun": L2BAbundance(acquisition_id=args.acquisition_id, **kwargs),
@@ -196,7 +197,7 @@ def task_failure(task, e):
 
     stream_tasks = ("emit.L0StripHOSC", "emit.L1ADepacketizeScienceFrames", "emit.L1AReformatEDP", "emit.L0IngestBAD")
     data_collection_tasks = ("emit.L1AReassembleRaw", "emit.L1AFrameReport")
-    acquisition_tasks = ("emit.L1BCalibrate", "emit.L2AReflectance",
+    acquisition_tasks = ("emit.L1BCalibrate", "emit.L1BFormat", "emit.L1BDeliver", "emit.L2AReflectance",
                          "emit.L2AMask", "emit.L2BAbundance", "emit.L3Unmix")
     orbit_tasks = ("emit.L1AReformatBAD")
 

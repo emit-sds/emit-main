@@ -54,6 +54,10 @@ class Acquisition:
 
         self.__dict__.update(self._build_acquisition_paths())
 
+        # Build NetCDF path prefixes (these can't be fully built due to timestamp on the end of the filename
+        self.daac_l1brad_prefix = f"EMITL1B_RAD.0{self.config['processing_version']}_{self.acquisition_id[4:]}_" \
+            f"o{self.orbit}_s{self.scene}"
+
         # Add sub-dirs
         self.frames_dir = self.raw_img_path.replace("_raw_", "_frames_").replace(".img", "")
         self.decomp_dir = self.frames_dir.replace("_frames_", "_decomp_")
@@ -64,6 +68,13 @@ class Acquisition:
         wm = WorkflowManager(config_path=config_path)
         for d in self.dirs:
             wm.makedirs(d)
+
+        # Build path for DAAC delivery on staging server
+        self.daac_staging_dir = os.path.join(self.config["daac_base_dir"], wm.config['environment'], "products",
+                                             self.start_time.strftime("%Y%m%d"))
+        self.daac_uri_base = f"https://{self.config['daac_server_external']}/emit/lpdaac/{wm.config['environment']}/" \
+            f"products/{self.start_time.strftime('%Y%m%d')}/"
+        self.daac_partial_dir = os.path.join(self.config["daac_base_dir"], "partial_transfers")
 
     def _initialize_metadata(self):
         # Insert some placeholder fields so that we don't get missing keys on updates
