@@ -139,12 +139,13 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
                     "build_num": wm.config["build_num"],
                     "processing_version": wm.config["processing_version"],
                     "start_time": start_time,
-                    "stop_time": stop_time
+                    "stop_time": stop_time,
+                    "frames_status": ""
                 }
                 dm.insert_data_collection(dc_meta)
                 logger.debug(f"Inserted data collection in DB with {dc_meta}")
             elif dc_lookup is not None and "start_time" not in dc_lookup:
-                # If only the planning product has been inserted, then add start_time
+                # If only the planning product has been inserted, then add some timing info
                 dc_meta = {
                     "start_time": start_time,
                     "stop_time": stop_time
@@ -195,8 +196,15 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
                 {
                     "start_time": start_time,
                     "stop_time": stop_time,
+                    "frames_last_modified": datetime.datetime.now(tz=datetime.timezone.utc),
                     "products.l1a.frames": dc.metadata["products"]["l1a"]["frames"]
                 })
+
+            # Check if data collection has complete set of frames
+            if dc.has_complete_set_of_frames():
+                dm.update_data_collection_metadata(dcid, {"frames_status": "complete"})
+            else:
+                dm.update_data_collection_metadata(dcid, {"frames_status": "incomplete"})
 
             # Add stream file to data collection metadata in DB so there is a link back to CCSDS packet stream for each
             # acquisition. There may be multiple stream files that contribute frames to a given acquisition

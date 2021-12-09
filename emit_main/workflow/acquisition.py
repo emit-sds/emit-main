@@ -144,26 +144,3 @@ class Acquisition:
                     prod_path = os.path.join(self.acquisition_id_dir, level, prod_name)
                     paths[prod_key] = prod_path
         return paths
-
-    def has_complete_set_of_frames(self):
-        frames = [os.path.basename(frame) for frame in glob.glob(os.path.join(self.frames_dir, "*"))]
-        frames.sort()
-        # Check incrementing frame num
-        frame_nums = [int(frame.split("_")[1]) for frame in frames]
-        if frame_nums != list(range(frame_nums[0], frame_nums[0] + len(frame_nums))):
-            logger.warning("Set of frames is not sequential!")
-            return False
-        # Check that first frame has status 1 or 5
-        if frames[0].split("_")[3] not in ("1", "5"):
-            logger.warning("First frame in set does not begin with status 1 or 5!")
-            return False
-        # Check that all subsequent frames have status 0 or 4
-        for frame in frames[1:]:
-            if frame.split("_")[3] not in ("0", "4"):
-                logger.warning("One of the frames in the set (after the first) does not have status 0 or 4!")
-                return False
-        # Check that we have the expected number of frames
-        expected_num = int(frames[0].split("_")[2])
-        if len(frames) != expected_num:
-            logger.warning(f"Number of frames, {len(frames)}, does not match expected number, {expected_num}")
-        return True

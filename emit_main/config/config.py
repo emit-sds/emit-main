@@ -35,9 +35,13 @@ class Config:
             self.dictionary.update(config["build_config"])
             self.dictionary.update(config["daac_config"])
 
-            # Use build_num to read in build config
+            # Use first four digits of extended_build_num to define build_num which is used in file naming and in DB
+            self.dictionary["build_num"] = self.dictionary["extended_build_num"][:4]
+
+            # Use extended_build_num to look up build configuration
             config_dir = os.path.dirname(config_path)
-            build_config_path = os.path.join(config_dir, "build", "build_" + self.dictionary["build_num"] + ".json")
+            build_config_path = os.path.join(config_dir, "build",
+                                             "build_" + self.dictionary["extended_build_num"] + ".json")
             with open(build_config_path, "r") as b:
                 build_config = json.load(b)
                 self.dictionary.update(build_config)
