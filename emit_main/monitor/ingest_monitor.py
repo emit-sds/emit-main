@@ -1,5 +1,5 @@
 """
-This code contains the FileMonitor class that watches folders to trigger activities
+This code contains the IngestMonitor class that watches folders to trigger activities
 
 Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
@@ -16,7 +16,7 @@ from emit_main.workflow.l1a_tasks import L1AReformatEDP, L1ADepacketizeScienceFr
 logger = logging.getLogger("emit-main")
 
 
-class FileMonitor:
+class IngestMonitor:
 
     def __init__(self, config_path, level="INFO", partition="emit", miss_pkt_thresh=0.1, test_mode=False):
         """

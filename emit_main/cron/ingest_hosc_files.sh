@@ -2,7 +2,7 @@
 
 # $1 is the environment, either "dev", "test", or "ops"
 # $2 is the conda environment
-# $3 Optional args to pass into run_file_monitor (like --test_mode)
+# $3 Optional args to pass into run_workflow (like --test_mode)
 
 T=$(date)
 
@@ -15,4 +15,4 @@ conda activate $2
 
 cd /store/emit/$1/repos/emit-main/emit_main
 
-python run_file_monitor.py -c config/${1}_sds_config.json $3
+python run_workflow.py -c config/${1}_sds_config.json -m ingest $3

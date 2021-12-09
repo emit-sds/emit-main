@@ -13,7 +13,7 @@ import sys
 
 import luigi
 
-from emit_main.file_monitor.file_monitor import FileMonitor
+from emit_main.monitor.ingest_monitor import IngestMonitor
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_main.workflow.workflow_manager import WorkflowManager
 
@@ -154,8 +154,8 @@ def main():
     logger.info("Running file monitor with cmd: %s" % str(" ".join(sys.argv)))
     wm.change_group_ownership(log_path)
 
-    fm = FileMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
-                     miss_pkt_thresh=args.miss_pkt_thresh, test_mode=args.test_mode)
+    fm = IngestMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
+                       miss_pkt_thresh=args.miss_pkt_thresh, test_mode=args.test_mode)
 
     # Get tasks from file monitor
     dry_run = args.dry_run
