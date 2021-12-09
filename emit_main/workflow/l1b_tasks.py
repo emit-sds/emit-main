@@ -10,7 +10,6 @@ import glob
 import json
 import logging
 import os
-import subprocess
 
 import luigi
 import spectral.io.envi as envi

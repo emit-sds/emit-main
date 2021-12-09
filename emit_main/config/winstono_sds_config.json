@@ -30,7 +30,7 @@
   },
 
   "build_config": {
-    "build_num": "0000",
+    "extended_build_num": "000000",
     "conda_base_dir": "/home/winstono/anaconda3/"
   },
 
