@@ -13,6 +13,7 @@ import sys
 
 import luigi
 
+from emit_main.monitor.frames_monitor import FramesMonitor
 from emit_main.monitor.ingest_monitor import IngestMonitor
 from emit_main.workflow.l0_tasks import L0StripHOSC, L0ProcessPlanningProduct
 from emit_main.workflow.l1a_tasks import L1ADepacketizeScienceFrames, L1AReassembleRaw, L1AReformatEDP, \
@@ -258,21 +259,30 @@ def main():
     # Initialize tasks list
     tasks = []
 
-    # Get tasks from file monitor
-    if args.monitor:
+    # Get tasks from ingest monitor
+    if args.monitor and args.monitor == "ingest":
         im = IngestMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
                            miss_pkt_thresh=args.miss_pkt_thresh, test_mode=args.test_mode)
-        tasks = im.ingest_files(dry_run=args.dry_run)
+        im_tasks = im.ingest_files()
+        im_tasks_str = "\n".join([str(t) for t in im_tasks])
+        logger.info(f"Ingest monitor tasks to run:\n{im_tasks_str}")
+        tasks += im_tasks
 
-        # If it's a dry run just print the paths and exit
-        if args.dry_run:
-            logger.info("Dry run flag set. Showing list of paths to ingest:")
-            logger.info("\n".join(tasks))
-            sys.exit(0)
+    # Get tasks from frames monitor
+    if args.monitor and args.monitor == "frames":
+        fm = FramesMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
+                           acq_chunksize=args.acq_chunksize, test_mode=args.test_mode)
+        fm_tasks = fm.get_recent_reassembly_tasks()
+        fm_tasks_str = "\n".join([str(t) for t in fm_tasks])
+        logger.info(f"Frames monitor tasks to run:\n{fm_tasks_str}")
+        tasks += fm_tasks
 
     # Get tasks from products args
     if args.products:
-        tasks = get_tasks_from_product_args(args)
+        prod_tasks = get_tasks_from_product_args(args)
+        prod_tasks_str = "\n".join([str(t) for t in prod_tasks])
+        logger.info(f"Product tasks to run:\n{prod_tasks_str}")
+        tasks += prod_tasks
 
     # Set up luigi tasks and execute
     if args.workers:
@@ -281,6 +291,12 @@ def main():
         workers = min(30, len(tasks))
     else:
         workers = wm.config["luigi_workers"]
+
+    # If it's a dry run just print the tasks and exit
+    if args.dry_run:
+        tasks_str = "\n".join([str(t) for t in tasks])
+        logger.info(f"Dry run flag set. Below are the tasks that Luigi would run:\n{tasks_str}")
+        sys.exit(0)
 
     # Build luigi logging.conf path
     luigi_logging_conf = os.path.join(os.path.dirname(__file__), "workflow", "luigi", "logging.conf")

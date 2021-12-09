@@ -164,6 +164,18 @@ class DatabaseManager:
         data_collections_coll = self.db.data_collections
         return data_collections_coll.find_one({"dcid": dcid, "build_num": self.config["build_num"]})
 
+    def find_data_collections_for_reassembly(self, start, stop):
+        data_collections_coll = self.db.data_collections
+        # Query for data collections with complete set of frames, last modified within start/stop range and
+        # that don't have associated acquisitions
+        query = {
+            "frames_status": "complete",
+            "frames_last_modified": {"$gte": start, "$lte": stop},
+            "associated_acquisitions": {"$exists": 0},
+            "build_num": self.config["build_num"]
+        }
+        return list(data_collections_coll.find(query))
+
     def insert_data_collection(self, metadata):
         if self.find_data_collection_by_id(metadata["dcid"]) is None:
             utc_now = datetime.datetime.now(tz=datetime.timezone.utc)

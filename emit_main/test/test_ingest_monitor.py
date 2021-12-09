@@ -23,9 +23,9 @@ def test_ingest_files(config_path):
         for file in glob.glob(os.path.join(test_data_ingest_dir, "*_hsc.bin")):
             shutil.copy2(file, wm.ingest_dir)
         im = IngestMonitor(config_path=config_path)
-        paths = im.ingest_files(dry_run=True)
+        tasks = im.ingest_files()
         for file in glob.glob(os.path.join(wm.ingest_dir, "*_hsc.bin")):
             os.remove(file)
-        assert len(paths) > 0
+        assert len(tasks) > 0
 
     assert True
