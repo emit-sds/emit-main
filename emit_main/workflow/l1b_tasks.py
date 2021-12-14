@@ -323,9 +323,6 @@ class L1BDeliver(SlurmJobTask):
         # Locate matching NetCDF and UMM-G files for this acquisition. If there is more than 1, get most recent
         daac_nc_path = sorted(glob.glob(os.path.join(acq.l1b_data_dir, acq.daac_l1brad_prefix + "*.nc")))[-1]
         daac_ummg_json_path = sorted(glob.glob(os.path.join(acq.l1b_data_dir, acq.daac_l1brad_prefix + "*ummg.json")))[-1]
-        utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
-        cnm_submission_id = os.path.basename(daac_nc_path).replace(".nc", f"_{utc_now.strftime('%Y%m%dt%H%M%S')}")
-        cnm_submission_path = os.path.join(acq.l1b_data_dir, cnm_submission_id + ".json")
 
         # Copy files to staging server
         partial_dir_arg = f"--partial-dir={acq.daac_partial_dir}"
@@ -337,6 +334,9 @@ class L1BDeliver(SlurmJobTask):
         pge.run(cmd_json, tmp_dir=self.tmp_dir)
 
         # Build notification dictionary
+        utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
+        cnm_submission_id = os.path.basename(daac_nc_path).replace(".nc", f"_{utc_now.strftime('%Y%m%dt%H%M%S')}")
+        cnm_submission_path = os.path.join(acq.l1b_data_dir, cnm_submission_id + ".json")
         notification = {
             "collection": wm.config["cmr_collections"]["l1brad"],
             "provider": wm.config["daac_provider"],
@@ -371,6 +371,20 @@ class L1BDeliver(SlurmJobTask):
             f.write(json.dumps(notification, indent=4))
         wm.change_group_ownership(cnm_submission_path)
 
+        # Record delivery details in DB for reconciliation report
+        dm = wm.database_manager
+        for file in notification["product"]["files"]:
+            delivery_report = {
+                "timestamp": utc_now,
+                "collection": notification["collection"],
+                "version": notification["version"],
+                "filename": file["name"],
+                "size": file["size"],
+                "checksum": file["checksum"],
+                "checksum_type": file["checksumType"]
+            }
+            dm.insert_granule_report(delivery_report)
+
         # Submit notification via AWS SQS
         cmd_aws = ["aws", "sqs", "send-message", "--queue-url", wm.config["daac_submission_url"], "--message-body",
                    f"file://{cnm_submission_path}", "--profile", "default"]
@@ -379,7 +393,6 @@ class L1BDeliver(SlurmJobTask):
                                                             tz=datetime.timezone.utc)
 
         # Update db with log entry
-        dm = wm.database_manager
         if "rdn_daac_submissions" in acq.metadata["products"]["l1b"] and \
                 acq.metadata["products"]["l1b"]["rdn_daac_submissions"] is not None:
             acq.metadata["products"]["l1b"]["rdn_daac_submissions"].append(cnm_submission_path)

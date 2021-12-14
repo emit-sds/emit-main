@@ -235,3 +235,7 @@ class DatabaseManager:
         metadata = {"last_modified": entry["log_timestamp"]}
         set_value = {"$set": metadata}
         orbits_coll.update_one(query, set_value, upsert=True)
+
+    def insert_granule_report(self, report):
+        granule_reports_coll = self.db.granule_reports
+        granule_reports_coll.insert_one(report)
