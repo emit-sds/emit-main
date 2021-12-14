@@ -86,7 +86,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
             try:
                 prev_stream_path = prev_streams[0]["products"]["l0"]["ccsds_path"]
             except KeyError:
-                logger.info(f"Could not find a previous stream path for {stream.ccsds_path} in DB.")
+                wm.print(__name__, f"Could not find a previous stream path for {stream.ccsds_path} in DB.")
                 pass
 
         if prev_stream_path is not None:
@@ -459,7 +459,7 @@ class L1AReassembleRaw(SlurmJobTask):
                         rawqa_file.write(f"{depacket_report_path}\n\n")
                         rawqa_file.write(f.read() + "\n\n")
                 else:
-                    logger.info(f"Unable to find depacketization report located at {depacket_report_path}")
+                    wm.print(__name__, f"Unable to find depacketization report located at {depacket_report_path}")
 
             # Get reassembly report
             if os.path.exists(report_path):
@@ -470,7 +470,7 @@ class L1AReassembleRaw(SlurmJobTask):
                     rawqa_file.write(f"{report_path}\n\n")
                     rawqa_file.write(f.read())
             else:
-                logger.info(f"Unable to find reassembly report located at {report_path}")
+                wm.print(__name__, f"Unable to find reassembly report located at {report_path}")
 
             rawqa_file.close()
             wm.change_group_ownership(acq.rawqa_txt_path)
@@ -485,7 +485,7 @@ class L1AReassembleRaw(SlurmJobTask):
             hdr["emit pge version"] = pge.version_tag
             hdr["emit pge input files"] = input_files_arr
             hdr["emit pge run command"] = " ".join(cmd)
-            hdr["emit software build version"] = wm.config["build_num"]
+            hdr["emit software build version"] = wm.config["extended_build_num"]
             hdr["emit documentation version"] = doc_version
             creation_time = datetime.datetime.fromtimestamp(
                 os.path.getmtime(acq.raw_img_path), tz=datetime.timezone.utc)
@@ -805,7 +805,7 @@ class L1AReformatBAD(SlurmJobTask):
                 try:
                     bad_path = stream["products"]["raw"]["bad_path"]
                 except KeyError:
-                    logger.info(f"Could not find the raw product path for {stream['bad_name']}.")
+                    wm.print(__name__, f"Could not find the raw product path for {stream['bad_name']}.")
                     pass
                 if bad_path is not None:
                     bad_sto_paths.append(bad_path)

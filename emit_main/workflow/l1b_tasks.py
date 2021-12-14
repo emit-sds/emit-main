@@ -104,7 +104,7 @@ class L1BCalibrate(SlurmJobTask):
         hdr["emit pge version"] = pge.version_tag
         hdr["emit pge input files"] = input_files_arr
         hdr["emit pge run command"] = " ".join(cmd)
-        hdr["emit software build version"] = wm.config["build_num"]
+        hdr["emit software build version"] = wm.config["extended_build_num"]
         hdr["emit documentation version"] = doc_version
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rdn_img_path), tz=datetime.timezone.utc)
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")

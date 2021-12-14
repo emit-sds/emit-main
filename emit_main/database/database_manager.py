@@ -53,6 +53,7 @@ class DatabaseManager:
         acquisitions_coll.update_one(query, set_value, upsert=True)
 
     def insert_acquisition_log_entry(self, acquisition_id, entry):
+        entry["extended_build_num"] = self.config["extended_build_num"]
         acquisitions_coll = self.db.acquisitions
         query = {"acquisition_id": acquisition_id, "build_num": self.config["build_num"]}
         push_value = {"$push": {"processing_log": entry}}
@@ -145,6 +146,7 @@ class DatabaseManager:
         streams_coll.update_one(query, set_value, upsert=True)
 
     def insert_stream_log_entry(self, name, entry):
+        entry["extended_build_num"] = self.config["extended_build_num"]
         streams_coll = self.db.streams
         if "hsc.bin" in name:
             query = {"hosc_name": name, "build_num": self.config["build_num"]}
@@ -192,6 +194,7 @@ class DatabaseManager:
         data_collections_coll.update_one(query, set_value, upsert=True)
 
     def insert_data_collection_log_entry(self, dcid, entry):
+        entry["extended_build_num"] = self.config["extended_build_num"]
         data_collections_coll = self.db.data_collections
         query = {"dcid": dcid, "build_num": self.config["build_num"]}
         push_value = {"$push": {"processing_log": entry}}
@@ -222,6 +225,7 @@ class DatabaseManager:
         orbits_coll.update_one(query, set_value, upsert=True)
 
     def insert_orbit_log_entry(self, orbit_id, entry):
+        entry["extended_build_num"] = self.config["extended_build_num"]
         orbits_coll = self.db.orbits
         query = {"orbit_id": orbit_id, "build_num": self.config["build_num"]}
         push_value = {"$push": {"processing_log": entry}}

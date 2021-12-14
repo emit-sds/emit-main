@@ -127,7 +127,7 @@ class L2BAbundance(SlurmJobTask):
         hdr["emit pge version"] = pge.version_tag
         hdr["emit pge input files"] = input_files_arr
         hdr["emit pge run command"] = " ".join(cmd)
-        hdr["emit software build version"] = wm.config["build_num"]
+        hdr["emit software build version"] = wm.config["extended_build_num"]
         hdr["emit documentation version"] = doc_version
         creation_time = datetime.datetime.fromtimestamp(
             os.path.getmtime(acq.abun_img_path), tz=datetime.timezone.utc)
