@@ -24,7 +24,8 @@ def _do_work_on_compute_node(work_dir):
     tmp_instrument_dir = os.path.join("/tmp", wm.config["instrument"])
     # Must make top-level /tmp/emit folder writeable by all
     if not os.path.exists(tmp_instrument_dir):
-        os.makedirs(tmp_instrument_dir, mode=0o777)
+        os.makedirs(tmp_instrument_dir)
+        os.chmod(tmp_instrument_dir, 0o777)
     tmp_environment_dir = os.path.join(tmp_instrument_dir, wm.config["environment"])
     # Also, make the environment dir (dev, test, ops) using wm helper function to change group permissions
     wm.makedirs(tmp_environment_dir)
