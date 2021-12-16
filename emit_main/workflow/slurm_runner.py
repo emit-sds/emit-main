@@ -21,6 +21,13 @@ def _do_work_on_compute_node(work_dir):
 
     # Set up local tmp dir
     wm = WorkflowManager(config_path=job.config_path)
+    tmp_instrument_dir = os.path.join("/tmp", wm.config["instrument"])
+    # Must make top-level /tmp/emit folder writeable by all
+    if not os.path.exists(tmp_instrument_dir):
+        os.makedirs(tmp_instrument_dir, mode=0o777)
+    tmp_environment_dir = os.path.join(tmp_instrument_dir, wm.config["environment"])
+    # Also, make the environment dir (dev, test, ops) using wm helper function to change group permissions
+    wm.makedirs(tmp_environment_dir)
     job.local_tmp_dir = os.path.join(wm.local_tmp_dir, job.task_instance_id)
     wm.makedirs(job.local_tmp_dir)
     print(f"Created local tmp dir: {job.local_tmp_dir}")
