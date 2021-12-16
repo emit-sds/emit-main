@@ -344,9 +344,9 @@ class L1AReassembleRaw(SlurmJobTask):
         tmp_no_header_list = os.path.join(self.local_tmp_dir, "no_header_list.txt")
         with open(tmp_no_header_list, "w") as f:
             f.write("\n".join(tmp_decomp_no_header_paths))
-        tmp_line_stats_path = os.path.join(self.tmp_dir, "line_stats.txt")
+        tmp_line_stats_path = os.path.join(self.local_tmp_dir, "line_stats.txt")
         cmd = ["python", compute_line_stats_exe, tmp_no_header_list, ">", tmp_line_stats_path]
-        pge_line_stats.run(cmd, cwd=self.tmp_dir, tmp_dir=self.tmp_dir)
+        pge_line_stats.run(cmd, tmp_dir=self.tmp_dir)
 
         # Copy decompressed frames to /store
         tmp_decomp_frame_paths = glob.glob(os.path.join(tmp_image_dir, "*.decomp"))
