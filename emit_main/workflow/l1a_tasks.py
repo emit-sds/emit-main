@@ -353,6 +353,11 @@ class L1AReassembleRaw(SlurmJobTask):
         for path in tmp_decomp_frame_paths:
             wm.copy(path, os.path.join(dc.decomp_dir, os.path.basename(path)))
 
+        # If in test_mode, also copy the decompressed frames with no header to /store
+        if self.test_mode:
+            for path in tmp_decomp_no_header_paths:
+                wm.copy(path, os.path.join(dc.decomp_dir, os.path.basename(path)))
+
         # Copy line stats log to /store
         line_stats_path = os.path.join(dc.decomp_dir, f"{dc.dcid}_{os.path.basename(tmp_line_stats_path)}")
         wm.copy(tmp_line_stats_path, line_stats_path)
@@ -636,10 +641,24 @@ class L1AFrameReport(SlurmJobTask):
             tmp_decomp_frame_path = os.path.join(tmp_output_dir, os.path.basename(decomp_frame_path))
             wm.copy(decomp_frame_path, tmp_decomp_frame_path)
 
+        # Create and run ngis_check_list command
         ngis_check_list_exe = os.path.join(pge.repo_dir, "python", "ngis_check_list.py")
-        cmd = ["python", ngis_check_list_exe, tmp_output_dir]
-        pge.run(cmd, cwd=tmp_output_dir, tmp_dir=self.tmp_dir)
+        cmd_check_list = ["python", ngis_check_list_exe, tmp_output_dir]
+        pge.run(cmd_check_list, cwd=tmp_output_dir, tmp_dir=self.tmp_dir)
 
+        # Create and run parse_hdr command
+        ngis_parse_hdr_exe = os.path.join(pge.repo_dir, "python", "ngis_parse_hdr_list.py")
+        tmp_parse_hdr_dir = os.path.join(self.local_tmp_dir, "parse_hdr_output")
+        wm.makedirs(tmp_parse_hdr_dir)
+        cmd_parse_hdr = ["python", ngis_parse_hdr_exe, dc.frames_dir, tmp_parse_hdr_dir]
+        pge.run(cmd_parse_hdr, tmp_dir=self.tmp_dir)
+
+        # Copy parse hdr files back to frames directory
+        tmp_hdr_text_paths = glob.glob(os.path.join(tmp_parse_hdr_dir, "*"))
+        for path in tmp_hdr_text_paths:
+            wm.copy(path, os.path.join(dc.frames_dir, os.path.basename(path)))
+
+        # Copy check_list files back to decomp directory
         output_files = glob.glob(os.path.join(tmp_output_dir, "*.csv"))
         output_files += glob.glob(os.path.join(tmp_output_dir, "*.txt"))
         output_files += glob.glob(os.path.join(tmp_output_dir, "*.log"))
@@ -679,7 +698,7 @@ class L1AFrameReport(SlurmJobTask):
             "pge_name": pge.repo_url,
             "pge_version": pge.version_tag,
             "pge_input_files": {"decomp_dir": dc.decomp_dir},
-            "pge_run_command": " ".join(cmd),
+            "pge_run_command": " ".join(cmd_check_list),
             "documentation_version": "N/A",
             "product_creation_time": afr_creation_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
