@@ -236,6 +236,20 @@ class DatabaseManager:
         set_value = {"$set": metadata}
         orbits_coll.update_one(query, set_value, upsert=True)
 
+    def find_granule_report_by_id(self, submission_id):
+        granule_reports_coll = self.db.granule_reports
+        return granule_reports_coll.find_one({"submission_id": submission_id})
+
     def insert_granule_report(self, report):
         granule_reports_coll = self.db.granule_reports
         granule_reports_coll.insert_one(report)
+
+    def update_granule_report_submission_statuses(self, submission_id, status):
+        granule_reports_coll = self.db.granule_reports
+        query = {"submission_id": submission_id}
+        set_value = {
+            "$set": {
+                "submission_status": status
+            }
+        }
+        granule_reports_coll.update_many(query, set_value, upsert=True)

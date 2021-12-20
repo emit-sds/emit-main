@@ -371,6 +371,13 @@ class L1BDeliver(SlurmJobTask):
             f.write(json.dumps(notification, indent=4))
         wm.change_group_ownership(cnm_submission_path)
 
+        # Submit notification via AWS SQS
+        cmd_aws = ["aws", "sqs", "send-message", "--queue-url", wm.config["daac_submission_url"], "--message-body",
+                   f"file://{cnm_submission_path}", "--profile", "default"]
+        pge.run(cmd_aws, tmp_dir=self.tmp_dir)
+        cnm_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(cnm_submission_path),
+                                                            tz=datetime.timezone.utc)
+
         # Record delivery details in DB for reconciliation report
         dm = wm.database_manager
         for file in notification["product"]["files"]:
@@ -381,16 +388,11 @@ class L1BDeliver(SlurmJobTask):
                 "filename": file["name"],
                 "size": file["size"],
                 "checksum": file["checksum"],
-                "checksum_type": file["checksumType"]
+                "checksum_type": file["checksumType"],
+                "submission_id": cnm_submission_id,
+                "submission_status": "submitted"
             }
             dm.insert_granule_report(delivery_report)
-
-        # Submit notification via AWS SQS
-        cmd_aws = ["aws", "sqs", "send-message", "--queue-url", wm.config["daac_submission_url"], "--message-body",
-                   f"file://{cnm_submission_path}", "--profile", "default"]
-        pge.run(cmd_aws, tmp_dir=self.tmp_dir)
-        cnm_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(cnm_submission_path),
-                                                            tz=datetime.timezone.utc)
 
         # Update db with log entry
         if "rdn_daac_submissions" in acq.metadata["products"]["l1b"] and \

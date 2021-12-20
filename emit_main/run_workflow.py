@@ -13,6 +13,7 @@ import sys
 
 import luigi
 
+from emit_main.monitor.email_monitor import EmailMonitor
 from emit_main.monitor.frames_monitor import FramesMonitor
 from emit_main.monitor.ingest_monitor import IngestMonitor
 from emit_main.workflow.l0_tasks import L0StripHOSC, L0ProcessPlanningProduct
@@ -33,7 +34,7 @@ logger = logging.getLogger("emit-main")
 def parse_args():
     product_choices = ["l0hosc", "l0plan", "l1aeng", "l1aframe", "l1aframereport", "l1araw", "l1abad", "l1bcal",
                        "l1bformat", "l1bdaac", "l2arefl", "l2amask", "l2babun", "l3unmix"]
-    monitor_choices = ["ingest", "frames", "orbits"]
+    monitor_choices = ["ingest", "frames", "orbits", "email"]
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--config_path",
                         help="Path to config file")
@@ -254,6 +255,13 @@ def main():
     if args.build_env:
         wm.build_runtime_environment()
         logger.info("Exiting after building runtime environment.")
+        sys.exit(0)
+
+    # Check email
+    if args.monitor and args.monitor == "email":
+        em = EmailMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
+        em.process_daac_delivery_responses()
+        logger.info("Exiting after checking email")
         sys.exit(0)
 
     # Initialize tasks list
