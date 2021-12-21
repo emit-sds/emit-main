@@ -28,7 +28,8 @@
       "emit-sds-admins@jpl.nasa.gov"
     ],
     "smtp_host": "smtp.jpl.nasa.gov",
-    "smtp_port": 587
+    "smtp_port": 587,
+    "exchange_server": "ums.jpl.nasa.gov"
   },
 
   "build_config": {
