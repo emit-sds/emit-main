@@ -53,6 +53,7 @@ class DatabaseManager:
         acquisitions_coll.update_one(query, set_value, upsert=True)
 
     def insert_acquisition_log_entry(self, acquisition_id, entry):
+        entry["extended_build_num"] = self.config["extended_build_num"]
         acquisitions_coll = self.db.acquisitions
         query = {"acquisition_id": acquisition_id, "build_num": self.config["build_num"]}
         push_value = {"$push": {"processing_log": entry}}
@@ -145,6 +146,7 @@ class DatabaseManager:
         streams_coll.update_one(query, set_value, upsert=True)
 
     def insert_stream_log_entry(self, name, entry):
+        entry["extended_build_num"] = self.config["extended_build_num"]
         streams_coll = self.db.streams
         if "hsc.bin" in name:
             query = {"hosc_name": name, "build_num": self.config["build_num"]}
@@ -164,6 +166,18 @@ class DatabaseManager:
         data_collections_coll = self.db.data_collections
         return data_collections_coll.find_one({"dcid": dcid, "build_num": self.config["build_num"]})
 
+    def find_data_collections_for_reassembly(self, start, stop):
+        data_collections_coll = self.db.data_collections
+        # Query for data collections with complete set of frames, last modified within start/stop range and
+        # that don't have associated acquisitions
+        query = {
+            "frames_status": "complete",
+            "frames_last_modified": {"$gte": start, "$lte": stop},
+            "associated_acquisitions": {"$exists": 0},
+            "build_num": self.config["build_num"]
+        }
+        return list(data_collections_coll.find(query))
+
     def insert_data_collection(self, metadata):
         if self.find_data_collection_by_id(metadata["dcid"]) is None:
             utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
@@ -180,6 +194,7 @@ class DatabaseManager:
         data_collections_coll.update_one(query, set_value, upsert=True)
 
     def insert_data_collection_log_entry(self, dcid, entry):
+        entry["extended_build_num"] = self.config["extended_build_num"]
         data_collections_coll = self.db.data_collections
         query = {"dcid": dcid, "build_num": self.config["build_num"]}
         push_value = {"$push": {"processing_log": entry}}
@@ -210,6 +225,7 @@ class DatabaseManager:
         orbits_coll.update_one(query, set_value, upsert=True)
 
     def insert_orbit_log_entry(self, orbit_id, entry):
+        entry["extended_build_num"] = self.config["extended_build_num"]
         orbits_coll = self.db.orbits
         query = {"orbit_id": orbit_id, "build_num": self.config["build_num"]}
         push_value = {"$push": {"processing_log": entry}}
@@ -219,3 +235,21 @@ class DatabaseManager:
         metadata = {"last_modified": entry["log_timestamp"]}
         set_value = {"$set": metadata}
         orbits_coll.update_one(query, set_value, upsert=True)
+
+    def find_granule_report_by_id(self, submission_id):
+        granule_reports_coll = self.db.granule_reports
+        return granule_reports_coll.find_one({"submission_id": submission_id})
+
+    def insert_granule_report(self, report):
+        granule_reports_coll = self.db.granule_reports
+        granule_reports_coll.insert_one(report)
+
+    def update_granule_report_submission_statuses(self, submission_id, status):
+        granule_reports_coll = self.db.granule_reports
+        query = {"submission_id": submission_id}
+        set_value = {
+            "$set": {
+                "submission_status": status
+            }
+        }
+        granule_reports_coll.update_many(query, set_value, upsert=True)

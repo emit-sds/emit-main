@@ -201,3 +201,8 @@ class WorkflowManager:
         if not os.path.exists(link_name):
             os.symlink(source, link_name)
             self.change_group_ownership(link_name)
+
+    # Use this print function inside of luigi work() functions in order to write to the slurm job.out file
+    def print(self, module, msg, level="INFO"):
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        print(f"{timestamp} {level.upper()} [{module.split('.')[-1]}]: {msg}")

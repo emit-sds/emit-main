@@ -342,7 +342,8 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                         "latboresightstart": e["latboresightstart"],
                         "lonboresightstart": e["lonboresightstart"],
                         "parameters": e["parameters"],
-                        "sza": e["sza"]
+                        "sza": e["sza"],
+                        "frames_status": ""
                     }
 
                     # Insert or update data collection in DB

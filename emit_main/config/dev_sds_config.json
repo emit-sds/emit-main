@@ -28,11 +28,12 @@
       "emit-sds-admins@jpl.nasa.gov"
     ],
     "smtp_host": "smtp.jpl.nasa.gov",
-    "smtp_port": 587
+    "smtp_port": 587,
+    "exchange_server": "ums.jpl.nasa.gov"
   },
 
   "build_config": {
-    "build_num": "0000",
+    "extended_build_num": "000000",
     "conda_base_dir": "/shared/anaconda3/"
   },
 
@@ -77,7 +78,7 @@
         "version_date_range": ["2021-07-01T00:00:00", "2022-03-01T00:00:00"],
         "l1b_config_path": "repos/emit-sds-l1b/calibrations/config_20210101_20210131.json",
         "decompression_constants_path": "repos/emit-sds-l1a/decompression/constants.txt",
-        "decompression_init_data_path": "FPGA_Data_Initialization_File_CREATE_COMPRESSION_INIT_DATA_328_e0.bin"
+        "decompression_init_data_path": "repos/emit-sds-l1a/decompression/FPGA_Data_Initialization_File_CREATE_COMPRESSION_INIT_DATA_328_e0.bin"
       }
     ]
   }

@@ -1,5 +1,5 @@
 """
-This code contains the FileMonitor class that watches folders to trigger activities
+This code contains the IngestMonitor class that watches the ingest folder and triggers the workflow
 
 Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
@@ -7,7 +7,6 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 import glob
 import logging
 import os
-import shutil
 
 from emit_main.config.config import Config
 from emit_main.workflow.l0_tasks import L0ProcessPlanningProduct, L0IngestBAD
@@ -16,7 +15,7 @@ from emit_main.workflow.l1a_tasks import L1AReformatEDP, L1ADepacketizeScienceFr
 logger = logging.getLogger("emit-main")
 
 
-class FileMonitor:
+class IngestMonitor:
 
     def __init__(self, config_path, level="INFO", partition="emit", miss_pkt_thresh=0.1, test_mode=False):
         """
@@ -47,7 +46,7 @@ class FileMonitor:
         for d in self.dirs:
             wm.makedirs(d)
 
-    def ingest_files(self, dry_run=False):
+    def ingest_files(self):
         """
         Process all files in ingest folder
         """
@@ -56,22 +55,19 @@ class FileMonitor:
         for m in matches:
             paths += glob.glob(m)
         logger.info(f"Found paths to ingest: {paths}")
-        return self._ingest_file_list(paths, dry_run=dry_run)
+        return self._ingest_file_list(paths)
 
-    def ingest_files_by_time_range(self, start_time, stop_time, dry_run=False):
+    def ingest_files_by_time_range(self, start_time, stop_time):
         """
         Only process files in ingest folder within a specific datetime range
         :param start_time: Start time in format YYMMDDhhmmss
         :param stop_time: Stop time in format YYMMDDhhmmss
         """
         # TODO: Update this function when we know more about BAD and Planning Prod naming
-        return self.ingest_files(dry_run=dry_run)
+        return self.ingest_files()
 
-    def _ingest_file_list(self, paths, dry_run=False):
+    def _ingest_file_list(self, paths):
         paths.sort()
-        if dry_run:
-            return paths
-
         # Return luigi tasks
         tasks = []
         for p in paths:

@@ -28,11 +28,12 @@
       "emit-sds-admins@jpl.nasa.gov"
     ],
     "smtp_host": "smtp.jpl.nasa.gov",
-    "smtp_port": 587
+    "smtp_port": 587,
+    "exchange_server": "ums.jpl.nasa.gov"
   },
 
   "build_config": {
-    "build_num": "0004",
+    "extended_build_num": "000400",
     "conda_base_dir": "/shared/anaconda3/"
   },
 

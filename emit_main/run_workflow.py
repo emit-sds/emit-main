@@ -13,6 +13,9 @@ import sys
 
 import luigi
 
+from emit_main.monitor.email_monitor import EmailMonitor
+from emit_main.monitor.frames_monitor import FramesMonitor
+from emit_main.monitor.ingest_monitor import IngestMonitor
 from emit_main.workflow.l0_tasks import L0StripHOSC, L0ProcessPlanningProduct
 from emit_main.workflow.l1a_tasks import L1ADepacketizeScienceFrames, L1AReassembleRaw, L1AReformatEDP, \
     L1AFrameReport, L1AReformatBAD
@@ -31,7 +34,12 @@ logger = logging.getLogger("emit-main")
 def parse_args():
     product_choices = ["l0hosc", "l0plan", "l1aeng", "l1aframe", "l1aframereport", "l1araw", "l1abad", "l1bcal",
                        "l1bformat", "l1bdaac", "l2arefl", "l2amask", "l2babun", "l3unmix"]
+    monitor_choices = ["ingest", "frames", "orbit", "email"]
     parser = argparse.ArgumentParser()
+    parser.add_argument("-c", "--config_path",
+                        help="Path to config file")
+    parser.add_argument("-m", "--monitor",
+                        help=("Which monitor to run. Choose from " + ", ".join(monitor_choices)))
     parser.add_argument("-a", "--acquisition_id", default="",
                         help="Acquisition ID")
     parser.add_argument("-d", "--dcid", default="",
@@ -42,11 +50,9 @@ def parse_args():
                         help="Orbit number in the padded format XXXXX")
     parser.add_argument("--plan_prod_path", default="",
                         help="Path to planning product file")
-    parser.add_argument("-c", "--config_path",
-                        help="Path to config file")
     parser.add_argument("-p", "--products",
-                        help=("Comma delimited list of products to create (no spaces). \
-                        Choose from " + ", ".join(product_choices)))
+                        help=("Comma delimited list of products to create (no spaces). "
+                              "Choose from " + ", ".join(product_choices)))
     parser.add_argument("-l", "--level", default="INFO",
                         help="The log level (default: INFO)")
     parser.add_argument("--partition", default="emit",
@@ -57,6 +63,8 @@ def parse_args():
                         help="Ignore missing frames when reasssembling raw cube")
     parser.add_argument("--acq_chunksize", default=1280,
                         help="The number of lines in which to split acquisitions")
+    parser.add_argument("--dry_run", action="store_true",
+                        help="Just return a list of paths to process from the ingest folder, but take no action")
     parser.add_argument("--test_mode", action="store_true",
                         help="Allows tasks to skip work during I&T by skipping certain checks")
     parser.add_argument("--override_output", action="store_true",
@@ -86,12 +94,15 @@ def parse_args():
             if prod not in product_choices:
                 print("ERROR: Product \"%s\" is not a valid product choice." % prod)
                 sys.exit(1)
-    else:
-        print("Please specify a product from the list: " + ", ".join(product_choices))
+
+    if args.monitor and args.monitor not in monitor_choices:
+        print("ERROR: Monitor \"%s\" is not a valid monitor choice." % args.monitor)
+        sys.exit(1)
+
     return args
 
 
-def get_tasks_from_args(args):
+def get_tasks_from_product_args(args):
     products = args.products.split(",")
     kwargs = {
         "config_path": args.config_path,
@@ -246,12 +257,55 @@ def main():
         logger.info("Exiting after building runtime environment.")
         sys.exit(0)
 
-    # Set up tasks and run
-    tasks = get_tasks_from_args(args)
+    # Check email
+    if args.monitor and args.monitor == "email":
+        em = EmailMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
+        em.process_daac_delivery_responses()
+        logger.info("Exiting after checking email")
+        sys.exit(0)
+
+    # Initialize tasks list
+    tasks = []
+
+    # Get tasks from ingest monitor
+    if args.monitor and args.monitor == "ingest":
+        im = IngestMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
+                           miss_pkt_thresh=args.miss_pkt_thresh, test_mode=args.test_mode)
+        im_tasks = im.ingest_files()
+        im_tasks_str = "\n".join([str(t) for t in im_tasks])
+        logger.info(f"Ingest monitor tasks to run:\n{im_tasks_str}")
+        tasks += im_tasks
+
+    # Get tasks from frames monitor
+    if args.monitor and args.monitor == "frames":
+        fm = FramesMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
+                           acq_chunksize=args.acq_chunksize, test_mode=args.test_mode)
+        fm_tasks = fm.get_recent_reassembly_tasks()
+        fm_tasks_str = "\n".join([str(t) for t in fm_tasks])
+        logger.info(f"Frames monitor tasks to run:\n{fm_tasks_str}")
+        tasks += fm_tasks
+
+    # Get tasks from products args
+    if args.products:
+        prod_tasks = get_tasks_from_product_args(args)
+        prod_tasks_str = "\n".join([str(t) for t in prod_tasks])
+        logger.info(f"Product tasks to run:\n{prod_tasks_str}")
+        tasks += prod_tasks
+
+    # Set up luigi tasks and execute
     if args.workers:
         workers = int(args.workers)
+    elif len(tasks) > 0:
+        workers = min(30, len(tasks))
     else:
         workers = wm.config["luigi_workers"]
+
+    # If it's a dry run just print the tasks and exit
+    if args.dry_run:
+        tasks_str = "\n".join([str(t) for t in tasks])
+        logger.info(f"Dry run flag set. Below are the tasks that Luigi would run:\n{tasks_str}")
+        sys.exit(0)
+
     # Build luigi logging.conf path
     luigi_logging_conf = os.path.join(os.path.dirname(__file__), "workflow", "luigi", "logging.conf")
 

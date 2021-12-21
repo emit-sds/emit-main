@@ -86,7 +86,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
             try:
                 prev_stream_path = prev_streams[0]["products"]["l0"]["ccsds_path"]
             except KeyError:
-                logger.warning(f"Could not find a previous stream path for {stream.ccsds_path} in DB.")
+                wm.print(__name__, f"Could not find a previous stream path for {stream.ccsds_path} in DB.")
                 pass
 
         if prev_stream_path is not None:
@@ -139,12 +139,13 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
                     "build_num": wm.config["build_num"],
                     "processing_version": wm.config["processing_version"],
                     "start_time": start_time,
-                    "stop_time": stop_time
+                    "stop_time": stop_time,
+                    "frames_status": ""
                 }
                 dm.insert_data_collection(dc_meta)
                 logger.debug(f"Inserted data collection in DB with {dc_meta}")
             elif dc_lookup is not None and "start_time" not in dc_lookup:
-                # If only the planning product has been inserted, then add start_time
+                # If only the planning product has been inserted, then add some timing info
                 dc_meta = {
                     "start_time": start_time,
                     "stop_time": stop_time
@@ -195,8 +196,15 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
                 {
                     "start_time": start_time,
                     "stop_time": stop_time,
+                    "frames_last_modified": datetime.datetime.now(tz=datetime.timezone.utc),
                     "products.l1a.frames": dc.metadata["products"]["l1a"]["frames"]
                 })
+
+            # Check if data collection has complete set of frames
+            if dc.has_complete_set_of_frames():
+                dm.update_data_collection_metadata(dcid, {"frames_status": "complete"})
+            else:
+                dm.update_data_collection_metadata(dcid, {"frames_status": "incomplete"})
 
             # Add stream file to data collection metadata in DB so there is a link back to CCSDS packet stream for each
             # acquisition. There may be multiple stream files that contribute frames to a given acquisition
@@ -298,8 +306,8 @@ class L1AReassembleRaw(SlurmJobTask):
                 raise RuntimeError(f"Attempting to create acquisitions without orbit, scene, or submode! "
                                    f"It appears that there was no planning product for DCID {self.dcid}")
 
-        pge = wm.pges["emit-sds-l1a"]
-        reassemble_raw_pge = os.path.join(pge.repo_dir, "reassemble_raw_cube.py")
+        pge_reassemble = wm.pges["emit-sds-l1a"]
+        reassemble_raw_pge = os.path.join(pge_reassemble.repo_dir, "reassemble_raw_cube.py")
         flex_pge = wm.pges["EMIT_FLEX_codec"]
         flex_codec_exe = os.path.join(flex_pge.repo_dir, "flexcodec")
         constants_path = wm.config["decompression_constants_path"]
@@ -325,13 +333,34 @@ class L1AReassembleRaw(SlurmJobTask):
         env["AIT_ROOT"] = wm.pges["emit-ios"].repo_dir
         env["AIT_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "config.yaml")
         env["AIT_ISS_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "sim.yaml")
-        pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
+        pge_reassemble.run(cmd, tmp_dir=self.tmp_dir, env=env)
+
+        # Now run the compute line stats script
+        pge_line_stats = wm.pges["NGIS_Check_Line_Frame"]
+        compute_line_stats_exe = os.path.join(pge_line_stats.repo_dir, "python", "compute_line_stats.py")
+        tmp_image_dir = os.path.join(self.local_tmp_dir, "image")
+        tmp_decomp_no_header_paths = glob.glob(os.path.join(tmp_image_dir, "*.decomp_no_header"))
+        tmp_decomp_no_header_paths.sort()
+        tmp_no_header_list = os.path.join(self.local_tmp_dir, "no_header_list.txt")
+        with open(tmp_no_header_list, "w") as f:
+            f.write("\n".join(tmp_decomp_no_header_paths))
+        tmp_line_stats_path = os.path.join(self.local_tmp_dir, "line_stats.txt")
+        cmd = ["python", compute_line_stats_exe, tmp_no_header_list, ">", tmp_line_stats_path]
+        pge_line_stats.run(cmd, tmp_dir=self.tmp_dir)
 
         # Copy decompressed frames to /store
-        tmp_image_dir = os.path.join(self.local_tmp_dir, "image")
         tmp_decomp_frame_paths = glob.glob(os.path.join(tmp_image_dir, "*.decomp"))
         for path in tmp_decomp_frame_paths:
             wm.copy(path, os.path.join(dc.decomp_dir, os.path.basename(path)))
+
+        # If in test_mode, also copy the decompressed frames with no header to /store
+        if self.test_mode:
+            for path in tmp_decomp_no_header_paths:
+                wm.copy(path, os.path.join(dc.decomp_dir, os.path.basename(path)))
+
+        # Copy line stats log to /store
+        line_stats_path = os.path.join(dc.decomp_dir, f"{dc.dcid}_{os.path.basename(tmp_line_stats_path)}")
+        wm.copy(tmp_line_stats_path, line_stats_path)
 
         # Find unique acquisitions in tmp output folder
         acquisition_files = [os.path.basename(file) for file in glob.glob(os.path.join(tmp_image_dir, "emit*"))]
@@ -351,6 +380,7 @@ class L1AReassembleRaw(SlurmJobTask):
 
         # Loop through acquisition ids and process
         output_paths = {
+            "l1a_line_stats_path": line_stats_path,
             "l1a_raw_img_paths": [],
             "l1a_raw_hdr_paths": [],
             "l1a_raw_line_timestamps": [],
@@ -451,7 +481,7 @@ class L1AReassembleRaw(SlurmJobTask):
                         rawqa_file.write(f"{depacket_report_path}\n\n")
                         rawqa_file.write(f.read() + "\n\n")
                 else:
-                    logger.warning(f"Unable to find depacketization report located at {depacket_report_path}")
+                    wm.print(__name__, f"Unable to find depacketization report located at {depacket_report_path}")
 
             # Get reassembly report
             if os.path.exists(report_path):
@@ -462,7 +492,7 @@ class L1AReassembleRaw(SlurmJobTask):
                     rawqa_file.write(f"{report_path}\n\n")
                     rawqa_file.write(f.read())
             else:
-                logger.warning(f"Unable to find reassembly report located at {report_path}")
+                wm.print(__name__, f"Unable to find reassembly report located at {report_path}")
 
             rawqa_file.close()
             wm.change_group_ownership(acq.rawqa_txt_path)
@@ -473,11 +503,11 @@ class L1AReassembleRaw(SlurmJobTask):
             hdr = envi.read_envi_header(acq.raw_hdr_path)
             hdr["emit acquisition start time"] = acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
             hdr["emit acquisition stop time"] = acq.stop_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
-            hdr["emit pge name"] = pge.repo_url
-            hdr["emit pge version"] = pge.version_tag
+            hdr["emit pge name"] = pge_reassemble.repo_url
+            hdr["emit pge version"] = pge_reassemble.version_tag
             hdr["emit pge input files"] = input_files_arr
             hdr["emit pge run command"] = " ".join(cmd)
-            hdr["emit software build version"] = wm.config["build_num"]
+            hdr["emit software build version"] = wm.config["extended_build_num"]
             hdr["emit documentation version"] = doc_version
             creation_time = datetime.datetime.fromtimestamp(
                 os.path.getmtime(acq.raw_img_path), tz=datetime.timezone.utc)
@@ -536,11 +566,20 @@ class L1AReassembleRaw(SlurmJobTask):
             # Add symlinks to acquisitions for easy access
             wm.symlink(acq.acquisition_id_dir, os.path.join(dc.acquisitions_dir, acq_id))
 
+        # Update product dictionary with line stats and acquisitions
+        product_dict_line_stats = {
+            "txt_path": line_stats_path,
+            "created": datetime.datetime.fromtimestamp(os.path.getmtime(line_stats_path),
+                                                       tz=datetime.timezone.utc)
+        }
+        dm.update_data_collection_metadata(self.dcid, {"products.l1a.line_stats": product_dict_line_stats})
+        dm.update_data_collection_metadata(self.dcid, {"products.l1a.acquisitions": acq_product_map})
+
         # Add log entry to DB
         log_entry = {
             "task": self.task_family,
-            "pge_name": pge.repo_url,
-            "pge_version": pge.version_tag,
+            "pge_name": pge_reassemble.repo_url,
+            "pge_version": pge_reassemble.version_tag,
             "pge_input_files": input_files,
             "pge_run_command": " ".join(cmd),
             "documentation_version": doc_version,
@@ -551,8 +590,6 @@ class L1AReassembleRaw(SlurmJobTask):
         }
 
         dm.insert_data_collection_log_entry(self.dcid, log_entry)
-
-        dm.update_data_collection_metadata(self.dcid, {"products.l1a.acquisitions": acq_product_map})
 
 
 class L1AFrameReport(SlurmJobTask):
@@ -604,14 +641,30 @@ class L1AFrameReport(SlurmJobTask):
             tmp_decomp_frame_path = os.path.join(tmp_output_dir, os.path.basename(decomp_frame_path))
             wm.copy(decomp_frame_path, tmp_decomp_frame_path)
 
+        # Create and run ngis_check_list command
         ngis_check_list_exe = os.path.join(pge.repo_dir, "python", "ngis_check_list.py")
-        cmd = ["python", ngis_check_list_exe, tmp_output_dir]
-        pge.run(cmd, tmp_dir=self.tmp_dir)
+        cmd_check_list = ["python", ngis_check_list_exe, tmp_output_dir]
+        pge.run(cmd_check_list, cwd=tmp_output_dir, tmp_dir=self.tmp_dir)
 
+        # Create and run parse_hdr command
+        ngis_parse_hdr_exe = os.path.join(pge.repo_dir, "python", "ngis_parse_hdr_list.py")
+        tmp_parse_hdr_dir = os.path.join(self.local_tmp_dir, "parse_hdr_output")
+        wm.makedirs(tmp_parse_hdr_dir)
+        cmd_parse_hdr = ["python", ngis_parse_hdr_exe, dc.frames_dir, tmp_parse_hdr_dir]
+        pge.run(cmd_parse_hdr, tmp_dir=self.tmp_dir)
+
+        # Copy parse hdr files back to frames directory
+        tmp_hdr_text_paths = glob.glob(os.path.join(tmp_parse_hdr_dir, "*"))
+        for path in tmp_hdr_text_paths:
+            wm.copy(path, os.path.join(dc.frames_dir, os.path.basename(path)))
+
+        # Copy check_list files back to decomp directory
         output_files = glob.glob(os.path.join(tmp_output_dir, "*.csv"))
         output_files += glob.glob(os.path.join(tmp_output_dir, "*.txt"))
+        output_files += glob.glob(os.path.join(tmp_output_dir, "*.log"))
         for file in output_files:
-            if "allframesparsed.csv" in file or "allframesreport.txt" in file:
+            if "allframesparsed.csv" in file or "allframesreport.txt" in file or "ALL_LINEPARSED.csv" in file \
+                    or "line_header_check.log" in file:
                 wm.copy(file, os.path.join(dc.decomp_dir, dc.dcid + "_" + os.path.basename(file)))
             else:
                 wm.copy(file, os.path.join(dc.decomp_dir, os.path.basename(file)))
@@ -620,27 +673,39 @@ class L1AFrameReport(SlurmJobTask):
         dm = wm.database_manager
 
         all_frames_report = glob.glob(os.path.join(dc.decomp_dir, "*allframesreport.txt"))[0]
-        creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(all_frames_report), tz=datetime.timezone.utc)
+        afr_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(all_frames_report),
+                                                            tz=datetime.timezone.utc)
+        line_header_check_log = glob.glob(os.path.join(dc.decomp_dir, "*line_header_check.log"))[0]
+        lhc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(line_header_check_log),
+                                                            tz=datetime.timezone.utc)
 
         # Update frames_report product dictionary
-        product_dict = {
+        afr_product_dict = {
             "txt_path": all_frames_report,
-            "created": creation_time
+            "created": afr_creation_time
         }
-        dm.update_data_collection_metadata(dc.dcid, {"products.l1a.frames_report": product_dict})
+        dm.update_data_collection_metadata(dc.dcid, {"products.l1a.frames_report": afr_product_dict})
+
+        # Update line header check report product dictionary
+        lhc_product_dict = {
+            "txt_path": line_header_check_log,
+            "created": lhc_creation_time
+        }
+        dm.update_data_collection_metadata(dc.dcid, {"products.l1a.line_header_check_log": lhc_product_dict})
 
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
             "pge_version": pge.version_tag,
             "pge_input_files": {"decomp_dir": dc.decomp_dir},
-            "pge_run_command": " ".join(cmd),
+            "pge_run_command": " ".join(cmd_check_list),
             "documentation_version": "N/A",
-            "product_creation_time": creation_time,
+            "product_creation_time": afr_creation_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
-                "l1a_all_frames_report_path": all_frames_report
+                "l1a_all_frames_report_path": all_frames_report,
+                "l1a_line_header_check_log_path": line_header_check_log
             }
         }
 
@@ -797,7 +862,7 @@ class L1AReformatBAD(SlurmJobTask):
                 try:
                     bad_path = stream["products"]["raw"]["bad_path"]
                 except KeyError:
-                    logger.warning(f"Could not find the raw product path for {stream['bad_name']}.")
+                    wm.print(__name__, f"Could not find the raw product path for {stream['bad_name']}.")
                     pass
                 if bad_path is not None:
                     bad_sto_paths.append(bad_path)
