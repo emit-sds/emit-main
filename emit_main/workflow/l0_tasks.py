@@ -321,7 +321,7 @@ class L0ProcessPlanningProduct(SlurmJobTask):
 
                 # Check for data collection (i.e. acquisition)
                 # TODO: Add "dark" in when its ready
-                if e["name"].lower() in ("science",):
+                if e["name"].lower() in ("science", "dark"):
                     # Raise error if we don't have a starting orbit number
                     if orbit_num is None:
                         raise RuntimeError(f"Planning product {self.plan_prod_path} is missing starting orbit number")
@@ -358,14 +358,10 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                     dcids.append(dcid)
 
             # Copy/move processed file to archive
-            # TODO: Is there some unique portion of the name we can use here based on input file name?
-            target_pp_path = os.path.join(
-                wm.planning_products_dir,
-                f"emit_{horizon_start_time.replace('-', '').replace('T', 't').replace(':', '')}_"
-                f"raw_plan_b{wm.config['build_num']}_v{wm.config['processing_version']}.json")
+            target_pp_path = os.path.join(wm.planning_products_dir, os.path.basename(self.plan_prod_path))
             wm.move(self.plan_prod_path, target_pp_path)
 
-            # Add processing log entry
+            # Add processing log entry for orbits and data collections
             log_entry = {
                 "task": self.task_family,
                 "pge_name": pge.repo_url,
@@ -379,7 +375,6 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                     "raw_planning_product_path": target_pp_path
                 }
             }
-
             for orbit_id in orbit_ids:
                 dm.insert_orbit_log_entry(orbit_id, log_entry)
             for dcid in dcids:
