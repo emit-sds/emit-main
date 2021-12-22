@@ -417,7 +417,7 @@ class L1AReassembleRaw(SlurmJobTask):
 
             # Get list of paths to frames for this acquisition
             acq_frame_nums = [str(i).zfill(5) for i in list(range(start_index, stop_index + 1))]
-            frame_paths = glob.glob(os.path.join(dc.frames_dir, "*"))
+            frame_paths = glob.glob(os.path.join(dc.frames_dir, "*[!txt]"))
             decomp_frame_paths = glob.glob(os.path.join(dc.decomp_dir, "*.decomp"))
             acq_frame_paths = [p for p in frame_paths if os.path.basename(p).split("_")[2] in acq_frame_nums]
             acq_frame_paths.sort()

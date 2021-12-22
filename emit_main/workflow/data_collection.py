@@ -73,7 +73,7 @@ class DataCollection:
         from emit_main.workflow.workflow_manager import WorkflowManager
         wm = WorkflowManager(config_path=self.config_path)
 
-        frames = [os.path.basename(frame) for frame in glob.glob(os.path.join(self.frames_dir, "*"))]
+        frames = [os.path.basename(frame) for frame in glob.glob(os.path.join(self.frames_dir, "*[!txt]"))]
         frames.sort()
         # Check that we have nonzero frames
         if len(frames) == 0:
