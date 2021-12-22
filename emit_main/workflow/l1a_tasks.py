@@ -78,9 +78,9 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
 
         # Get previous stream path if exists
         # TODO: What should the search window be here for finding previous stream files?
-        prev_streams = dm.find_streams_by_date_range("1675", "stop_time",
-                                                     stream.start_time - datetime.timedelta(seconds=1),
-                                                     stream.start_time + datetime.timedelta(minutes=1))
+        prev_streams = dm.find_streams_touching_date_range("1675", "stop_time",
+                                                           stream.start_time - datetime.timedelta(seconds=1),
+                                                           stream.start_time + datetime.timedelta(minutes=1))
         prev_stream_path = None
         if prev_streams is not None and len(prev_streams) > 0:
             try:
@@ -853,8 +853,10 @@ class L1AReformatBAD(SlurmJobTask):
         pge = wm.pges["emit-sds-l1a"]
 
         # Find all BAD STO files in an orbit
-        bad_streams = dm.find_streams_by_date_range("bad", "start_time", orbit.start_time, orbit.stop_time) + \
-            dm.find_streams_by_date_range("bad", "stop_time", orbit.start_time, orbit.stop_time)
+        # TODO: What if BAD STO file is larger than an orbit?
+        bad_streams = dm.find_streams_touching_date_range("bad", "start_time", orbit.start_time, orbit.stop_time) + \
+                      dm.find_streams_touching_date_range("bad", "stop_time", orbit.start_time, orbit.stop_time) + \
+                      dm.find_streams_encompassing_date_range("bad", "start_time", "stop_time", orbit.start_time, orbit.stop_time)
         bad_sto_paths = []
         if bad_streams is not None:
             bad_path = None

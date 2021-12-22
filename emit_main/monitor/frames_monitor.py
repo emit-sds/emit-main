@@ -6,7 +6,6 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
 import datetime
-import glob
 import logging
 import os
 

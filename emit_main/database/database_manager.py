@@ -74,7 +74,7 @@ class DatabaseManager:
             query = {"bad_name": name, "build_num": self.config["build_num"]}
         return streams_coll.find_one(query)
 
-    def find_streams_by_date_range(self, apid, field, start, stop, sort=1):
+    def find_streams_touching_date_range(self, apid, field, start, stop, sort=1):
         streams_coll = self.db.streams
         query = {
             "apid": apid,
@@ -82,6 +82,16 @@ class DatabaseManager:
             "build_num": self.config["build_num"]
         }
         return list(streams_coll.find(query).sort(field, sort))
+
+    def find_streams_encompassing_date_range(self, apid, start_field, stop_field, query_start, query_stop, sort=1):
+        streams_coll = self.db.streams
+        query = {
+            "apid": apid,
+            start_field: {"$lt": query_start},
+            stop_field: {"$gt": query_stop},
+            "build_num": self.config["build_num"]
+        }
+        return list(streams_coll.find(query).sort(start_field, sort))
 
     def insert_hosc_stream(self, hosc_name):
         if self.find_stream_by_name(hosc_name) is None:
@@ -116,13 +126,15 @@ class DatabaseManager:
             if ".sto" not in bad_name:
                 raise RuntimeError(f"Attempting to insert BAD stream file in DB with name {bad_name}. Does not "
                                    f"appear to be a BAD STO file")
-            # TODO: This format is not defined yet
+            # TODO: This format is not defined yet (e.g. emit_<start_time>_<stop_time>_<production_time>_bad.sto)
             tokens = bad_name.split(".")[0].split("_")
-            start_time = datetime.datetime.strptime(tokens[-1], "%Y%m%dT%H%M%S")
+            start_time = datetime.datetime.strptime(tokens[1], "%Y%m%dT%H%M%S")
+            stop_time = datetime.datetime.strptime(tokens[2], "%Y%m%dT%H%M%S")
             utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
             metadata = {
                 "apid": "bad",
                 "start_time": start_time,
+                "stop_time": stop_time,
                 "build_num": self.config["build_num"],
                 "processing_version": self.config["processing_version"],
                 "bad_name": bad_name,
@@ -208,6 +220,23 @@ class DatabaseManager:
     def find_orbit_by_id(self, orbit_id):
         orbits_coll = self.db.orbits
         return orbits_coll.find_one({"orbit_id": orbit_id, "build_num": self.config["build_num"]})
+
+    def find_orbits_touching_date_range(self, field, start, stop, sort=1):
+        orbits_coll = self.db.orbits
+        query = {
+            field: {"$gte": start, "$lte": stop},
+            "build_num": self.config["build_num"]
+        }
+        return list(orbits_coll.find(query).sort(field, sort))
+
+    def find_orbits_encompassing_date_range(self, start, stop, sort=1):
+        orbits_coll = self.db.orbits
+        query = {
+            "start_time": {"$lt": start},
+            "stop_time": {"$gt": stop},
+            "build_num": self.config["build_num"]
+        }
+        return list(orbits_coll.find(query).sort("start_time", sort))
 
     def insert_orbit(self, metadata):
         if self.find_orbit_by_id(metadata["orbit_id"]) is None:

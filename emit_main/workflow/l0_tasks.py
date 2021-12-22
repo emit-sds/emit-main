@@ -200,11 +200,37 @@ class L0IngestBAD(SlurmJobTask):
         stream = wm.stream
         pge = wm.pges["emit-main"]
 
-        # TODO: Do something here?  Get stop_time?
+        # Find orbits that touch this stream file and update them
+        orbits = dm.find_orbits_touching_date_range("start_time", stream.start_time, stream.stop_time) + \
+            dm.find_orbits_touching_date_range("stop_time", stream.start_time, stream.stop_time) + \
+            dm.find_orbits_encompassing_date_range(stream.start_time, stream.stop_time)
+        orbit_symlink_paths = []
+        if len(orbits) > 0:
+            # Get unique orbit ids
+            orbit_ids = [o["orbit_id"] for o in orbits]
+            orbit_ids = list(set(orbit_ids))
+            # Update orbit DB to include associated bad paths
+            for orbit_id in orbit_ids:
+                wm_orbit = WorkflowManager(config_path=self.config_path, orbit_id=orbit_id)
+                orbit = wm_orbit.orbit
+
+                if "associated_bad_sto" in orbit.metadata and orbit.metadata["associated_bad_sto"] is not None:
+                    if stream.bad_path not in orbit.metadata["associated_bad_sto"]:
+                        orbit.metadata["associated_bad_sto"].append(stream.bad_path)
+                else:
+                    orbit.metadata["associated_bad_sto"] = [stream.bad_path]
+                dm.update_orbit_metadata(orbit_id, {"associated_bad_sto": orbit.metadata["associated_bad_sto"]})
+
+                # Save symlink path to use after moving the file
+                orbit_symlink_paths.append(os.path.join(orbit.raw_dir, stream.bad_name))
 
         # Move BAD file out of ingest folder
         if "ingest" in self.stream_path:
             wm.move(self.stream_path, stream.bad_path)
+
+        # Symlink to this file from the orbits' raw dirs
+        for symlink in orbit_symlink_paths:
+            wm.symlink(stream.bad_path, symlink)
 
         # Update DB
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(stream.bad_path), tz=datetime.timezone.utc)
