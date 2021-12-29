@@ -20,7 +20,7 @@ from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.l1a_tasks import L1AReassembleRaw
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_utils.daac_converter import calc_checksum
-from emit_utils.file_checks import netcdf_ext
+from emit_utils.file_checks import check_daynight
 
 
 logger = logging.getLogger("emit-main")
@@ -94,6 +94,8 @@ class L1BCalibrate(SlurmJobTask):
         for file in glob.glob(os.path.join(tmp_output_dir, "*")):
             wm.copy(file, os.path.join(acq.l1b_data_dir, os.path.basename(file)))
 
+        daynight = check_daynight(acq.obs_img_path)
+
         # Update hdr files
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
         doc_version = "EMIT SDS L1B JPL-D 104187, Initial"
@@ -109,6 +111,7 @@ class L1BCalibrate(SlurmJobTask):
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rdn_img_path), tz=datetime.timezone.utc)
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         hdr["emit data product version"] = wm.config["processing_version"]
+        hdr["emit acquisition daynight"] = daynight
 
         envi.write_envi_header(acq.rdn_hdr_path, hdr)
 
@@ -125,6 +128,7 @@ class L1BCalibrate(SlurmJobTask):
             }
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn": product_dict})
+        dm.update_acquisition_metadata(acq.acquisition_id, {"daynight": daynight})
 
         log_entry = {
             "task": self.task_family,

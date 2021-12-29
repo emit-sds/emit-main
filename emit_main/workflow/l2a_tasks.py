@@ -127,6 +127,7 @@ class L2AReflectance(SlurmJobTask):
                 os.path.getmtime(img_path), tz=datetime.timezone.utc)
             hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
             hdr["emit data product version"] = wm.config["processing_version"]
+            hdr["emit acquisition daynight"] = acq.daynight
             envi.write_envi_header(hdr_path, hdr)
 
             # Update product dictionary in DB
