@@ -209,8 +209,10 @@ class L1BFormat(SlurmJobTask):
     def requires(self):
 
         logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
-        return L1BFormat(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
-                         partition=self.partition)
+        return (L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+                             partition=self.partition),
+                L1BGeolocate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+                             partition=self.partition))
 
     def output(self):
 
