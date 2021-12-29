@@ -11,6 +11,7 @@ import os
 import luigi
 import spectral.io.envi as envi
 
+from emit_main.workflow.acquisition import Acquisition
 from emit_main.workflow.output_targets import AcquisitionTarget
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.l1b_tasks import L1BCalibrate, L1BGeolocate
@@ -103,9 +104,7 @@ class L2AReflectance(SlurmJobTask):
         wm.copy(tmp_lbl_hdr_path, acq.lbl_hdr_path)
         wm.copy(tmp_statesubs_path, acq.statesubs_img_path)
         wm.copy(tmp_statesubs_hdr_path, acq.statesubs_hdr_path)
-        # TODO: Remove symlinks when possible
-        wm.symlink(acq.rfl_hdr_path, envi_header(acq.rfl_img_path))
-        wm.symlink(acq.uncert_hdr_path, envi_header(acq.uncert_img_path))
+
         # Copy log file and rename
         log_path = acq.rfl_img_path.replace(".img", "_pge.log")
         wm.copy(tmp_log_path, log_path)
@@ -324,8 +323,8 @@ class L2AFormat(SlurmJobTask):
         tmp_ummg_json_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l2a_ummg.json")
         tmp_log_path = os.path.join(self.local_tmp_dir, "output_conversion_pge.log")
 
-        cmd = ["python", output_generator_exe, tmp_daac_nc_path, acq.rfl_img_path, acq.mask_img_path, 
-               acq.uncert_img_path, acq.loc_img_path, acq.glt_img_path, "--ummg_file", tmp_ummg_json_path, "--log_file", 
+        cmd = ["python", output_generator_exe, tmp_daac_nc_path, acq.rfl_img_path, acq.uncert_img_path, 
+               acq.mask_img_path, acq.loc_img_path, acq.glt_img_path, "--ummg_file", tmp_ummg_json_path, "--log_file", 
                tmp_log_path]
         pge.run(cmd, tmp_dir=self.tmp_dir)
 

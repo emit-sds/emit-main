@@ -33,7 +33,7 @@ logger = logging.getLogger("emit-main")
 
 def parse_args():
     product_choices = ["l0hosc", "l0plan", "l1aeng", "l1aframe", "l1aframereport", "l1araw", "l1abad", "l1bcal",
-                       "l1bformat", "l1bdaac", "l2arefl", "l2amask", "l2babun", "l3unmix"]
+                       "l1bformat", "l1bdaac", "l2arefl", "l2amask", "l2aformat", "l2babun", "l3unmix"]
     monitor_choices = ["ingest", "frames", "orbit", "email"]
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--config_path",
