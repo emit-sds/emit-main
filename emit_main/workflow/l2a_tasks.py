@@ -246,6 +246,7 @@ class L2AMask(SlurmJobTask):
             os.path.getmtime(acq.mask_img_path), tz=datetime.timezone.utc)
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         hdr["emit data product version"] = wm.config["processing_version"]
+        hdr["emit acquisition daynight"] = acq.daynight
         envi.write_envi_header(acq.mask_hdr_path, hdr)
 
         # PGE writes metadata to db
