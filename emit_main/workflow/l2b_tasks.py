@@ -187,10 +187,8 @@ class L2BFormat(SlurmJobTask):
 
     def requires(self):
         logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
-        return (L2AReflectance(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
-                               partition=self.partition),
-                L2AMask(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
-                        partition=self.partition))
+        return L2BAbundance(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+                               partition=self.partition)
 
     def output(self):
         logger.debug(f"{self.task_family} output: {self.acquisition_id}")
