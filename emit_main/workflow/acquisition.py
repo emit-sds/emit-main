@@ -59,6 +59,8 @@ class Acquisition:
             f"o{self.orbit}_s{self.scene}"
         self.daac_l2arfl_prefix = f"EMITL2A_RFL.0{self.config['processing_version']}_{self.acquisition_id[4:]}_" \
                                   f"o{self.orbit}_s{self.scene}"
+        self.daac_l2babun_prefix = f"EMITL2B_MIN.0{self.config['processing_version']}_{self.acquisition_id[4:]}_" \
+                                   f"o{self.orbit}_s{self.scene}"
 
         # Add sub-dirs
         self.frames_dir = self.raw_img_path.replace("_raw_", "_frames_").replace(".img", "")

@@ -331,7 +331,6 @@ class L2AFormat(SlurmJobTask):
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
         # Copy and rename output files back to /store
-        # EMITL1B_RAD.vVV_yyyymmddthhmmss_oOOOOO_sSSS_yyyymmddthhmmss.nc
         utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
         daac_nc_path = os.path.join(acq.l2a_data_dir, f"{acq.daac_l2arfl_prefix}_{utc_now.strftime('%Y%m%dt%H%M%S')}.nc")
         daac_ummg_json_path = daac_nc_path.replace(".nc", "_ummg.json")

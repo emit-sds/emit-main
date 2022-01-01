@@ -21,7 +21,7 @@ from emit_main.workflow.l1a_tasks import L1ADepacketizeScienceFrames, L1AReassem
     L1AFrameReport, L1AReformatBAD
 from emit_main.workflow.l1b_tasks import L1BGeolocate, L1BCalibrate, L1BFormat, L1BDeliver
 from emit_main.workflow.l2a_tasks import L2AMask, L2AReflectance, L2AFormat
-from emit_main.workflow.l2b_tasks import L2BAbundance
+from emit_main.workflow.l2b_tasks import L2BAbundance, L2BFormat
 from emit_main.workflow.l3_tasks import L3Unmix
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_main.workflow.workflow_manager import WorkflowManager
@@ -33,7 +33,7 @@ logger = logging.getLogger("emit-main")
 
 def parse_args():
     product_choices = ["l0hosc", "l0plan", "l1aeng", "l1aframe", "l1aframereport", "l1araw", "l1abad", "l1bcal",
-                       "l1bformat", "l1bdaac", "l2arefl", "l2amask", "l2aformat", "l2babun", "l3unmix"]
+                       "l1bformat", "l1bdaac", "l2arefl", "l2amask", "l2aformat", "l2babun", "l2bformat", "l3unmix"]
     monitor_choices = ["ingest", "frames", "orbit", "email"]
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--config_path",
@@ -131,9 +131,9 @@ def get_tasks_from_product_args(args):
         "l2amask": L2AMask(acquisition_id=args.acquisition_id, **kwargs),
         "l2aformat": L2AFormat(acquisition_id=args.acquisition_id, **kwargs),
         "l2babun": L2BAbundance(acquisition_id=args.acquisition_id, **kwargs),
+        "l2bformat": L2BFormat(acquisition_id=args.acquisition_id, **kwargs),
         "l3unmix": L3Unmix(acquisition_id=args.acquisition_id, **kwargs),
         # "l2aformat": L2AFormat(acquisition_id=args.acquisition_id, **kwargs),
-        # "l2bformat": L2BFormat(acquisition_id=args.acquisition_id, **kwargs),
         # "l3unmixformat": L3UnmixFormat(acquisition_id=args.acquisition_id, **kwargs)
     }
     tasks = []

@@ -11,6 +11,7 @@ import os
 import luigi
 import spectral.io.envi as envi
 
+from emit_main.workflow.acquisition import Acquisition
 from emit_main.workflow.output_targets import AcquisitionTarget
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.l1b_tasks import L1BGeolocate
@@ -162,8 +163,105 @@ class L2BAbundance(SlurmJobTask):
             "completion_status": "SUCCESS",
             "output": {
                 "l2b_abun_img_path": acq.abun_img_path,
-                "l2b_abun_hdr_path:": acq.abun_hdr_path
+                "l2b_abun_hdr_path:": acq.abun_hdr_path,
+                "l2b_abununcert_img_path": acq.abununcert_img_path,
+                "l2b_abununcert_hdr_path:": acq.abununcert_hdr_path
             }
         }
 
         dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
+
+
+class L2BFormat(SlurmJobTask):
+    """
+    Converts L2B (spectral abundance and uncertainty) to netcdf files
+    :returns: L2B netcdf output for delivery
+    """
+
+    config_path = luigi.Parameter()
+    acquisition_id = luigi.Parameter()
+    level = luigi.Parameter()
+    partition = luigi.Parameter()
+
+    task_namespace = "emit"
+
+    def requires(self):
+        logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
+        return (L2AReflectance(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+                               partition=self.partition),
+                L2AMask(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+                        partition=self.partition))
+
+    def output(self):
+        logger.debug(f"{self.task_family} output: {self.acquisition_id}")
+        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return AcquisitionTarget(acquisition=acq, task_family=self.task_family)
+
+    def work(self):
+        logger.debug(f"{self.task_family} work: {self.acquisition_id}")
+
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        acq = wm.acquisition
+
+        pge = wm.pges["emit-sds-l2b"]
+
+        output_generator_exe = os.path.join(pge.repo_dir, "output_conversion.py")
+        tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
+        wm.makedirs(tmp_output_dir)
+        tmp_daac_nc_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l2b.nc")
+        tmp_ummg_json_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l2b_ummg.json")
+        tmp_log_path = os.path.join(self.local_tmp_dir, "output_conversion_pge.log")
+
+        cmd = ["python", output_generator_exe, tmp_daac_nc_path, acq.abun_img_path, acq.abununcert_img_path,
+               acq.loc_img_path, acq.glt_img_path, "--ummg_file", tmp_ummg_json_path, "--log_file",
+               tmp_log_path]
+        pge.run(cmd, tmp_dir=self.tmp_dir)
+
+        # Copy and rename output files back to /store
+        utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
+        daac_nc_path = os.path.join(acq.l2b_data_dir,
+                                    f"{acq.daac_l2babun_prefix}_{utc_now.strftime('%Y%m%dt%H%M%S')}.nc")
+        daac_ummg_json_path = daac_nc_path.replace(".nc", "_ummg.json")
+        log_path = daac_nc_path.replace(".nc", "_pge.log")
+        wm.copy(tmp_daac_nc_path, daac_nc_path)
+        wm.copy(tmp_ummg_json_path, daac_ummg_json_path)
+        wm.copy(tmp_log_path, log_path)
+
+        # PGE writes metadata to db
+        dm = wm.database_manager
+        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(daac_nc_path), tz=datetime.timezone.utc)
+        product_dict_netcdf = {
+            "netcdf_path": daac_nc_path,
+            "created": nc_creation_time
+        }
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2b.abun_netcdf": product_dict_netcdf})
+
+        product_dict_ummg = {
+            "ummg_json_path": daac_ummg_json_path,
+            "created": datetime.datetime.fromtimestamp(os.path.getmtime(daac_ummg_json_path), tz=datetime.timezone.utc)
+        }
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2b.abun_ummg": product_dict_ummg})
+
+        log_entry = {
+            "task": self.task_family,
+            "pge_name": pge.repo_url,
+            "pge_version": pge.version_tag,
+            "pge_input_files": {
+                "abun_img_path": acq.abun_img_path,
+                "abununert_img_path": acq.abununcert_img_path,
+                "loc_img_path": acq.loc_img_path,
+                "glt_img_path": acq.glt_img_path
+            },
+            "pge_run_command": " ".join(cmd),
+            "documentation_version": "TBD",
+            "product_creation_time": nc_creation_time,
+            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
+            "completion_status": "SUCCESS",
+            "output": {
+                "l2b_abun_netcdf_path": daac_nc_path,
+                "l2b_abun_ummg_path:": daac_ummg_json_path
+            }
+        }
+
+        dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
+
