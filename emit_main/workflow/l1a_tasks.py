@@ -896,11 +896,14 @@ class L1AReformatBAD(SlurmJobTask):
 
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(orbit.uncorr_att_eph_path),
                                                         tz=datetime.timezone.utc)
-        product_dict = {
-            "uncorr_att_eph_path": orbit.uncorr_att_eph_path,
-            "created": creation_time
+        metadata = {
+            "associated_bad_netcdf": orbit.uncorr_att_eph_path,
+            "products.l1a": {
+                "uncorr_att_eph_path": orbit.uncorr_att_eph_path,
+                "created": creation_time
+            },
         }
-        dm.update_orbit_metadata(orbit.orbit_id, {"products.l1a": product_dict})
+        dm.update_orbit_metadata(orbit.orbit_id, metadata)
 
         doc_version = "N/A"
         log_entry = {

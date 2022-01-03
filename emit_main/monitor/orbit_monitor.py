@@ -49,8 +49,8 @@ class OrbitMonitor:
 
         # For each orbit id, check if orbit has complete BAD data and is unprocessed, and if so create a task for it
         for orbit_id in orbit_ids:
-            wm = WorkflowManager(config_path=self.config_path, orbit_id=orbit_id)
-            orbit = self.wm.orbit
+            wm_orbit = WorkflowManager(config_path=self.config_path, orbit_id=orbit_id)
+            orbit = wm_orbit.orbit
             if orbit.has_complete_bad_data() and "associated_bad_netcdf" not in orbit.metadata:
                 logger.info(f"Creating L1AReformatBAD task for orbit {orbit_id}")
                 tasks.append(L1AReformatBAD(config_path=self.config_path,

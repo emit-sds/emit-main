@@ -70,6 +70,10 @@ class Orbit:
             self.metadata["products"]["l1a"] = {}
 
     def has_complete_bad_data(self):
+        if "associated_bad_sto" not in self.metadata:
+            logger.info(f"No 'associated_bad_sto' property in orbit {self.orbit_id}")
+            return False
+
         bad_sto_files = [os.path.basename(p) for p in self.metadata["associated_bad_sto"]]
         bad_sto_files.sort()
 
