@@ -15,7 +15,7 @@ from emit_main.workflow.workflow_manager import WorkflowManager
 logger = logging.getLogger("emit-main")
 
 
-class FramesMonitor:
+class OrbitMonitor:
 
     def __init__(self, config_path, level="INFO", partition="emit"):
         """
@@ -40,6 +40,7 @@ class FramesMonitor:
 
         # If no results, just return empty list
         if len(orbits) == 0:
+            logger.info(f"Did not find any orbits in the last day. Not executing any tasks.")
             return tasks
 
         # Get unique orbit ids

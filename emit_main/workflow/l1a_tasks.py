@@ -827,6 +827,7 @@ class L1AReformatBAD(SlurmJobTask):
     orbit_id = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
+    ignore_missing_bad = luigi.BoolParameter(default=False)
 
     memory = 30000
     local_tmp_space = 125000
@@ -852,33 +853,22 @@ class L1AReformatBAD(SlurmJobTask):
         orbit = wm.orbit
         pge = wm.pges["emit-sds-l1a"]
 
-        # Find all BAD STO files in an orbit
-        # TODO: What if BAD STO file is larger than an orbit?
-        bad_streams = dm.find_streams_touching_date_range("bad", "start_time", orbit.start_time, orbit.stop_time) + \
-                      dm.find_streams_touching_date_range("bad", "stop_time", orbit.start_time, orbit.stop_time) + \
-                      dm.find_streams_encompassing_date_range("bad", "start_time", "stop_time", orbit.start_time, orbit.stop_time)
-        bad_sto_paths = []
-        if bad_streams is not None:
-            bad_path = None
-            for stream in bad_streams:
-                try:
-                    bad_path = stream["products"]["raw"]["bad_path"]
-                except KeyError:
-                    wm.print(__name__, f"Could not find the raw product path for {stream['bad_name']}.")
-                    pass
-                if bad_path is not None:
-                    bad_sto_paths.append(bad_path)
-        # Remove duplicates and sort (assuming the filenames can be sorted)
-        bad_sto_paths = list(set(bad_sto_paths))
-        bad_sto_paths.sort()
+        # TODO: Use --test_mode to remove dependency on database.  Is this even possible since orbit must be defined?
 
-        if len(bad_sto_paths) == 0:
+        # Check for missing BAD data before proceeding. Override with --ignore_missing_bad arg
+        if self.ignore_missing_bad is False and orbit.has_complete_bad_data() is False:
+            raise RuntimeError(f"Unable to run {self.task_family} on {self.orbit_id} due to missing BAD data in "
+                               f"orbit.")
+
+        # Sort the bad sto paths just to be safe
+        orbit.associated_bad_sto.sort()
+        if len(orbit.associated_bad_sto) == 0:
             raise RuntimeError(f"Unable to find any BAD STO files for orbit {self.orbit_id}!")
 
         # Copy sto files to an input directory and call PGE
         tmp_bad_sto_dir = os.path.join(self.local_tmp_dir, f"o{self.orbit_id}_bad_sto_files")
         wm.makedirs(tmp_bad_sto_dir)
-        for p in bad_sto_paths:
+        for p in orbit.associated_bad_sto:
             wm.copy(p, os.path.join(tmp_bad_sto_dir, os.path.basename(p)))
 
         # Build command and run
@@ -901,7 +891,7 @@ class L1AReformatBAD(SlurmJobTask):
         wm.copy(tmp_log_path, orbit.uncorr_att_eph_path.replace(".nc", "_pge.log"))
 
         # Symlink from orbits directory back to associated BAD files
-        for p in bad_sto_paths:
+        for p in orbit.associated_bad_sto:
             wm.symlink(p, os.path.join(orbit.raw_dir, os.path.basename(p)))
 
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(orbit.uncorr_att_eph_path),
@@ -910,12 +900,7 @@ class L1AReformatBAD(SlurmJobTask):
             "uncorr_att_eph_path": orbit.uncorr_att_eph_path,
             "created": creation_time
         }
-        metadata = {
-            "associated_bad_sto_files": bad_sto_paths,
-            "products.l1a": product_dict
-        }
-
-        dm.update_orbit_metadata(orbit.orbit_id, metadata)
+        dm.update_orbit_metadata(orbit.orbit_id, {"products.l1a": product_dict})
 
         doc_version = "N/A"
         log_entry = {
@@ -923,7 +908,7 @@ class L1AReformatBAD(SlurmJobTask):
             "pge_name": pge.repo_url,
             "pge_version": pge.version_tag,
             "pge_input_files": {
-                "bad_sto_paths": bad_sto_paths,
+                "bad_sto_paths": orbit.associated_bad_sto,
             },
             "pge_run_command": " ".join(cmd),
             "documentation_version": doc_version,
