@@ -16,6 +16,7 @@ import luigi
 from emit_main.monitor.email_monitor import EmailMonitor
 from emit_main.monitor.frames_monitor import FramesMonitor
 from emit_main.monitor.ingest_monitor import IngestMonitor
+from emit_main.monitor.orbit_monitor import OrbitMonitor
 from emit_main.workflow.l0_tasks import L0StripHOSC, L0ProcessPlanningProduct
 from emit_main.workflow.l1a_tasks import L1ADepacketizeScienceFrames, L1AReassembleRaw, L1AReformatEDP, \
     L1AFrameReport, L1AReformatBAD
@@ -63,6 +64,8 @@ def parse_args():
                         help="Ignore missing frames when reasssembling raw cube")
     parser.add_argument("--acq_chunksize", default=1280,
                         help="The number of lines in which to split acquisitions")
+    parser.add_argument("--ignore_missing_bad", action="store_true",
+                        help="Ignore missing BAD data in an orbit when reformatting BAD")
     parser.add_argument("--dry_run", action="store_true",
                         help="Just return a list of paths to process from the ingest folder, but take no action")
     parser.add_argument("--test_mode", action="store_true",
@@ -123,7 +126,7 @@ def get_tasks_from_product_args(args):
                                          acq_chunksize=args.acq_chunksize, test_mode=args.test_mode, **kwargs),
         "l1araw": L1AReassembleRaw(dcid=args.dcid, ignore_missing_frames=args.ignore_missing_frames,
                                    acq_chunksize=args.acq_chunksize, test_mode=args.test_mode, **kwargs),
-        "l1abad": L1AReformatBAD(orbit_id=args.orbit_id, **kwargs),
+        "l1abad": L1AReformatBAD(orbit_id=args.orbit_id, ignore_missing_bad=args.ignore_missing_bad, **kwargs),
         "l1bcal": L1BCalibrate(acquisition_id=args.acquisition_id, **kwargs),
         "l1bformat": L1BFormat(acquisition_id=args.acquisition_id, **kwargs),
         "l1bdaac": L1BDeliver(acquisition_id=args.acquisition_id, **kwargs),
@@ -285,6 +288,14 @@ def main():
         fm_tasks_str = "\n".join([str(t) for t in fm_tasks])
         logger.info(f"Frames monitor tasks to run:\n{fm_tasks_str}")
         tasks += fm_tasks
+
+    # Get tasks from orbit monitor
+    if args.monitor and args.monitor == "orbit":
+        om = OrbitMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
+        om_tasks = om.get_recent_orbit_tasks()
+        om_tasks_str = "\n".join([str(t) for t in om_tasks])
+        logger.info(f"Orbit monitor tasks to run:\n{om_tasks_str}")
+        tasks += om_tasks
 
     # Get tasks from products args
     if args.products:

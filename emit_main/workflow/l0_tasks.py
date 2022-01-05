@@ -200,11 +200,55 @@ class L0IngestBAD(SlurmJobTask):
         stream = wm.stream
         pge = wm.pges["emit-main"]
 
-        # TODO: Do something here?  Get stop_time?
+        # Find orbits that touch this stream file and update them
+        orbits = dm.find_orbits_touching_date_range("start_time", stream.start_time, stream.stop_time) + \
+            dm.find_orbits_touching_date_range("stop_time", stream.start_time, stream.stop_time) + \
+            dm.find_orbits_encompassing_date_range(stream.start_time, stream.stop_time)
+        orbit_symlink_paths = []
+        # orbit_l1a_dirs = []
+        if len(orbits) > 0:
+            # Get unique orbit ids
+            orbit_ids = [o["orbit_id"] for o in orbits]
+            orbit_ids = list(set(orbit_ids))
+            # Update orbit DB to include associated bad paths and stream object to include associated orbits
+            for orbit_id in orbit_ids:
+                # Update stream metadata
+                if "associated_orbit_ids" in stream.metadata and stream.metadata["associated_orbit_ids"] is not None:
+                    if orbit_id not in stream.metadata["associated_orbit_ids"]:
+                        stream.metadata["associated_orbit_ids"].append(orbit_id)
+                else:
+                    stream.metadata["associated_orbit_ids"] = [orbit_id]
+                dm.update_stream_metadata(stream.bad_name,
+                                          {"associated_orbit_ids": stream.metadata["associated_orbit_ids"]})
+
+                # Update orbit metadata
+                wm_orbit = WorkflowManager(config_path=self.config_path, orbit_id=orbit_id)
+                orbit = wm_orbit.orbit
+                if "associated_bad_sto" in orbit.metadata and orbit.metadata["associated_bad_sto"] is not None:
+                    if stream.bad_path not in orbit.metadata["associated_bad_sto"]:
+                        orbit.metadata["associated_bad_sto"].append(stream.bad_path)
+                else:
+                    orbit.metadata["associated_bad_sto"] = [stream.bad_path]
+                dm.update_orbit_metadata(orbit_id, {"associated_bad_sto": orbit.metadata["associated_bad_sto"]})
+
+                # Save symlink paths to use after moving the file
+                orbit_symlink_paths.append(os.path.join(orbit.raw_dir, stream.bad_name))
+                # orbit_l1a_dirs.append(orbit.l1a_dir)
 
         # Move BAD file out of ingest folder
         if "ingest" in self.stream_path:
             wm.move(self.stream_path, stream.bad_path)
+
+        # Symlink to this file from the orbits' raw dirs
+        for symlink in orbit_symlink_paths:
+            wm.symlink(stream.bad_path, symlink)
+
+        # Symlink from the BAD l1a folder to the orbits l1a folders
+        # for dir in q:
+        #     orbit_id = os.path.basename(os.path.basename((dir)))
+        #     dir_symlink = os.path.join(stream.l1a_dir, f"orbit_{orbit_id}_l1a_b{stream.config['build_num']}_"
+        #     f"v{stream.config['processing_version']}")
+        #     wm.symlink(dir, dir_symlink)
 
         # Update DB
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(stream.bad_path), tz=datetime.timezone.utc)
@@ -321,7 +365,7 @@ class L0ProcessPlanningProduct(SlurmJobTask):
 
                 # Check for data collection (i.e. acquisition)
                 # TODO: Add "dark" in when its ready
-                if e["name"].lower() in ("science",):
+                if e["name"].lower() in ("science", "dark"):
                     # Raise error if we don't have a starting orbit number
                     if orbit_num is None:
                         raise RuntimeError(f"Planning product {self.plan_prod_path} is missing starting orbit number")
@@ -358,14 +402,10 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                     dcids.append(dcid)
 
             # Copy/move processed file to archive
-            # TODO: Is there some unique portion of the name we can use here based on input file name?
-            target_pp_path = os.path.join(
-                wm.planning_products_dir,
-                f"emit_{horizon_start_time.replace('-', '').replace('T', 't').replace(':', '')}_"
-                f"raw_plan_b{wm.config['build_num']}_v{wm.config['processing_version']}.json")
+            target_pp_path = os.path.join(wm.planning_products_dir, os.path.basename(self.plan_prod_path))
             wm.move(self.plan_prod_path, target_pp_path)
 
-            # Add processing log entry
+            # Add processing log entry for orbits and data collections
             log_entry = {
                 "task": self.task_family,
                 "pge_name": pge.repo_url,
@@ -379,7 +419,6 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                     "raw_planning_product_path": target_pp_path
                 }
             }
-
             for orbit_id in orbit_ids:
                 dm.insert_orbit_log_entry(orbit_id, log_entry)
             for dcid in dcids:

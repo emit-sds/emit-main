@@ -22,6 +22,7 @@ dependencies:
   - numpy=1.19.2
   - pyyaml=5.1.2
   - cryptography=3.4.7
+  - numba=0.54.1
   - pip=21.0.1
   - pip:
     - spectral==0.22.2

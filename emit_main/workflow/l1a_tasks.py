@@ -78,9 +78,9 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
 
         # Get previous stream path if exists
         # TODO: What should the search window be here for finding previous stream files?
-        prev_streams = dm.find_streams_by_date_range("1675", "stop_time",
-                                                     stream.start_time - datetime.timedelta(seconds=1),
-                                                     stream.start_time + datetime.timedelta(minutes=1))
+        prev_streams = dm.find_streams_touching_date_range("1675", "stop_time",
+                                                           stream.start_time - datetime.timedelta(seconds=1),
+                                                           stream.start_time + datetime.timedelta(minutes=1))
         prev_stream_path = None
         if prev_streams is not None and len(prev_streams) > 0:
             try:
@@ -827,6 +827,7 @@ class L1AReformatBAD(SlurmJobTask):
     orbit_id = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
+    ignore_missing_bad = luigi.BoolParameter(default=False)
 
     memory = 30000
     local_tmp_space = 125000
@@ -852,31 +853,22 @@ class L1AReformatBAD(SlurmJobTask):
         orbit = wm.orbit
         pge = wm.pges["emit-sds-l1a"]
 
-        # Find all BAD STO files in an orbit
-        bad_streams = dm.find_streams_by_date_range("bad", "start_time", orbit.start_time, orbit.stop_time) + \
-            dm.find_streams_by_date_range("bad", "stop_time", orbit.start_time, orbit.stop_time)
-        bad_sto_paths = []
-        if bad_streams is not None:
-            bad_path = None
-            for stream in bad_streams:
-                try:
-                    bad_path = stream["products"]["raw"]["bad_path"]
-                except KeyError:
-                    wm.print(__name__, f"Could not find the raw product path for {stream['bad_name']}.")
-                    pass
-                if bad_path is not None:
-                    bad_sto_paths.append(bad_path)
-        # Remove duplicates and sort (assuming the filenames can be sorted)
-        bad_sto_paths = list(set(bad_sto_paths))
-        bad_sto_paths.sort()
+        # TODO: Use --test_mode to remove dependency on database.  Is this even possible since orbit must be defined?
 
-        if len(bad_sto_paths) == 0:
+        # Check for missing BAD data before proceeding. Override with --ignore_missing_bad arg
+        if self.ignore_missing_bad is False and orbit.has_complete_bad_data() is False:
+            raise RuntimeError(f"Unable to run {self.task_family} on {self.orbit_id} due to missing BAD data in "
+                               f"orbit.")
+
+        # Sort the bad sto paths just to be safe
+        orbit.associated_bad_sto.sort()
+        if len(orbit.associated_bad_sto) == 0:
             raise RuntimeError(f"Unable to find any BAD STO files for orbit {self.orbit_id}!")
 
         # Copy sto files to an input directory and call PGE
         tmp_bad_sto_dir = os.path.join(self.local_tmp_dir, f"o{self.orbit_id}_bad_sto_files")
         wm.makedirs(tmp_bad_sto_dir)
-        for p in bad_sto_paths:
+        for p in orbit.associated_bad_sto:
             wm.copy(p, os.path.join(tmp_bad_sto_dir, os.path.basename(p)))
 
         # Build command and run
@@ -884,11 +876,12 @@ class L1AReformatBAD(SlurmJobTask):
         tmp_log_path = os.path.join(self.local_tmp_dir, "reformat_bad_pge.log")
         cmd = ["python", reformat_bad_exe, tmp_bad_sto_dir,
                "--work_dir", self.local_tmp_dir,
+               "--start_time", orbit.start_time.strftime("%Y-%m-%dT%H:%M:%S"),
+               "--stop_time", orbit.stop_time.strftime("%Y-%m-%dT%H:%M:%S"),
                "--level", self.level,
                "--log_path", tmp_log_path]
         env = os.environ.copy()
         env["AIT_ROOT"] = wm.pges["emit-ios"].repo_dir
-        # TODO: Convert these to ancillary file paths?
         env["AIT_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "config.yaml")
         env["AIT_ISS_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "sim.yaml")
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
@@ -899,20 +892,18 @@ class L1AReformatBAD(SlurmJobTask):
         wm.copy(tmp_log_path, orbit.uncorr_att_eph_path.replace(".nc", "_pge.log"))
 
         # Symlink from orbits directory back to associated BAD files
-        for p in bad_sto_paths:
+        for p in orbit.associated_bad_sto:
             wm.symlink(p, os.path.join(orbit.raw_dir, os.path.basename(p)))
 
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(orbit.uncorr_att_eph_path),
                                                         tz=datetime.timezone.utc)
-        product_dict = {
-            "uncorr_att_eph_path": orbit.uncorr_att_eph_path,
-            "created": creation_time
-        }
         metadata = {
-            "associated_bad_sto_files": bad_sto_paths,
-            "products.l1a": product_dict
+            "associated_bad_netcdf": orbit.uncorr_att_eph_path,
+            "products.l1a": {
+                "uncorr_att_eph_path": orbit.uncorr_att_eph_path,
+                "created": creation_time
+            },
         }
-
         dm.update_orbit_metadata(orbit.orbit_id, metadata)
 
         doc_version = "N/A"
@@ -921,7 +912,7 @@ class L1AReformatBAD(SlurmJobTask):
             "pge_name": pge.repo_url,
             "pge_version": pge.version_tag,
             "pge_input_files": {
-                "bad_sto_paths": bad_sto_paths,
+                "bad_sto_paths": orbit.associated_bad_sto,
             },
             "pge_run_command": " ".join(cmd),
             "documentation_version": doc_version,
