@@ -205,6 +205,7 @@ class L0IngestBAD(SlurmJobTask):
             dm.find_orbits_touching_date_range("stop_time", stream.start_time, stream.stop_time) + \
             dm.find_orbits_encompassing_date_range(stream.start_time, stream.stop_time)
         orbit_symlink_paths = []
+        # orbit_l1a_dirs = []
         if len(orbits) > 0:
             # Get unique orbit ids
             orbit_ids = [o["orbit_id"] for o in orbits]
@@ -221,8 +222,9 @@ class L0IngestBAD(SlurmJobTask):
                     orbit.metadata["associated_bad_sto"] = [stream.bad_path]
                 dm.update_orbit_metadata(orbit_id, {"associated_bad_sto": orbit.metadata["associated_bad_sto"]})
 
-                # Save symlink path to use after moving the file
+                # Save symlink paths to use after moving the file
                 orbit_symlink_paths.append(os.path.join(orbit.raw_dir, stream.bad_name))
+                # orbit_l1a_dirs.append(orbit.l1a_dir)
 
         # Move BAD file out of ingest folder
         if "ingest" in self.stream_path:
@@ -231,6 +233,13 @@ class L0IngestBAD(SlurmJobTask):
         # Symlink to this file from the orbits' raw dirs
         for symlink in orbit_symlink_paths:
             wm.symlink(stream.bad_path, symlink)
+
+        # Symlink from the BAD l1a folder to the orbits l1a folders
+        # for dir in q:
+        #     orbit_id = os.path.basename(os.path.basename((dir)))
+        #     dir_symlink = os.path.join(stream.l1a_dir, f"orbit_{orbit_id}_l1a_b{stream.config['build_num']}_"
+        #     f"v{stream.config['processing_version']}")
+        #     wm.symlink(dir, dir_symlink)
 
         # Update DB
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(stream.bad_path), tz=datetime.timezone.utc)

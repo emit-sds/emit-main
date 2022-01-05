@@ -876,11 +876,12 @@ class L1AReformatBAD(SlurmJobTask):
         tmp_log_path = os.path.join(self.local_tmp_dir, "reformat_bad_pge.log")
         cmd = ["python", reformat_bad_exe, tmp_bad_sto_dir,
                "--work_dir", self.local_tmp_dir,
+               "--start_time", orbit.start_time.strftime("%Y-%m-%dT%H:%M:%S"),
+               "--stop_time", orbit.stop_time.strftime("%Y-%m-%dT%H:%M:%S"),
                "--level", self.level,
                "--log_path", tmp_log_path]
         env = os.environ.copy()
         env["AIT_ROOT"] = wm.pges["emit-ios"].repo_dir
-        # TODO: Convert these to ancillary file paths?
         env["AIT_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "config.yaml")
         env["AIT_ISS_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "sim.yaml")
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)

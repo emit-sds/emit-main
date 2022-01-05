@@ -74,6 +74,10 @@ class Orbit:
             logger.info(f"No 'associated_bad_sto' property in orbit {self.orbit_id}")
             return False
 
+        if "stop_time" not in self.metadata:
+            logger.info(f"Orbit {self.orbit_id} does not have a stop time.")
+            return False
+
         bad_sto_files = [os.path.basename(p) for p in self.metadata["associated_bad_sto"]]
         bad_sto_files.sort()
 
