@@ -210,11 +210,20 @@ class L0IngestBAD(SlurmJobTask):
             # Get unique orbit ids
             orbit_ids = [o["orbit_id"] for o in orbits]
             orbit_ids = list(set(orbit_ids))
-            # Update orbit DB to include associated bad paths
+            # Update orbit DB to include associated bad paths and stream object to include associated orbits
             for orbit_id in orbit_ids:
+                # Update stream metadata
+                if "associated_orbit_ids" in stream.metadata and stream.metadata["associated_orbit_ids"] is not None:
+                    if orbit_id not in stream.metadata["associated_orbit_ids"]:
+                        stream.metadata["associated_orbit_ids"].append(orbit_id)
+                else:
+                    stream.metadata["associated_orbit_ids"] = [orbit_id]
+                dm.update_stream_metadata(stream.bad_name,
+                                          {"associated_orbit_ids": stream.metadata["associated_orbit_ids"]})
+
+                # Update orbit metadata
                 wm_orbit = WorkflowManager(config_path=self.config_path, orbit_id=orbit_id)
                 orbit = wm_orbit.orbit
-
                 if "associated_bad_sto" in orbit.metadata and orbit.metadata["associated_bad_sto"] is not None:
                     if stream.bad_path not in orbit.metadata["associated_bad_sto"]:
                         orbit.metadata["associated_bad_sto"].append(stream.bad_path)
