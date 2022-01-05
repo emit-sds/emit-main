@@ -97,7 +97,7 @@ class Orbit:
         # Check that there are no gaps
         prev_file = None
         for file in bad_sto_files:
-            if prev_file == None:
+            if prev_file is None:
                 prev_file = file
                 continue
             prev_stop_time = datetime.datetime.strptime(prev_file.split("_")[2], "%Y%m%dT%H%M%S")

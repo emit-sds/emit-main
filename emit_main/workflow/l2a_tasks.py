@@ -280,8 +280,8 @@ class L2AMask(SlurmJobTask):
         }
 
         dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
-        
-        
+
+
 class L2AFormat(SlurmJobTask):
     """
     Converts L2A (reflectance, reflectance uncertainty, and masks) to netcdf files
@@ -325,8 +325,8 @@ class L2AFormat(SlurmJobTask):
         tmp_ummg_json_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l2a_ummg.json")
         tmp_log_path = os.path.join(self.local_tmp_dir, "output_conversion_pge.log")
 
-        cmd = ["python", output_generator_exe, tmp_daac_nc_path, acq.rfl_img_path, acq.uncert_img_path, 
-               acq.mask_img_path, acq.loc_img_path, acq.glt_img_path, "--ummg_file", tmp_ummg_json_path, "--log_file", 
+        cmd = ["python", output_generator_exe, tmp_daac_nc_path, acq.rfl_img_path, acq.uncert_img_path,
+               acq.mask_img_path, acq.loc_img_path, acq.glt_img_path, "--ummg_file", tmp_ummg_json_path, "--log_file",
                tmp_log_path]
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
