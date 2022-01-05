@@ -20,7 +20,7 @@ from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.l1a_tasks import L1AReassembleRaw
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_utils.daac_converter import calc_checksum
-from emit_utils.file_checks import netcdf_ext
+from emit_utils.file_checks import check_daynight
 
 
 logger = logging.getLogger("emit-main")
@@ -94,6 +94,8 @@ class L1BCalibrate(SlurmJobTask):
         for file in glob.glob(os.path.join(tmp_output_dir, "*")):
             wm.copy(file, os.path.join(acq.l1b_data_dir, os.path.basename(file)))
 
+        daynight = check_daynight(acq.obs_img_path)
+
         # Update hdr files
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
         doc_version = "EMIT SDS L1B JPL-D 104187, Initial"
@@ -109,6 +111,7 @@ class L1BCalibrate(SlurmJobTask):
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rdn_img_path), tz=datetime.timezone.utc)
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         hdr["emit data product version"] = wm.config["processing_version"]
+        hdr["emit acquisition daynight"] = daynight
 
         envi.write_envi_header(acq.rdn_hdr_path, hdr)
 
@@ -125,6 +128,7 @@ class L1BCalibrate(SlurmJobTask):
             }
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn": product_dict})
+        dm.update_acquisition_metadata(acq.acquisition_id, {"daynight": daynight})
 
         log_entry = {
             "task": self.task_family,
@@ -209,8 +213,10 @@ class L1BFormat(SlurmJobTask):
     def requires(self):
 
         logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
-        return L1BFormat(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
-                         partition=self.partition)
+        return (L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+                             partition=self.partition),
+                L1BGeolocate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+                             partition=self.partition))
 
     def output(self):
 
@@ -229,6 +235,7 @@ class L1BFormat(SlurmJobTask):
 
         output_generator_exe = os.path.join(pge.repo_dir, "output_conversion.py")
         tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
+        wm.makedirs(tmp_output_dir)
         tmp_daac_nc_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l1b_rdn.nc")
         tmp_ummg_json_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l1b_rdn_ummg.json")
         tmp_log_path = os.path.join(self.local_tmp_dir, "output_conversion_pge.log")
@@ -240,7 +247,7 @@ class L1BFormat(SlurmJobTask):
         # Copy and rename output files back to /store
         # EMITL1B_RAD.vVV_yyyymmddthhmmss_oOOOOO_sSSS_yyyymmddthhmmss.nc
         utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
-        daac_nc_path = f"{acq.daac_l1brad_prefix}_{utc_now.strftime('%Y%m%dt%H%M%S')}.nc"
+        daac_nc_path = os.path.join(acq.l1b_data_dir, f"{acq.daac_l1brad_prefix}_{utc_now.strftime('%Y%m%dt%H%M%S')}.nc")
         daac_ummg_json_path = daac_nc_path.replace(".nc", "_ummg.json")
         log_path = daac_nc_path.replace(".nc", "_pge.log")
         wm.copy(tmp_daac_nc_path, daac_nc_path)
