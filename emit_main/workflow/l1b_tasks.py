@@ -67,33 +67,47 @@ class L1BCalibrate(SlurmJobTask):
         tmp_log_path = os.path.join(tmp_output_dir, log_name)
         with open(wm.config["l1b_config_path"], "r") as f:
             config = json.load(f)
-        # Set input, dark, and output paths in config
-        config["input_file"] = acq.raw_img_path
-        # TODO: Get dark frame for this acquisition
-        config["dark_frame_file"] = acq.dark_img_path
-        config["output_file"] = tmp_rdn_img_path
 
+        # Update config file values with absolute paths and store all input files for logging later
         input_files = {}
-        calibrations_dir = os.path.join(pge.repo_dir, "calibrations")
         for key, value in config.items():
-            if "_file" in key and not key.startswith("/"):
-                config[key] = os.path.abspath(os.path.join(calibrations_dir, value))
-                if key != "output_file":
-                    input_files[key] = config[key]
+            if "_file" in key and not value.startswith("/"):
+                config[key] = os.path.abspath(os.path.join(pge.repo_dir, value))
+                input_files[key] = config[key]
 
         tmp_config_path = os.path.join(self.tmp_dir, "l1b_config.json")
         with open(tmp_config_path, "w") as outfile:
             json.dump(config, outfile)
 
+        # Find dark image - Get most recent dark image, but throw error if not within last 3 hours
+        dm = wm.database_manager
+        recent_darks = dm.find_acquisitions_touching_date_range(
+            "dark",
+            "stop_time",
+            acq.start_time - datetime.timedelta(minutes=200),
+            acq.start_time,
+            sort=-1)
+        if recent_darks is None or len(recent_darks) == 0:
+            raise RuntimeError(f"Unable to find any darks for acquisition {acq.acquisition_id} within last 200 "
+                               f"minutes.")
+
+        dark_img_path = recent_darks[0]["products"]["l1a"]["raw"]["img_path"]
+
         emitrdn_exe = os.path.join(pge.repo_dir, "emitrdn.py")
-        cmd = ["python", emitrdn_exe, tmp_config_path, acq.raw_img_path, tmp_rdn_img_path, "--log_file", tmp_log_path,
-               "--level", self.level]
+        cmd = ["python", emitrdn_exe,
+               "--config_file", tmp_config_path,
+               "--dark_file", dark_img_path,
+               "--log_file", tmp_log_path,
+               "--level", self.level,
+               acq.raw_img_path,
+               tmp_rdn_img_path]
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
         # Copy output files to l1b dir
         for file in glob.glob(os.path.join(tmp_output_dir, "*")):
             wm.copy(file, os.path.join(acq.l1b_data_dir, os.path.basename(file)))
 
+        # TODO: Need to get this from submode flag field (may need to add this when acquisitions are created)
         daynight = check_daynight(acq.obs_img_path)
 
         # Update hdr files
@@ -116,7 +130,6 @@ class L1BCalibrate(SlurmJobTask):
         envi.write_envi_header(acq.rdn_hdr_path, hdr)
 
         # PGE writes metadata to db
-        dm = wm.database_manager
         product_dict = {
             "img_path": acq.rdn_img_path,
             "hdr_path": acq.rdn_hdr_path,
