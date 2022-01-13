@@ -115,7 +115,7 @@ class L1BCalibrate(SlurmJobTask):
         # Update hdr files
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
         doc_version = "EMIT SDS L1B JPL-D 104187, Initial"
-        daynight = "day" if acq["submode"] == "science" else "dark"
+        daynight = "day" if acq.submode == "science" else "dark"
         hdr = envi.read_envi_header(acq.rdn_hdr_path)
         hdr["emit acquisition start time"] = acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
         hdr["emit acquisition stop time"] = acq.stop_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
