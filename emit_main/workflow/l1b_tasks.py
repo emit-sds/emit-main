@@ -17,10 +17,8 @@ import spectral.io.envi as envi
 from emit_main.workflow.acquisition import Acquisition
 from emit_main.workflow.output_targets import AcquisitionTarget
 from emit_main.workflow.workflow_manager import WorkflowManager
-from emit_main.workflow.l1a_tasks import L1AReassembleRaw
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_utils.daac_converter import calc_checksum
-from emit_utils.file_checks import check_daynight
 
 
 logger = logging.getLogger("emit-main")
@@ -70,8 +68,9 @@ class L1BCalibrate(SlurmJobTask):
         # Update config file values with absolute paths and store all input files for logging later
         input_files = {}
         for key, value in config.items():
-            if "_file" in key and not value.startswith("/"):
-                config[key] = os.path.abspath(os.path.join(pge.repo_dir, value))
+            if "_file" in key:
+                if not value.startswith("/"):
+                    config[key] = os.path.abspath(os.path.join(pge.repo_dir, value))
                 input_files[key] = config[key]
 
         tmp_config_path = os.path.join(self.tmp_dir, "l1b_config.json")
@@ -91,6 +90,7 @@ class L1BCalibrate(SlurmJobTask):
                                f"minutes.")
 
         dark_img_path = recent_darks[0]["products"]["l1a"]["raw"]["img_path"]
+        input_files["dark_file"] = dark_img_path
 
         emitrdn_exe = os.path.join(pge.repo_dir, "emitrdn.py")
         utils_path = os.path.join(pge.repo_dir, "utils")
@@ -107,14 +107,15 @@ class L1BCalibrate(SlurmJobTask):
 
         # Copy output files to l1b dir
         for file in glob.glob(os.path.join(tmp_output_dir, "*")):
-            wm.copy(file, os.path.join(acq.l1b_data_dir, os.path.basename(file)))
-
-        # TODO: Need to get this from submode flag field (may need to add this when acquisitions are created)
-        daynight = check_daynight(acq.obs_img_path)
+            if file.endswith(".hdr"):
+                wm.copy(file, acq.rdn_hdr_path)
+            else:
+                wm.copy(file, os.path.join(acq.l1b_data_dir, os.path.basename(file)))
 
         # Update hdr files
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
         doc_version = "EMIT SDS L1B JPL-D 104187, Initial"
+        daynight = "day" if acq["submode"] == "science" else "dark"
         hdr = envi.read_envi_header(acq.rdn_hdr_path)
         hdr["emit acquisition start time"] = acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
         hdr["emit acquisition stop time"] = acq.stop_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
