@@ -93,6 +93,9 @@ class L1BCalibrate(SlurmJobTask):
         dark_img_path = recent_darks[0]["products"]["l1a"]["raw"]["img_path"]
 
         emitrdn_exe = os.path.join(pge.repo_dir, "emitrdn.py")
+        utils_path = os.path.join(pge.repo_dir, "utils")
+        env = os.environ.copy()
+        env["PYTHONPATH"] = f"$PYTHONPATH:{utils_path}"
         cmd = ["python", emitrdn_exe,
                "--config_file", tmp_config_path,
                "--dark_file", dark_img_path,
@@ -100,7 +103,7 @@ class L1BCalibrate(SlurmJobTask):
                "--level", self.level,
                acq.raw_img_path,
                tmp_rdn_img_path]
-        pge.run(cmd, tmp_dir=self.tmp_dir)
+        pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
         # Copy output files to l1b dir
         for file in glob.glob(os.path.join(tmp_output_dir, "*")):
