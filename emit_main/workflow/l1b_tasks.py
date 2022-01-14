@@ -354,7 +354,11 @@ class L1BDeliver(SlurmJobTask):
         group = f"emit-{wm.config['environment']}" if wm.config["environment"] in ("test", "ops") else "emit-dev"
         cmd_make_target = ["ssh", wm.config["daac_server_internal"], "\"mkdir", "-p", acq.daac_staging_dir, "&&",
                            "chgrp", group, f"{acq.daac_staging_dir}\""]
-        pge.run(cmd_make_target, tmp_dir=self.tmp_dir)
+        try:
+            pge.run(cmd_make_target, tmp_dir=self.tmp_dir)
+        except RuntimeError:
+            wm.print(f"Ran into error while trying to make dir and change group permissions on {acq.daac_staging_dir}. "
+                     f"Assuming that the remote directory is owned by another user and continuing.")
         cmd_rsync_nc = ["rsync", "-azv", partial_dir_arg, log_file_arg, daac_nc_path, target]
         cmd_rsync_json = ["rsync", "-azv", partial_dir_arg, log_file_arg, daac_ummg_json_path, target]
         pge.run(cmd_rsync_nc, tmp_dir=self.tmp_dir)
