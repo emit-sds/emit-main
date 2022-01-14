@@ -350,13 +350,13 @@ class L1BDeliver(SlurmJobTask):
         # Copy files to staging server
         partial_dir_arg = f"--partial-dir={acq.daac_partial_dir}"
         log_file_arg = f"--log-file={os.path.join(self.tmp_dir, 'rsync.log')}"
-        target = f"{wm.config['daac_server_internal']}:{acq.daac_staging_dir}"
+        target = f"{wm.config['daac_server_internal']}:{acq.daac_staging_dir}/"
         group = f"emit-{wm.config['environment']}" if wm.config["environment"] in ("test", "ops") else "emit-dev"
-        cmd_make_target = ["ssh", wm.config["daac_server_internal"], "\"mkdir", "-p", target, "&&", "chgrp", group,
-                           f"{target}\""]
+        cmd_make_target = ["ssh", wm.config["daac_server_internal"], "\"mkdir", "-p", acq.daac_staging_dir, "&&",
+                           "chgrp", group, f"{acq.daac_staging_dir}\""]
         pge.run(cmd_make_target, tmp_dir=self.tmp_dir)
-        cmd_rsync_nc = ["rsync", "-azv", partial_dir_arg, log_file_arg, daac_nc_path, target + "/"]
-        cmd_rsync_json = ["rsync", "-azv", partial_dir_arg, log_file_arg, daac_ummg_json_path, target + "/"]
+        cmd_rsync_nc = ["rsync", "-azv", partial_dir_arg, log_file_arg, daac_nc_path, target]
+        cmd_rsync_json = ["rsync", "-azv", partial_dir_arg, log_file_arg, daac_ummg_json_path, target]
         pge.run(cmd_rsync_nc, tmp_dir=self.tmp_dir)
         pge.run(cmd_rsync_json, tmp_dir=self.tmp_dir)
 
