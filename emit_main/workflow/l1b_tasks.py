@@ -395,8 +395,8 @@ class L1BDeliver(SlurmJobTask):
         wm.change_group_ownership(cnm_submission_path)
 
         # Submit notification via AWS SQS
-        cmd_aws = ["aws", "sqs", "send-message", "--queue-url", wm.config["daac_submission_url"], "--message-body",
-                   f"file://{cnm_submission_path}", "--profile", "default"]
+        cmd_aws = [wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", wm.config["daac_submission_url"], "--message-body",
+                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"]]
         pge.run(cmd_aws, tmp_dir=self.tmp_dir)
         cnm_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(cnm_submission_path),
                                                             tz=datetime.timezone.utc)
