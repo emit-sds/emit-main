@@ -353,8 +353,9 @@ class L1BDeliver(SlurmJobTask):
         target = f"{wm.config['daac_server_internal']}:{acq.daac_staging_dir}/"
         group = f"emit-{wm.config['environment']}" if wm.config["environment"] in ("test", "ops") else "emit-dev"
         # This command only makes the directory and changes ownership if the directory doesn't exist
-        cmd_make_target = ["ssh", wm.config["daac_server_internal"], "[", "!", "-d", f"\"{acq.daac_staging_dir}\"",
-                           "]", "&&", "mkdir", acq.daac_staging_dir, "&&", "chgrp", group, f"{acq.daac_staging_dir}"]
+        cmd_make_target = ["ssh", wm.config["daac_server_internal"], "\"if", "[", "!", "-d",
+                           f"'{acq.daac_staging_dir}'", "];", "then", "mkdir", f"{acq.daac_staging_dir};", "chgrp",
+                           group, f"{acq.daac_staging_dir};", "fi\""]
         pge.run(cmd_make_target, tmp_dir=self.tmp_dir)
 
         cmd_rsync_nc = ["rsync", "-azv", partial_dir_arg, log_file_arg, daac_nc_path, target]
