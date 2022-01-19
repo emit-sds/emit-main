@@ -93,6 +93,12 @@ class L0StripHOSC(SlurmJobTask):
                                f"missing packet threshold of {self.miss_pkt_thresh}")
 
         # TODO: Add check for "File Size Match" in PGE
+        # TODO: Replace start/stop with CCSDS start and stop
+        # Set up command to get CCSDS start/stop times
+        # get_start_stop_exe = os.path.join(pge.repo_dir, "get_ccsds_start_stop_times.py")
+        # start_stop_json = tmp_ccsds_path.replace(".bin", ".json")
+        # cmd_timing = ["python", get_start_stop_exe, tmp_ccsds_path, start_stop_json]
+        # pge.run(cmd_timing, tmp_dir=self.tmp_dir, env=env)
 
         # Get CCSDS start time and file name and report name
         tmp_ccsds_name = os.path.basename(tmp_ccsds_path)
@@ -198,7 +204,18 @@ class L0IngestBAD(SlurmJobTask):
         # Get workflow manager again, now with stream_path
         wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
         stream = wm.stream
-        pge = wm.pges["emit-main"]
+        pge = wm.pges["emit-ios"]
+
+        # Generate CSV version of file
+        sto_to_csv_exe = os.path.join(pge.repo_dir, "emit", "bin", "emit_iss_sto_to_csv.py")
+        tmp_output_dir = os.path.join(self.tmp_dir, "output")
+        wm.makedirs(tmp_output_dir)
+        cmd = [sto_to_csv_exe, self.stream_path, "--outpath", tmp_output_dir]
+        env = os.environ.copy()
+        env["AIT_ROOT"] = pge.repo_dir
+        env["AIT_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "config.yaml")
+        env["AIT_ISS_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "sim.yaml")
+        pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
         # Find orbits that touch this stream file and update them
         orbits = dm.find_orbits_touching_date_range("start_time", stream.start_time, stream.stop_time) + \
@@ -235,6 +252,8 @@ class L0IngestBAD(SlurmJobTask):
                 orbit_symlink_paths.append(os.path.join(orbit.raw_dir, stream.bad_name))
                 # orbit_l1a_dirs.append(orbit.l1a_dir)
 
+        # TODO: Get start/stop from CSV file (which column(s) to use?)
+
         # Move BAD file out of ingest folder
         if "ingest" in self.stream_path:
             wm.move(self.stream_path, stream.bad_path)
@@ -242,6 +261,11 @@ class L0IngestBAD(SlurmJobTask):
         # Symlink to this file from the orbits' raw dirs
         for symlink in orbit_symlink_paths:
             wm.symlink(stream.bad_path, symlink)
+
+        # Copy CSV file to l0 dir
+        tmp_csv_path = os.path.join(tmp_output_dir, "iss_bad_data_joined.csv")
+        l0_bad_csv_path = os.path.join(stream.l0_dir, stream.bad_name.replace(".sto", ".csv"))
+        wm.copy(tmp_csv_path, l0_bad_csv_path)
 
         # Symlink from the BAD l1a folder to the orbits l1a folders
         # for dir in q:
@@ -251,12 +275,17 @@ class L0IngestBAD(SlurmJobTask):
         #     wm.symlink(dir, dir_symlink)
 
         # Update DB
-        creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(stream.bad_path), tz=datetime.timezone.utc)
+        creation_time_raw = datetime.datetime.fromtimestamp(os.path.getmtime(stream.bad_path), tz=datetime.timezone.utc)
+        creation_time_csv = datetime.datetime.fromtimestamp(os.path.getmtime(l0_bad_csv_path), tz=datetime.timezone.utc)
         metadata = {
             "products": {
                 "raw": {
                     "bad_path": stream.bad_path,
-                    "created": creation_time
+                    "created": creation_time_raw
+                },
+                "l0": {
+                    "bad_csv_path": l0_bad_csv_path,
+                    "created": creation_time_csv
                 }
             }
         }
@@ -270,13 +299,14 @@ class L0IngestBAD(SlurmJobTask):
             "pge_input_files": {
                 "ingested_bad_path": self.stream_path,
             },
-            "pge_run_command": "N/A - database updates only",
+            "pge_run_command": " ".join(cmd),
             "documentation_version": "N/A",
-            "product_creation_time": creation_time,
+            "product_creation_time": creation_time_raw,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
-                "raw_bad_path": stream.bad_path
+                "raw_bad_path": stream.bad_path,
+                "l0_bad_csv_path": l0_bad_csv_path
             }
         }
         dm.insert_stream_log_entry(stream.bad_name, log_entry)

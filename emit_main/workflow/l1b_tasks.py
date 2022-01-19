@@ -17,10 +17,8 @@ import spectral.io.envi as envi
 from emit_main.workflow.acquisition import Acquisition
 from emit_main.workflow.output_targets import AcquisitionTarget
 from emit_main.workflow.workflow_manager import WorkflowManager
-from emit_main.workflow.l1a_tasks import L1AReassembleRaw
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_utils.daac_converter import calc_checksum
-from emit_utils.file_checks import check_daynight
 
 
 logger = logging.getLogger("emit-main")
@@ -42,8 +40,7 @@ class L1BCalibrate(SlurmJobTask):
     def requires(self):
 
         logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
-        return L1AReassembleRaw(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
-                                partition=self.partition)
+        return None
 
     def output(self):
 
@@ -67,38 +64,58 @@ class L1BCalibrate(SlurmJobTask):
         tmp_log_path = os.path.join(tmp_output_dir, log_name)
         with open(wm.config["l1b_config_path"], "r") as f:
             config = json.load(f)
-        # Set input, dark, and output paths in config
-        config["input_file"] = acq.raw_img_path
-        # TODO: Get dark frame for this acquisition
-        config["dark_frame_file"] = acq.dark_img_path
-        config["output_file"] = tmp_rdn_img_path
 
+        # Update config file values with absolute paths and store all input files for logging later
         input_files = {}
-        calibrations_dir = os.path.join(pge.repo_dir, "calibrations")
         for key, value in config.items():
-            if "_file" in key and not key.startswith("/"):
-                config[key] = os.path.abspath(os.path.join(calibrations_dir, value))
-                if key != "output_file":
-                    input_files[key] = config[key]
+            if "_file" in key:
+                if not value.startswith("/"):
+                    config[key] = os.path.abspath(os.path.join(pge.repo_dir, value))
+                input_files[key] = config[key]
 
         tmp_config_path = os.path.join(self.tmp_dir, "l1b_config.json")
         with open(tmp_config_path, "w") as outfile:
             json.dump(config, outfile)
 
+        # Find dark image - Get most recent dark image, but throw error if not within last 3 hours
+        dm = wm.database_manager
+        recent_darks = dm.find_acquisitions_touching_date_range(
+            "dark",
+            "stop_time",
+            acq.start_time - datetime.timedelta(minutes=200),
+            acq.start_time,
+            sort=-1)
+        if recent_darks is None or len(recent_darks) == 0:
+            raise RuntimeError(f"Unable to find any darks for acquisition {acq.acquisition_id} within last 200 "
+                               f"minutes.")
+
+        dark_img_path = recent_darks[0]["products"]["l1a"]["raw"]["img_path"]
+        input_files["dark_file"] = dark_img_path
+
         emitrdn_exe = os.path.join(pge.repo_dir, "emitrdn.py")
-        cmd = ["python", emitrdn_exe, tmp_config_path, acq.raw_img_path, tmp_rdn_img_path, "--log_file", tmp_log_path,
-               "--level", self.level]
-        pge.run(cmd, tmp_dir=self.tmp_dir)
+        utils_path = os.path.join(pge.repo_dir, "utils")
+        env = os.environ.copy()
+        env["PYTHONPATH"] = f"$PYTHONPATH:{utils_path}"
+        cmd = ["python", emitrdn_exe,
+               "--config_file", tmp_config_path,
+               "--dark_file", dark_img_path,
+               "--log_file", tmp_log_path,
+               "--level", self.level,
+               acq.raw_img_path,
+               tmp_rdn_img_path]
+        pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
         # Copy output files to l1b dir
         for file in glob.glob(os.path.join(tmp_output_dir, "*")):
-            wm.copy(file, os.path.join(acq.l1b_data_dir, os.path.basename(file)))
-
-        daynight = check_daynight(acq.obs_img_path)
+            if file.endswith(".hdr"):
+                wm.copy(file, acq.rdn_hdr_path)
+            else:
+                wm.copy(file, os.path.join(acq.l1b_data_dir, os.path.basename(file)))
 
         # Update hdr files
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
         doc_version = "EMIT SDS L1B JPL-D 104187, Initial"
+        daynight = "day" if acq.submode == "science" else "dark"
         hdr = envi.read_envi_header(acq.rdn_hdr_path)
         hdr["emit acquisition start time"] = acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
         hdr["emit acquisition stop time"] = acq.stop_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
@@ -116,7 +133,6 @@ class L1BCalibrate(SlurmJobTask):
         envi.write_envi_header(acq.rdn_hdr_path, hdr)
 
         # PGE writes metadata to db
-        dm = wm.database_manager
         product_dict = {
             "img_path": acq.rdn_img_path,
             "hdr_path": acq.rdn_hdr_path,
@@ -334,11 +350,18 @@ class L1BDeliver(SlurmJobTask):
         # Copy files to staging server
         partial_dir_arg = f"--partial-dir={acq.daac_partial_dir}"
         log_file_arg = f"--log-file={os.path.join(self.tmp_dir, 'rsync.log')}"
-        target = f"{wm.config['daac_server_internal']}:{acq.daac_staging_dir}"
-        cmd_nc = ["rsync", "-azv", partial_dir_arg, log_file_arg, daac_nc_path, target]
-        cmd_json = ["rsync", "-azv", partial_dir_arg, log_file_arg, daac_ummg_json_path, target]
-        pge.run(cmd_nc, tmp_dir=self.tmp_dir)
-        pge.run(cmd_json, tmp_dir=self.tmp_dir)
+        target = f"{wm.config['daac_server_internal']}:{acq.daac_staging_dir}/"
+        group = f"emit-{wm.config['environment']}" if wm.config["environment"] in ("test", "ops") else "emit-dev"
+        # This command only makes the directory and changes ownership if the directory doesn't exist
+        cmd_make_target = ["ssh", wm.config["daac_server_internal"], "\"if", "[", "!", "-d",
+                           f"'{acq.daac_staging_dir}'", "];", "then", "mkdir", f"{acq.daac_staging_dir};", "chgrp",
+                           group, f"{acq.daac_staging_dir};", "fi\""]
+        pge.run(cmd_make_target, tmp_dir=self.tmp_dir)
+
+        cmd_rsync_nc = ["rsync", "-azv", partial_dir_arg, log_file_arg, daac_nc_path, target]
+        cmd_rsync_json = ["rsync", "-azv", partial_dir_arg, log_file_arg, daac_ummg_json_path, target]
+        pge.run(cmd_rsync_nc, tmp_dir=self.tmp_dir)
+        pge.run(cmd_rsync_json, tmp_dir=self.tmp_dir)
 
         # Build notification dictionary
         utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
@@ -379,8 +402,8 @@ class L1BDeliver(SlurmJobTask):
         wm.change_group_ownership(cnm_submission_path)
 
         # Submit notification via AWS SQS
-        cmd_aws = ["aws", "sqs", "send-message", "--queue-url", wm.config["daac_submission_url"], "--message-body",
-                   f"file://{cnm_submission_path}", "--profile", "default"]
+        cmd_aws = [wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", wm.config["daac_submission_url"], "--message-body",
+                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"]]
         pge.run(cmd_aws, tmp_dir=self.tmp_dir)
         cnm_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(cnm_submission_path),
                                                             tz=datetime.timezone.utc)

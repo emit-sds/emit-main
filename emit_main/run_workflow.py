@@ -165,9 +165,6 @@ def task_failure(task, e):
     logger.error("TASK FAILURE: %s" % task)
     wm = WorkflowManager(config_path=task.config_path)
 
-    # Send failure notification
-    wm.send_failure_notification(task, e)
-
     # Move scratch tmp folder to errors folder
     error_task_dir = task.tmp_dir.replace("/tmp/", "/error/")
     logger.error("Moving scratch tmp folder %s to %s" % (task.tmp_dir, error_task_dir))
@@ -225,6 +222,9 @@ def task_failure(task, e):
         dm.insert_data_collection_log_entry(task.dcid, log_entry)
     elif task.task_family in orbit_tasks and dm.find_orbit_by_id(task.orbit_id):
         dm.insert_orbit_log_entry(task.orbit_id, log_entry)
+
+    # Send failure notification
+    wm.send_failure_notification(task, e)
 
 
 def set_up_logging(log_path, level):
