@@ -11,7 +11,7 @@ import os
 import luigi
 import spectral.io.envi as envi
 
-from emit_main.workflow.envi_target import ENVITarget
+from emit_main.workflow.output_targets import AcquisitionTarget
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.l1b_tasks import L1BGeolocate
 from emit_main.workflow.l2a_tasks import L2AMask, L2AReflectance
@@ -48,7 +48,7 @@ class L3Unmix(SlurmJobTask):
 
         logger.debug(self.task_family + " output")
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return ENVITarget(acquisition=wm.acquisition, task_family=self.task_family)
+        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family)
 
     def work(self):
 
@@ -88,13 +88,13 @@ class L3Unmix(SlurmJobTask):
             input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
             doc_version = "EMIT SDS L3 JPL-D 104238, Rev A"  # \todo check
             hdr = envi.read_envi_header(header_to_update)
-            hdr["emit acquisition start time"] = acq.start_time.strftime("%Y-%m-%dT%H:%M:%S%z")
-            hdr["emit acquisition stop time"] = acq.stop_time.strftime("%Y-%m-%dT%H:%M:%S%z")
+            hdr["emit acquisition start time"] = acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
+            hdr["emit acquisition stop time"] = acq.stop_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
             hdr["emit pge name"] = pge.repo_url
             hdr["emit pge version"] = pge.version_tag
             hdr["emit pge input files"] = input_files_arr
             hdr["emit pge run command"] = " ".join(cmd_unmix)
-            hdr["emit software build version"] = wm.config["build_num"]
+            hdr["emit software build version"] = wm.config["extended_build_num"]
             hdr["emit documentation version"] = doc_version
             creation_time = datetime.datetime.fromtimestamp(
                 os.path.getmtime(acq.cover_img_path), tz=datetime.timezone.utc)

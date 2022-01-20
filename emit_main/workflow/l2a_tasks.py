@@ -11,7 +11,8 @@ import os
 import luigi
 import spectral.io.envi as envi
 
-from emit_main.workflow.envi_target import ENVITarget
+from emit_main.workflow.acquisition import Acquisition
+from emit_main.workflow.output_targets import AcquisitionTarget
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.l1b_tasks import L1BCalibrate, L1BGeolocate
 from emit_main.workflow.slurm import SlurmJobTask
@@ -47,7 +48,7 @@ class L2AReflectance(SlurmJobTask):
 
         logger.debug(self.task_family + " output")
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return ENVITarget(acquisition=wm.acquisition, task_family=self.task_family)
+        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family)
 
     def work(self):
 
@@ -103,9 +104,7 @@ class L2AReflectance(SlurmJobTask):
         wm.copy(tmp_lbl_hdr_path, acq.lbl_hdr_path)
         wm.copy(tmp_statesubs_path, acq.statesubs_img_path)
         wm.copy(tmp_statesubs_hdr_path, acq.statesubs_hdr_path)
-        # TODO: Remove symlinks when possible
-        wm.symlink(acq.rfl_hdr_path, envi_header(acq.rfl_img_path))
-        wm.symlink(acq.uncert_hdr_path, envi_header(acq.uncert_img_path))
+
         # Copy log file and rename
         log_path = acq.rfl_img_path.replace(".img", "_pge.log")
         wm.copy(tmp_log_path, log_path)
@@ -116,18 +115,19 @@ class L2AReflectance(SlurmJobTask):
         dm = wm.database_manager
         for img_path, hdr_path in [(acq.rfl_img_path, acq.rfl_hdr_path), (acq.uncert_img_path, acq.uncert_hdr_path)]:
             hdr = envi.read_envi_header(hdr_path)
-            hdr["emit acquisition start time"] = acq.start_time.strftime("%Y-%m-%dT%H:%M:%S%z")
-            hdr["emit acquisition stop time"] = acq.stop_time.strftime("%Y-%m-%dT%H:%M:%S%z")
+            hdr["emit acquisition start time"] = acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
+            hdr["emit acquisition stop time"] = acq.stop_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
             hdr["emit pge name"] = pge.repo_url
             hdr["emit pge version"] = pge.version_tag
             hdr["emit pge input files"] = input_files_arr
             hdr["emit pge run command"] = " ".join(cmd)
-            hdr["emit software build version"] = wm.config["build_num"]
+            hdr["emit software build version"] = wm.config["extended_build_num"]
             hdr["emit documentation version"] = doc_version
             creation_time = datetime.datetime.fromtimestamp(
                 os.path.getmtime(img_path), tz=datetime.timezone.utc)
             hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
             hdr["emit data product version"] = wm.config["processing_version"]
+            hdr["emit acquisition daynight"] = acq.daynight
             envi.write_envi_header(hdr_path, hdr)
 
             # Update product dictionary in DB
@@ -194,7 +194,7 @@ class L2AMask(SlurmJobTask):
 
         logger.debug(self.task_family + " output")
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return ENVITarget(acquisition=wm.acquisition, task_family=self.task_family)
+        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family)
 
     def work(self):
 
@@ -234,18 +234,19 @@ class L2AMask(SlurmJobTask):
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
         doc_version = "EMIT SDS L2A JPL-D 104236, Rev B"
         hdr = envi.read_envi_header(acq.mask_hdr_path)
-        hdr["emit acquisition start time"] = acq.start_time.strftime("%Y-%m-%dT%H:%M:%S%z")
-        hdr["emit acquisition stop time"] = acq.stop_time.strftime("%Y-%m-%dT%H:%M:%S%z")
+        hdr["emit acquisition start time"] = acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
+        hdr["emit acquisition stop time"] = acq.stop_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
         hdr["emit pge name"] = pge.repo_url
         hdr["emit pge version"] = pge.version_tag
         hdr["emit pge input files"] = input_files_arr
         hdr["emit pge run command"] = " ".join(cmd)
-        hdr["emit software build version"] = wm.config["build_num"]
+        hdr["emit software build version"] = wm.config["extended_build_num"]
         hdr["emit documentation version"] = doc_version
         creation_time = datetime.datetime.fromtimestamp(
             os.path.getmtime(acq.mask_img_path), tz=datetime.timezone.utc)
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         hdr["emit data product version"] = wm.config["processing_version"]
+        hdr["emit acquisition daynight"] = acq.daynight
         envi.write_envi_header(acq.mask_hdr_path, hdr)
 
         # PGE writes metadata to db
@@ -275,6 +276,103 @@ class L2AMask(SlurmJobTask):
             "output": {
                 "l2a_mask_img_path": acq.mask_img_path,
                 "l2a_mask_hdr_path:": acq.mask_hdr_path
+            }
+        }
+
+        dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
+
+
+class L2AFormat(SlurmJobTask):
+    """
+    Converts L2A (reflectance, reflectance uncertainty, and masks) to netcdf files
+    :returns: L2A netcdf output for delivery
+    """
+
+    config_path = luigi.Parameter()
+    acquisition_id = luigi.Parameter()
+    level = luigi.Parameter()
+    partition = luigi.Parameter()
+
+    task_namespace = "emit"
+
+    def requires(self):
+
+        logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
+        return (L2AReflectance(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+                               partition=self.partition),
+                L2AMask(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+                        partition=self.partition))
+
+    def output(self):
+
+        logger.debug(f"{self.task_family} output: {self.acquisition_id}")
+        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return AcquisitionTarget(acquisition=acq, task_family=self.task_family)
+
+    def work(self):
+
+        logger.debug(f"{self.task_family} work: {self.acquisition_id}")
+
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        acq = wm.acquisition
+
+        pge = wm.pges["emit-sds-l2a"]
+
+        output_generator_exe = os.path.join(pge.repo_dir, "output_conversion.py")
+        tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
+        wm.makedirs(tmp_output_dir)
+        tmp_daac_nc_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l2a.nc")
+        tmp_ummg_json_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l2a_ummg.json")
+        tmp_log_path = os.path.join(self.local_tmp_dir, "output_conversion_pge.log")
+
+        cmd = ["python", output_generator_exe, tmp_daac_nc_path, acq.rfl_img_path, acq.uncert_img_path,
+               acq.mask_img_path, acq.loc_img_path, acq.glt_img_path, "--ummg_file", tmp_ummg_json_path, "--log_file",
+               tmp_log_path]
+        pge.run(cmd, tmp_dir=self.tmp_dir)
+
+        # Copy and rename output files back to /store
+        utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
+        daac_nc_path = os.path.join(acq.l2a_data_dir, f"{acq.daac_l2arfl_prefix}_{utc_now.strftime('%Y%m%dt%H%M%S')}.nc")
+        daac_ummg_json_path = daac_nc_path.replace(".nc", "_ummg.json")
+        log_path = daac_nc_path.replace(".nc", "_pge.log")
+        wm.copy(tmp_daac_nc_path, daac_nc_path)
+        wm.copy(tmp_ummg_json_path, daac_ummg_json_path)
+        wm.copy(tmp_log_path, log_path)
+
+        # PGE writes metadata to db
+        dm = wm.database_manager
+        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(daac_nc_path), tz=datetime.timezone.utc)
+        product_dict_netcdf = {
+            "netcdf_path": daac_nc_path,
+            "created": nc_creation_time
+        }
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2a.rfl_netcdf": product_dict_netcdf})
+
+        product_dict_ummg = {
+            "ummg_json_path": daac_ummg_json_path,
+            "created": datetime.datetime.fromtimestamp(os.path.getmtime(daac_ummg_json_path), tz=datetime.timezone.utc)
+        }
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2a.rfl_ummg": product_dict_ummg})
+
+        log_entry = {
+            "task": self.task_family,
+            "pge_name": pge.repo_url,
+            "pge_version": pge.version_tag,
+            "pge_input_files": {
+                "rfl_img_path": acq.rfl_img_path,
+                "rfl_unert_img_path": acq.uncert_img_path,
+                "mask_img_path": acq.mask_img_path,
+                "loc_img_path": acq.loc_img_path,
+                "glt_img_path": acq.glt_img_path
+            },
+            "pge_run_command": " ".join(cmd),
+            "documentation_version": "TBD",
+            "product_creation_time": nc_creation_time,
+            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
+            "completion_status": "SUCCESS",
+            "output": {
+                "l2a_rfl_netcdf_path": daac_nc_path,
+                "l2a_rfl_ummg_path:": daac_ummg_json_path
             }
         }
 

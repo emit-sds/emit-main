@@ -26,9 +26,7 @@ class Stream:
         # Declare these variables which will get populated later by tasks
         self.hosc_name = None
         self.ccsds_name = None
-
-        # Get config properties
-        self.config = Config(config_path).get_dictionary()
+        self.bad_name = None
 
         # Read metadata from db
         dm = DatabaseManager(config_path)
@@ -36,9 +34,11 @@ class Stream:
         self._initialize_metadata()
         self.__dict__.update(self.metadata)
 
+        # Get config properties
+        self.config = Config(config_path, self.start_time).get_dictionary()
+
         # Create base directories and add to list to create directories later
         self.dirs = []
-        # TODO: These don't all have to be class variables, do they?
         self.instrument_dir = os.path.join(self.config["local_store_dir"], self.config["instrument"])
         self.environment_dir = os.path.join(self.instrument_dir, self.config["environment"])
         self.data_dir = os.path.join(self.environment_dir, "data")
@@ -52,7 +52,9 @@ class Stream:
         self.raw_dir = os.path.join(self.date_dir, "raw")
         self.l0_dir = os.path.join(self.date_dir, "l0")
         self.l1a_dir = os.path.join(self.date_dir, "l1a")
-        self.dirs.extend([self.streams_dir, self.apid_dir, self.date_dir, self.raw_dir, self.l0_dir, self.l1a_dir])
+        self.dirs.extend([self.streams_dir, self.apid_dir, self.date_dir, self.raw_dir, self.l0_dir])
+        if self.apid != "bad":
+            self.dirs.extend([self.l1a_dir])
 
         if self.hosc_name:
             self.hosc_path = os.path.join(self.raw_dir, self.hosc_name)
@@ -62,6 +64,8 @@ class Stream:
                 self.frames_dir = os.path.join(
                     self.l1a_dir, self.ccsds_name.replace("l0_ccsds", "l1a_frames").replace(".bin", ""))
                 self.dirs.append(self.frames_dir)
+        if self.bad_name:
+            self.bad_path = os.path.join(self.raw_dir, self.bad_name)
 
         # Make directories if they don't exist
         from emit_main.workflow.workflow_manager import WorkflowManager

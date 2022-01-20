@@ -4,6 +4,7 @@ This code contains the Acquisition class that manages acquisitions and their met
 Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
+import datetime
 import glob
 import logging
 import os
@@ -25,17 +26,18 @@ class Acquisition:
         self.config_path = config_path
         self.acquisition_id = acquisition_id
 
-        # Get config properties
-        self.config = Config(config_path, acquisition_id).get_dictionary()
-
+        # Read metadata from db
         dm = DatabaseManager(config_path)
         self.metadata = dm.find_acquisition_by_id(self.acquisition_id)
         self._initialize_metadata()
         self.__dict__.update(self.metadata)
 
-        # Add UTC tzinfo property to start/stop datetime objects for printing
-        self.start_time = pytz.utc.localize(self.start_time)
-        self.stop_time = pytz.utc.localize(self.stop_time)
+        # Get config properties
+        self.config = Config(config_path, self.start_time).get_dictionary()
+
+        # Create start/stop time date objects with UTC tzinfo property for printing
+        self.start_time_with_tz = pytz.utc.localize(self.start_time)
+        self.stop_time_with_tz = pytz.utc.localize(self.stop_time)
 
         # Create base directories and add to list to create directories later
         self.dirs = []
@@ -45,16 +47,20 @@ class Acquisition:
         self.acquisitions_dir = os.path.join(self.data_dir, "acquisitions")
 
         # Check for instrument again based on filename
-        instrument_prefix = self.config["instrument"]
-        if self.acquisition_id.startswith("ang"):
-            instrument_prefix = "ang"
-        # Get date from acquisition string
-        self.date_str = self.acquisition_id[len(instrument_prefix):(8 + len(instrument_prefix))]
+        self.date_str = self.start_time.strftime("%Y%m%d")
         self.date_dir = os.path.join(self.acquisitions_dir, self.date_str)
         self.acquisition_id_dir = os.path.join(self.date_dir, self.acquisition_id)
         self.dirs.extend([self.acquisitions_dir, self.date_dir, self.acquisition_id_dir])
 
         self.__dict__.update(self._build_acquisition_paths())
+
+        # Build NetCDF path prefixes (these can't be fully built due to timestamp on the end of the filename
+        self.daac_l1brad_prefix = f"EMITL1B_RAD.0{self.config['processing_version']}_{self.acquisition_id[4:]}_" \
+            f"o{self.orbit}_s{self.scene}"
+        self.daac_l2arfl_prefix = f"EMITL2A_RFL.0{self.config['processing_version']}_{self.acquisition_id[4:]}_" \
+                                  f"o{self.orbit}_s{self.scene}"
+        self.daac_l2babun_prefix = f"EMITL2B_MIN.0{self.config['processing_version']}_{self.acquisition_id[4:]}_" \
+                                   f"o{self.orbit}_s{self.scene}"
 
         # Add sub-dirs
         self.frames_dir = self.raw_img_path.replace("_raw_", "_frames_").replace(".img", "")
@@ -66,6 +72,14 @@ class Acquisition:
         wm = WorkflowManager(config_path=config_path)
         for d in self.dirs:
             wm.makedirs(d)
+
+        # Build path for DAAC delivery on staging server
+        self.daac_staging_dir = os.path.join(self.config["daac_base_dir"], wm.config['environment'], "products",
+                                             self.start_time.strftime("%Y%m%d"))
+        self.daac_uri_base = f"https://{self.config['daac_server_external']}/emit/lpdaac/{wm.config['environment']}/" \
+            f"products/{self.start_time.strftime('%Y%m%d')}/"
+        self.daac_partial_dir = os.path.join(self.config["daac_base_dir"], wm.config['environment'],
+                                             "partial_transfers")
 
     def _initialize_metadata(self):
         # Insert some placeholder fields so that we don't get missing keys on updates
@@ -93,13 +107,10 @@ class Acquisition:
             },
             "l1b": {
                 "rdn": ["img", "hdr", "png", "kmz"],
-                "rdnort": ["img", "hdr"],
                 "loc": ["img", "hdr"],
-                "locort": ["img", "hdr"],
                 "obs": ["img", "hdr"],
                 "glt": ["img", "hdr"],
-                "att": ["nc"],
-                "geoqa": ["txt"]
+                "daac": ["nc", "json"]
             },
             "l2a": {
                 "rfl": ["img", "hdr"],
@@ -138,26 +149,3 @@ class Acquisition:
                     prod_path = os.path.join(self.acquisition_id_dir, level, prod_name)
                     paths[prod_key] = prod_path
         return paths
-
-    def has_complete_set_of_frames(self):
-        frames = [os.path.basename(frame) for frame in glob.glob(os.path.join(self.frames_dir, "*"))]
-        frames.sort()
-        # Check incrementing frame num
-        frame_nums = [int(frame.split("_")[1]) for frame in frames]
-        if frame_nums != list(range(frame_nums[0], frame_nums[0] + len(frame_nums))):
-            logger.warning("Set of frames is not sequential!")
-            return False
-        # Check that first frame has status 1 or 5
-        if frames[0].split("_")[3] not in ("1", "5"):
-            logger.warning("First frame in set does not begin with status 1 or 5!")
-            return False
-        # Check that all subsequent frames have status 0 or 4
-        for frame in frames[1:]:
-            if frame.split("_")[3] not in ("0", "4"):
-                logger.warning("One of the frames in the set (after the first) does not have status 0 or 4!")
-                return False
-        # Check that we have the expected number of frames
-        expected_num = int(frames[0].split("_")[2])
-        if len(frames) != expected_num:
-            logger.warning(f"Number of frames, {len(frames)}, does not match expected number, {expected_num}")
-        return True

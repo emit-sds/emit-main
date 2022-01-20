@@ -4,14 +4,14 @@ This code contains tasks for executing EMIT Level 0 PGEs and helper utilities.
 Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
-import csv
 import datetime
 import glob
+import json
 import logging
 import luigi
 import os
 
-from emit_main.workflow.stream_target import StreamTarget
+from emit_main.workflow.output_targets import StreamTarget
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_main.workflow.workflow_manager import WorkflowManager
 
@@ -33,7 +33,7 @@ class L0StripHOSC(SlurmJobTask):
     task_namespace = "emit"
 
     def requires(self):
-        logger.debug(self.task_family + " requires")
+        logger.debug(f"{self.task_family} requires: {self.stream_path}")
         wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
         if wm.stream is None:
             # Insert new stream in db
@@ -42,12 +42,12 @@ class L0StripHOSC(SlurmJobTask):
         return None
 
     def output(self):
-        logger.debug(self.task_family + " output")
+        logger.debug(f"{self.task_family} output: {self.stream_path}")
         wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
         return StreamTarget(stream=wm.stream, task_family=self.task_family)
 
     def work(self):
-        logger.debug(self.task_family + " work")
+        logger.debug(f"{self.task_family} work: {self.stream_path}")
 
         wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
         stream = wm.stream
@@ -84,13 +84,21 @@ class L0StripHOSC(SlurmJobTask):
         with open(tmp_report_path, "r") as f:
             for line in f.readlines():
                 if "Packet Count" in line:
-                    packet_count = int(line.split(" ")[-1])
+                    packet_count = int(line.rstrip("\n").split(" ")[-1])
                 if "Missing PSC Count" in line:
-                    missing_packets = int(line.split(" ")[-1])
+                    missing_packets = int(line.rstrip("\n").split(" ")[-1])
         miss_pkt_percent = missing_packets / packet_count
         if missing_packets / packet_count >= self.miss_pkt_thresh:
             raise RuntimeError(f"Missing {missing_packets} packets out of {packet_count} total is greater than the "
                                f"missing packet threshold of {self.miss_pkt_thresh}")
+
+        # TODO: Add check for "File Size Match" in PGE
+        # TODO: Replace start/stop with CCSDS start and stop
+        # Set up command to get CCSDS start/stop times
+        # get_start_stop_exe = os.path.join(pge.repo_dir, "get_ccsds_start_stop_times.py")
+        # start_stop_json = tmp_ccsds_path.replace(".bin", ".json")
+        # cmd_timing = ["python", get_start_stop_exe, tmp_ccsds_path, start_stop_json]
+        # pge.run(cmd_timing, tmp_dir=self.tmp_dir, env=env)
 
         # Get CCSDS start time and file name and report name
         tmp_ccsds_name = os.path.basename(tmp_ccsds_path)
@@ -155,11 +163,153 @@ class L0StripHOSC(SlurmJobTask):
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
-                "hosc_path": stream.hosc_path,
-                "ccsds_path": ccsds_path,
+                "raw_hosc_path": stream.hosc_path,
+                "l0_ccsds_path": ccsds_path,
             }
         }
         dm.insert_stream_log_entry(stream.hosc_name, log_entry)
+
+
+class L0IngestBAD(SlurmJobTask):
+    """
+    Ingests BAD STO files
+    """
+
+    config_path = luigi.Parameter()
+    stream_path = luigi.Parameter()
+    level = luigi.Parameter()
+    partition = luigi.Parameter()
+
+    task_namespace = "emit"
+
+    def requires(self):
+        logger.debug(f"{self.task_family} requires: {self.stream_path}")
+
+        return None
+
+    def output(self):
+        logger.debug(f"{self.task_family} output: {self.stream_path}")
+        wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
+        return StreamTarget(stream=wm.stream, task_family=self.task_family)
+
+    def work(self):
+        logger.debug(f"{self.task_family} work: {self.stream_path}")
+
+        # Insert BAD stream into DB
+        wm = WorkflowManager(config_path=self.config_path)
+        dm = wm.database_manager
+        dm.insert_bad_stream(os.path.basename(self.stream_path))
+        logger.debug(f"Inserted BAD stream file into DB using path {self.stream_path}")
+
+        # Get workflow manager again, now with stream_path
+        wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
+        stream = wm.stream
+        pge = wm.pges["emit-ios"]
+
+        # Generate CSV version of file
+        sto_to_csv_exe = os.path.join(pge.repo_dir, "emit", "bin", "emit_iss_sto_to_csv.py")
+        tmp_output_dir = os.path.join(self.tmp_dir, "output")
+        wm.makedirs(tmp_output_dir)
+        cmd = [sto_to_csv_exe, self.stream_path, "--outpath", tmp_output_dir]
+        env = os.environ.copy()
+        env["AIT_ROOT"] = pge.repo_dir
+        env["AIT_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "config.yaml")
+        env["AIT_ISS_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "sim.yaml")
+        pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
+
+        # Find orbits that touch this stream file and update them
+        orbits = dm.find_orbits_touching_date_range("start_time", stream.start_time, stream.stop_time) + \
+            dm.find_orbits_touching_date_range("stop_time", stream.start_time, stream.stop_time) + \
+            dm.find_orbits_encompassing_date_range(stream.start_time, stream.stop_time)
+        orbit_symlink_paths = []
+        # orbit_l1a_dirs = []
+        if len(orbits) > 0:
+            # Get unique orbit ids
+            orbit_ids = [o["orbit_id"] for o in orbits]
+            orbit_ids = list(set(orbit_ids))
+            # Update orbit DB to include associated bad paths and stream object to include associated orbits
+            for orbit_id in orbit_ids:
+                # Update stream metadata
+                if "associated_orbit_ids" in stream.metadata and stream.metadata["associated_orbit_ids"] is not None:
+                    if orbit_id not in stream.metadata["associated_orbit_ids"]:
+                        stream.metadata["associated_orbit_ids"].append(orbit_id)
+                else:
+                    stream.metadata["associated_orbit_ids"] = [orbit_id]
+                dm.update_stream_metadata(stream.bad_name,
+                                          {"associated_orbit_ids": stream.metadata["associated_orbit_ids"]})
+
+                # Update orbit metadata
+                wm_orbit = WorkflowManager(config_path=self.config_path, orbit_id=orbit_id)
+                orbit = wm_orbit.orbit
+                if "associated_bad_sto" in orbit.metadata and orbit.metadata["associated_bad_sto"] is not None:
+                    if stream.bad_path not in orbit.metadata["associated_bad_sto"]:
+                        orbit.metadata["associated_bad_sto"].append(stream.bad_path)
+                else:
+                    orbit.metadata["associated_bad_sto"] = [stream.bad_path]
+                dm.update_orbit_metadata(orbit_id, {"associated_bad_sto": orbit.metadata["associated_bad_sto"]})
+
+                # Save symlink paths to use after moving the file
+                orbit_symlink_paths.append(os.path.join(orbit.raw_dir, stream.bad_name))
+                # orbit_l1a_dirs.append(orbit.l1a_dir)
+
+        # TODO: Get start/stop from CSV file (which column(s) to use?)
+
+        # Move BAD file out of ingest folder
+        if "ingest" in self.stream_path:
+            wm.move(self.stream_path, stream.bad_path)
+
+        # Symlink to this file from the orbits' raw dirs
+        for symlink in orbit_symlink_paths:
+            wm.symlink(stream.bad_path, symlink)
+
+        # Copy CSV file to l0 dir
+        tmp_csv_path = os.path.join(tmp_output_dir, "iss_bad_data_joined.csv")
+        l0_bad_csv_path = os.path.join(stream.l0_dir, stream.bad_name.replace(".sto", ".csv"))
+        wm.copy(tmp_csv_path, l0_bad_csv_path)
+
+        # Symlink from the BAD l1a folder to the orbits l1a folders
+        # for dir in q:
+        #     orbit_id = os.path.basename(os.path.basename((dir)))
+        #     dir_symlink = os.path.join(stream.l1a_dir, f"orbit_{orbit_id}_l1a_b{stream.config['build_num']}_"
+        #     f"v{stream.config['processing_version']}")
+        #     wm.symlink(dir, dir_symlink)
+
+        # Update DB
+        creation_time_raw = datetime.datetime.fromtimestamp(os.path.getmtime(stream.bad_path), tz=datetime.timezone.utc)
+        creation_time_csv = datetime.datetime.fromtimestamp(os.path.getmtime(l0_bad_csv_path), tz=datetime.timezone.utc)
+        metadata = {
+            "products": {
+                "raw": {
+                    "bad_path": stream.bad_path,
+                    "created": creation_time_raw
+                },
+                "l0": {
+                    "bad_csv_path": l0_bad_csv_path,
+                    "created": creation_time_csv
+                }
+            }
+        }
+        dm = wm.database_manager
+        dm.update_stream_metadata(stream.bad_name, metadata)
+
+        log_entry = {
+            "task": self.task_family,
+            "pge_name": pge.repo_url,
+            "pge_version": pge.version_tag,
+            "pge_input_files": {
+                "ingested_bad_path": self.stream_path,
+            },
+            "pge_run_command": " ".join(cmd),
+            "documentation_version": "N/A",
+            "product_creation_time": creation_time_raw,
+            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
+            "completion_status": "SUCCESS",
+            "output": {
+                "raw_bad_path": stream.bad_path,
+                "l0_bad_csv_path": l0_bad_csv_path
+            }
+        }
+        dm.insert_stream_log_entry(stream.bad_name, log_entry)
 
 
 class L0ProcessPlanningProduct(SlurmJobTask):
@@ -168,6 +318,7 @@ class L0ProcessPlanningProduct(SlurmJobTask):
     """
 
     config_path = luigi.Parameter()
+    plan_prod_path = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
 
@@ -175,53 +326,130 @@ class L0ProcessPlanningProduct(SlurmJobTask):
 
     def requires(self):
 
-        logger.debug(self.task_family + " requires")
+        logger.debug(f"{self.task_family} requires: {self.plan_prod_path}")
         return None
 
     def output(self):
 
-        logger.debug(self.task_family + " output")
+        logger.debug(f"{self.task_family} output: {self.plan_prod_path}")
         return None
 
     def work(self):
 
-        logger.debug(self.task_family + " work")
+        logger.debug(f"{self.task_family} work: {self.plan_prod_path}")
         wm = WorkflowManager(config_path=self.config_path)
         dm = wm.database_manager
-        planning_prod_paths = glob.glob(os.path.join(wm.ingest_dir, "*csv"))
-        for planning_prod_path in planning_prod_paths:
-            with open(planning_prod_path, "r") as csvfile:
-                logger.debug(f"Processing planned observations from file {planning_prod_path}")
-                csvreader = csv.reader(csvfile)
-                header_row = next(csvreader)
-                for row in csvreader:
-                    # These times are already in UTC and will be stored in DB as UTC by default
-                    start_time = datetime.datetime.strptime(row[1], "%Y%m%dT%H%M%S")
-                    stop_time = datetime.datetime.strptime(row[2], "%Y%m%dT%H%M%S")
-                    acquisition_id = wm.config["instrument"] + start_time.strftime("%Y%m%dt%H%M%S")
-                    acq_meta = {
-                        "acquisition_id": acquisition_id,
+        pge = wm.pges["emit-main"]
+
+        horizon_start_time = None
+        with open(self.plan_prod_path, "r") as f:
+            events = json.load(f)
+            orbit_num = None
+            orbit_ids = []
+            dcids = []
+            for e in events:
+                # Check for starting orbit number
+                if e["name"].lower() == "planning horizon start":
+                    orbit_num = e["orbitId"]
+                    horizon_start_time = e["datetime"]
+
+                # Check for orbit object
+                if e["name"].lower() == "start orbit":
+                    # Raise error if we don't have a starting orbit number
+                    if orbit_num is None:
+                        raise RuntimeError(f"Planning product {self.plan_prod_path} is missing starting orbit number")
+
+                    # Construct orbit object
+                    orbit_id = str(orbit_num).zfill(5)
+                    start_time = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S")
+                    orbit_meta = {
+                        "orbit_id": orbit_id,
                         "build_num": wm.config["build_num"],
                         "processing_version": wm.config["processing_version"],
-                        "dcid": row[0],
-                        "start_time": start_time,
-                        "stop_time": stop_time,
-                        "orbit": row[3],
-                        "scene": row[4],
-                        "submode": row[5].lower()
+                        "start_time": start_time
                     }
 
-                    # TODO: Do lookup and update by DCID to prevent duplicates. Or look for duplicates and handle?
-                    if dm.find_acquisition_by_id(acquisition_id):
-                        dm.update_acquisition_metadata(acquisition_id, acq_meta)
-                        logger.debug(f"Updated acquisition in DB with {acq_meta}")
+                    # Insert or update orbit in DB
+                    if dm.find_orbit_by_id(orbit_id):
+                        dm.update_orbit_metadata(orbit_id, orbit_meta)
+                        logger.debug(f"Updated orbit in DB with {orbit_meta}")
                     else:
-                        dm.insert_acquisition(acq_meta)
-                        logger.debug(f"Inserted acquisition in DB with {acq_meta}")
-                    # Add processing log entry
-                    log_entry = {
-                        "task": self.task_family,
-                        "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
-                        "completion_status": "SUCCESS"
+                        dm.insert_orbit(orbit_meta)
+                        logger.debug(f"Inserted orbit in DB with {orbit_meta}")
+
+                    # Update the stop_time of the previous orbit in DB
+                    if orbit_num > 0:
+                        prev_orbit_id = str(orbit_num - 1).zfill(5)
+                        prev_orbit = dm.find_orbit_by_id(prev_orbit_id)
+                        if prev_orbit is None:
+                            raise RuntimeError(f"Unable to find previous orbit stop time while trying to update orbit "
+                                               f"{orbit_id}")
+                        prev_orbit["stop_time"] = start_time
+                        dm.update_orbit_metadata(prev_orbit_id, prev_orbit)
+
+                    # Keep track of orbit_ids for log entry
+                    orbit_ids.append(orbit_id)
+
+                    # Increment orbit_num to continue processing file
+                    orbit_num += 1
+
+                # Check for data collection (i.e. acquisition)
+                # TODO: Add "dark" in when its ready
+                if e["name"].lower() in ("science", "dark"):
+                    # Raise error if we don't have a starting orbit number
+                    if orbit_num is None:
+                        raise RuntimeError(f"Planning product {self.plan_prod_path} is missing starting orbit number")
+
+                    # Construct data collection metadata
+                    dcid = str(e["dcid"]).zfill(10)
+                    dc_meta = {
+                        "dcid": dcid,
+                        "build_num": wm.config["build_num"],
+                        "processing_version": wm.config["processing_version"],
+                        "planned_start_time": datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S"),
+                        "planned_stop_time": datetime.datetime.strptime(e["endDatetime"], "%Y-%m-%dT%H:%M:%S"),
+                        "orbit": str(e["orbit number"]).zfill(5),
+                        "scene": str(e["scene number"]).zfill(3),
+                        "submode": e["name"].lower(),
+                        "betaangle": e["betaangle"],
+                        "comments": e["comments"],
+                        "latboresightstart": e["latboresightstart"],
+                        "lonboresightstart": e["lonboresightstart"],
+                        "parameters": e["parameters"],
+                        "sza": e["sza"],
+                        "frames_status": ""
                     }
-                    dm.insert_acquisition_log_entry(acquisition_id, log_entry)
+
+                    # Insert or update data collection in DB
+                    if dm.find_data_collection_by_id(dcid):
+                        dm.update_data_collection_metadata(dcid, dc_meta)
+                        logger.debug(f"Updated data collection in DB with {dc_meta}")
+                    else:
+                        dm.insert_data_collection(dc_meta)
+                        logger.debug(f"Inserted data collection in DB with {dc_meta}")
+
+                    # Keep track of dcid for log entry
+                    dcids.append(dcid)
+
+            # Copy/move processed file to archive
+            target_pp_path = os.path.join(wm.planning_products_dir, os.path.basename(self.plan_prod_path))
+            wm.move(self.plan_prod_path, target_pp_path)
+
+            # Add processing log entry for orbits and data collections
+            log_entry = {
+                "task": self.task_family,
+                "pge_name": pge.repo_url,
+                "pge_version": pge.version_tag,
+                "pge_input_files": self.plan_prod_path,
+                "pge_run_command": "N/A - database updates only",
+                "documentation_version": "N/A",
+                "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
+                "completion_status": "SUCCESS",
+                "output": {
+                    "raw_planning_product_path": target_pp_path
+                }
+            }
+            for orbit_id in orbit_ids:
+                dm.insert_orbit_log_entry(orbit_id, log_entry)
+            for dcid in dcids:
+                dm.insert_data_collection_log_entry(dcid, log_entry)

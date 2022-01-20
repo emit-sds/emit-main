@@ -19,6 +19,7 @@ from emit_main.database.database_manager import DatabaseManager
 from emit_main.config.config import Config
 from emit_main.workflow.acquisition import Acquisition
 from emit_main.workflow.data_collection import DataCollection
+from emit_main.workflow.orbit import Orbit
 from emit_main.workflow.pge import PGE
 from emit_main.workflow.stream import Stream
 
@@ -27,7 +28,7 @@ logger = logging.getLogger("emit-main")
 
 class WorkflowManager:
 
-    def __init__(self, config_path, acquisition_id=None, stream_path=None, dcid=None):
+    def __init__(self, config_path, acquisition_id=None, stream_path=None, dcid=None, orbit_id=None):
         """
         :param config_path: Path to config file containing environment settings
         :param acquisition_id: The name of the acquisition with timestamp (eg. "emit20200519t140035")
@@ -37,11 +38,44 @@ class WorkflowManager:
         self.acquisition_id = acquisition_id
         self.stream_path = stream_path
         self.dcid = dcid
-
-        # Get config properties
-        self.config = Config(config_path, acquisition_id=acquisition_id).get_dictionary()
+        self.orbit_id = orbit_id
 
         self.database_manager = DatabaseManager(config_path)
+
+        # Initialize acquisition, stream, or data collection objects along with config dictionary
+        self.config = None
+        # If we have an acquisition id and acquisition exists in db, initialize acquisition
+        if self.acquisition_id and self.database_manager.find_acquisition_by_id(self.acquisition_id):
+            self.acquisition = Acquisition(config_path, self.acquisition_id)
+            self.config = Config(config_path, self.acquisition.start_time).get_dictionary()
+        else:
+            self.acquisition = None
+
+        # If we have a stream path and stream exists in db, initialize a stream object
+        if self.stream_path and self.database_manager.find_stream_by_name(os.path.basename(stream_path)):
+            self.stream = Stream(self.config_path, self.stream_path)
+            self.config = Config(config_path, self.stream.start_time).get_dictionary()
+        else:
+            self.stream = None
+
+        # If we have a DCID and the data collection exists in db, initialize data collection
+        if self.dcid and self.database_manager.find_data_collection_by_id(self.dcid):
+            self.data_collection = DataCollection(self.config_path, self.dcid)
+            self.config = Config(config_path, self.data_collection.start_time).get_dictionary()
+        else:
+            self.data_collection = None
+
+        # If we have an orbit_id and the orbit exists in db, initialize orbit
+        if self.orbit_id and self.database_manager.find_orbit_by_id(self.orbit_id):
+            self.orbit = Orbit(self.config_path, self.orbit_id)
+            self.config = Config(config_path, self.orbit.start_time).get_dictionary()
+        else:
+            self.orbit = None
+
+        # If we made it this far and haven't populated config, then get the config properties with no timestamp
+        # specific fields
+        if self.config is None:
+            self.config = Config(config_path).get_dictionary()
 
         # Create base directories and add to list to create directories later
         dirs = []
@@ -59,31 +93,15 @@ class WorkflowManager:
         self.scratch_error_dir = os.path.join(self.config["local_scratch_dir"], self.config["instrument"],
                                               self.config["environment"], "error")
         self.local_tmp_dir = os.path.join("/tmp", self.config["instrument"], self.config["environment"])
+        self.planning_products_dir = os.path.join(self.data_dir, "planning_products")
+
         dirs.extend([self.instrument_dir, self.environment_dir, self.data_dir, self.ingest_dir,
                      self.ingest_duplicates_dir, self.ingest_errors_dir, self.logs_dir, self.repos_dir,
-                     self.resources_dir, self.scratch_tmp_dir, self.scratch_error_dir])
+                     self.resources_dir, self.scratch_tmp_dir, self.scratch_error_dir, self.planning_products_dir])
 
         # Make directories if they don't exist
         for d in dirs:
             self.makedirs(d)
-
-        # If we have an acquisition id and acquisition exists in db, initialize acquisition
-        if self.acquisition_id and self.database_manager.find_acquisition_by_id(self.acquisition_id):
-            self.acquisition = Acquisition(config_path, self.acquisition_id)
-        else:
-            self.acquisition = None
-
-        # If we have a stream path and stream exists in db, initialize a stream object
-        if self.stream_path and self.database_manager.find_stream_by_name(os.path.basename(stream_path)):
-            self.stream = Stream(self.config_path, self.stream_path)
-        else:
-            self.stream = None
-
-        # If we have a DCID and the data collection exists in db, initialize data collection
-        if self.dcid and self.database_manager.find_data_collection_by_id(self.dcid):
-            self.data_collection = DataCollection(self.config_path, self.dcid)
-        else:
-            self.data_collection = None
 
         # Create repository paths and PGEs based on build config
         self.pges = {}
@@ -146,8 +164,11 @@ class WorkflowManager:
             s.login(self.config["email_user"], self.config["email_password"])
             s.sendmail(sender, recipient_list, msg.as_string())
             s.quit()
-        except socket.timeout:
-            logger.error(f"Timeout encountered while trying to send failure notification for task: {task}")
+        # except socket.timeout:
+        #     logger.error(f"Timeout encountered while trying to send failure notification for task: {task}")
+        except Exception as e:
+            logger.error(f"An exception occurred while trying to send failure notification for task: {task}")
+            logger.error(f"Exception: {e}")
 
     def change_group_ownership(self, path):
         # Change group ownership in shared environments
@@ -180,5 +201,11 @@ class WorkflowManager:
         self.change_group_ownership(dst)
 
     def symlink(self, source, link_name):
-        os.symlink(source, link_name)
-        self.change_group_ownership(link_name)
+        if not os.path.exists(link_name):
+            os.symlink(source, link_name)
+            self.change_group_ownership(link_name)
+
+    # Use this print function inside of luigi work() functions in order to write to the slurm job.out file
+    def print(self, module, msg, level="INFO"):
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        print(f"{timestamp} {level.upper()} [{module.split('.')[-1]}]: {msg}")
