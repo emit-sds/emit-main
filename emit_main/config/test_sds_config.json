@@ -33,11 +33,13 @@
   },
 
   "build_config": {
-    "extended_build_num": "000400",
+    "extended_build_num": "000500",
     "conda_base_dir": "/shared/anaconda3/"
   },
 
   "daac_config": {
+    "aws_cli_exe": "/shared/aws-cli/v2/current/bin/aws",
+    "aws_profile": "emit-sqs",
     "cnm_version": "1.4",
     "daac_submission_url": "https://sqs.us-west-2.amazonaws.com/560130786230/lp-uat-ingest-forward-processing",
     "daac_provider": "JPL_EMIT_SDS",
@@ -57,8 +59,6 @@
   },
 
   "ancillary_paths": {
-    "decompression_constants_path": "repos/emit-sds-l1a/decompression/constants.txt",
-    "decompression_init_data_path": "repos/emit-sds-l1a/decompression/init_data.bin",
     "dem_path": "/shared/dem/TBD",
     "isofit_wavelength_path": "repos/emit-sds-l2a/surface_v1/release_1_20170320_ang20170228_wavelength_fit.txt",
     "isofit_surface_path": "repos/emit-sds-l2a/surface_v1/release_1_basic_surface.mat",
@@ -66,6 +66,8 @@
     "isofit_sixs_dir": "/shared/sixs",
     "specpr_path": "/shared/specpr",
     "tetracorder_path": "/shared/tetracorder5.26",
+    "tetracorder_library_dir": "/beegfs/store/tetracorder/official_libraries",
+    "tetracorder_setup_cmd_path": "/shared/tetracorder5.26a.cmds/cmd-setup-tetrun",
     "versions": [
       {
         "version_date_range": ["2018-01-01T00:00:00", "2019-01-01T00:00:00"],
