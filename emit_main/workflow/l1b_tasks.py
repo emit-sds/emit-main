@@ -242,23 +242,23 @@ class L1BFormat(SlurmJobTask):
                acq.glt_img_path,  "--log_file", tmp_log_path]
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
+
         utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
         daac_nc_path = os.path.join(acq.l1b_data_dir, f"{acq.daac_l1brad_prefix}_{utc_now.strftime('%Y%m%dt%H%M%S')}.nc")
         daac_ummg_json_path = daac_nc_path.replace(".nc", "_ummg.json")
-        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(daac_nc_path), tz=datetime.timezone.utc)
-
-        granule_name = os.path.splitext(os.path.basename(daac_nc_path))[0]
-        ummg = daac_converter.initialize_ummg(granule_name, nc_creation_time, "EMITL1B_RAD")
-        ummg = daac_converter.add_data_file_ummg(ummg, tmp_daac_nc_path)
-        #ummg = daac_converter.add_boundary_ummg(ummg, boundary_points_list)
-        daac_converter.dump_json(ummg, daac_ummg_json_path)
 
         # Copy and rename output files back to /store
         # EMITL1B_RAD.vVV_yyyymmddthhmmss_oOOOOO_sSSS_yyyymmddthhmmss.nc
         log_path = daac_nc_path.replace(".nc", "_pge.log")
         wm.copy(tmp_daac_nc_path, daac_nc_path)
-        wm.copy(tmp_ummg_json_path, daac_ummg_json_path)
         wm.copy(tmp_log_path, log_path)
+
+        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(daac_nc_path), tz=datetime.timezone.utc)
+        granule_name = os.path.splitext(os.path.basename(daac_nc_path))[0]
+        ummg = daac_converter.initialize_ummg(granule_name, nc_creation_time.strftime("%Y-%m-%dT%H:%M:%S%z"), "EMITL1B_RAD")
+        ummg = daac_converter.add_data_file_ummg(ummg, daac_nc_path)
+        #ummg = daac_converter.add_boundary_ummg(ummg, boundary_points_list)
+        daac_converter.dump_json(ummg,daac_ummg_json_path)
 
         # PGE writes metadata to db
         dm = wm.database_manager
