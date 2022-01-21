@@ -18,7 +18,8 @@ from emit_main.workflow.acquisition import Acquisition
 from emit_main.workflow.output_targets import AcquisitionTarget
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.slurm import SlurmJobTask
-from emit_utils.daac_converter import calc_checksum
+from emit_utils import daac_converter
+from emit_utils.file_checks import check_daynight
 
 
 logger = logging.getLogger("emit-main")
@@ -246,7 +247,6 @@ class L1BFormat(SlurmJobTask):
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
-
         pge = wm.pges["emit-sds-l1b"]
 
         output_generator_exe = os.path.join(pge.repo_dir, "output_conversion.py")
@@ -255,24 +255,30 @@ class L1BFormat(SlurmJobTask):
         tmp_daac_nc_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l1b_rdn.nc")
         tmp_ummg_json_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l1b_rdn_ummg.json")
         tmp_log_path = os.path.join(self.local_tmp_dir, "output_conversion_pge.log")
-
         cmd = ["python", output_generator_exe, tmp_daac_nc_path, acq.rdn_img_path, acq.obs_img_path, acq.loc_img_path,
-               acq.glt_img_path, "--ummg_file", tmp_ummg_json_path, "--log_file", tmp_log_path]
+               acq.glt_img_path,  "--log_file", tmp_log_path]
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
-        # Copy and rename output files back to /store
-        # EMITL1B_RAD.vVV_yyyymmddthhmmss_oOOOOO_sSSS_yyyymmddthhmmss.nc
+
         utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
         daac_nc_path = os.path.join(acq.l1b_data_dir, f"{acq.daac_l1brad_prefix}_{utc_now.strftime('%Y%m%dt%H%M%S')}.nc")
         daac_ummg_json_path = daac_nc_path.replace(".nc", "_ummg.json")
+
+        # Copy and rename output files back to /store
+        # EMITL1B_RAD.vVV_yyyymmddthhmmss_oOOOOO_sSSS_yyyymmddthhmmss.nc
         log_path = daac_nc_path.replace(".nc", "_pge.log")
         wm.copy(tmp_daac_nc_path, daac_nc_path)
-        wm.copy(tmp_ummg_json_path, daac_ummg_json_path)
         wm.copy(tmp_log_path, log_path)
+
+        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(daac_nc_path), tz=datetime.timezone.utc)
+        granule_name = os.path.splitext(os.path.basename(daac_nc_path))[0]
+        ummg = daac_converter.initialize_ummg(granule_name, nc_creation_time.strftime("%Y-%m-%dT%H:%M:%S%z"), "EMITL1B_RAD")
+        ummg = daac_converter.add_data_file_ummg(ummg, daac_nc_path)
+        #ummg = daac_converter.add_boundary_ummg(ummg, boundary_points_list)
+        daac_converter.dump_json(ummg,daac_ummg_json_path)
 
         # PGE writes metadata to db
         dm = wm.database_manager
-        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(daac_nc_path), tz=datetime.timezone.utc)
         product_dict_netcdf = {
             "netcdf_path": daac_nc_path,
             "created": nc_creation_time
@@ -382,7 +388,7 @@ class L1BDeliver(SlurmJobTask):
                         "type": "data",
                         "size": os.path.getsize(daac_nc_path),
                         "checksumType": "sha512",
-                        "checksum": calc_checksum(daac_nc_path, "sha512")
+                        "checksum": daac_converter.calc_checksum(daac_nc_path, "sha512")
                     },
                     {
                         "name": os.path.basename(daac_ummg_json_path),
@@ -390,7 +396,7 @@ class L1BDeliver(SlurmJobTask):
                         "type": "metadata",
                         "size": os.path.getsize(daac_ummg_json_path),
                         "checksumType": "sha512",
-                        "checksum": calc_checksum(daac_ummg_json_path, "sha512")
+                        "checksum": daac_converter.calc_checksum(daac_ummg_json_path, "sha512")
                     }
                 ]
             }

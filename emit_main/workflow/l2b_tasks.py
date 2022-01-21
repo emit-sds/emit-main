@@ -18,6 +18,7 @@ from emit_main.workflow.l1b_tasks import L1BGeolocate
 from emit_main.workflow.l2a_tasks import L2AMask, L2AReflectance
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_utils.file_checks import envi_header
+from emit_utils import daac_converter
 
 logger = logging.getLogger("emit-main")
 
@@ -223,12 +224,17 @@ class L2BFormat(SlurmJobTask):
         daac_ummg_json_path = daac_nc_path.replace(".nc", "_ummg.json")
         log_path = daac_nc_path.replace(".nc", "_pge.log")
         wm.copy(tmp_daac_nc_path, daac_nc_path)
-        wm.copy(tmp_ummg_json_path, daac_ummg_json_path)
         wm.copy(tmp_log_path, log_path)
+
+        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(daac_nc_path), tz=datetime.timezone.utc)
+        granule_name = os.path.splitext(os.path.basename(daac_nc_path))[0]
+        ummg = daac_converter.initialize_ummg(granule_name, nc_creation_time.strftime("%Y-%m-%dT%H:%M:%S%z"), "EMITL2B_ABUN")
+        ummg = daac_converter.add_data_file_ummg(ummg, daac_nc_path)
+        #ummg = daac_converter.add_boundary_ummg(ummg, boundary_points_list)
+        daac_converter.dump_json(ummg, daac_ummg_json_path)
 
         # PGE writes metadata to db
         dm = wm.database_manager
-        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(daac_nc_path), tz=datetime.timezone.utc)
         product_dict_netcdf = {
             "netcdf_path": daac_nc_path,
             "created": nc_creation_time
