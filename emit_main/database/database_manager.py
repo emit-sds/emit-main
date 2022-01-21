@@ -37,6 +37,15 @@ class DatabaseManager:
         acquisitions_coll = self.db.acquisitions
         return acquisitions_coll.find_one({"dcid": dcid, "build_num": self.config["build_num"]})
 
+    def find_acquisitions_touching_date_range(self, submode, field, start, stop, sort=1):
+        acquisitions_coll = self.db.acquisitions
+        query = {
+            "submode": submode,
+            field: {"$gte": start, "$lte": stop},
+            "build_num": self.config["build_num"]
+        }
+        return list(acquisitions_coll.find(query).sort(field, sort))
+
     def insert_acquisition(self, metadata):
         if self.find_acquisition_by_id(metadata["acquisition_id"]) is None:
             utc_now = datetime.datetime.now(tz=datetime.timezone.utc)

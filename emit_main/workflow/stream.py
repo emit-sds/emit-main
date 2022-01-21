@@ -52,9 +52,9 @@ class Stream:
         self.raw_dir = os.path.join(self.date_dir, "raw")
         self.l0_dir = os.path.join(self.date_dir, "l0")
         self.l1a_dir = os.path.join(self.date_dir, "l1a")
-        self.dirs.extend([self.streams_dir, self.apid_dir, self.date_dir, self.raw_dir])
+        self.dirs.extend([self.streams_dir, self.apid_dir, self.date_dir, self.raw_dir, self.l0_dir])
         if self.apid != "bad":
-            self.dirs.extend([self.l0_dir, self.l1a_dir])
+            self.dirs.extend([self.l1a_dir])
 
         if self.hosc_name:
             self.hosc_path = os.path.join(self.raw_dir, self.hosc_name)
