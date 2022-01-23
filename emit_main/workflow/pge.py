@@ -179,7 +179,10 @@ class PGE:
             cwd_args = ["--cwd", cwd]
         if env is None:
             env = os.environ.copy()
-        conda_run_cmd = " ".join([self.conda_exe, "run", "-n", self.conda_env_name] + cwd_args + cmd)
+        if self.conda_env_name.startswith("/"):
+            conda_run_cmd = " ".join([self.conda_exe, "run", "-p", self.conda_env_name] + cwd_args + cmd)
+        else:
+            conda_run_cmd = " ".join([self.conda_exe, "run", "-n", self.conda_env_name] + cwd_args + cmd)
         logger.info("Running command: %s" % conda_run_cmd)
         with open(os.path.join(tmp_dir, "cmd.txt"), "a") as f:
             f.write("Command (using \"tmp\" directory):\n")

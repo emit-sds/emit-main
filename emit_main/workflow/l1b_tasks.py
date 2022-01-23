@@ -15,7 +15,7 @@ import luigi
 import spectral.io.envi as envi
 
 from emit_main.workflow.acquisition import Acquisition
-from emit_main.workflow.output_targets import AcquisitionTarget
+from emit_main.workflow.output_targets import AcquisitionTarget, OrbitTarget
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_utils import daac_converter
@@ -166,7 +166,6 @@ class L1BCalibrate(SlurmJobTask):
         dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
 
 
-# TODO: Full implementation TBD
 class L1BGeolocate(SlurmJobTask):
     """
     Performs geolocation using BAD telemetry and counter-OS time pair file
@@ -174,7 +173,7 @@ class L1BGeolocate(SlurmJobTask):
     """
 
     config_path = luigi.Parameter()
-    acquisition_id = luigi.Parameter()
+    orbit_id = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
 
@@ -183,35 +182,42 @@ class L1BGeolocate(SlurmJobTask):
     def requires(self):
 
         logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
-        return L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
-                            partition=self.partition)
+        return None
 
     def output(self):
 
         logger.debug(f"{self.task_family} output: {self.acquisition_id}")
-        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return AcquisitionTarget(acquisition=acq, task_family=self.task_family)
+        # wm = WorkflowManager(config_path=self.config_path, orbit_id=self.orbit_id)
+        # return OrbitTarget(orbit=wm.orbit, task_family=self.task_family)
+        return None
 
     def work(self):
 
         logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        acq = wm.acquisition
-        pge = wm.pges["emit-sds-l1b"]
+        orbit = wm.orbit
 
-        cmd = ["touch", acq.loc_img_path]
-        pge.run(cmd, tmp_dir=self.tmp_dir)
-        cmd = ["touch", acq.loc_hdr_path]
-        pge.run(cmd, tmp_dir=self.tmp_dir)
-        cmd = ["touch", acq.obs_img_path]
-        pge.run(cmd, tmp_dir=self.tmp_dir)
-        cmd = ["touch", acq.obs_hdr_path]
-        pge.run(cmd, tmp_dir=self.tmp_dir)
-        cmd = ["touch", acq.glt_img_path]
-        pge.run(cmd, tmp_dir=self.tmp_dir)
-        cmd = ["touch", acq.glt_hdr_path]
-        pge.run(cmd, tmp_dir=self.tmp_dir)
+        # Build run command
+        pge = wm.pges["emit-sds-l1b-geo"]
+        basedir = "/store/smyth/emit-sds-l1b-geo-install"
+        l1b_geo_pge_exe = os.path.join(basedir, "install", "l1b_geo_pge")
+        workdir = os.path.join(self.local_tmp_dir, "output")
+        emit_test_data = "/store/shared/emit-test-data/latest"
+        l1b_osp_dir = os.path.join(emit_test_data, "l1_osp_dir")
+        env = os.environ.copy()
+        env["basedir"] = basedir
+        env["workdir"] = workdir
+        env["emit_test_data"] = emit_test_data
+        cmd = [l1b_geo_pge_exe, workdir, l1b_osp_dir,
+               f"{emit_test_data}/*o80000_l1a_att*.nc",
+               f"{emit_test_data}/*o80000_s001_l1a_line_time*.nc",
+               f"{emit_test_data}/*o80000_s001_l1b_rdn*.img",
+               f"{emit_test_data}/*o80000_s002_l1a_line_time*.nc",
+               f"{emit_test_data}/*o80000_s002_l1b_rdn*.img",
+               f"{emit_test_data}/*o80000_s003_l1a_line_time*.nc",
+               f"{emit_test_data}/*o80000_s003_l1b_rdn*.img"]
+        pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
 
 class L1BFormat(SlurmJobTask):
