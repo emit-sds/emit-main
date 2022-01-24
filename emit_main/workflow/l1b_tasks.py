@@ -212,10 +212,12 @@ class L1BGeolocate(SlurmJobTask):
         emit_test_data = "/store/shared/emit-test-data/latest"
         l1b_osp_dir = os.path.join(emit_test_data, "l1_osp_dir")
         l1b_config = {
-            [
-                {"radiance_file": "",
-                 "timestamps_file": ""}
-            ]
+            "attitude_ephemeris_file": "",
+            "radiance_timestamp_pairs":
+                [
+                    {"radiance_file": "",
+                     "timestamps_file": ""}
+                ]
         }
         cmd = [l1b_geo_pge_exe, workdir, l1b_osp_dir,
                f"{emit_test_data}/*o80000_l1a_att*.nc",
