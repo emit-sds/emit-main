@@ -209,7 +209,7 @@ class L1BGeolocate(SlurmJobTask):
             "timestamp_radiance_pairs": []
         }
         for acq in acquisitions_in_orbit:
-            if acq.submode == "science":
+            if acq["submode"] == "science":
                 try:
                     rdn_img_path = acq["products"]["l1b"]["rdn"]["img_path"]
                 except KeyError:
