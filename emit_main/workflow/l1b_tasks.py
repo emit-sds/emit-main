@@ -211,14 +211,27 @@ class L1BGeolocate(SlurmJobTask):
         tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
         emit_test_data = "/store/shared/emit-test-data/latest"
         l1b_osp_dir = wm.config["l1b_geo_osp_dir"]
-        l1b_config = {
-            "attitude_ephemeris_file": "",
-            "radiance_timestamp_pairs":
+        input_files = {
+            "attitude_ephemeris_file": f"{emit_test_data}/*o80000_l1a_att*.nc",
+            "timestamp_radiance_pairs":
                 [
-                    {"radiance_file": "",
-                     "timestamps_file": ""}
+                    {
+                        "timestamps_file": f"{emit_test_data}/*o80000_s001_l1a_line_time*.nc",
+                        "radiance_file": f"{emit_test_data}/*o80000_s001_l1b_rdn*.img"
+                    },
+                    {
+                        "timestamps_file": f"{emit_test_data}/*o80000_s002_l1a_line_time*.nc",
+                        "radiance_file": f"{emit_test_data}/*o80000_s002_l1b_rdn*.img"
+                    },
+                    {
+                        "timestamps_file": f"{emit_test_data}/*o80000_s003_l1a_line_time*.nc",
+                        "radiance_file": f"{emit_test_data}/*o80000_s003_l1b_rdn*.img"
+                    }
                 ]
         }
+        tmp_input_files_path = os.path.join(tmp_output_dir, "l1b_geo_input_files.json")
+        with open(tmp_input_files_path, "w") as f:
+            f.write(json.dumps(input_files, indent=4))
         cmd = [l1b_geo_pge_exe, tmp_output_dir, l1b_osp_dir,
                f"{emit_test_data}/*o80000_l1a_att*.nc",
                f"{emit_test_data}/*o80000_s001_l1a_line_time*.nc",
