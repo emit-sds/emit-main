@@ -209,6 +209,7 @@ class L1BGeolocate(SlurmJobTask):
         l1b_geo_install_dir = wm.config["l1b_geo_install_dir"]
         l1b_geo_pge_exe = os.path.join(l1b_geo_install_dir, "install", "l1b_geo_pge")
         tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
+        wm.makedirs(tmp_output_dir)
         emit_test_data = "/store/shared/emit-test-data/latest"
         l1b_osp_dir = wm.config["l1b_geo_osp_dir"]
         input_files = {
