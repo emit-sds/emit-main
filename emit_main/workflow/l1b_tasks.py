@@ -206,11 +206,11 @@ class L1BGeolocate(SlurmJobTask):
 
         # Build run command
         pge = wm.pges["emit-sds-l1b-geo"]
-        basedir = "/store/smyth/emit-sds-l1b-geo-install"
-        l1b_geo_pge_exe = os.path.join(basedir, "install", "l1b_geo_pge")
-        workdir = os.path.join(self.local_tmp_dir, "output")
+        l1b_geo_install_dir = wm.config["l1b_geo_install_dir"]
+        l1b_geo_pge_exe = os.path.join(l1b_geo_install_dir, "install", "l1b_geo_pge")
+        tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
         emit_test_data = "/store/shared/emit-test-data/latest"
-        l1b_osp_dir = os.path.join(emit_test_data, "l1_osp_dir")
+        l1b_osp_dir = wm.config["l1b_geo_osp_dir"]
         l1b_config = {
             "attitude_ephemeris_file": "",
             "radiance_timestamp_pairs":
@@ -219,7 +219,7 @@ class L1BGeolocate(SlurmJobTask):
                      "timestamps_file": ""}
                 ]
         }
-        cmd = [l1b_geo_pge_exe, workdir, l1b_osp_dir,
+        cmd = [l1b_geo_pge_exe, tmp_output_dir, l1b_osp_dir,
                f"{emit_test_data}/*o80000_l1a_att*.nc",
                f"{emit_test_data}/*o80000_s001_l1a_line_time*.nc",
                f"{emit_test_data}/*o80000_s001_l1b_rdn*.img",
