@@ -216,7 +216,7 @@ class L1BGeolocate(SlurmJobTask):
                     wm.print(__name__, f"Could not find a radiance image path for {acq['acquisition_id']} in DB.")
                     continue
                 file_pair = {
-                    "timestamps_file": rdn_img_path.replace(".img", "_line_timestamps.txt"),
+                    "timestamps_file": rdn_img_path.replace("_l1b_", "_l1a_").replace(".img", "_line_timestamps.txt"),
                     "radiance_file": rdn_img_path
                 }
                 input_files["timestamp_radiance_pairs"].append(file_pair)
