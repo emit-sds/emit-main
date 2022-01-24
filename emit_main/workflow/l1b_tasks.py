@@ -195,14 +195,31 @@ class L1BGeolocate(SlurmJobTask):
 
         logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
-        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        wm = WorkflowManager(config_path=self.config_path, orbit_id=self.orbit_id)
         orbit = wm.orbit
+        dm = wm.database_manager
 
-        # TODO: Get attitude/ephemeris file
+        # TODO: Check that I have all the acquisition radiance files, or just do that before calling in the monitor?
+        # Get acquisitions in orbit (only science, not dark) - radiance and line timestamps
+        acquisitions_in_orbit = dm.find_acquisitions_by_orbit_id(orbit.orbit_id)
 
-        # TODO: Get acquisitions in orbit (only science, not dark) - radiance and line timestamps
-
-        # TODO: What is osp dir? Get from resources directory
+        # Build input_files dictionary
+        input_files = {
+            "attitude_ephemeris_file": orbit.uncorr_att_eph_path,
+            "timestamp_radiance_pairs": []
+        }
+        for acq in acquisitions_in_orbit:
+            if acq.submode == "science":
+                try:
+                    rdn_img_path = acq["products"]["l1b"]["rdn"]["img_path"]
+                except KeyError:
+                    wm.print(__name__, f"Could not find a radiance image path for {acq['acquisition_id']} in DB.")
+                    continue
+                file_pair = {
+                    "timestamps_file": rdn_img_path.replace(".img", "_line_timestamps.txt"),
+                    "radiance_file": rdn_img_path
+                }
+                input_files["timestamp_radiance_pairs"].append(file_pair)
 
         # Build run command
         pge = wm.pges["emit-sds-l1b-geo"]
@@ -212,24 +229,7 @@ class L1BGeolocate(SlurmJobTask):
         wm.makedirs(tmp_output_dir)
         emit_test_data = "/store/shared/emit-test-data/latest"
         l1b_osp_dir = wm.config["l1b_geo_osp_dir"]
-        input_files = {
-            "attitude_ephemeris_file": f"{emit_test_data}/*o80000_l1a_att*.nc",
-            "timestamp_radiance_pairs":
-                [
-                    {
-                        "timestamps_file": f"{emit_test_data}/*o80000_s001_l1a_line_time*.nc",
-                        "radiance_file": f"{emit_test_data}/*o80000_s001_l1b_rdn*.img"
-                    },
-                    {
-                        "timestamps_file": f"{emit_test_data}/*o80000_s002_l1a_line_time*.nc",
-                        "radiance_file": f"{emit_test_data}/*o80000_s002_l1b_rdn*.img"
-                    },
-                    {
-                        "timestamps_file": f"{emit_test_data}/*o80000_s003_l1a_line_time*.nc",
-                        "radiance_file": f"{emit_test_data}/*o80000_s003_l1b_rdn*.img"
-                    }
-                ]
-        }
+
         tmp_input_files_path = os.path.join(tmp_output_dir, "l1b_geo_input_files.json")
         with open(tmp_input_files_path, "w") as f:
             f.write(json.dumps(input_files, indent=4))
