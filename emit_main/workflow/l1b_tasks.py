@@ -198,6 +198,12 @@ class L1BGeolocate(SlurmJobTask):
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         orbit = wm.orbit
 
+        # TODO: Get attitude/ephemeris file
+
+        # TODO: Get acquisitions in orbit (only science, not dark) - radiance and line timestamps
+
+        # TODO: What is osp dir? Get from resources directory
+
         # Build run command
         pge = wm.pges["emit-sds-l1b-geo"]
         basedir = "/store/smyth/emit-sds-l1b-geo-install"
@@ -205,10 +211,12 @@ class L1BGeolocate(SlurmJobTask):
         workdir = os.path.join(self.local_tmp_dir, "output")
         emit_test_data = "/store/shared/emit-test-data/latest"
         l1b_osp_dir = os.path.join(emit_test_data, "l1_osp_dir")
-        env = os.environ.copy()
-        env["basedir"] = basedir
-        env["workdir"] = workdir
-        env["emit_test_data"] = emit_test_data
+        l1b_config = {
+            [
+                {"radiance_file": "",
+                 "timestamps_file": ""}
+            ]
+        }
         cmd = [l1b_geo_pge_exe, workdir, l1b_osp_dir,
                f"{emit_test_data}/*o80000_l1a_att*.nc",
                f"{emit_test_data}/*o80000_s001_l1a_line_time*.nc",
@@ -217,7 +225,9 @@ class L1BGeolocate(SlurmJobTask):
                f"{emit_test_data}/*o80000_s002_l1b_rdn*.img",
                f"{emit_test_data}/*o80000_s003_l1a_line_time*.nc",
                f"{emit_test_data}/*o80000_s003_l1b_rdn*.img"]
-        pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
+        pge.run(cmd, tmp_dir=self.tmp_dir)
+
+        # TODO: Copy back files and update DB
 
 
 class L1BFormat(SlurmJobTask):

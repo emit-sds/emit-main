@@ -108,7 +108,9 @@ class WorkflowManager:
         for repo in self.config["repositories"]:
             conda_env = None
             if "conda_env" in repo and len(repo["conda_env"]) > 0:
-                if self.config["environment"] in ("test", "ops"):
+                if repo["conda_env"].startswith("/"):
+                    conda_env = repo["conda_env"]
+                elif self.config["environment"] in ("test", "ops"):
                     conda_env = repo["conda_env"] + "-" + self.config["environment"]
                 else:
                     conda_env = repo["conda_env"] + "-dev"

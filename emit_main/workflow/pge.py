@@ -180,16 +180,18 @@ class PGE:
         if env is None:
             env = os.environ.copy()
         if self.conda_env_name.startswith("/"):
-            conda_run_cmd = " ".join([self.conda_exe, "run", "-p", self.conda_env_name] + cwd_args + cmd)
+            # If we're using a full-path conda env, assume the PGE takes care of conda initialization (l1b-geo)
+            run_cmd = " ".join(cmd)
         else:
-            conda_run_cmd = " ".join([self.conda_exe, "run", "-n", self.conda_env_name] + cwd_args + cmd)
-        logger.info("Running command: %s" % conda_run_cmd)
+            # Otherwise, use conda run syntax
+            run_cmd = " ".join([self.conda_exe, "run", "-n", self.conda_env_name] + cwd_args + cmd)
+        logger.info("Running command: %s" % run_cmd)
         with open(os.path.join(tmp_dir, "cmd.txt"), "a") as f:
             f.write("Command (using \"tmp\" directory):\n")
-            f.write(conda_run_cmd + "\n\n")
+            f.write(run_cmd + "\n\n")
             f.write("Command (using \"error\" directory):\n")
-            f.write(conda_run_cmd.replace("/tmp/", "/error/") + "\n\n")
-        output = subprocess.run(conda_run_cmd, shell=True, capture_output=True, env=env)
+            f.write(run_cmd.replace("/tmp/", "/error/") + "\n\n")
+        output = subprocess.run(run_cmd, shell=True, capture_output=True, env=env)
         if output.returncode != 0:
             logger.error("PGE %s run command failed: %s" % (self.repo_name, output.args))
             raise RuntimeError(output.stderr.decode("utf-8"))

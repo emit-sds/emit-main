@@ -48,7 +48,7 @@
     {
       "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l1b-geo.git",
       "tag": "develop",
-      "conda_env": "geocal-20210511"
+      "conda_env": "/home/smyth/conda-local-envs/geocal-20210511"
     },
     {
       "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l2a.git",
