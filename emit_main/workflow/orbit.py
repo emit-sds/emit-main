@@ -71,6 +71,8 @@ class Orbit:
             self.metadata["products"]["raw"] = {}
         if "l1a" not in self.metadata["products"]:
             self.metadata["products"]["l1a"] = {}
+        if "l1b" not in self.metadata["products"]:
+            self.metadata["products"]["l1b"] = {}
 
     def has_complete_bad_data(self):
         if "associated_bad_sto" not in self.metadata:

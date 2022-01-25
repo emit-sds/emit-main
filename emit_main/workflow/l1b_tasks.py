@@ -251,6 +251,15 @@ class L1BGeolocate(SlurmJobTask):
         output_prods.sort()
         acquisition_ids = set([prod.split("_")[0] for prod in output_prods])
         wm.print(__name__, f"Found acquisition ids: {acquisition_ids}")
+        output_prods = {
+            "l1b_glt_img_paths": [],
+            "l1b_glt_hdr_paths": [],
+            "l1b_loc_img_paths": [],
+            "l1b_loc_hdr_paths": [],
+            "l1b_rdn_kmz_paths": [],
+            "l1b_rdn_png_paths": []
+        }
+        acq_prod_map = {}
         for id in acquisition_ids:
             wm_acq = WorkflowManager(config_path=self.config_path, acquisition_id=id)
             acq = wm_acq.acquisition
@@ -277,13 +286,105 @@ class L1BGeolocate(SlurmJobTask):
             wm.symlink(acq.loc_hdr_path, os.path.join(orbit.l1b_dir, os.path.basename(acq.loc_hdr_path)))
             wm.symlink(acq.rdn_kmz_path, os.path.join(orbit.l1b_dir, os.path.basename(acq.rdn_kmz_path)))
             wm.symlink(acq.rdn_png_path, os.path.join(orbit.l1b_dir, os.path.basename(acq.rdn_png_path)))
+            # Keep track of output paths for processing log
+            output_prods["l1b_glt_img_paths"].append(acq.glt_img_path)
+            output_prods["l1b_glt_hdr_paths"].append(acq.glt_hdr_path)
+            output_prods["l1b_loc_img_paths"].append(acq.loc_img_path)
+            output_prods["l1b_loc_hdr_paths"].append(acq.loc_hdr_path)
+            output_prods["l1b_rdn_kmz_paths"].append(acq.rdn_kmz_path)
+            output_prods["l1b_rdn_png_paths"].append(acq.rdn_png_path)
+            # Keep track of acquisition product map for products
+            acq_prod_map[id] = {
+                "glt": {
+                    "img_path": acq.glt_img_path,
+                    "hdr_path": acq.glt_hdr_path,
+                    "created": datetime.datetime.fromtimestamp(os.path.getmtime(acq.glt_img_path),
+                                                               tz=datetime.timezone.utc)
+                },
+                "loc": {
+                    "img_path": acq.loc_img_path,
+                    "hdr_path": acq.loc_hdr_path,
+                    "created": datetime.datetime.fromtimestamp(os.path.getmtime(acq.glt_loc_path),
+                                                               tz=datetime.timezone.utc)
+                },
+                "rdn_kmz": {
+                    "kmz_path": acq.rdn_kmz_path,
+                    "created": datetime.datetime.fromtimestamp(os.path.getmtime(acq.rdn_kmz_path),
+                                                               tz=datetime.timezone.utc)
+                },
+                "rdn_png": {
+                    "png_path": acq.rdn_png_path,
+                    "created": datetime.datetime.fromtimestamp(os.path.getmtime(acq.rdn_png_path),
+                                                               tz=datetime.timezone.utc)
+                }
+            }
 
+            # Update acquisition header files and DB
+            # Update hdr files
+            acq_input_files = {
+                "attitude_ephemeris_file": orbit.uncorr_att_eph_path,
+                "timestamp_file": acq.rdn_img_path.replace("_l1b_", "_l1a_").replace(".img", "_line_timestamps.txt"),
+                "radiance_file": acq.rdn_img_path
+            }
+            input_files_arr = ["{}={}".format(key, value) for key, value in acq_input_files.items()]
+            doc_version = "EMIT SDS L1B JPL-D 104187, Initial"
+            for img_path, hdr_path in [(acq.glt_img_path, acq.glt_hdr_path),
+                                       (acq.loc_img_path, acq.loc_hdr_path)]:
+
+                daynight = "day" if acq.submode == "science" else "dark"
+                hdr = envi.read_envi_header(hdr_path)
+                hdr["emit acquisition start time"] = acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
+                hdr["emit acquisition stop time"] = acq.stop_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
+                hdr["emit pge name"] = pge.repo_url
+                hdr["emit pge version"] = pge.version_tag
+                hdr["emit pge input files"] = input_files_arr
+                hdr["emit pge run command"] = " ".join(cmd)
+                hdr["emit software build version"] = wm.config["extended_build_num"]
+                hdr["emit documentation version"] = doc_version
+                if "_glt_" in img_path:
+                    creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.glt_img_path),
+                                                                    tz=datetime.timezone.utc)
+                if "_loc_" in img_path:
+                    creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.loc_img_path),
+                                                                    tz=datetime.timezone.utc)
+                hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
+                hdr["emit data product version"] = wm.config["processing_version"]
+                hdr["emit acquisition daynight"] = daynight
+
+                envi.write_envi_header(hdr_path, hdr)
+
+            # Write product dict
+            dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.glt": acq_prod_map[id]["glt"]})
+            dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.loc": acq_prod_map[id]["loc"]})
+            dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn_kmz": acq_prod_map[id]["rdn_kmz"]})
+            dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn_png": acq_prod_map[id]["rdn_png"]})
+
+        # Finish updating orbit level properties
         # Copy back remainder of work directory
         wm.makedirs(orbit.l1b_geo_work_dir)
         ancillary_workdir_paths = glob.glob(os.path.join(tmp_output_dir, "l1b_geo*"))
         ancillary_workdir_paths += glob.glob(os.path.join(tmp_output_dir, "map*"))
         for path in ancillary_workdir_paths:
             wm.copy(path, os.path.join(orbit.l1b_geo_work_dir, os.path.basename(path)))
+
+        # Update product dictionary
+        dm.update_orbit_metadata(orbit.orbit_id, {"products.l1b": acq_prod_map})
+
+        # Add processing log
+        doc_version = "EMIT SDS L1B JPL-D 104187, Initial"
+        log_entry = {
+            "task": self.task_family,
+            "pge_name": pge.repo_url,
+            "pge_version": pge.version_tag,
+            "pge_input_files": input_files,
+            "pge_run_command": " ".join(cmd),
+            "documentation_version": doc_version,
+            "product_creation_time": creation_time,
+            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
+            "completion_status": "SUCCESS",
+            "output": output_prods
+        }
+        dm.insert_orbit_log_entry(orbit.orbit_id, log_entry)
 
 
 class L1BFormat(SlurmJobTask):
