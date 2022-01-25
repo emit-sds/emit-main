@@ -268,12 +268,12 @@ class L1BGeolocate(SlurmJobTask):
             wm.copy(tmp_rdn_kmz_path, acq.rdn_kmz_path)
             wm.copy(tmp_rdn_png_path, acq.rdn_png_path)
             # Symlink from orbits l1b dir to acquisitions l1b dir
-            wm.symlink(acq.glt_img_path, os.path.basename(orbit.l1b_dir, os.path.basename(acq.glt_img_path)))
-            wm.symlink(acq.glt_hdr_path, os.path.basename(orbit.l1b_dir, os.path.basename(acq.glt_hdr_path)))
-            wm.symlink(acq.loc_img_path, os.path.basename(orbit.l1b_dir, os.path.basename(acq.loc_img_path)))
-            wm.symlink(acq.loc_hdr_path, os.path.basename(orbit.l1b_dir, os.path.basename(acq.loc_hdr_path)))
-            wm.symlink(acq.rdn_kmz_path, os.path.basename(orbit.l1b_dir, os.path.basename(acq.rdn_kmz_path)))
-            wm.symlink(acq.rdn_png_path, os.path.basename(orbit.l1b_dir, os.path.basename(acq.rdn_png_path)))
+            wm.symlink(acq.glt_img_path, os.path.join(orbit.l1b_dir, os.path.basename(acq.glt_img_path)))
+            wm.symlink(acq.glt_hdr_path, os.path.join(orbit.l1b_dir, os.path.basename(acq.glt_hdr_path)))
+            wm.symlink(acq.loc_img_path, os.path.join(orbit.l1b_dir, os.path.basename(acq.loc_img_path)))
+            wm.symlink(acq.loc_hdr_path, os.path.join(orbit.l1b_dir, os.path.basename(acq.loc_hdr_path)))
+            wm.symlink(acq.rdn_kmz_path, os.path.join(orbit.l1b_dir, os.path.basename(acq.rdn_kmz_path)))
+            wm.symlink(acq.rdn_png_path, os.path.join(orbit.l1b_dir, os.path.basename(acq.rdn_png_path)))
 
         # Copy back remainder of work directory
         wm.makedirs(orbit.l1b_geo_work_dir)
