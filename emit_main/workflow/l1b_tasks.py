@@ -368,7 +368,7 @@ class L1BGeolocate(SlurmJobTask):
             wm.copy(path, os.path.join(orbit.l1b_geo_work_dir, os.path.basename(path)))
 
         # Update product dictionary
-        dm.update_orbit_metadata(orbit.orbit_id, {"products.l1b": acq_prod_map})
+        dm.update_orbit_metadata(orbit.orbit_id, {"products.l1b.acquisitions": acq_prod_map})
 
         # Add processing log
         doc_version = "EMIT SDS L1B JPL-D 104187, Initial"
