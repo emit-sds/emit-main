@@ -233,6 +233,8 @@ class L1BGeolocate(SlurmJobTask):
         tmp_input_files_path = os.path.join(tmp_output_dir, "l1b_geo_input_files.json")
         with open(tmp_input_files_path, "w") as f:
             f.write(json.dumps(input_files, indent=4))
+
+        # TODO: Change run command to use input_files json
         cmd = [l1b_geo_pge_exe, tmp_output_dir, l1b_osp_dir,
                f"{emit_test_data}/*o80000_l1a_att*.nc",
                f"{emit_test_data}/*o80000_s001_l1a_line_time*.nc",
@@ -244,6 +246,41 @@ class L1BGeolocate(SlurmJobTask):
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
         # TODO: Copy back files and update DB
+        # Get unique acquisitions_ids
+        output_prods = [os.path.basename(path) for path in glob.glob(os.path.join(tmp_output_dir, "emit*"))]
+        output_prods.sort()
+        acquisition_ids = set([prod.split("_")[0] for prod in output_prods])
+        for id in acquisition_ids:
+            wm_acq = WorkflowManager(config_path=self.config_path, acquisition_id=id)
+            acq = wm_acq.acquisition
+            # Find all tmp paths
+            tmp_glt_img_path = glob.glob(os.path.join(tmp_output_dir, "emit*glt*img"))[0]
+            tmp_glt_hdr_path = glob.glob(os.path.join(tmp_output_dir, "emit*glt*hdr"))[0]
+            tmp_loc_img_path = glob.glob(os.path.join(tmp_output_dir, "emit*loc*img"))[0]
+            tmp_loc_hdr_path = glob.glob(os.path.join(tmp_output_dir, "emit*loc*hdr"))[0]
+            tmp_rdn_kmz_path = glob.glob(os.path.join(tmp_output_dir, "emit*rdn*kmz"))[0]
+            tmp_rdn_png_path = glob.glob(os.path.join(tmp_output_dir, "emit*rdn*png"))[0]
+            # Copy tmp paths to /store
+            wm.copy(tmp_glt_img_path, acq.glt_img_path)
+            wm.copy(tmp_glt_hdr_path, acq.glt_hdr_path)
+            wm.copy(tmp_loc_img_path, acq.loc_img_path)
+            wm.copy(tmp_loc_hdr_path, acq.loc_hdr_path)
+            wm.copy(tmp_rdn_kmz_path, acq.rdn_kmz_path)
+            wm.copy(tmp_rdn_png_path, acq.rdn_png_path)
+            # Symlink from orbits l1b dir to acquisitions l1b dir
+            wm.symlink(acq.glt_img_path, os.path.basename(orbit.l1b_dir, os.path.basename(acq.glt_img_path)))
+            wm.symlink(acq.glt_hdr_path, os.path.basename(orbit.l1b_dir, os.path.basename(acq.glt_hdr_path)))
+            wm.symlink(acq.loc_img_path, os.path.basename(orbit.l1b_dir, os.path.basename(acq.loc_img_path)))
+            wm.symlink(acq.loc_hdr_path, os.path.basename(orbit.l1b_dir, os.path.basename(acq.loc_hdr_path)))
+            wm.symlink(acq.rdn_kmz_path, os.path.basename(orbit.l1b_dir, os.path.basename(acq.rdn_kmz_path)))
+            wm.symlink(acq.rdn_png_path, os.path.basename(orbit.l1b_dir, os.path.basename(acq.rdn_png_path)))
+
+        # Copy back remainder of work directory
+        wm.makedirs(orbit.l1b_geo_work_dir)
+        ancillary_workdir_paths = glob.glob(os.path.join(tmp_output_dir, "l1b_geo*"))
+        ancillary_workdir_paths += glob.glob(os.path.join(tmp_output_dir, "map*"))
+        for path in ancillary_workdir_paths:
+            wm.copy(path, os.path.join(orbit.l1b_geo_work_dir, os.path.basename(path)))
 
 
 class L1BFormat(SlurmJobTask):

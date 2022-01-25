@@ -43,7 +43,10 @@ class Orbit:
         self.orbit_id_dir = os.path.join(self.orbits_dir, self.orbit_id)
         self.raw_dir = os.path.join(self.orbit_id_dir, "raw")
         self.l1a_dir = os.path.join(self.orbit_id_dir, "l1a")
-        self.dirs.extend([self.orbits_dir, self.orbit_id_dir, self.raw_dir, self.l1a_dir])
+        self.l1b_dir = os.path.join(self.orbit_id_dir, "l1b")
+        self.l1b_geo_work_dir = os.path.join(
+            self.l1b_dir, f"o{orbit_id}_l1b_geo_b{self.config['build_num']}_v{self.config['processing_version']}_work")
+        self.dirs.extend([self.orbits_dir, self.orbit_id_dir, self.raw_dir, self.l1a_dir, self.l1b_dir])
 
         # Create product names
         uncorr_fname = "_".join(["emit", self.start_time.strftime("%Y%m%dt%H%M%S"), f"o{self.orbit_id}",
