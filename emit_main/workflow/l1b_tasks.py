@@ -304,7 +304,7 @@ class L1BGeolocate(SlurmJobTask):
                 "loc": {
                     "img_path": acq.loc_img_path,
                     "hdr_path": acq.loc_hdr_path,
-                    "created": datetime.datetime.fromtimestamp(os.path.getmtime(acq.glt_loc_path),
+                    "created": datetime.datetime.fromtimestamp(os.path.getmtime(acq.loc_img_path),
                                                                tz=datetime.timezone.utc)
                 },
                 "rdn_kmz": {
