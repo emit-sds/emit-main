@@ -250,17 +250,20 @@ class L1BGeolocate(SlurmJobTask):
         output_prods = [os.path.basename(path) for path in glob.glob(os.path.join(tmp_output_dir, "emit*"))]
         output_prods.sort()
         acquisition_ids = set([prod.split("_")[0] for prod in output_prods])
+        wm.print(__name__, f"Found acquisition ids: {acquisition_ids}")
         for id in acquisition_ids:
             wm_acq = WorkflowManager(config_path=self.config_path, acquisition_id=id)
             acq = wm_acq.acquisition
             # Find all tmp paths
-            tmp_glt_img_path = glob.glob(os.path.join(tmp_output_dir, "emit*glt*img"))[0]
-            tmp_glt_hdr_path = glob.glob(os.path.join(tmp_output_dir, "emit*glt*hdr"))[0]
-            tmp_loc_img_path = glob.glob(os.path.join(tmp_output_dir, "emit*loc*img"))[0]
-            tmp_loc_hdr_path = glob.glob(os.path.join(tmp_output_dir, "emit*loc*hdr"))[0]
-            tmp_rdn_kmz_path = glob.glob(os.path.join(tmp_output_dir, "emit*rdn*kmz"))[0]
-            tmp_rdn_png_path = glob.glob(os.path.join(tmp_output_dir, "emit*rdn*png"))[0]
+            # TODO: This is wrong.  Needs id in glob.  Search for these files?  Print out to see what I did.
+            tmp_glt_img_path = glob.glob(os.path.join(tmp_output_dir, f"{id}*glt*img"))[0]
+            tmp_glt_hdr_path = glob.glob(os.path.join(tmp_output_dir, f"{id}*glt*hdr"))[0]
+            tmp_loc_img_path = glob.glob(os.path.join(tmp_output_dir, f"{id}*loc*img"))[0]
+            tmp_loc_hdr_path = glob.glob(os.path.join(tmp_output_dir, f"{id}*loc*hdr"))[0]
+            tmp_rdn_kmz_path = glob.glob(os.path.join(tmp_output_dir, f"{id}*rdn*kmz"))[0]
+            tmp_rdn_png_path = glob.glob(os.path.join(tmp_output_dir, f"{id}*rdn*png"))[0]
             # Copy tmp paths to /store
+            wm.print(__name__, f"Copying {tmp_glt_img_path} to {acq.glt_img_path}")
             wm.copy(tmp_glt_img_path, acq.glt_img_path)
             wm.copy(tmp_glt_hdr_path, acq.glt_hdr_path)
             wm.copy(tmp_loc_img_path, acq.loc_img_path)
