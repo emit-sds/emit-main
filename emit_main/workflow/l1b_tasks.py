@@ -429,9 +429,8 @@ class L1BFormat(SlurmJobTask):
         tmp_ummg_json_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l1b_rdn_ummg.json")
         tmp_log_path = os.path.join(self.local_tmp_dir, "output_conversion_pge.log")
         cmd = ["python", output_generator_exe, tmp_daac_nc_path, acq.rdn_img_path, acq.obs_img_path, acq.loc_img_path,
-               acq.glt_img_path,  "--log_file", tmp_log_path]
+               acq.glt_img_path, "--log_file", tmp_log_path]
         pge.run(cmd, tmp_dir=self.tmp_dir)
-
 
         utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
         daac_nc_path = os.path.join(acq.l1b_data_dir, f"{acq.daac_l1brad_prefix}_{utc_now.strftime('%Y%m%dt%H%M%S')}.nc")
@@ -447,8 +446,8 @@ class L1BFormat(SlurmJobTask):
         granule_name = os.path.splitext(os.path.basename(daac_nc_path))[0]
         ummg = daac_converter.initialize_ummg(granule_name, nc_creation_time.strftime("%Y-%m-%dT%H:%M:%S%z"), "EMITL1B_RAD")
         ummg = daac_converter.add_data_file_ummg(ummg, daac_nc_path)
-        #ummg = daac_converter.add_boundary_ummg(ummg, boundary_points_list)
-        daac_converter.dump_json(ummg,daac_ummg_json_path)
+        # ummg = daac_converter.add_boundary_ummg(ummg, boundary_points_list)
+        daac_converter.dump_json(ummg, daac_ummg_json_path)
 
         # PGE writes metadata to db
         dm = wm.database_manager
