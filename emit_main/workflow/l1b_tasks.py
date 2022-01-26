@@ -15,7 +15,7 @@ import luigi
 import spectral.io.envi as envi
 
 from emit_main.workflow.acquisition import Acquisition
-from emit_main.workflow.output_targets import AcquisitionTarget
+from emit_main.workflow.output_targets import AcquisitionTarget, OrbitTarget
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_utils import daac_converter
@@ -166,7 +166,6 @@ class L1BCalibrate(SlurmJobTask):
         dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
 
 
-# TODO: Full implementation TBD
 class L1BGeolocate(SlurmJobTask):
     """
     Performs geolocation using BAD telemetry and counter-OS time pair file
@@ -174,7 +173,7 @@ class L1BGeolocate(SlurmJobTask):
     """
 
     config_path = luigi.Parameter()
-    acquisition_id = luigi.Parameter()
+    orbit_id = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
 
@@ -183,35 +182,208 @@ class L1BGeolocate(SlurmJobTask):
     def requires(self):
 
         logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
-        return L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
-                            partition=self.partition)
+        return None
 
     def output(self):
 
         logger.debug(f"{self.task_family} output: {self.acquisition_id}")
-        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return AcquisitionTarget(acquisition=acq, task_family=self.task_family)
+        # wm = WorkflowManager(config_path=self.config_path, orbit_id=self.orbit_id)
+        # return OrbitTarget(orbit=wm.orbit, task_family=self.task_family)
+        return None
 
     def work(self):
 
         logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
-        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        acq = wm.acquisition
-        pge = wm.pges["emit-sds-l1b"]
+        wm = WorkflowManager(config_path=self.config_path, orbit_id=self.orbit_id)
+        orbit = wm.orbit
+        dm = wm.database_manager
 
-        cmd = ["touch", acq.loc_img_path]
-        pge.run(cmd, tmp_dir=self.tmp_dir)
-        cmd = ["touch", acq.loc_hdr_path]
-        pge.run(cmd, tmp_dir=self.tmp_dir)
-        cmd = ["touch", acq.obs_img_path]
-        pge.run(cmd, tmp_dir=self.tmp_dir)
-        cmd = ["touch", acq.obs_hdr_path]
-        pge.run(cmd, tmp_dir=self.tmp_dir)
-        cmd = ["touch", acq.glt_img_path]
-        pge.run(cmd, tmp_dir=self.tmp_dir)
-        cmd = ["touch", acq.glt_hdr_path]
-        pge.run(cmd, tmp_dir=self.tmp_dir)
+        # TODO: Check that I have all the acquisition radiance files, or just do that before calling in the monitor?
+        # Get acquisitions in orbit (only science, not dark) - radiance and line timestamps
+        acquisitions_in_orbit = dm.find_acquisitions_by_orbit_id(orbit.orbit_id)
+
+        # Build input_files dictionary
+        input_files = {
+            "attitude_ephemeris_file": orbit.uncorr_att_eph_path,
+            "timestamp_radiance_pairs": []
+        }
+        for acq in acquisitions_in_orbit:
+            if acq["submode"] == "science":
+                try:
+                    rdn_img_path = acq["products"]["l1b"]["rdn"]["img_path"]
+                except KeyError:
+                    wm.print(__name__, f"Could not find a radiance image path for {acq['acquisition_id']} in DB.")
+                    continue
+                file_pair = {
+                    "timestamps_file": rdn_img_path.replace("_l1b_", "_l1a_").replace(".img", "_line_timestamps.txt"),
+                    "radiance_file": rdn_img_path
+                }
+                input_files["timestamp_radiance_pairs"].append(file_pair)
+
+        # Build run command
+        pge = wm.pges["emit-sds-l1b-geo"]
+        l1b_geo_install_dir = wm.config["l1b_geo_install_dir"]
+        l1b_geo_pge_exe = os.path.join(l1b_geo_install_dir, "install", "l1b_geo_pge")
+        tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
+        wm.makedirs(tmp_output_dir)
+        emit_test_data = "/store/shared/emit-test-data/latest"
+        l1b_osp_dir = wm.config["l1b_geo_osp_dir"]
+
+        tmp_input_files_path = os.path.join(tmp_output_dir, "l1b_geo_input_files.json")
+        with open(tmp_input_files_path, "w") as f:
+            f.write(json.dumps(input_files, indent=4))
+
+        # TODO: Change run command to use input_files json
+        cmd = [l1b_geo_pge_exe, tmp_output_dir, l1b_osp_dir,
+               f"{emit_test_data}/*o80000_l1a_att*.nc",
+               f"{emit_test_data}/*o80000_s001_l1a_line_time*.nc",
+               f"{emit_test_data}/*o80000_s001_l1b_rdn*.img",
+               f"{emit_test_data}/*o80000_s002_l1a_line_time*.nc",
+               f"{emit_test_data}/*o80000_s002_l1b_rdn*.img",
+               f"{emit_test_data}/*o80000_s003_l1a_line_time*.nc",
+               f"{emit_test_data}/*o80000_s003_l1b_rdn*.img"]
+        pge.run(cmd, tmp_dir=self.tmp_dir, use_conda_run=False)
+
+        # TODO: Copy back files and update DB
+        # Get unique acquisitions_ids
+        output_prods = [os.path.basename(path) for path in glob.glob(os.path.join(tmp_output_dir, "emit*"))]
+        output_prods.sort()
+        acquisition_ids = set([prod.split("_")[0] for prod in output_prods])
+        wm.print(__name__, f"Found acquisition ids: {acquisition_ids}")
+        output_prods = {
+            "l1b_glt_img_paths": [],
+            "l1b_glt_hdr_paths": [],
+            "l1b_loc_img_paths": [],
+            "l1b_loc_hdr_paths": [],
+            "l1b_rdn_kmz_paths": [],
+            "l1b_rdn_png_paths": []
+        }
+        acq_prod_map = {}
+        for id in acquisition_ids:
+            wm_acq = WorkflowManager(config_path=self.config_path, acquisition_id=id)
+            acq = wm_acq.acquisition
+            # Find all tmp paths
+            tmp_glt_img_path = glob.glob(os.path.join(tmp_output_dir, f"{id}*glt*img"))[0]
+            tmp_glt_hdr_path = glob.glob(os.path.join(tmp_output_dir, f"{id}*glt*hdr"))[0]
+            tmp_loc_img_path = glob.glob(os.path.join(tmp_output_dir, f"{id}*loc*img"))[0]
+            tmp_loc_hdr_path = glob.glob(os.path.join(tmp_output_dir, f"{id}*loc*hdr"))[0]
+            tmp_rdn_kmz_path = glob.glob(os.path.join(tmp_output_dir, f"{id}*rdn*kmz"))[0]
+            tmp_rdn_png_path = glob.glob(os.path.join(tmp_output_dir, f"{id}*rdn*png"))[0]
+            # Copy tmp paths to /store
+            wm.print(__name__, f"Copying {tmp_glt_img_path} to {acq.glt_img_path}")
+            wm.copy(tmp_glt_img_path, acq.glt_img_path)
+            wm.copy(tmp_glt_hdr_path, acq.glt_hdr_path)
+            wm.copy(tmp_loc_img_path, acq.loc_img_path)
+            wm.copy(tmp_loc_hdr_path, acq.loc_hdr_path)
+            wm.copy(tmp_rdn_kmz_path, acq.rdn_kmz_path)
+            wm.copy(tmp_rdn_png_path, acq.rdn_png_path)
+            # Symlink from orbits l1b dir to acquisitions l1b dir
+            wm.symlink(acq.glt_img_path, os.path.join(orbit.l1b_dir, os.path.basename(acq.glt_img_path)))
+            wm.symlink(acq.glt_hdr_path, os.path.join(orbit.l1b_dir, os.path.basename(acq.glt_hdr_path)))
+            wm.symlink(acq.loc_img_path, os.path.join(orbit.l1b_dir, os.path.basename(acq.loc_img_path)))
+            wm.symlink(acq.loc_hdr_path, os.path.join(orbit.l1b_dir, os.path.basename(acq.loc_hdr_path)))
+            wm.symlink(acq.rdn_kmz_path, os.path.join(orbit.l1b_dir, os.path.basename(acq.rdn_kmz_path)))
+            wm.symlink(acq.rdn_png_path, os.path.join(orbit.l1b_dir, os.path.basename(acq.rdn_png_path)))
+            # Keep track of output paths for processing log
+            output_prods["l1b_glt_img_paths"].append(acq.glt_img_path)
+            output_prods["l1b_glt_hdr_paths"].append(acq.glt_hdr_path)
+            output_prods["l1b_loc_img_paths"].append(acq.loc_img_path)
+            output_prods["l1b_loc_hdr_paths"].append(acq.loc_hdr_path)
+            output_prods["l1b_rdn_kmz_paths"].append(acq.rdn_kmz_path)
+            output_prods["l1b_rdn_png_paths"].append(acq.rdn_png_path)
+            # Keep track of acquisition product map for products
+            acq_prod_map[id] = {
+                "glt": {
+                    "img_path": acq.glt_img_path,
+                    "hdr_path": acq.glt_hdr_path,
+                    "created": datetime.datetime.fromtimestamp(os.path.getmtime(acq.glt_img_path),
+                                                               tz=datetime.timezone.utc)
+                },
+                "loc": {
+                    "img_path": acq.loc_img_path,
+                    "hdr_path": acq.loc_hdr_path,
+                    "created": datetime.datetime.fromtimestamp(os.path.getmtime(acq.loc_img_path),
+                                                               tz=datetime.timezone.utc)
+                },
+                "rdn_kmz": {
+                    "kmz_path": acq.rdn_kmz_path,
+                    "created": datetime.datetime.fromtimestamp(os.path.getmtime(acq.rdn_kmz_path),
+                                                               tz=datetime.timezone.utc)
+                },
+                "rdn_png": {
+                    "png_path": acq.rdn_png_path,
+                    "created": datetime.datetime.fromtimestamp(os.path.getmtime(acq.rdn_png_path),
+                                                               tz=datetime.timezone.utc)
+                }
+            }
+
+            # Update acquisition header files and DB
+            # Update hdr files
+            acq_input_files = {
+                "attitude_ephemeris_file": orbit.uncorr_att_eph_path,
+                "timestamp_file": acq.rdn_img_path.replace("_l1b_", "_l1a_").replace(".img", "_line_timestamps.txt"),
+                "radiance_file": acq.rdn_img_path
+            }
+            input_files_arr = ["{}={}".format(key, value) for key, value in acq_input_files.items()]
+            doc_version = "EMIT SDS L1B JPL-D 104187, Initial"
+            for img_path, hdr_path in [(acq.glt_img_path, acq.glt_hdr_path),
+                                       (acq.loc_img_path, acq.loc_hdr_path)]:
+
+                daynight = "day" if acq.submode == "science" else "dark"
+                hdr = envi.read_envi_header(hdr_path)
+                hdr["emit acquisition start time"] = acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
+                hdr["emit acquisition stop time"] = acq.stop_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
+                hdr["emit pge name"] = pge.repo_url
+                hdr["emit pge version"] = pge.version_tag
+                hdr["emit pge input files"] = input_files_arr
+                hdr["emit pge run command"] = " ".join(cmd)
+                hdr["emit software build version"] = wm.config["extended_build_num"]
+                hdr["emit documentation version"] = doc_version
+                if "_glt_" in img_path:
+                    creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.glt_img_path),
+                                                                    tz=datetime.timezone.utc)
+                if "_loc_" in img_path:
+                    creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.loc_img_path),
+                                                                    tz=datetime.timezone.utc)
+                hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
+                hdr["emit data product version"] = wm.config["processing_version"]
+                hdr["emit acquisition daynight"] = daynight
+
+                envi.write_envi_header(hdr_path, hdr)
+
+            # Write product dict
+            dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.glt": acq_prod_map[id]["glt"]})
+            dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.loc": acq_prod_map[id]["loc"]})
+            dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn_kmz": acq_prod_map[id]["rdn_kmz"]})
+            dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn_png": acq_prod_map[id]["rdn_png"]})
+
+        # Finish updating orbit level properties
+        # Copy back remainder of work directory
+        wm.makedirs(orbit.l1b_geo_work_dir)
+        ancillary_workdir_paths = glob.glob(os.path.join(tmp_output_dir, "l1b_geo*"))
+        ancillary_workdir_paths += glob.glob(os.path.join(tmp_output_dir, "map*"))
+        for path in ancillary_workdir_paths:
+            wm.copy(path, os.path.join(orbit.l1b_geo_work_dir, os.path.basename(path)))
+
+        # Update product dictionary
+        dm.update_orbit_metadata(orbit.orbit_id, {"products.l1b.acquisitions": acq_prod_map})
+
+        # Add processing log
+        doc_version = "EMIT SDS L1B JPL-D 104187, Initial"
+        log_entry = {
+            "task": self.task_family,
+            "pge_name": pge.repo_url,
+            "pge_version": pge.version_tag,
+            "pge_input_files": input_files,
+            "pge_run_command": " ".join(cmd),
+            "documentation_version": doc_version,
+            "product_creation_time": creation_time,
+            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
+            "completion_status": "SUCCESS",
+            "output": output_prods
+        }
+        dm.insert_orbit_log_entry(orbit.orbit_id, log_entry)
 
 
 class L1BFormat(SlurmJobTask):
@@ -256,9 +428,8 @@ class L1BFormat(SlurmJobTask):
         tmp_ummg_json_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l1b_rdn_ummg.json")
         tmp_log_path = os.path.join(self.local_tmp_dir, "output_conversion_pge.log")
         cmd = ["python", output_generator_exe, tmp_daac_nc_path, acq.rdn_img_path, acq.obs_img_path, acq.loc_img_path,
-               acq.glt_img_path,  "--log_file", tmp_log_path]
+               acq.glt_img_path, "--log_file", tmp_log_path]
         pge.run(cmd, tmp_dir=self.tmp_dir)
-
 
         utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
         daac_nc_path = os.path.join(acq.l1b_data_dir, f"{acq.daac_l1brad_prefix}_{utc_now.strftime('%Y%m%dt%H%M%S')}.nc")
@@ -274,8 +445,8 @@ class L1BFormat(SlurmJobTask):
         granule_name = os.path.splitext(os.path.basename(daac_nc_path))[0]
         ummg = daac_converter.initialize_ummg(granule_name, nc_creation_time.strftime("%Y-%m-%dT%H:%M:%S%z"), "EMITL1B_RAD")
         ummg = daac_converter.add_data_file_ummg(ummg, daac_nc_path)
-        #ummg = daac_converter.add_boundary_ummg(ummg, boundary_points_list)
-        daac_converter.dump_json(ummg,daac_ummg_json_path)
+        # ummg = daac_converter.add_boundary_ummg(ummg, boundary_points_list)
+        daac_converter.dump_json(ummg, daac_ummg_json_path)
 
         # PGE writes metadata to db
         dm = wm.database_manager

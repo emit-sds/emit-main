@@ -37,6 +37,11 @@ class DatabaseManager:
         acquisitions_coll = self.db.acquisitions
         return acquisitions_coll.find_one({"dcid": dcid, "build_num": self.config["build_num"]})
 
+    def find_acquisitions_by_orbit_id(self, orbit_id):
+        acquisitions_coll = self.db.acquisitions
+        query = {"orbit": orbit_id, "build_num": self.config["build_num"]}
+        return list(acquisitions_coll.find(query).sort("acquisition_id", 1))
+
     def find_acquisitions_touching_date_range(self, submode, field, start, stop, sort=1):
         acquisitions_coll = self.db.acquisitions
         query = {
