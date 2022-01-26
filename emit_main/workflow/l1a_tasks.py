@@ -427,6 +427,7 @@ class L1AReassembleRaw(SlurmJobTask):
             acq_decomp_frame_paths.sort()
 
             # Define acquisition metadata
+            daynight = "day" if submode.lower() == "science" else "night"
             acq_meta = {
                 "acquisition_id": acq_id,
                 "build_num": wm.config["build_num"],
@@ -436,6 +437,7 @@ class L1AReassembleRaw(SlurmJobTask):
                 "orbit": orbit,
                 "scene": scene,
                 "submode": submode.lower(),
+                "daynight": daynight,
                 "associated_dcid": self.dcid
             }
 

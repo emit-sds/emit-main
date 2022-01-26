@@ -19,7 +19,6 @@ from emit_main.workflow.output_targets import AcquisitionTarget, OrbitTarget
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_utils import daac_converter
-from emit_utils.file_checks import check_daynight
 
 
 logger = logging.getLogger("emit-main")
@@ -122,7 +121,6 @@ class L1BCalibrate(SlurmJobTask):
         # Update hdr files
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
         doc_version = "EMIT SDS L1B JPL-D 104187, Initial"
-        daynight = "day" if acq.submode == "science" else "dark"
         hdr = envi.read_envi_header(acq.rdn_hdr_path)
         hdr["emit acquisition start time"] = acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
         hdr["emit acquisition stop time"] = acq.stop_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
@@ -135,7 +133,7 @@ class L1BCalibrate(SlurmJobTask):
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rdn_img_path), tz=datetime.timezone.utc)
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         hdr["emit data product version"] = wm.config["processing_version"]
-        hdr["emit acquisition daynight"] = daynight
+        hdr["emit acquisition daynight"] = acq.daynight
 
         envi.write_envi_header(acq.rdn_hdr_path, hdr)
 
@@ -151,7 +149,6 @@ class L1BCalibrate(SlurmJobTask):
             }
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn": product_dict})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"daynight": daynight})
 
         log_entry = {
             "task": self.task_family,
@@ -336,7 +333,6 @@ class L1BGeolocate(SlurmJobTask):
             for img_path, hdr_path in [(acq.glt_img_path, acq.glt_hdr_path),
                                        (acq.loc_img_path, acq.loc_hdr_path)]:
 
-                daynight = "day" if acq.submode == "science" else "dark"
                 hdr = envi.read_envi_header(hdr_path)
                 hdr["emit acquisition start time"] = acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
                 hdr["emit acquisition stop time"] = acq.stop_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
@@ -354,7 +350,7 @@ class L1BGeolocate(SlurmJobTask):
                                                                     tz=datetime.timezone.utc)
                 hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
                 hdr["emit data product version"] = wm.config["processing_version"]
-                hdr["emit acquisition daynight"] = daynight
+                hdr["emit acquisition daynight"] = acq.daynight
 
                 envi.write_envi_header(hdr_path, hdr)
 
