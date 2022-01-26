@@ -35,6 +35,7 @@ class L1BCalibrate(SlurmJobTask):
     acquisition_id = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
+    dark_path = luigi.Parameter()
 
     task_namespace = "emit"
 
@@ -78,19 +79,24 @@ class L1BCalibrate(SlurmJobTask):
         with open(tmp_config_path, "w") as outfile:
             json.dump(config, outfile)
 
-        # Find dark image - Get most recent dark image, but throw error if not within last 3 hours
         dm = wm.database_manager
-        recent_darks = dm.find_acquisitions_touching_date_range(
-            "dark",
-            "stop_time",
-            acq.start_time - datetime.timedelta(minutes=200),
-            acq.start_time,
-            sort=-1)
-        if recent_darks is None or len(recent_darks) == 0:
-            raise RuntimeError(f"Unable to find any darks for acquisition {acq.acquisition_id} within last 200 "
-                               f"minutes.")
 
-        dark_img_path = recent_darks[0]["products"]["l1a"]["raw"]["img_path"]
+        if len(self.dark_path) > 0:
+            dark_img_path = self.dark_path
+        else:
+            # Find dark image - Get most recent dark image, but throw error if not within last 200 minutes
+            recent_darks = dm.find_acquisitions_touching_date_range(
+                "dark",
+                "stop_time",
+                acq.start_time - datetime.timedelta(minutes=200),
+                acq.start_time,
+                sort=-1)
+            if recent_darks is None or len(recent_darks) == 0:
+                raise RuntimeError(f"Unable to find any darks for acquisition {acq.acquisition_id} within last 200 "
+                                   f"minutes.")
+
+            dark_img_path = recent_darks[0]["products"]["l1a"]["raw"]["img_path"]
+
         input_files["dark_file"] = dark_img_path
 
         emitrdn_exe = os.path.join(pge.repo_dir, "emitrdn.py")

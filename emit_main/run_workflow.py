@@ -65,6 +65,8 @@ def parse_args():
                         help="Ignore missing frames when reasssembling raw cube")
     parser.add_argument("--acq_chunksize", default=1280,
                         help="The number of lines in which to split acquisitions")
+    parser.add_argument("--dark_path", default="",
+                        help="Path to dark file to use for L1B calibration")
     parser.add_argument("--ignore_missing_bad", action="store_true",
                         help="Ignore missing BAD data in an orbit when reformatting BAD")
     parser.add_argument("--dry_run", action="store_true",
@@ -128,7 +130,7 @@ def get_tasks_from_product_args(args):
         "l1araw": L1AReassembleRaw(dcid=args.dcid, ignore_missing_frames=args.ignore_missing_frames,
                                    acq_chunksize=args.acq_chunksize, test_mode=args.test_mode, **kwargs),
         "l1abad": L1AReformatBAD(orbit_id=args.orbit_id, ignore_missing_bad=args.ignore_missing_bad, **kwargs),
-        "l1bcal": L1BCalibrate(acquisition_id=args.acquisition_id, **kwargs),
+        "l1bcal": L1BCalibrate(acquisition_id=args.acquisition_id, dark_path=args.dark_path, **kwargs),
         "l1bgeo": L1BGeolocate(orbit_id=args.orbit_id, **kwargs),
         "l1bformat": L1BFormat(acquisition_id=args.acquisition_id, **kwargs),
         "l1bdaac": L1BDeliver(acquisition_id=args.acquisition_id, **kwargs),
