@@ -161,7 +161,7 @@ class WorkflowManager:
 
         try:
             # Send the message via our own SMTP server
-            s = smtplib.SMTP(self.config["smtp_host"], self.config["smtp_port"], timeout=300)
+            s = smtplib.SMTP(self.config["smtp_host"], self.config["smtp_port"], timeout=15)
             s.starttls()
             s.login(self.config["email_user"], self.config["email_password"])
             s.sendmail(sender, recipient_list, msg.as_string())
