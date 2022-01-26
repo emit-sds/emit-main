@@ -243,7 +243,7 @@ class L1BGeolocate(SlurmJobTask):
                f"{emit_test_data}/*o80000_s002_l1b_rdn*.img",
                f"{emit_test_data}/*o80000_s003_l1a_line_time*.nc",
                f"{emit_test_data}/*o80000_s003_l1b_rdn*.img"]
-        pge.run(cmd, tmp_dir=self.tmp_dir)
+        pge.run(cmd, tmp_dir=self.tmp_dir, use_conda_run=False)
 
         # TODO: Copy back files and update DB
         # Get unique acquisitions_ids
@@ -264,7 +264,6 @@ class L1BGeolocate(SlurmJobTask):
             wm_acq = WorkflowManager(config_path=self.config_path, acquisition_id=id)
             acq = wm_acq.acquisition
             # Find all tmp paths
-            # TODO: This is wrong.  Needs id in glob.  Search for these files?  Print out to see what I did.
             tmp_glt_img_path = glob.glob(os.path.join(tmp_output_dir, f"{id}*glt*img"))[0]
             tmp_glt_hdr_path = glob.glob(os.path.join(tmp_output_dir, f"{id}*glt*hdr"))[0]
             tmp_loc_img_path = glob.glob(os.path.join(tmp_output_dir, f"{id}*loc*img"))[0]

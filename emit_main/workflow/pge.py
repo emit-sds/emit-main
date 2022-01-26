@@ -173,15 +173,16 @@ class PGE:
             #    subprocess.run(rm_conda_env_cmd)
             print(e)
 
-    def run(self, cmd, cwd=None, tmp_dir=None, env=None):
+    def run(self, cmd, cwd=None, tmp_dir=None, env=None, use_conda_run=True):
         cwd_args = []
         if cwd:
             cwd_args = ["--cwd", cwd]
         if env is None:
             env = os.environ.copy()
-        if self.conda_env_name.startswith("/"):
-            # If we're using a full-path conda env, assume the PGE takes care of conda initialization (l1b-geo)
+        if use_conda_run is False:
             run_cmd = " ".join(cmd)
+        elif self.conda_env_name.startswith("/"):
+            run_cmd = " ".join([self.conda_exe, "run", "-p", self.conda_env_name] + cwd_args + cmd)
         else:
             # Otherwise, use conda run syntax
             run_cmd = " ".join([self.conda_exe, "run", "-n", self.conda_env_name] + cwd_args + cmd)
