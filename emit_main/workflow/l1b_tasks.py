@@ -537,10 +537,9 @@ class L1BDeliver(SlurmJobTask):
                            group, f"{acq.daac_staging_dir};", "fi\""]
         pge.run(cmd_make_target, tmp_dir=self.tmp_dir)
 
-        cmd_rsync_nc = ["rsync", "-azv", partial_dir_arg, log_file_arg, daac_nc_path, target]
-        cmd_rsync_json = ["rsync", "-azv", partial_dir_arg, log_file_arg, daac_ummg_json_path, target]
-        pge.run(cmd_rsync_nc, tmp_dir=self.tmp_dir)
-        pge.run(cmd_rsync_json, tmp_dir=self.tmp_dir)
+        for path in (daac_nc_path, daac_ummg_json_path):
+            cmd_rsync = ["rsync", "-azv", partial_dir_arg, log_file_arg, path, target]
+            pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
 
         # Build notification dictionary
         utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
@@ -553,7 +552,7 @@ class L1BDeliver(SlurmJobTask):
             "version": wm.config["cnm_version"],
             "product": {
                 "name": os.path.basename(daac_nc_path).replace(".nc", ""),
-                "dataVersion": wm.config["processing_version"],
+                "dataVersion": f"0{wm.config['processing_version']}",
                 "files": [
                     {
                         "name": os.path.basename(daac_nc_path),

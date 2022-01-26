@@ -17,7 +17,7 @@ from emit_main.monitor.email_monitor import EmailMonitor
 from emit_main.monitor.frames_monitor import FramesMonitor
 from emit_main.monitor.ingest_monitor import IngestMonitor
 from emit_main.monitor.orbit_monitor import OrbitMonitor
-from emit_main.workflow.l0_tasks import L0StripHOSC, L0ProcessPlanningProduct
+from emit_main.workflow.l0_tasks import L0StripHOSC, L0ProcessPlanningProduct, L0Deliver
 from emit_main.workflow.l1a_tasks import L1ADepacketizeScienceFrames, L1AReassembleRaw, L1AReformatEDP, \
     L1AFrameReport, L1AReformatBAD
 from emit_main.workflow.l1b_tasks import L1BGeolocate, L1BCalibrate, L1BFormat, L1BDeliver
@@ -33,9 +33,9 @@ logger = logging.getLogger("emit-main")
 
 
 def parse_args():
-    product_choices = ["l0hosc", "l0plan", "l1aeng", "l1aframe", "l1aframereport", "l1araw", "l1abad", "l1bcal",
-                       "l1bgeo", "l1bformat", "l1bdaac", "l2arefl", "l2amask", "l2aformat", "l2babun", "l2bformat",
-                       "l3unmix"]
+    product_choices = ["l0hosc", "l0daac", "l0plan", "l1aeng", "l1aframe", "l1aframereport", "l1araw", "l1abad",
+                       "l1bcal", "l1bgeo", "l1bformat", "l1bdaac", "l2arefl", "l2amask", "l2aformat", "l2babun",
+                       "l2bformat", "l3unmix"]
     monitor_choices = ["ingest", "frames", "orbit", "email"]
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--config_path",
@@ -117,6 +117,8 @@ def get_tasks_from_product_args(args):
     }
     prod_task_map = {
         "l0hosc": L0StripHOSC(stream_path=args.stream_path, miss_pkt_thresh=args.miss_pkt_thresh,
+                              **kwargs),
+        "l0daac": L0Deliver(stream_path=args.stream_path, miss_pkt_thresh=args.miss_pkt_thresh,
                               **kwargs),
         "l0plan": L0ProcessPlanningProduct(plan_prod_path=args.plan_prod_path, **kwargs),
         "l1aeng": L1AReformatEDP(stream_path=args.stream_path, miss_pkt_thresh=args.miss_pkt_thresh,

@@ -14,6 +14,7 @@ import os
 from emit_main.workflow.output_targets import StreamTarget
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_main.workflow.workflow_manager import WorkflowManager
+from emit_utils import daac_converter
 
 logger = logging.getLogger("emit-main")
 
@@ -453,3 +454,159 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                 dm.insert_orbit_log_entry(orbit_id, log_entry)
             for dcid in dcids:
                 dm.insert_data_collection_log_entry(dcid, log_entry)
+
+
+class L0Deliver(SlurmJobTask):
+    """
+    Creates UMM-G JSON file for DAAC delivery, stages the files for delivery, and submits a notification to the DAAC
+    :returns: DAAC notification and staged CCSDS and UMM-G files
+    """
+
+    config_path = luigi.Parameter()
+    stream_path = luigi.Parameter()
+    level = luigi.Parameter()
+    partition = luigi.Parameter()
+    miss_pkt_thresh = luigi.FloatParameter(default=0.1)
+
+    task_namespace = "emit"
+
+    def requires(self):
+        logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
+        return L0StripHOSC(config_path=self.config_path, stream_path=self.stream_path, level=self.level,
+                           partition=self.partition, miss_pkt_thresh=self.miss_pkt_thresh)
+
+    def output(self):
+        logger.debug(f"{self.task_family} output: {self.stream_path}")
+        wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
+        return StreamTarget(stream=wm.stream, task_family=self.task_family)
+
+    def work(self):
+        logger.debug(f"{self.task_family} work: {self.acquisition_id}")
+
+        wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
+        stream = wm.stream
+        pge = wm.pges["emit-main"]
+
+        # First create the UMM-G file
+        name_split = stream.ccsds_name.split("_")
+        granule_ur = f"EMITL0.0{wm.config['processing_version']}.{name_split[0]}_{name_split[1]}_{name_split[2]}"
+        creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(stream.ccsds_path), tz=datetime.timezone.utc)
+        ummg = daac_converter.initialize_ummg(granule_ur, creation_time.strftime("%Y-%m-%dT%H:%M:%S%z"), "EMITL0")
+        ummg = daac_converter.add_data_file_ummg(ummg, stream.ccsds_path)
+        # ummg = daac_converter.add_boundary_ummg(ummg, boundary_points_list)
+        ummg_json_path = stream.ccsds_path.replace(".bin", "_ummg.cmr.json")
+        daac_converter.dump_json(ummg, ummg_json_path)
+        wm.change_group_ownership(ummg_json_path)
+
+        # Copy files to staging server
+        partial_dir_arg = f"--partial-dir={stream.daac_partial_dir}"
+        log_file_arg = f"--log-file={os.path.join(self.tmp_dir, 'rsync.log')}"
+        target = f"{wm.config['daac_server_internal']}:{stream.daac_staging_dir}/"
+        group = f"emit-{wm.config['environment']}" if wm.config["environment"] in ("test", "ops") else "emit-dev"
+        # This command only makes the directory and changes ownership if the directory doesn't exist
+        cmd_make_target = ["ssh", wm.config["daac_server_internal"], "\"if", "[", "!", "-d",
+                           f"'{stream.daac_staging_dir}'", "];", "then", "mkdir", f"{stream.daac_staging_dir};",
+                           "chgrp", group, f"{stream.daac_staging_dir};", "fi\""]
+        pge.run(cmd_make_target, tmp_dir=self.tmp_dir)
+
+        for path in (stream.ccsds_path, ummg_json_path):
+            cmd_rsync = ["rsync", "-azv", partial_dir_arg, log_file_arg, path, target]
+            pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
+
+        # Build notification dictionary
+        utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
+        cnm_submission_id = os.path.basename(stream.ccsds_path).replace(".bin", f"_{utc_now.strftime('%Y%m%dt%H%M%S')}")
+        cnm_submission_path = os.path.join(stream.l0_dir, cnm_submission_id + "_cnm.json")
+        notification = {
+            "collection": "EMITL0",
+            "provider": wm.config["daac_provider"],
+            "identifier": cnm_submission_id,
+            "version": wm.config["cnm_version"],
+            "product": {
+                "name": granule_ur,
+                "dataVersion": f"0{wm.config['processing_version']}",
+                "files": [
+                    {
+                        "name": os.path.basename(stream.ccsds_path),
+                        "uri": stream.daac_uri_base + os.path.basename(stream.ccsds_path),
+                        "type": "data",
+                        "size": os.path.getsize(stream.ccsds_path),
+                        "checksumType": "sha512",
+                        "checksum": daac_converter.calc_checksum(stream.ccsds_path, "sha512")
+                    },
+                    {
+                        "name": os.path.basename(ummg_json_path),
+                        "uri": stream.daac_uri_base + os.path.basename(ummg_json_path),
+                        "type": "metadata",
+                        "size": os.path.getsize(ummg_json_path),
+                        "checksumType": "sha512",
+                        "checksum": daac_converter.calc_checksum(ummg_json_path, "sha512")
+                    }
+                ]
+            }
+        }
+
+        # Write notification submission to file
+        with open(cnm_submission_path, "w") as f:
+            f.write(json.dumps(notification, indent=4))
+        wm.change_group_ownership(cnm_submission_path)
+
+        # Submit notification via AWS SQS
+        cmd_aws = [wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", wm.config["daac_submission_url"],
+                   "--message-body",
+                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"]]
+        pge.run(cmd_aws, tmp_dir=self.tmp_dir)
+        cnm_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(cnm_submission_path),
+                                                            tz=datetime.timezone.utc)
+
+        # Record delivery details in DB for reconciliation report
+        dm = wm.database_manager
+        for file in notification["product"]["files"]:
+            delivery_report = {
+                "timestamp": utc_now,
+                "collection": notification["collection"],
+                "version": notification["version"],
+                "filename": file["name"],
+                "size": file["size"],
+                "checksum": file["checksum"],
+                "checksum_type": file["checksumType"],
+                "submission_id": cnm_submission_id,
+                "submission_status": "submitted"
+            }
+            dm.insert_granule_report(delivery_report)
+
+        # Update db with products and log entry
+        product_dict_ummg = {
+            "ummg_json_path": ummg_json_path,
+            "created": datetime.datetime.fromtimestamp(os.path.getmtime(ummg_json_path), tz=datetime.timezone.utc)
+        }
+        dm.update_stream_metadata(stream.ccsds_name, {"products.daac.ccsds_ummg": product_dict_ummg})
+
+        if "ccsds_daac_submissions" in stream.metadata["products"]["daac"] and \
+                stream.metadata["products"]["daac"]["ccsds_daac_submissions"] is not None:
+            stream.metadata["products"]["daac"]["ccsds_daac_submissions"].append(cnm_submission_path)
+        else:
+            stream.metadata["products"]["daac"]["ccsds_daac_submissions"] = [cnm_submission_path]
+        dm.update_stream_metadata(
+            stream.ccsds_name,
+            {"products.daac.ccsds_daac_submissions": stream.metadata["products"]["daac"]["ccsds_daac_submissions"]})
+
+        log_entry = {
+            "task": self.task_family,
+            "pge_name": pge.repo_url,
+            "pge_version": pge.version_tag,
+            "pge_input_files": {
+                "ccsds_path": stream.ccsds_path
+            },
+            "pge_run_command": " ".join(cmd_aws),
+            "documentation_version": "TBD",
+            "product_creation_time": cnm_creation_time,
+            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
+            "completion_status": "SUCCESS",
+            "output": {
+                "l0_ccsds_ummg_path": ummg_json_path,
+                "l0_ccsds_cnm_submission_path": cnm_submission_path
+            }
+        }
+
+        dm.insert_stream_log_entry(stream.ccsds_name, log_entry)
