@@ -228,9 +228,13 @@ class L2BFormat(SlurmJobTask):
 
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(daac_nc_path), tz=datetime.timezone.utc)
         granule_name = os.path.splitext(os.path.basename(daac_nc_path))[0]
-        ummg = daac_converter.initialize_ummg(granule_name, nc_creation_time.strftime("%Y-%m-%dT%H:%M:%S%z"), "EMITL2B_MIN")
-        ummg = daac_converter.add_data_file_ummg(ummg, daac_nc_path)
-        # ummg = daac_converter.add_boundary_ummg(ummg, boundary_points_list)
+        daynight = "day" if acq.submode == "science" else "dark"
+        ummg = daac_converter.initialize_ummg(granule_name, nc_creation_time, "EMITL2B_MIN")
+        ummg = daac_converter.add_data_file_ummg(ummg, daac_nc_path, daynight)
+
+        #TODO: replace w/ database read or read from L1B Geolocate PGE
+        tmp_boundary_points_list = [[-118.53, 35.85], [-118.53, 35.659], [-118.397, 35.659], [-118.397, 35.85]]
+        ummg = daac_converter.add_boundary_ummg(ummg, tmp_boundary_points_list)
         daac_converter.dump_json(ummg, daac_ummg_json_path)
 
         # PGE writes metadata to db

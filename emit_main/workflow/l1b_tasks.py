@@ -440,8 +440,9 @@ class L1BFormat(SlurmJobTask):
 
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(daac_nc_path), tz=datetime.timezone.utc)
         granule_name = os.path.splitext(os.path.basename(daac_nc_path))[0]
+        daynight = "day" if acq.submode == "science" else "dark"
         ummg = daac_converter.initialize_ummg(granule_name, nc_creation_time, "EMITL1B_RAD")
-        ummg = daac_converter.add_data_file_ummg(ummg, daac_nc_path)
+        ummg = daac_converter.add_data_file_ummg(ummg, daac_nc_path, daynight)
 
         #TODO: replace w/ database read or read from L1B Geolocate PGE
         tmp_boundary_points_list = [[-118.53, 35.85], [-118.53, 35.659], [-118.397, 35.659], [-118.397, 35.85]]
