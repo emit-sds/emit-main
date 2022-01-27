@@ -422,7 +422,6 @@ class L1BFormat(SlurmJobTask):
         tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
         wm.makedirs(tmp_output_dir)
         tmp_daac_nc_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l1b_rdn.nc")
-        tmp_ummg_json_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l1b_rdn_ummg.json")
         tmp_log_path = os.path.join(self.local_tmp_dir, "output_conversion_pge.log")
         cmd = ["python", output_generator_exe, tmp_daac_nc_path, acq.rdn_img_path, acq.obs_img_path, acq.loc_img_path,
                acq.glt_img_path, "--log_file", tmp_log_path]
@@ -430,7 +429,7 @@ class L1BFormat(SlurmJobTask):
 
         utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
         daac_nc_path = os.path.join(acq.l1b_data_dir, f"{acq.daac_l1brad_prefix}_{utc_now.strftime('%Y%m%dt%H%M%S')}.nc")
-        daac_ummg_json_path = daac_nc_path.replace(".nc", "_ummg.json")
+        daac_ummg_json_path = daac_nc_path.replace(".nc", "_ummg.cmr.json")
 
         # Copy and rename output files back to /store
         # EMITL1B_RAD.vVV_yyyymmddthhmmss_oOOOOO_sSSS_yyyymmddthhmmss.nc

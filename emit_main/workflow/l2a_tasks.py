@@ -323,18 +323,17 @@ class L2AFormat(SlurmJobTask):
         tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
         wm.makedirs(tmp_output_dir)
         tmp_daac_nc_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l2a.nc")
-        tmp_ummg_json_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l2a_ummg.json")
         tmp_log_path = os.path.join(self.local_tmp_dir, "output_conversion_pge.log")
 
         cmd = ["python", output_generator_exe, tmp_daac_nc_path, acq.rfl_img_path, acq.uncert_img_path,
-               acq.mask_img_path, acq.loc_img_path, acq.glt_img_path, "--ummg_file", tmp_ummg_json_path, "--log_file",
+               acq.mask_img_path, acq.loc_img_path, acq.glt_img_path, "--log_file",
                tmp_log_path]
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
         # Copy and rename output files back to /store
         utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
         daac_nc_path = os.path.join(acq.l2a_data_dir, f"{acq.daac_l2arfl_prefix}_{utc_now.strftime('%Y%m%dt%H%M%S')}.nc")
-        daac_ummg_json_path = daac_nc_path.replace(".nc", "_ummg.json")
+        daac_ummg_json_path = daac_nc_path.replace(".nc", "_ummg.cmr.json")
         log_path = daac_nc_path.replace(".nc", "_pge.log")
         wm.copy(tmp_daac_nc_path, daac_nc_path)
         wm.copy(tmp_log_path, log_path)
