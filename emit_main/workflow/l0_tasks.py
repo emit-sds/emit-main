@@ -494,9 +494,9 @@ class L0Deliver(SlurmJobTask):
         ummg = daac_converter.initialize_ummg(granule_ur, creation_time.strftime("%Y-%m-%dT%H:%M:%S%z"), "EMITL0")
         ummg = daac_converter.add_data_file_ummg(ummg, stream.ccsds_path)
         # ummg = daac_converter.add_boundary_ummg(ummg, boundary_points_list)
-        ummg_json_path = stream.ccsds_path.replace(".bin", "_ummg.cmr.json")
-        daac_converter.dump_json(ummg, ummg_json_path)
-        wm.change_group_ownership(ummg_json_path)
+        daac_ummg_json_path = stream.ccsds_path.replace(".bin", "_ummg.cmr.json")
+        daac_converter.dump_json(ummg, daac_ummg_json_path)
+        wm.change_group_ownership(daac_ummg_json_path)
 
         # Copy files to staging server
         partial_dir_arg = f"--partial-dir={stream.daac_partial_dir}"
@@ -509,7 +509,7 @@ class L0Deliver(SlurmJobTask):
                            "chgrp", group, f"{stream.daac_staging_dir};", "fi\""]
         pge.run(cmd_make_target, tmp_dir=self.tmp_dir)
 
-        for path in (stream.ccsds_path, ummg_json_path):
+        for path in (stream.ccsds_path, daac_ummg_json_path):
             cmd_rsync = ["rsync", "-azv", partial_dir_arg, log_file_arg, path, target]
             pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
 
@@ -535,12 +535,12 @@ class L0Deliver(SlurmJobTask):
                         "checksum": daac_converter.calc_checksum(stream.ccsds_path, "sha512")
                     },
                     {
-                        "name": os.path.basename(ummg_json_path),
-                        "uri": stream.daac_uri_base + os.path.basename(ummg_json_path),
+                        "name": os.path.basename(daac_ummg_json_path),
+                        "uri": stream.daac_uri_base + os.path.basename(daac_ummg_json_path),
                         "type": "metadata",
-                        "size": os.path.getsize(ummg_json_path),
+                        "size": os.path.getsize(daac_ummg_json_path),
                         "checksumType": "sha512",
-                        "checksum": daac_converter.calc_checksum(ummg_json_path, "sha512")
+                        "checksum": daac_converter.calc_checksum(daac_ummg_json_path, "sha512")
                     }
                 ]
             }
@@ -565,7 +565,7 @@ class L0Deliver(SlurmJobTask):
             delivery_report = {
                 "timestamp": utc_now,
                 "collection": notification["collection"],
-                "version": notification["version"],
+                "version": notification["product"]["dataVersion"],
                 "filename": file["name"],
                 "size": file["size"],
                 "checksum": file["checksum"],
@@ -577,8 +577,8 @@ class L0Deliver(SlurmJobTask):
 
         # Update db with products and log entry
         product_dict_ummg = {
-            "ummg_json_path": ummg_json_path,
-            "created": datetime.datetime.fromtimestamp(os.path.getmtime(ummg_json_path), tz=datetime.timezone.utc)
+            "ummg_json_path": daac_ummg_json_path,
+            "created": datetime.datetime.fromtimestamp(os.path.getmtime(daac_ummg_json_path), tz=datetime.timezone.utc)
         }
         dm.update_stream_metadata(stream.ccsds_name, {"products.daac.ccsds_ummg": product_dict_ummg})
 
@@ -604,7 +604,7 @@ class L0Deliver(SlurmJobTask):
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
-                "l0_ccsds_ummg_path": ummg_json_path,
+                "l0_ccsds_ummg_path": daac_ummg_json_path,
                 "l0_ccsds_cnm_submission_path": cnm_submission_path
             }
         }

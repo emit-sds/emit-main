@@ -524,7 +524,7 @@ class L1BDeliver(SlurmJobTask):
 
         # Locate matching NetCDF and UMM-G files for this acquisition. If there is more than 1, get most recent
         daac_nc_path = sorted(glob.glob(os.path.join(acq.l1b_data_dir, acq.daac_l1brad_prefix + "*.nc")))[-1]
-        daac_ummg_json_path = sorted(glob.glob(os.path.join(acq.l1b_data_dir, acq.daac_l1brad_prefix + "*ummg.json")))[-1]
+        daac_ummg_json_path = sorted(glob.glob(os.path.join(acq.l1b_data_dir, acq.daac_l1brad_prefix + "*ummg.cmr.json")))[-1]
 
         # Copy files to staging server
         partial_dir_arg = f"--partial-dir={acq.daac_partial_dir}"
@@ -592,7 +592,7 @@ class L1BDeliver(SlurmJobTask):
             delivery_report = {
                 "timestamp": utc_now,
                 "collection": notification["collection"],
-                "version": notification["version"],
+                "version": notification["product"]["dataVersion"],
                 "filename": file["name"],
                 "size": file["size"],
                 "checksum": file["checksum"],
