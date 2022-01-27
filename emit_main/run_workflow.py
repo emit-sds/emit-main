@@ -34,7 +34,8 @@ logger = logging.getLogger("emit-main")
 
 def parse_args():
     product_choices = ["l0hosc", "l0plan", "l1aeng", "l1aframe", "l1aframereport", "l1araw", "l1abad", "l1bcal",
-                       "l1bformat", "l1bdaac", "l2arefl", "l2amask", "l2aformat", "l2babun", "l2bformat", "l3unmix"]
+                       "l1bgeo", "l1bformat", "l1bdaac", "l2arefl", "l2amask", "l2aformat", "l2babun", "l2bformat",
+                       "l3unmix"]
     monitor_choices = ["ingest", "frames", "orbit", "email"]
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--config_path",
@@ -128,6 +129,7 @@ def get_tasks_from_product_args(args):
                                    acq_chunksize=args.acq_chunksize, test_mode=args.test_mode, **kwargs),
         "l1abad": L1AReformatBAD(orbit_id=args.orbit_id, ignore_missing_bad=args.ignore_missing_bad, **kwargs),
         "l1bcal": L1BCalibrate(acquisition_id=args.acquisition_id, **kwargs),
+        "l1bgeo": L1BGeolocate(orbit_id=args.orbit_id, **kwargs),
         "l1bformat": L1BFormat(acquisition_id=args.acquisition_id, **kwargs),
         "l1bdaac": L1BDeliver(acquisition_id=args.acquisition_id, **kwargs),
         "l2arefl": L2AReflectance(acquisition_id=args.acquisition_id, **kwargs),

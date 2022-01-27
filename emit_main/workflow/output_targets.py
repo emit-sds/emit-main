@@ -48,8 +48,12 @@ class OrbitTarget(luigi.Target):
         for log in reversed(self._orbit.processing_log):
             if log["task"] == self._task_family and log["completion_status"] == "SUCCESS":
                 # Check that outputs exist on filesystem
-                for path in log["output"].values():
-                    if not os.path.exists(path):
+                for val in log["output"].values():
+                    if type(val) == list:
+                        for v in val:
+                            if not os.path.exists(v):
+                                return False
+                    elif not os.path.exists(val):
                         return False
                 return True
         return False
