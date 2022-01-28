@@ -1,6 +1,6 @@
 <h1 align="center">emit-main </h1>
 
-<span style="color:orange">NOTE - at this time the EMIT repositories are not supporting Pull Requests from members outside of the EMIT-SDS Team.  This is expected to change in March, and guidance on branches will be provided at that time. At the moment, see the **develop** branch for latest updates. </span>
+_NOTE - at this time the EMIT repositories are not supporting Pull Requests from members outside of the EMIT-SDS Team.  This is expected to change in March, and guidance on branches will be provided at that time. At present, public migration of this repository is a work-in-progress, and not all features are yet fully up to date.  See the **develop** branch - set as default - for the latest code._
 
 This is the governing repository for the EMIT SDS which manages the throughput of data between level-specific repositories.  This repo includes the workflow manager, database manager, and file monitor code.
 
