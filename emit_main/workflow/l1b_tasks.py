@@ -20,7 +20,6 @@ from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_utils import daac_converter
 
-
 logger = logging.getLogger("emit-main")
 
 
@@ -404,10 +403,10 @@ class L1BFormat(SlurmJobTask):
     def requires(self):
 
         logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
-        return (L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
-                             partition=self.partition),
-                L1BGeolocate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
-                             partition=self.partition))
+        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        # TODO: Do we check for geolocate here or do we only kick off this process when we know it can run?
+        return L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+                            partition=self.partition)
 
     def output(self):
 
@@ -427,7 +426,6 @@ class L1BFormat(SlurmJobTask):
         tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
         wm.makedirs(tmp_output_dir)
         tmp_daac_nc_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l1b_rdn.nc")
-        tmp_ummg_json_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l1b_rdn_ummg.json")
         tmp_log_path = os.path.join(self.local_tmp_dir, "output_conversion_pge.log")
         cmd = ["python", output_generator_exe, tmp_daac_nc_path, acq.rdn_img_path, acq.obs_img_path, acq.loc_img_path,
                acq.glt_img_path, "--log_file", tmp_log_path]
@@ -435,7 +433,7 @@ class L1BFormat(SlurmJobTask):
 
         utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
         daac_nc_path = os.path.join(acq.l1b_data_dir, f"{acq.daac_l1brad_prefix}_{utc_now.strftime('%Y%m%dt%H%M%S')}.nc")
-        daac_ummg_json_path = daac_nc_path.replace(".nc", "_ummg.json")
+        daac_ummg_json_path = daac_nc_path.replace(".nc", "_ummg.cmr.json")
 
         # Copy and rename output files back to /store
         # EMITL1B_RAD.vVV_yyyymmddthhmmss_oOOOOO_sSSS_yyyymmddthhmmss.nc
@@ -445,10 +443,14 @@ class L1BFormat(SlurmJobTask):
 
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(daac_nc_path), tz=datetime.timezone.utc)
         granule_name = os.path.splitext(os.path.basename(daac_nc_path))[0]
-        ummg = daac_converter.initialize_ummg(granule_name, nc_creation_time.strftime("%Y-%m-%dT%H:%M:%S%z"), "EMITL1B_RAD")
-        ummg = daac_converter.add_data_file_ummg(ummg, daac_nc_path)
-        # ummg = daac_converter.add_boundary_ummg(ummg, boundary_points_list)
-        daac_converter.dump_json(ummg, daac_ummg_json_path)
+        daynight = "day" if acq.submode == "science" else "dark"
+        ummg = daac_converter.initialize_ummg(granule_name, nc_creation_time, "EMITL1B_RAD")
+        ummg = daac_converter.add_data_file_ummg(ummg, daac_nc_path, daynight)
+
+        #TODO: replace w/ database read or read from L1B Geolocate PGE
+        tmp_boundary_points_list = [[-118.53, 35.85], [-118.53, 35.659], [-118.397, 35.659], [-118.397, 35.85]]
+        ummg = daac_converter.add_boundary_ummg(ummg, tmp_boundary_points_list)
+        daac_converter.dump_json(ummg,daac_ummg_json_path)
 
         # PGE writes metadata to db
         dm = wm.database_manager
