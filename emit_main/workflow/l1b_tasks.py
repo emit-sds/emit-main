@@ -441,6 +441,7 @@ class L1BFormat(SlurmJobTask):
 
         # PGE writes metadata to db
         dm = wm.database_manager
+        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(nc_path), tz=datetime.timezone.utc)
         product_dict_netcdf = {
             "netcdf_path": nc_path,
             "created": nc_creation_time
