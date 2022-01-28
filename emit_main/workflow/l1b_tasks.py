@@ -387,7 +387,7 @@ class L1BGeolocate(SlurmJobTask):
         dm.insert_orbit_log_entry(orbit.orbit_id, log_entry)
 
 
-class L1BFormat(SlurmJobTask):
+class L1BRdnFormat(SlurmJobTask):
     """
     Converts L1B (geolocation and radiance) to netcdf files
     :returns: L1B netcdf output for delivery

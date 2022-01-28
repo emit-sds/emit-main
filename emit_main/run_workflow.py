@@ -20,7 +20,7 @@ from emit_main.monitor.orbit_monitor import OrbitMonitor
 from emit_main.workflow.l0_tasks import L0StripHOSC, L0ProcessPlanningProduct, L0Deliver
 from emit_main.workflow.l1a_tasks import L1ADepacketizeScienceFrames, L1AReassembleRaw, L1AReformatEDP, \
     L1AFrameReport, L1AReformatBAD
-from emit_main.workflow.l1b_tasks import L1BGeolocate, L1BCalibrate, L1BFormat, L1BRadDeliver
+from emit_main.workflow.l1b_tasks import L1BGeolocate, L1BCalibrate, L1BRdnFormat, L1BRadDeliver
 from emit_main.workflow.l2a_tasks import L2AMask, L2AReflectance, L2AFormat
 from emit_main.workflow.l2b_tasks import L2BAbundance, L2BFormat
 from emit_main.workflow.l3_tasks import L3Unmix
@@ -34,7 +34,7 @@ logger = logging.getLogger("emit-main")
 
 def parse_args():
     product_choices = ["l0hosc", "l0daac", "l0plan", "l1aeng", "l1aframe", "l1aframereport", "l1araw", "l1abad",
-                       "l1bcal", "l1bgeo", "l1bformat", "l1bdaac", "l2arefl", "l2amask", "l2aformat", "l2babun",
+                       "l1bcal", "l1bgeo", "l1brdnformat", "l1brdndaac", "l2arefl", "l2amask", "l2aformat", "l2babun",
                        "l2bformat", "l3unmix"]
     monitor_choices = ["ingest", "frames", "orbit", "email"]
     parser = argparse.ArgumentParser()
@@ -133,8 +133,8 @@ def get_tasks_from_product_args(args):
         "l1abad": L1AReformatBAD(orbit_id=args.orbit_id, ignore_missing_bad=args.ignore_missing_bad, **kwargs),
         "l1bcal": L1BCalibrate(acquisition_id=args.acquisition_id, dark_path=args.dark_path, **kwargs),
         "l1bgeo": L1BGeolocate(orbit_id=args.orbit_id, **kwargs),
-        "l1bformat": L1BFormat(acquisition_id=args.acquisition_id, **kwargs),
-        "l1bdaac": L1BRadDeliver(acquisition_id=args.acquisition_id, **kwargs),
+        "l1brdnformat": L1BRdnFormat(acquisition_id=args.acquisition_id, **kwargs),
+        "l1brdndaac": L1BRadDeliver(acquisition_id=args.acquisition_id, **kwargs),
         "l2arefl": L2AReflectance(acquisition_id=args.acquisition_id, **kwargs),
         "l2amask": L2AMask(acquisition_id=args.acquisition_id, **kwargs),
         "l2aformat": L2AFormat(acquisition_id=args.acquisition_id, **kwargs),
@@ -214,7 +214,7 @@ def task_failure(task, e):
 
     stream_tasks = ("emit.L0StripHOSC", "emit.L1ADepacketizeScienceFrames", "emit.L1AReformatEDP", "emit.L0IngestBAD")
     data_collection_tasks = ("emit.L1AReassembleRaw", "emit.L1AFrameReport")
-    acquisition_tasks = ("emit.L1BCalibrate", "emit.L1BFormat", "emit.L1BRadDeliver", "emit.L2AReflectance",
+    acquisition_tasks = ("emit.L1BCalibrate", "emit.L1BRdnFormat", "emit.L1BRadDeliver", "emit.L2AReflectance",
                          "emit.L2AMask", "emit.L2BAbundance", "emit.L3Unmix")
     orbit_tasks = ("emit.L1AReformatBAD")
 
