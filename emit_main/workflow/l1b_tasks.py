@@ -439,7 +439,7 @@ class L1BFormat(SlurmJobTask):
 
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(daac_nc_path), tz=datetime.timezone.utc)
         granule_name = os.path.splitext(os.path.basename(daac_nc_path))[0]
-        daynight = "day" if acq.submode == "science" else "dark"
+        daynight = "Day" if acq.submode == "science" else "Night"
         ummg = daac_converter.initialize_ummg(granule_name, nc_creation_time, "EMITL1B_RAD")
         ummg = daac_converter.add_data_file_ummg(ummg, daac_nc_path, daynight)
 
