@@ -720,8 +720,8 @@ class L1AFrameReport(SlurmJobTask):
 
 class L1ARawDeliver(SlurmJobTask):
     """
-    Stages NetCDF and UMM-G files and submits notification to DAAC interface
-    :returns: Staged L1B files
+    Stages Raw and UMM-G files and submits notification to DAAC interface
+    :returns: Staged L1A files
     """
 
     config_path = luigi.Parameter()

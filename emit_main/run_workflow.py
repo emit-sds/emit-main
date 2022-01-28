@@ -21,7 +21,7 @@ from emit_main.workflow.l0_tasks import L0StripHOSC, L0ProcessPlanningProduct, L
 from emit_main.workflow.l1a_tasks import L1ADepacketizeScienceFrames, L1AReassembleRaw, L1AReformatEDP, \
     L1AFrameReport, L1AReformatBAD, L1ARawDeliver
 from emit_main.workflow.l1b_tasks import L1BGeolocate, L1BCalibrate, L1BRdnFormat, L1BRdnDeliver
-from emit_main.workflow.l2a_tasks import L2AMask, L2AReflectance, L2AFormat
+from emit_main.workflow.l2a_tasks import L2AMask, L2AReflectance, L2AFormat, L2ARflDeliver
 from emit_main.workflow.l2b_tasks import L2BAbundance, L2BFormat
 from emit_main.workflow.l3_tasks import L3Unmix
 from emit_main.workflow.slurm import SlurmJobTask
@@ -35,7 +35,7 @@ logger = logging.getLogger("emit-main")
 def parse_args():
     product_choices = ["l0hosc", "l0daac", "l0plan", "l1aeng", "l1aframe", "l1aframereport", "l1araw", "l1arawdaac",
                        "l1abad", "l1bcal", "l1bgeo", "l1brdnformat", "l1brdndaac", "l2arefl", "l2amask", "l2aformat",
-                       "l2babun", "l2bformat", "l3unmix"]
+                       "l2arfldaac", "l2babun", "l2bformat", "l3unmix"]
     monitor_choices = ["ingest", "frames", "orbit", "email"]
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--config_path",
@@ -139,10 +139,10 @@ def get_tasks_from_product_args(args):
         "l2arefl": L2AReflectance(acquisition_id=args.acquisition_id, **kwargs),
         "l2amask": L2AMask(acquisition_id=args.acquisition_id, **kwargs),
         "l2aformat": L2AFormat(acquisition_id=args.acquisition_id, **kwargs),
+        "l2arfldaac": L2ARflDeliver(acquisition_id=args.acquisition_id, **kwargs),
         "l2babun": L2BAbundance(acquisition_id=args.acquisition_id, **kwargs),
         "l2bformat": L2BFormat(acquisition_id=args.acquisition_id, **kwargs),
         "l3unmix": L3Unmix(acquisition_id=args.acquisition_id, **kwargs),
-        # "l2aformat": L2AFormat(acquisition_id=args.acquisition_id, **kwargs),
         # "l3unmixformat": L3UnmixFormat(acquisition_id=args.acquisition_id, **kwargs)
     }
     tasks = []

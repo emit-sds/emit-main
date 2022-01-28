@@ -635,7 +635,7 @@ class L1BRdnDeliver(SlurmJobTask):
             "pge_name": pge.repo_url,
             "pge_version": pge.version_tag,
             "pge_input_files": {
-                "daac_netcdf_path": daac_nc_path
+                "netcdf_path": nc_path
             },
             "pge_run_command": " ".join(cmd_aws),
             "documentation_version": "TBD",
