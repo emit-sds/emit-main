@@ -432,39 +432,20 @@ class L1BFormat(SlurmJobTask):
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
         utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
-        daac_nc_path = os.path.join(acq.l1b_data_dir, f"{acq.daac_l1brad_prefix}_{utc_now.strftime('%Y%m%dt%H%M%S')}.nc")
-        daac_ummg_json_path = daac_nc_path.replace(".nc", "_ummg.cmr.json")
+        nc_path = acq.rdn_img_path.replace(".img", ".nc")
 
         # Copy and rename output files back to /store
-        # EMITL1B_RAD.vVV_yyyymmddthhmmss_oOOOOO_sSSS_yyyymmddthhmmss.nc
-        log_path = daac_nc_path.replace(".nc", "_pge.log")
-        wm.copy(tmp_daac_nc_path, daac_nc_path)
+        log_path = nc_path.replace(".nc", "_reformat_pge.log")
+        wm.copy(tmp_daac_nc_path, nc_path)
         wm.copy(tmp_log_path, log_path)
-
-        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(daac_nc_path), tz=datetime.timezone.utc)
-        granule_name = os.path.splitext(os.path.basename(daac_nc_path))[0]
-        daynight = "Day" if acq.submode == "science" else "Night"
-        ummg = daac_converter.initialize_ummg(granule_name, nc_creation_time, "EMITL1B_RAD")
-        ummg = daac_converter.add_data_file_ummg(ummg, daac_nc_path, daynight)
-
-        # TODO: replace w/ database read or read from L1B Geolocate PGE
-        tmp_boundary_points_list = [[-118.53, 35.85], [-118.53, 35.659], [-118.397, 35.659], [-118.397, 35.85]]
-        ummg = daac_converter.add_boundary_ummg(ummg, tmp_boundary_points_list)
-        daac_converter.dump_json(ummg, daac_ummg_json_path)
 
         # PGE writes metadata to db
         dm = wm.database_manager
         product_dict_netcdf = {
-            "netcdf_path": daac_nc_path,
+            "netcdf_path": nc_path,
             "created": nc_creation_time
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn_netcdf": product_dict_netcdf})
-
-        product_dict_ummg = {
-            "ummg_json_path": daac_ummg_json_path,
-            "created": datetime.datetime.fromtimestamp(os.path.getmtime(daac_ummg_json_path), tz=datetime.timezone.utc)
-        }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn_ummg": product_dict_ummg})
 
         log_entry = {
             "task": self.task_family,
@@ -482,15 +463,14 @@ class L1BFormat(SlurmJobTask):
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
-                "l1b_rdn_netcdf_path": daac_nc_path,
-                "l1b_rdn_ummg_path:": daac_ummg_json_path
+                "l1b_rdn_netcdf_path": nc_path
             }
         }
 
         dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
 
 
-class L1BDeliver(SlurmJobTask):
+class L1BRadDeliver(SlurmJobTask):
     """
     Stages NetCDF and UMM-G files and submits notification to DAAC interface
     :returns: Staged L1B files
@@ -524,9 +504,33 @@ class L1BDeliver(SlurmJobTask):
         acq = wm.acquisition
         pge = wm.pges["emit-main"]
 
-        # Locate matching NetCDF and UMM-G files for this acquisition. If there is more than 1, get most recent
-        daac_nc_path = sorted(glob.glob(os.path.join(acq.l1b_data_dir, acq.daac_l1brad_prefix + "*.nc")))[-1]
-        daac_ummg_json_path = sorted(glob.glob(os.path.join(acq.l1b_data_dir, acq.daac_l1brad_prefix + "*ummg.cmr.json")))[-1]
+        # Get local SDS names
+        nc_path = acq.rdn_img_path.replace(".img", ".nc")
+        ummg_path = nc_path.replace(".nc", ".cmr.json")
+
+        # Create local/tmp daac names and paths
+        daac_nc_name = f"{acq.rdn_granule_ur}.nc"
+        daac_ummg_name = f"{acq.rdn_granule_ur}.cmr.json"
+        daac_nc_path = os.path.join(self.tmp_dir, daac_nc_name)
+        daac_ummg_path = os.path.join(self.tmp_dir, daac_ummg_name)
+
+        # Copy files to tmp dir and rename
+        wm.copy(nc_path, daac_nc_path)
+
+        # Create the UMM-G file
+        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(nc_path), tz=datetime.timezone.utc)
+        daynight = "Day" if acq.submode == "science" else "Night"
+        ummg = daac_converter.initialize_ummg(acq.rdn_granule_ur, nc_creation_time, "EMITL1BRAD")
+        ummg = daac_converter.add_data_file_ummg(ummg, daac_nc_path, daynight)
+        # TODO: Add browse image
+        # TODO: replace w/ database read or read from L1B Geolocate PGE
+        tmp_boundary_points_list = [[-118.53, 35.85], [-118.53, 35.659], [-118.397, 35.659], [-118.397, 35.85]]
+        ummg = daac_converter.add_boundary_ummg(ummg, tmp_boundary_points_list)
+        daac_converter.dump_json(ummg, ummg_path)
+        wm.change_group_ownership(ummg_path)
+
+        # Copy ummg file to tmp dir and rename
+        wm.copy(ummg_path, daac_ummg_path)
 
         # Copy files to staging server
         partial_dir_arg = f"--partial-dir={acq.daac_partial_dir}"
@@ -539,38 +543,42 @@ class L1BDeliver(SlurmJobTask):
                            group, f"{acq.daac_staging_dir};", "fi\""]
         pge.run(cmd_make_target, tmp_dir=self.tmp_dir)
 
-        for path in (daac_nc_path, daac_ummg_json_path):
+        for path in (daac_nc_path, daac_ummg_path):
             cmd_rsync = ["rsync", "-azv", partial_dir_arg, log_file_arg, path, target]
             pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
 
         # Build notification dictionary
         utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
-        cnm_submission_id = os.path.basename(daac_nc_path).replace(".nc", f"_{utc_now.strftime('%Y%m%dt%H%M%S')}")
-        cnm_submission_path = os.path.join(acq.l1b_data_dir, cnm_submission_id + ".json")
+        cnm_submission_id = f"{acq.rdn_granule_ur}_{utc_now.strftime('%Y%m%dt%H%M%S')}"
+        cnm_submission_path = os.path.join(acq.l1b_data_dir, cnm_submission_id + "_cnm.json")
+        target_src_map = {
+            daac_nc_name: os.path.basename(nc_path),
+            daac_ummg_name: os.path.basename(ummg_path)
+        }
         notification = {
-            "collection": "EMITL1B_RAD",
+            "collection": "EMITL1BRAD",
             "provider": wm.config["daac_provider"],
             "identifier": cnm_submission_id,
             "version": wm.config["cnm_version"],
             "product": {
-                "name": os.path.basename(daac_nc_path).replace(".nc", ""),
-                "dataVersion": f"0{wm.config['processing_version']}",
+                "name": acq.rdn_granule_ur,
+                "dataVersion": acq.collection_version,
                 "files": [
                     {
-                        "name": os.path.basename(daac_nc_path),
-                        "uri": acq.daac_uri_base + os.path.basename(daac_nc_path),
+                        "name": daac_nc_name,
+                        "uri": acq.daac_uri_base + daac_nc_name,
                         "type": "data",
-                        "size": os.path.getsize(daac_nc_path),
+                        "size": os.path.getsize(daac_nc_name),
                         "checksumType": "sha512",
                         "checksum": daac_converter.calc_checksum(daac_nc_path, "sha512")
                     },
                     {
-                        "name": os.path.basename(daac_ummg_json_path),
-                        "uri": acq.daac_uri_base + os.path.basename(daac_ummg_json_path),
+                        "name": daac_ummg_name,
+                        "uri": acq.daac_uri_base + daac_ummg_name,
                         "type": "metadata",
-                        "size": os.path.getsize(daac_ummg_json_path),
+                        "size": os.path.getsize(daac_ummg_path),
                         "checksumType": "sha512",
-                        "checksum": daac_converter.calc_checksum(daac_ummg_json_path, "sha512")
+                        "checksum": daac_converter.calc_checksum(daac_ummg_path, "sha512")
                     }
                 ]
             }
@@ -595,7 +603,8 @@ class L1BDeliver(SlurmJobTask):
                 "timestamp": utc_now,
                 "collection": notification["collection"],
                 "version": notification["product"]["dataVersion"],
-                "filename": file["name"],
+                "sds_filename": target_src_map[file["name"]],
+                "daac_filename": file["name"],
                 "size": file["size"],
                 "checksum": file["checksum"],
                 "checksum_type": file["checksumType"],
@@ -605,6 +614,12 @@ class L1BDeliver(SlurmJobTask):
             dm.insert_granule_report(delivery_report)
 
         # Update db with log entry
+        product_dict_ummg = {
+            "ummg_json_path": ummg_path,
+            "created": datetime.datetime.fromtimestamp(os.path.getmtime(ummg_path), tz=datetime.timezone.utc)
+        }
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn_ummg": product_dict_ummg})
+
         if "rdn_daac_submissions" in acq.metadata["products"]["l1b"] and \
                 acq.metadata["products"]["l1b"]["rdn_daac_submissions"] is not None:
             acq.metadata["products"]["l1b"]["rdn_daac_submissions"].append(cnm_submission_path)
@@ -619,8 +634,7 @@ class L1BDeliver(SlurmJobTask):
             "pge_name": pge.repo_url,
             "pge_version": pge.version_tag,
             "pge_input_files": {
-                "daac_netcdf_path": daac_nc_path,
-                "daac_ummg_json_path": daac_ummg_json_path
+                "daac_netcdf_path": daac_nc_path
             },
             "pge_run_command": " ".join(cmd_aws),
             "documentation_version": "TBD",
@@ -628,8 +642,8 @@ class L1BDeliver(SlurmJobTask):
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
+                "l1b_rdn_ummg_path:": ummg_path,
                 "l1b_rdn_cnm_submission_path": cnm_submission_path
             }
         }
-
         dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
