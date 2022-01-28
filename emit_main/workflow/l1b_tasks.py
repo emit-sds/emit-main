@@ -471,7 +471,7 @@ class L1BRdnFormat(SlurmJobTask):
         dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
 
 
-class L1BRadDeliver(SlurmJobTask):
+class L1BRdnDeliver(SlurmJobTask):
     """
     Stages NetCDF and UMM-G files and submits notification to DAAC interface
     :returns: Staged L1B files

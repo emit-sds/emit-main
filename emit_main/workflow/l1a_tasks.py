@@ -769,7 +769,9 @@ class L1ARawDeliver(SlurmJobTask):
         ummg = daac_converter.initialize_ummg(acq.raw_granule_ur, creation_time, "EMITL1ARAW")
         daynight = "Day" if acq.submode == "science" else "Night"
         ummg = daac_converter.add_data_file_ummg(ummg, daac_raw_path, daynight)
-        # ummg = daac_converter.add_boundary_ummg(ummg, boundary_points_list)
+        # TODO: replace w/ database read or read from L1B Geolocate PGE
+        tmp_boundary_points_list = [[-118.53, 35.85], [-118.53, 35.659], [-118.397, 35.659], [-118.397, 35.85]]
+        ummg = daac_converter.add_boundary_ummg(ummg, tmp_boundary_points_list)
         daac_converter.dump_json(ummg, ummg_path)
         wm.change_group_ownership(ummg_path)
 

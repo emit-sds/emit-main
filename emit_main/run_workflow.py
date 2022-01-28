@@ -20,7 +20,7 @@ from emit_main.monitor.orbit_monitor import OrbitMonitor
 from emit_main.workflow.l0_tasks import L0StripHOSC, L0ProcessPlanningProduct, L0Deliver
 from emit_main.workflow.l1a_tasks import L1ADepacketizeScienceFrames, L1AReassembleRaw, L1AReformatEDP, \
     L1AFrameReport, L1AReformatBAD, L1ARawDeliver
-from emit_main.workflow.l1b_tasks import L1BGeolocate, L1BCalibrate, L1BRdnFormat, L1BRadDeliver
+from emit_main.workflow.l1b_tasks import L1BGeolocate, L1BCalibrate, L1BRdnFormat, L1BRdnDeliver
 from emit_main.workflow.l2a_tasks import L2AMask, L2AReflectance, L2AFormat
 from emit_main.workflow.l2b_tasks import L2BAbundance, L2BFormat
 from emit_main.workflow.l3_tasks import L3Unmix
@@ -135,7 +135,7 @@ def get_tasks_from_product_args(args):
         "l1bcal": L1BCalibrate(acquisition_id=args.acquisition_id, dark_path=args.dark_path, **kwargs),
         "l1bgeo": L1BGeolocate(orbit_id=args.orbit_id, **kwargs),
         "l1brdnformat": L1BRdnFormat(acquisition_id=args.acquisition_id, **kwargs),
-        "l1brdndaac": L1BRadDeliver(acquisition_id=args.acquisition_id, **kwargs),
+        "l1brdndaac": L1BRdnDeliver(acquisition_id=args.acquisition_id, **kwargs),
         "l2arefl": L2AReflectance(acquisition_id=args.acquisition_id, **kwargs),
         "l2amask": L2AMask(acquisition_id=args.acquisition_id, **kwargs),
         "l2aformat": L2AFormat(acquisition_id=args.acquisition_id, **kwargs),
@@ -215,7 +215,7 @@ def task_failure(task, e):
 
     stream_tasks = ("emit.L0StripHOSC", "emit.L1ADepacketizeScienceFrames", "emit.L1AReformatEDP", "emit.L0IngestBAD")
     data_collection_tasks = ("emit.L1AReassembleRaw", "emit.L1AFrameReport")
-    acquisition_tasks = ("emit.L1BCalibrate", "emit.L1BRdnFormat", "emit.L1BRadDeliver", "emit.L2AReflectance",
+    acquisition_tasks = ("emit.L1BCalibrate", "emit.L1BRdnFormat", "emit.L1BRdnDeliver", "emit.L2AReflectance",
                          "emit.L2AMask", "emit.L2BAbundance", "emit.L3Unmix")
     orbit_tasks = ("emit.L1AReformatBAD")
 

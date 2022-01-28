@@ -386,3 +386,5 @@ class L2AFormat(SlurmJobTask):
         }
 
         dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
+
+
