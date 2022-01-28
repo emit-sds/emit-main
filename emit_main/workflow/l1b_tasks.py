@@ -33,7 +33,7 @@ class L1BCalibrate(SlurmJobTask):
     acquisition_id = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
-    dark_path = luigi.Parameter()
+    dark_path = luigi.Parameter(default="")
 
     task_namespace = "emit"
 
