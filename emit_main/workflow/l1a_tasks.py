@@ -718,7 +718,7 @@ class L1AFrameReport(SlurmJobTask):
         dm.insert_data_collection_log_entry(dc.dcid, log_entry)
 
 
-class L1ARawDeliver(SlurmJobTask):
+class L1ADeliver(SlurmJobTask):
     """
     Stages Raw and UMM-G files and submits notification to DAAC interface
     :returns: Staged L1A files

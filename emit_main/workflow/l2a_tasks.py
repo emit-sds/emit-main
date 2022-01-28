@@ -334,35 +334,18 @@ class L2AFormat(SlurmJobTask):
         # Copy and rename output files back to /store
         utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
         daac_nc_path = os.path.join(acq.l2a_data_dir, f"{acq.daac_l2arfl_prefix}_{utc_now.strftime('%Y%m%dt%H%M%S')}.nc")
-        daac_ummg_json_path = daac_nc_path.replace(".nc", "_ummg.cmr.json")
-        log_path = daac_nc_path.replace(".nc", "_pge.log")
+        log_path = daac_nc_path.replace(".nc", "_nc_pge.log")
         wm.copy(tmp_daac_nc_path, daac_nc_path)
         wm.copy(tmp_log_path, log_path)
 
-        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(daac_nc_path), tz=datetime.timezone.utc)
-        granule_name = os.path.splitext(os.path.basename(daac_nc_path))[0]
-        daynight = "Day" if acq.submode == "science" else "Night"
-        ummg = daac_converter.initialize_ummg(granule_name, nc_creation_time, "EMITL2A_RFL")
-        ummg = daac_converter.add_data_file_ummg(ummg, daac_nc_path, daynight)
-
-        # TODO: replace w/ database read or read from L1B Geolocate PGE
-        tmp_boundary_points_list = [[-118.53, 35.85], [-118.53, 35.659], [-118.397, 35.659], [-118.397, 35.85]]
-        ummg = daac_converter.add_boundary_ummg(ummg, tmp_boundary_points_list)
-        daac_converter.dump_json(ummg, daac_ummg_json_path)
-
         # PGE writes metadata to db
+        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(daac_nc_path), tz=datetime.timezone.utc)
         dm = wm.database_manager
         product_dict_netcdf = {
             "netcdf_path": daac_nc_path,
             "created": nc_creation_time
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2a.rfl_netcdf": product_dict_netcdf})
-
-        product_dict_ummg = {
-            "ummg_json_path": daac_ummg_json_path,
-            "created": datetime.datetime.fromtimestamp(os.path.getmtime(daac_ummg_json_path), tz=datetime.timezone.utc)
-        }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2a.rfl_ummg": product_dict_ummg})
 
         log_entry = {
             "task": self.task_family,
@@ -381,15 +364,14 @@ class L2AFormat(SlurmJobTask):
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
-                "l2a_rfl_netcdf_path": daac_nc_path,
-                "l2a_rfl_ummg_path:": daac_ummg_json_path
+                "l2a_rfl_netcdf_path": daac_nc_path
             }
         }
 
         dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
 
 
-class L2ARflDeliver(SlurmJobTask):
+class L2ADeliver(SlurmJobTask):
     """
     Stages NetCDF and UMM-G files and submits notification to DAAC interface
     :returns: Staged L2A files

@@ -19,9 +19,9 @@ from emit_main.monitor.ingest_monitor import IngestMonitor
 from emit_main.monitor.orbit_monitor import OrbitMonitor
 from emit_main.workflow.l0_tasks import L0StripHOSC, L0ProcessPlanningProduct, L0Deliver
 from emit_main.workflow.l1a_tasks import L1ADepacketizeScienceFrames, L1AReassembleRaw, L1AReformatEDP, \
-    L1AFrameReport, L1AReformatBAD, L1ARawDeliver
+    L1AFrameReport, L1AReformatBAD, L1ADeliver
 from emit_main.workflow.l1b_tasks import L1BGeolocate, L1BCalibrate, L1BRdnFormat, L1BRdnDeliver
-from emit_main.workflow.l2a_tasks import L2AMask, L2AReflectance, L2AFormat, L2ARflDeliver
+from emit_main.workflow.l2a_tasks import L2AMask, L2AReflectance, L2AFormat, L2ADeliver
 from emit_main.workflow.l2b_tasks import L2BAbundance, L2BFormat
 from emit_main.workflow.l3_tasks import L3Unmix
 from emit_main.workflow.slurm import SlurmJobTask
@@ -33,9 +33,9 @@ logger = logging.getLogger("emit-main")
 
 
 def parse_args():
-    product_choices = ["l0hosc", "l0daac", "l0plan", "l1aeng", "l1aframe", "l1aframereport", "l1araw", "l1arawdaac",
+    product_choices = ["l0hosc", "l0daac", "l0plan", "l1aeng", "l1aframe", "l1aframereport", "l1araw", "l1adaac",
                        "l1abad", "l1bcal", "l1bgeo", "l1brdnformat", "l1brdndaac", "l2arefl", "l2amask", "l2aformat",
-                       "l2arfldaac", "l2babun", "l2bformat", "l3unmix"]
+                       "l2adaac", "l2babun", "l2bformat", "l3unmix"]
     monitor_choices = ["ingest", "frames", "orbit", "email"]
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--config_path",
@@ -130,7 +130,7 @@ def get_tasks_from_product_args(args):
                                          acq_chunksize=args.acq_chunksize, test_mode=args.test_mode, **kwargs),
         "l1araw": L1AReassembleRaw(dcid=args.dcid, ignore_missing_frames=args.ignore_missing_frames,
                                    acq_chunksize=args.acq_chunksize, test_mode=args.test_mode, **kwargs),
-        "l1arawdaac": L1ARawDeliver(acquisition_id=args.acquisition_id, **kwargs),
+        "l1adaac": L1ADeliver(acquisition_id=args.acquisition_id, **kwargs),
         "l1abad": L1AReformatBAD(orbit_id=args.orbit_id, ignore_missing_bad=args.ignore_missing_bad, **kwargs),
         "l1bcal": L1BCalibrate(acquisition_id=args.acquisition_id, dark_path=args.dark_path, **kwargs),
         "l1bgeo": L1BGeolocate(orbit_id=args.orbit_id, **kwargs),
@@ -139,7 +139,7 @@ def get_tasks_from_product_args(args):
         "l2arefl": L2AReflectance(acquisition_id=args.acquisition_id, **kwargs),
         "l2amask": L2AMask(acquisition_id=args.acquisition_id, **kwargs),
         "l2aformat": L2AFormat(acquisition_id=args.acquisition_id, **kwargs),
-        "l2arfldaac": L2ARflDeliver(acquisition_id=args.acquisition_id, **kwargs),
+        "l2adaac": L2ADeliver(acquisition_id=args.acquisition_id, **kwargs),
         "l2babun": L2BAbundance(acquisition_id=args.acquisition_id, **kwargs),
         "l2bformat": L2BFormat(acquisition_id=args.acquisition_id, **kwargs),
         "l3unmix": L3Unmix(acquisition_id=args.acquisition_id, **kwargs),
