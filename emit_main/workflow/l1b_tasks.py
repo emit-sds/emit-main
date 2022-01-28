@@ -548,7 +548,7 @@ class L1BDeliver(SlurmJobTask):
         cnm_submission_id = os.path.basename(daac_nc_path).replace(".nc", f"_{utc_now.strftime('%Y%m%dt%H%M%S')}")
         cnm_submission_path = os.path.join(acq.l1b_data_dir, cnm_submission_id + ".json")
         notification = {
-            "collection": wm.config["cmr_collections"]["l1brad"],
+            "collection": "EMITL1B_RAD",
             "provider": wm.config["daac_provider"],
             "identifier": cnm_submission_id,
             "version": wm.config["cnm_version"],

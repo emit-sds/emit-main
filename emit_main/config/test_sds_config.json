@@ -2,7 +2,7 @@
   "general_config": {
     "instrument": "emit",
     "environment": "test",
-    "processing_version": "00",
+    "processing_version": "01",
     "luigi_local_scheduler": false,
     "luigi_workers": 2,
     "tetracorder_library_basename": "emitsyn",
@@ -45,17 +45,7 @@
     "daac_provider": "JPL_EMIT_SDS",
     "daac_server_internal": "ngis-data.jpl.nasa.gov",
     "daac_server_external": "popo.jpl.nasa.gov",
-    "daac_base_dir": "/data/emit/lp_daac",
-    "cmr_collections": {
-      "l0": "EMITL0",
-      "l1araw": "EMITL1ARAW",
-      "l1batt": "EMITL1B_ATT",
-      "l1brad": "EMITL1B_RAD",
-      "l2a": "EMITL2A_RFL",
-      "l2b": "EMITL2B_MIN",
-      "l3": "EMITL3_AGMIN",
-      "l4": "EMITL4_MODEL"
-    }
+    "daac_base_dir": "/data/emit/lp_daac"
   },
 
   "ancillary_paths": {
