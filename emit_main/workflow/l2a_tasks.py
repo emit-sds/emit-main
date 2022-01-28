@@ -333,16 +333,16 @@ class L2AFormat(SlurmJobTask):
 
         # Copy and rename output files back to /store
         utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
-        daac_nc_path = os.path.join(acq.l2a_data_dir, f"{acq.daac_l2arfl_prefix}_{utc_now.strftime('%Y%m%dt%H%M%S')}.nc")
-        log_path = daac_nc_path.replace(".nc", "_nc_pge.log")
-        wm.copy(tmp_daac_nc_path, daac_nc_path)
+        nc_path = acq.rfl_img_path.replace(".img", ".nc")
+        log_path = nc_path.replace(".nc", "_nc_pge.log")
+        wm.copy(tmp_daac_nc_path, nc_path)
         wm.copy(tmp_log_path, log_path)
 
         # PGE writes metadata to db
-        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(daac_nc_path), tz=datetime.timezone.utc)
+        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(nc_path), tz=datetime.timezone.utc)
         dm = wm.database_manager
         product_dict_netcdf = {
-            "netcdf_path": daac_nc_path,
+            "netcdf_path": nc_path,
             "created": nc_creation_time
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2a.rfl_netcdf": product_dict_netcdf})
@@ -364,7 +364,7 @@ class L2AFormat(SlurmJobTask):
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
-                "l2a_rfl_netcdf_path": daac_nc_path
+                "l2a_rfl_netcdf_path": nc_path
             }
         }
 
