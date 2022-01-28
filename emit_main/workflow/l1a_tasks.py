@@ -752,16 +752,29 @@ class L1ARawDeliver(SlurmJobTask):
         acq = wm.acquisition
         pge = wm.pges["emit-main"]
 
+        # Get local SDS names
+        ummg_path = acq.raw_img_path.replace(".img", ".cmr.json")
+
+        # Create local/tmp daac names and paths
+        daac_raw_name = f"{acq.raw_granule_ur}.img"
+        daac_ummg_name = f"{acq.raw_granule_ur}.cmr.json"
+        daac_raw_path = os.path.join(self.tmp_dir, daac_raw_name)
+        daac_ummg_path = os.path.join(self.tmp_dir, daac_ummg_name)
+
+        # Copy files to tmp dir and rename
+        wm.copy(acq.raw_img_path, daac_raw_path)
+
         # First create the UMM-G file
-        name_split = acq.raw_img_path.split("_")
-        granule_ur = f"EMITL1ARAW.0{wm.config['processing_version']}.{name_split[0]}_{name_split[1]}_{name_split[2]}"
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.raw_img_path), tz=datetime.timezone.utc)
-        ummg = daac_converter.initialize_ummg(granule_ur, creation_time.strftime("%Y-%m-%dT%H:%M:%S%z"), "EMITL1ARAW")
-        ummg = daac_converter.add_data_file_ummg(ummg, acq.raw_img_path)
+        ummg = daac_converter.initialize_ummg(acq.raw_granule_ur, creation_time, "EMITL1ARAW")
+        daynight = "Day" if acq.submode == "science" else "Night"
+        ummg = daac_converter.add_data_file_ummg(ummg, daac_ccsds_path, daynight)
         # ummg = daac_converter.add_boundary_ummg(ummg, boundary_points_list)
-        daac_ummg_json_path = acq.raw_img_path.replace(".img", "_ummg.cmr.json")
-        daac_converter.dump_json(ummg, daac_ummg_json_path)
-        wm.change_group_ownership(daac_ummg_json_path)
+        daac_converter.dump_json(ummg, ummg_path)
+        wm.change_group_ownership(ummg_path)
+
+        # Copy ummg file to tmp dir and rename
+        wm.copy(ummg_path, daac_ummg_path)
 
         # Copy files to staging server
         partial_dir_arg = f"--partial-dir={acq.daac_partial_dir}"
@@ -774,38 +787,42 @@ class L1ARawDeliver(SlurmJobTask):
                            group, f"{acq.daac_staging_dir};", "fi\""]
         pge.run(cmd_make_target, tmp_dir=self.tmp_dir)
 
-        for path in (acq.raw_img_path, daac_ummg_json_path):
+        for path in (daac_raw_path, daac_ummg_path):
             cmd_rsync = ["rsync", "-azv", partial_dir_arg, log_file_arg, path, target]
             pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
 
         # Build notification dictionary
         utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
-        cnm_submission_id = os.path.basename(acq.raw_img_path).replace(".img", f"_{utc_now.strftime('%Y%m%dt%H%M%S')}")
-        cnm_submission_path = os.path.join(acq.l1a_data_dir, cnm_submission_id + ".json")
+        cnm_submission_id = f"{acq.raw_granule_ur}_{utc_now.strftime('%Y%m%dt%H%M%S')}"
+        cnm_submission_path = os.path.join(acq.l1a_data_dir, cnm_submission_id + "_cnm.json")
+        target_src_map = {
+            daac_raw_name: os.path.basename(acq.raw_img_path),
+            daac_ummg_name: os.path.basename(ummg_path)
+        }
         notification = {
             "collection": "EMITL1ARAW",
             "provider": wm.config["daac_provider"],
             "identifier": cnm_submission_id,
             "version": wm.config["cnm_version"],
             "product": {
-                "name": granule_ur,
-                "dataVersion": f"0{wm.config['processing_version']}",
+                "name": acq.raw_granule_ur,
+                "dataVersion": acq.collection_version,
                 "files": [
                     {
-                        "name": os.path.basename(acq.raw_img_path),
-                        "uri": acq.daac_uri_base + os.path.basename(acq.raw_img_path),
+                        "name": daac_raw_name,
+                        "uri": acq.daac_uri_base + daac_raw_name,
                         "type": "data",
-                        "size": os.path.getsize(acq.raw_img_path),
+                        "size": os.path.getsize(daac_raw_path),
                         "checksumType": "sha512",
-                        "checksum": daac_converter.calc_checksum(acq.raw_img_path, "sha512")
+                        "checksum": daac_converter.calc_checksum(daac_raw_path, "sha512")
                     },
                     {
-                        "name": os.path.basename(daac_ummg_json_path),
-                        "uri": acq.daac_uri_base + os.path.basename(daac_ummg_json_path),
+                        "name": daac_ummg_name,
+                        "uri": acq.daac_uri_base + daac_ummg_name,
                         "type": "metadata",
-                        "size": os.path.getsize(daac_ummg_json_path),
+                        "size": os.path.getsize(daac_ummg_path),
                         "checksumType": "sha512",
-                        "checksum": daac_converter.calc_checksum(daac_ummg_json_path, "sha512")
+                        "checksum": daac_converter.calc_checksum(daac_ummg_path, "sha512")
                     }
                 ]
             }
@@ -830,7 +847,8 @@ class L1ARawDeliver(SlurmJobTask):
                 "timestamp": utc_now,
                 "collection": notification["collection"],
                 "version": notification["product"]["dataVersion"],
-                "filename": file["name"],
+                "sds_filename": target_src_map[file["name"]],
+                "daac_filename": file["name"],
                 "size": file["size"],
                 "checksum": file["checksum"],
                 "checksum_type": file["checksumType"],
@@ -862,7 +880,7 @@ class L1ARawDeliver(SlurmJobTask):
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
-                "l1a_raw_ummg_path": daac_ummg_json_path,
+                "l1a_raw_ummg_path": ummg_path,
                 "l1a_raw_cnm_submission_path": cnm_submission_path
             }
         }

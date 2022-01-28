@@ -435,7 +435,7 @@ class L1BRdnFormat(SlurmJobTask):
         nc_path = acq.rdn_img_path.replace(".img", ".nc")
 
         # Copy and rename output files back to /store
-        log_path = nc_path.replace(".nc", "_reformat_pge.log")
+        log_path = nc_path.replace(".nc", "_nc_pge.log")
         wm.copy(tmp_daac_nc_path, nc_path)
         wm.copy(tmp_log_path, log_path)
 
