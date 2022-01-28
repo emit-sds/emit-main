@@ -332,7 +332,6 @@ class L2AFormat(SlurmJobTask):
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
         # Copy and rename output files back to /store
-        utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
         nc_path = acq.rfl_img_path.replace(".img", ".nc")
         log_path = nc_path.replace(".nc", "_nc_pge.log")
         wm.copy(tmp_daac_nc_path, nc_path)
@@ -421,7 +420,7 @@ class L2ADeliver(SlurmJobTask):
         # Create the UMM-G file
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(nc_path), tz=datetime.timezone.utc)
         daynight = "Day" if acq.submode == "science" else "Night"
-        ummg = daac_converter.initialize_ummg(acq.rfl_granule_ur, nc_creation_time, "EMITL1BRAD")
+        ummg = daac_converter.initialize_ummg(acq.rfl_granule_ur, nc_creation_time, "EMITL2ARFL")
         ummg = daac_converter.add_data_file_ummg(ummg, daac_nc_path, daynight)
         # TODO: Add browse image
         # TODO: replace w/ database read or read from L1B Geolocate PGE

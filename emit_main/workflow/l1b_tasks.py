@@ -431,10 +431,8 @@ class L1BRdnFormat(SlurmJobTask):
                acq.glt_img_path, "--log_file", tmp_log_path]
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
-        utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
-        nc_path = acq.rdn_img_path.replace(".img", ".nc")
-
         # Copy and rename output files back to /store
+        nc_path = acq.rdn_img_path.replace(".img", ".nc")
         log_path = nc_path.replace(".nc", "_nc_pge.log")
         wm.copy(tmp_daac_nc_path, nc_path)
         wm.copy(tmp_log_path, log_path)
