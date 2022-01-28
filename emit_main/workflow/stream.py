@@ -73,7 +73,7 @@ class Stream:
         for d in self.dirs:
             wm.makedirs(d)
 
-        # Build path for DAAC delivery on staging server
+        # Build paths for DAAC delivery on staging server
         self.daac_staging_dir = os.path.join(self.config["daac_base_dir"], wm.config['environment'], "products",
                                              self.start_time.strftime("%Y%m%d"))
         self.daac_uri_base = f"https://{self.config['daac_server_external']}/emit/lpdaac/{wm.config['environment']}/" \
