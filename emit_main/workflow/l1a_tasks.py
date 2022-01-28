@@ -768,7 +768,7 @@ class L1ARawDeliver(SlurmJobTask):
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.raw_img_path), tz=datetime.timezone.utc)
         ummg = daac_converter.initialize_ummg(acq.raw_granule_ur, creation_time, "EMITL1ARAW")
         daynight = "Day" if acq.submode == "science" else "Night"
-        ummg = daac_converter.add_data_file_ummg(ummg, daac_ccsds_path, daynight)
+        ummg = daac_converter.add_data_file_ummg(ummg, daac_raw_path, daynight)
         # ummg = daac_converter.add_boundary_ummg(ummg, boundary_points_list)
         daac_converter.dump_json(ummg, ummg_path)
         wm.change_group_ownership(ummg_path)
