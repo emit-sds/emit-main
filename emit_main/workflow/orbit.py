@@ -49,7 +49,7 @@ class Orbit:
         self.dirs.extend([self.orbits_dir, self.orbit_id_dir, self.raw_dir, self.l1a_dir, self.l1b_dir])
 
         # Create product names
-        uncorr_fname = "_".join(["emit", self.start_time.strftime("%Y%m%dt%H%M%S"), f"o{self.orbit_id}",
+        uncorr_fname = "_".join([f"emit{self.start_time.strftime('%Y%m%dt%H%M%S')}", f"o{self.orbit_id}",
                                  "l1a", "att", f"b{self.config['build_num']}",
                                  f"v{self.config['processing_version']}.nc"])
         self.uncorr_att_eph_path = os.path.join(self.l1a_dir, uncorr_fname)
@@ -60,6 +60,13 @@ class Orbit:
         wm = WorkflowManager(config_path=config_path)
         for d in self.dirs:
             wm.makedirs(d)
+
+        # Build paths for DAAC delivery on staging server
+        self.daac_staging_dir = os.path.join(self.config["daac_base_dir"], wm.config['environment'], "products",
+                                             self.start_time.strftime("%Y%m%d"))
+        self.daac_uri_base = f"https://{self.config['daac_server_external']}/emit/lpdaac/{wm.config['environment']}/" \
+            f"products/{self.start_time.strftime('%Y%m%d')}/"
+        self.daac_partial_dir = os.path.join(self.config["daac_base_dir"], wm.config['environment'], "partial_transfers")
 
     def _initialize_metadata(self):
         # Insert some placeholder fields so that we don't get missing keys on updates

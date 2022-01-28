@@ -54,14 +54,6 @@ class Acquisition:
 
         self.__dict__.update(self._build_acquisition_paths())
 
-        # Build NetCDF path prefixes (these can't be fully built due to timestamp on the end of the filename
-        self.daac_l1brad_prefix = f"EMITL1B_RAD.0{self.config['processing_version']}_{self.acquisition_id[4:]}_" \
-            f"o{self.orbit}_s{self.scene}"
-        self.daac_l2arfl_prefix = f"EMITL2A_RFL.0{self.config['processing_version']}_{self.acquisition_id[4:]}_" \
-                                  f"o{self.orbit}_s{self.scene}"
-        self.daac_l2babun_prefix = f"EMITL2B_MIN.0{self.config['processing_version']}_{self.acquisition_id[4:]}_" \
-                                   f"o{self.orbit}_s{self.scene}"
-
         # Add sub-dirs
         self.frames_dir = self.raw_img_path.replace("_raw_", "_frames_").replace(".img", "")
         self.decomp_dir = self.frames_dir.replace("_frames_", "_decomp_")

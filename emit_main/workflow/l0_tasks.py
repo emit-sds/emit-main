@@ -471,7 +471,7 @@ class L0Deliver(SlurmJobTask):
     task_namespace = "emit"
 
     def requires(self):
-        logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
+        logger.debug(f"{self.task_family} requires: {self.stream_path}")
         return L0StripHOSC(config_path=self.config_path, stream_path=self.stream_path, level=self.level,
                            partition=self.partition, miss_pkt_thresh=self.miss_pkt_thresh)
 
@@ -490,7 +490,7 @@ class L0Deliver(SlurmJobTask):
         # Create GranuleUR and DAAC paths
         # Delivery file format: EMIT_L0_<VVV>_<APID>_<YYYYMMDDTHHMMSS>.bin
         collection_version = f"0{wm.config['processing_version']}"
-        start_time_str = stream.ccsds_name.split("_")[2].replace("t", "T")
+        start_time_str = stream.start_time.strftime("%Y%m%dT%H%M%S")
         granule_ur = f"EMIT_L0_{collection_version}_{stream.apid}_{start_time_str}"
         daac_ccsds_name = f"{granule_ur}.bin"
         daac_ummg_name = f"{granule_ur}.cmr.json"
@@ -504,7 +504,7 @@ class L0Deliver(SlurmJobTask):
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(stream.ccsds_path), tz=datetime.timezone.utc)
         ummg = daac_converter.initialize_ummg(granule_ur, creation_time, "EMITL0")
         # TODO: There is no daynight flag on CCSDS files
-        ummg = daac_converter.add_data_file_ummg(ummg, daac_ccsds_path, "Day")
+        ummg = daac_converter.add_data_file_ummg(ummg, daac_ccsds_path, "Unspecified")
         # ummg = daac_converter.add_boundary_ummg(ummg, boundary_points_list)
         ummg_path = stream.ccsds_path.replace(".bin", ".cmr.json")
         daac_converter.dump_json(ummg, ummg_path)

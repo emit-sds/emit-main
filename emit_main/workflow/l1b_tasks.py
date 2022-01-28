@@ -646,3 +646,184 @@ class L1BRdnDeliver(SlurmJobTask):
             }
         }
         dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
+
+
+class L1BAttDeliver(SlurmJobTask):
+    """
+    Stages NetCDF and UMM-G files and submits notification to DAAC interface
+    :returns: Staged L1B files
+    """
+
+    config_path = luigi.Parameter()
+    orbit_id = luigi.Parameter()
+    level = luigi.Parameter()
+    partition = luigi.Parameter()
+
+    task_namespace = "emit"
+    n_cores = 1
+    memory = 30000
+
+    def requires(self):
+
+        logger.debug(f"{self.task_family} requires: {self.orbit_id}")
+        return None
+
+    def output(self):
+
+        logger.debug(f"{self.task_family} output: {self.orbit_id}")
+        wm = WorkflowManager(config_path=self.config_path, orbit_id=self.orbit_id)
+        return OrbitTarget(orbit=wm.orbit, task_family=self.task_family)
+
+    def work(self):
+
+        logger.debug(f"{self.task_family} work: {self.acquisition_id}")
+
+        wm = WorkflowManager(config_path=self.config_path, orbit_id=self.orbit_id)
+        orbit = wm.orbit
+        pge = wm.pges["emit-main"]
+
+        # Get local SDS names
+        nc_path = orbit.corr_att_eph_path
+        ummg_path = nc_path.replace(".nc", ".cmr.json")
+
+        # Create local/tmp daac names and paths
+        collection_version = f"0{wm.config['processing_version']}"
+        start_time_str = orbit.start_time.strftime("%Y%m%dT%H%M%S")
+        granule_ur = f"EMIT_L1B_ATT_{collection_version}_{start_time_str}_{orbit.orbit_id}"
+        daac_nc_name = f"{granule_ur}.nc"
+        daac_ummg_name = f"{granule_ur}.cmr.json"
+        daac_nc_path = os.path.join(self.tmp_dir, daac_nc_name)
+        daac_ummg_path = os.path.join(self.tmp_dir, daac_ummg_name)
+
+        # Copy files to tmp dir and rename
+        wm.copy(nc_path, daac_nc_path)
+
+        # Create the UMM-G file
+        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(nc_path), tz=datetime.timezone.utc)
+        ummg = daac_converter.initialize_ummg(granule_ur, nc_creation_time, "EMITL1BATT")
+        ummg = daac_converter.add_data_file_ummg(ummg, daac_nc_path, "Both")
+        # TODO: Remove boundary for orbit?
+        # TODO: replace w/ database read or read from L1B Geolocate PGE
+        tmp_boundary_points_list = [[-118.53, 35.85], [-118.53, 35.659], [-118.397, 35.659], [-118.397, 35.85]]
+        ummg = daac_converter.add_boundary_ummg(ummg, tmp_boundary_points_list)
+        daac_converter.dump_json(ummg, ummg_path)
+        wm.change_group_ownership(ummg_path)
+
+        # Copy ummg file to tmp dir and rename
+        wm.copy(ummg_path, daac_ummg_path)
+
+        # Copy files to staging server
+        partial_dir_arg = f"--partial-dir={orbit.daac_partial_dir}"
+        log_file_arg = f"--log-file={os.path.join(self.tmp_dir, 'rsync.log')}"
+        target = f"{wm.config['daac_server_internal']}:{orbit.daac_staging_dir}/"
+        group = f"emit-{wm.config['environment']}" if wm.config["environment"] in ("test", "ops") else "emit-dev"
+        # This command only makes the directory and changes ownership if the directory doesn't exist
+        cmd_make_target = ["ssh", wm.config["daac_server_internal"], "\"if", "[", "!", "-d",
+                           f"'{orbit.daac_staging_dir}'", "];", "then", "mkdir", f"{orbit.daac_staging_dir};", "chgrp",
+                           group, f"{orbit.daac_staging_dir};", "fi\""]
+        pge.run(cmd_make_target, tmp_dir=self.tmp_dir)
+
+        for path in (daac_nc_path, daac_ummg_path):
+            cmd_rsync = ["rsync", "-azv", partial_dir_arg, log_file_arg, path, target]
+            pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
+
+        # Build notification dictionary
+        utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
+        cnm_submission_id = f"{granule_ur}_{utc_now.strftime('%Y%m%dt%H%M%S')}"
+        cnm_submission_path = os.path.join(orbit.l1b_dir, cnm_submission_id + "_cnm.json")
+        target_src_map = {
+            daac_nc_name: os.path.basename(nc_path),
+            daac_ummg_name: os.path.basename(ummg_path)
+        }
+        notification = {
+            "collection": "EMITL1BATT",
+            "provider": wm.config["daac_provider"],
+            "identifier": cnm_submission_id,
+            "version": wm.config["cnm_version"],
+            "product": {
+                "name": granule_ur,
+                "dataVersion": collection_version,
+                "files": [
+                    {
+                        "name": daac_nc_name,
+                        "uri": orbit.daac_uri_base + daac_nc_name,
+                        "type": "data",
+                        "size": os.path.getsize(daac_nc_name),
+                        "checksumType": "sha512",
+                        "checksum": daac_converter.calc_checksum(daac_nc_path, "sha512")
+                    },
+                    {
+                        "name": daac_ummg_name,
+                        "uri": orbit.daac_uri_base + daac_ummg_name,
+                        "type": "metadata",
+                        "size": os.path.getsize(daac_ummg_path),
+                        "checksumType": "sha512",
+                        "checksum": daac_converter.calc_checksum(daac_ummg_path, "sha512")
+                    }
+                ]
+            }
+        }
+
+        # Write notification submission to file
+        with open(cnm_submission_path, "w") as f:
+            f.write(json.dumps(notification, indent=4))
+        wm.change_group_ownership(cnm_submission_path)
+
+        # Submit notification via AWS SQS
+        cmd_aws = [wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", wm.config["daac_submission_url"], "--message-body",
+                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"]]
+        pge.run(cmd_aws, tmp_dir=self.tmp_dir)
+        cnm_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(cnm_submission_path),
+                                                            tz=datetime.timezone.utc)
+
+        # Record delivery details in DB for reconciliation report
+        dm = wm.database_manager
+        for file in notification["product"]["files"]:
+            delivery_report = {
+                "timestamp": utc_now,
+                "collection": notification["collection"],
+                "version": notification["product"]["dataVersion"],
+                "sds_filename": target_src_map[file["name"]],
+                "daac_filename": file["name"],
+                "size": file["size"],
+                "checksum": file["checksum"],
+                "checksum_type": file["checksumType"],
+                "submission_id": cnm_submission_id,
+                "submission_status": "submitted"
+            }
+            dm.insert_granule_report(delivery_report)
+
+        # Update db with log entry
+        product_dict_ummg = {
+            "ummg_json_path": ummg_path,
+            "created": datetime.datetime.fromtimestamp(os.path.getmtime(ummg_path), tz=datetime.timezone.utc)
+        }
+        dm.update_orbit_metadata(orbit.orbit_id, {"products.l1b.att_ummg": product_dict_ummg})
+
+        if "att_daac_submissions" in orbit.metadata["products"]["l1b"] and \
+                orbit.metadata["products"]["l1b"]["att_daac_submissions"] is not None:
+            orbit.metadata["products"]["l1b"]["att_daac_submissions"].append(cnm_submission_path)
+        else:
+            orbit.metadata["products"]["l1b"]["att_daac_submissions"] = [cnm_submission_path]
+        dm.update_orbit_metadata(
+            orbit.orbit_id,
+            {"products.l1b.att_daac_submissions": orbit.metadata["products"]["l1b"]["att_daac_submissions"]})
+
+        log_entry = {
+            "task": self.task_family,
+            "pge_name": pge.repo_url,
+            "pge_version": pge.version_tag,
+            "pge_input_files": {
+                "netcdf_path": nc_path
+            },
+            "pge_run_command": " ".join(cmd_aws),
+            "documentation_version": "TBD",
+            "product_creation_time": cnm_creation_time,
+            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
+            "completion_status": "SUCCESS",
+            "output": {
+                "l1b_att_ummg_path:": ummg_path,
+                "l1b_att_cnm_submission_path": cnm_submission_path
+            }
+        }
+        dm.insert_orbit_log_entry(self.orbit_id, log_entry)
