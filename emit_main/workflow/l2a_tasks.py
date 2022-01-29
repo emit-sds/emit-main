@@ -501,6 +501,7 @@ class L2ADeliver(SlurmJobTask):
         for file in notification["product"]["files"]:
             delivery_report = {
                 "timestamp": utc_now,
+                "extended_build_num": wm.config["extended_build_num"],
                 "collection": notification["collection"],
                 "version": notification["product"]["dataVersion"],
                 "sds_filename": target_src_map[file["name"]],
