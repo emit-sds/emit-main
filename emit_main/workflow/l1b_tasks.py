@@ -149,6 +149,14 @@ class L1BCalibrate(SlurmJobTask):
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn": product_dict})
 
+        # Check if orbit now has complete set of radiance files and update orbit metadata
+        wm_orbit = WorkflowManager(config_path=self.config_path, orbit_id=acq.orbit)
+        orbit = wm_orbit
+        if orbit.has_complete_radiance():
+            dm.update_orbit_metadata(orbit.orbit_id, {"radiance_status": "complete"})
+        else:
+            dm.update_orbit_metadata(orbit.orbit_id, {"radiance_status": "incomplete"})
+
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,

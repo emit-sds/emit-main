@@ -33,10 +33,6 @@ class DatabaseManager:
         acquisitions_coll = self.db.acquisitions
         return acquisitions_coll.find_one({"acquisition_id": acquisition_id, "build_num": self.config["build_num"]})
 
-    def find_acquisition_by_dcid(self, dcid):
-        acquisitions_coll = self.db.acquisitions
-        return acquisitions_coll.find_one({"dcid": dcid, "build_num": self.config["build_num"]})
-
     def find_acquisitions_by_orbit_id(self, orbit_id):
         acquisitions_coll = self.db.acquisitions
         query = {"orbit": orbit_id, "build_num": self.config["build_num"]}
@@ -191,6 +187,10 @@ class DatabaseManager:
     def find_data_collection_by_id(self, dcid):
         data_collections_coll = self.db.data_collections
         return data_collections_coll.find_one({"dcid": dcid, "build_num": self.config["build_num"]})
+
+    def find_data_collections_by_orbit_id(self, orbit_id):
+        data_collections_coll = self.db.data_collections
+        return list(data_collections_coll.find({"orbit": orbit_id, "build_num": self.config["build_num"]}))
 
     def find_data_collections_for_reassembly(self, start, stop):
         data_collections_coll = self.db.data_collections

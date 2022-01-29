@@ -82,12 +82,15 @@ class Orbit:
             self.metadata["products"]["l1b"] = {}
 
     def has_complete_bad_data(self):
+        from emit_main.workflow.workflow_manager import WorkflowManager
+        wm = WorkflowManager(config_path=self.config_path)
+
         if "associated_bad_sto" not in self.metadata:
-            logger.info(f"No 'associated_bad_sto' property in orbit {self.orbit_id}")
+            wm.print(__name__, f"No 'associated_bad_sto' property in orbit {self.orbit_id}")
             return False
 
         if "stop_time" not in self.metadata:
-            logger.info(f"Orbit {self.orbit_id} does not have a stop time.")
+            wm.print(__name__, f"Orbit {self.orbit_id} does not have a stop time.")
             return False
 
         bad_sto_files = [os.path.basename(p) for p in self.metadata["associated_bad_sto"]]
@@ -95,7 +98,7 @@ class Orbit:
 
         # Check if empty
         if len(bad_sto_files) == 0:
-            logger.info(f"No associated BAD STO files for orbit {self.orbit_id}")
+            wm.print(__name__, f"No associated BAD STO files for orbit {self.orbit_id}")
             return False
 
         # TODO: Might need to update start/stop times of sto files to use csv start/stop instead?
@@ -103,8 +106,8 @@ class Orbit:
         bad_start_time = datetime.datetime.strptime(bad_sto_files[0].split("_")[1], "%Y%m%dT%H%M%S")
         bad_stop_time = datetime.datetime.strptime(bad_sto_files[-1].split("_")[2], "%Y%m%dT%H%M%S")
         if bad_start_time > self.start_time or bad_stop_time < self.stop_time:
-            logger.info(f"Start and stop time for associated BAD STO files of orbit {self.orbit_id} do not "
-                        f"encompass the orbit's entire time range.")
+            wm.print(__name__, f"Start and stop time for associated BAD STO files of orbit {self.orbit_id} do not "
+                     f"encompass the orbit's entire time range.")
             return False
 
         # Check that there are no gaps
@@ -118,10 +121,57 @@ class Orbit:
             gap = cur_start_time - prev_stop_time
             # If the gap is bigger than 10 seconds return False
             if gap.total_seconds() > 10:
-                logger.info(f"Found a gap of {gap.total_seconds()} while comparing associated BAD STO files for "
-                            f"orbit {self.orbit_id}")
+                wm.print(__name__, f"Found a gap of {gap.total_seconds()} while comparing associated BAD STO files for "
+                         f"orbit {self.orbit_id}")
                 return False
             prev_file = file
 
         # If we made it this far, then we have a complete set
         return True
+
+    def has_complete_radiance(self):
+        # Check to see if all the radiance files for this orbit have been generated
+        from emit_main.workflow.workflow_manager import WorkflowManager
+        wm = WorkflowManager(config_path=self.config_path)
+
+        # First find all the DCIDs in an orbit
+        dm = DatabaseManager(self.config_path)
+        data_collections = dm.find_data_collections_by_orbit_id(self.orbit_id)
+
+        if len(data_collections) == 0:
+            wm.print(__name__, f"Did not find any data collections associated with orbit {self.orbit_id}")
+            return False
+
+        # Then find all the associated acquisitions
+        acquisition_ids = []
+        for dc in data_collections:
+            if "associated_acquisitions" in dc:
+                for id in dc["associated_acquisitions"]:
+                    acquisition_ids.append(id)
+
+        if len(acquisition_ids) == 0:
+            wm.print(__name__, f"Did not find any acquisitions associated with orbit {self.orbit_id}")
+            return False
+
+        acquisition_ids = list(set(acquisition_ids))
+        acquisition_ids.sort()
+
+        # Look up acquisitions to see if rdn product has been generated. Return False if not.
+        for id in acquisition_ids:
+            acq = dm.find_acquisition_by_id(id)
+            if acq is not None:
+                try:
+                    rdn_img_path = acq["products"]["l1b"]["rdn"]["img_path"]
+                except KeyError:
+                    wm.print(__name__, f"Acquisition {id} in orbit {self.orbit_id} does not have a radiance product "
+                             f"yet.")
+                    return False
+                if not os.path.exists(rdn_img_path):
+                    wm.print(__name__, f"Acquisition {id} in orbit {self.orbit_id} has rdn_img_path of {rdn_img_path} "
+                             f"but file does not exist.")
+                    return False
+
+        # If we made it this far, then return True
+        return True
+
+
