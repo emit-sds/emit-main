@@ -264,6 +264,19 @@ class DatabaseManager:
         }
         return list(orbits_coll.find(query))
 
+    def find_orbits_for_geolocation(self, start, stop):
+        orbits_coll = self.db.orbits
+        # Query for orbits with complete set of radiance files, an associated BAD netcdf file, last modified within
+        # start/stop range, and no products.l1b.acquisitions
+        query = {
+            "radiance_status": "complete",
+            "last_modified": {"$gte": start, "$lte": stop},
+            "associated_bad_netcdf": {"$exists": 1},
+            "products.l1b.acquisitions": {"$exists": 0},
+            "build_num": self.config["build_num"]
+        }
+        return list(orbits_coll.find(query))
+
     def insert_orbit(self, metadata):
         if self.find_orbit_by_id(metadata["orbit_id"]) is None:
             utc_now = datetime.datetime.now(tz=datetime.timezone.utc)

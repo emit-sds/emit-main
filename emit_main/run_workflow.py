@@ -36,7 +36,7 @@ def parse_args():
     product_choices = ["l0hosc", "l0daac", "l0plan", "l1aeng", "l1aframe", "l1aframereport", "l1araw", "l1adaac",
                        "l1abad", "l1bcal", "l1bgeo", "l1brdnformat", "l1brdndaac", "l1battdaac", "l2arefl", "l2amask",
                        "l2aformat", "l2adaac", "l2babun", "l2bformat", "l2bdaac", "l3unmix"]
-    monitor_choices = ["ingest", "frames", "orbit", "email"]
+    monitor_choices = ["ingest", "frames", "bad", "geo", "email"]
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--config_path",
                         help="Path to config file")
@@ -328,13 +328,21 @@ def main():
         logger.info(f"Frames monitor tasks to run:\n{fm_tasks_str}")
         tasks += fm_tasks
 
-    # Get tasks from orbit monitor
-    if args.monitor and args.monitor == "orbit":
+    # Get tasks from orbit monitor for BAD tasks
+    if args.monitor and args.monitor == "bad":
         om = OrbitMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
-        om_tasks = om.get_bad_reformatting_tasks(start_time=args.start_time, stop_time=args.stop_time)
-        om_tasks_str = "\n".join([str(t) for t in om_tasks])
-        logger.info(f"Orbit monitor tasks to run:\n{om_tasks_str}")
-        tasks += om_tasks
+        om_bad_tasks = om.get_bad_reformatting_tasks(start_time=args.start_time, stop_time=args.stop_time)
+        om_bad_tasks_str = "\n".join([str(t) for t in om_bad_tasks])
+        logger.info(f"Orbit monitor BAD tasks to run:\n{om_bad_tasks_str}")
+        tasks += om_bad_tasks
+
+    # Get tasks from orbit monitor for geolocation tasks
+    if args.monitor and args.monitor == "geo":
+        om = OrbitMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
+        om_geo_tasks = om.get_geolocation_tasks(start_time=args.start_time, stop_time=args.stop_time)
+        om_geo_tasks_str = "\n".join([str(t) for t in om_geo_tasks])
+        logger.info(f"Orbit monitor geolocation tasks to run:\n{om_geo_tasks_str}")
+        tasks += om_geo_tasks
 
     # Get tasks from products args
     if args.products:
