@@ -13,6 +13,7 @@ import sys
 
 import luigi
 
+from emit_main.monitor.acquisition_monitor import AcquisitionMonitor
 from emit_main.monitor.email_monitor import EmailMonitor
 from emit_main.monitor.frames_monitor import FramesMonitor
 from emit_main.monitor.ingest_monitor import IngestMonitor
@@ -36,7 +37,7 @@ def parse_args():
     product_choices = ["l0hosc", "l0daac", "l0plan", "l1aeng", "l1aframe", "l1aframereport", "l1araw", "l1adaac",
                        "l1abad", "l1bcal", "l1bgeo", "l1brdnformat", "l1brdndaac", "l1battdaac", "l2arefl", "l2amask",
                        "l2aformat", "l2adaac", "l2babun", "l2bformat", "l2bdaac", "l3unmix"]
-    monitor_choices = ["ingest", "frames", "bad", "geo", "email"]
+    monitor_choices = ["ingest", "frames", "bad", "geo", "l2", "email"]
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--config_path",
                         help="Path to config file")
@@ -343,6 +344,14 @@ def main():
         om_geo_tasks_str = "\n".join([str(t) for t in om_geo_tasks])
         logger.info(f"Orbit monitor geolocation tasks to run:\n{om_geo_tasks_str}")
         tasks += om_geo_tasks
+
+    # Get tasks from acquisition monitor for MESMA tasks
+    if args.monitor and args.monitor == "l2":
+        am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
+        am_tasks = am.get_mesma_tasks(start_time=args.start_time, stop_time=args.stop_time)
+        am_tasks_str = "\n".join([str(t) for t in am_tasks])
+        logger.info(f"Acquisition monitor MESMA tasks to run:\n{am_tasks_str}")
+        tasks += am_tasks
 
     # Get tasks from products args
     if args.products:

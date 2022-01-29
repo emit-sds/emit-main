@@ -41,10 +41,12 @@ class L2AReflectance(SlurmJobTask):
     def requires(self):
 
         logger.debug(self.task_family + " requires")
-        return L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
-                            partition=self.partition)
-
-        # TODO: Add L1BGeolocate(config_path=self.config_path, acquisition_id=self.acquisition_id) when ready
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        acq = wm.acquisition
+        return (L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+                             partition=self.partition),
+                L1BGeolocate(config_path=self.config_path, orbit_id=acq.orbit, level=self.level,
+                             partition=self.partition))
 
     def output(self):
 
