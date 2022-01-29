@@ -252,6 +252,18 @@ class DatabaseManager:
         }
         return list(orbits_coll.find(query).sort("start_time", sort))
 
+    def find_orbits_for_bad_reformatting(self, start, stop):
+        orbits_coll = self.db.orbits
+        # Query for orbits with complete set of bad data, last modified within start/stop range and
+        # that don't have an associated bad netcdf file
+        query = {
+            "bad_status": "complete",
+            "last_modified": {"$gte": start, "$lte": stop},
+            "associated_bad_netcdf": {"$exists": 0},
+            "build_num": self.config["build_num"]
+        }
+        return list(orbits_coll.find(query))
+
     def insert_orbit(self, metadata):
         if self.find_orbit_by_id(metadata["orbit_id"]) is None:
             utc_now = datetime.datetime.now(tz=datetime.timezone.utc)

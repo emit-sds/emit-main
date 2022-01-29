@@ -98,6 +98,7 @@ class Orbit:
             logger.info(f"No associated BAD STO files for orbit {self.orbit_id}")
             return False
 
+        # TODO: Might need to update start/stop times of sto files to use csv start/stop instead?
         # Check that associated BAD sto files encompass orbit date range
         bad_start_time = datetime.datetime.strptime(bad_sto_files[0].split("_")[1], "%Y%m%dT%H%M%S")
         bad_stop_time = datetime.datetime.strptime(bad_sto_files[-1].split("_")[2], "%Y%m%dT%H%M%S")

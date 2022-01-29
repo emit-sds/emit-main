@@ -29,33 +29,23 @@ class OrbitMonitor:
         # Get workflow manager
         self.wm = WorkflowManager(config_path=config_path)
 
-    def get_recent_orbit_tasks(self):
+    def get_bad_reformatting_tasks(self, start_time, stop_time):
         tasks = []
         # Find orbits from the last day
         dm = self.wm.database_manager
-        stop_time = datetime.datetime.now(tz=datetime.timezone.utc)
-        start_time = stop_time - datetime.timedelta(days=1)
-        orbits = dm.find_orbits_touching_date_range("start_time", start_time, stop_time) + \
-            dm.find_orbits_touching_date_range("stop_time", start_time, stop_time)
+        orbits = dm.find_orbits_for_bad_reformatting(start=start_time, stop=stop_time)
 
         # If no results, just return empty list
         if len(orbits) == 0:
-            logger.info(f"Did not find any orbits in the last day. Not executing any tasks.")
+            logger.info(f"Did not find any orbits modified between {start_time} and {stop_time} needing BAD "
+                        f"reformatting tasks. Not executing any tasks.")
             return tasks
 
-        # Get unique orbit ids
-        orbit_ids = [o["orbit_id"] for o in orbits]
-        orbit_ids = list(set(orbit_ids))
-
-        # For each orbit id, check if orbit has complete BAD data and is unprocessed, and if so create a task for it
-        for orbit_id in orbit_ids:
-            wm_orbit = WorkflowManager(config_path=self.config_path, orbit_id=orbit_id)
-            orbit = wm_orbit.orbit
-            if orbit.has_complete_bad_data() and "associated_bad_netcdf" not in orbit.metadata:
-                logger.info(f"Creating L1AReformatBAD task for orbit {orbit_id}")
-                tasks.append(L1AReformatBAD(config_path=self.config_path,
-                                            orbit_id=orbit_id,
-                                            level=self.level,
-                                            partition=self.partition))
+        for orbit in orbits:
+            logger.info(f"Creating L1AReformatBAD task for orbit {orbit['orbit_id']}")
+            tasks.append(L1AReformatBAD(config_path=self.config_path,
+                                        orbit_id=orbit['orbit_id'],
+                                        level=self.level,
+                                        partition=self.partition))
 
         return tasks

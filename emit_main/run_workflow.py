@@ -59,6 +59,10 @@ def parse_args():
                         help="The log level (default: INFO)")
     parser.add_argument("--partition", default="emit",
                         help="The slurm partition to be used - emit (default), debug, standard, patient ")
+    parser.add_argument("--start_time",
+                        help="The start time to use for any monitor calls")
+    parser.add_argument("--stop_time",
+                        help="The stop time to use for any monitor calls")
     parser.add_argument("--miss_pkt_thresh", default="0.1",
                         help="The threshold of missing packets to total packets which will cause a task to fail")
     parser.add_argument("--ignore_missing_frames", action="store_true",
@@ -104,6 +108,31 @@ def parse_args():
     if args.monitor and args.monitor not in monitor_choices:
         print("ERROR: Monitor \"%s\" is not a valid monitor choice." % args.monitor)
         sys.exit(1)
+
+    if (args.start_time is None and args.stop_time is not None) or \
+            (args.stop_time is None and args.start_time is not None):
+        print("ERROR: You must provide both start and stop time if one is given.")
+        sys.exit(1)
+
+    if args.stop_time:
+        try:
+            args.stop_time = datetime.datetime.strptime(args.stop_time, "%Y-%m-%dT%H:%M:%S")
+        except:
+            print("ERROR: Unable to get date from stop_time arg")
+            sys.exit(1)
+    else:
+        # Default to UTC now
+        args.stop_time = datetime.datetime.now(tz=datetime.timezone.utc)
+
+    if args.start_time:
+        try:
+            args.start_time = datetime.datetime.strptime(args.start_time, "%Y-%m-%dT%H:%M:%S")
+        except:
+            print("ERROR: Unable to get date from start_time arg")
+            sys.exit(1)
+    else:
+        # Default to one day before UTC now
+        args.start_time = args.stop_time - datetime.timedelta(days=1)
 
     return args
 
@@ -292,7 +321,7 @@ def main():
     if args.monitor and args.monitor == "frames":
         fm = FramesMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
                            acq_chunksize=args.acq_chunksize, test_mode=args.test_mode)
-        fm_tasks = fm.get_recent_reassembly_tasks()
+        fm_tasks = fm.get_reassembly_tasks(start_time=args.start_time, stop_time=args.stop_time)
         fm_tasks_str = "\n".join([str(t) for t in fm_tasks])
         logger.info(f"Frames monitor tasks to run:\n{fm_tasks_str}")
         tasks += fm_tasks
@@ -300,7 +329,7 @@ def main():
     # Get tasks from orbit monitor
     if args.monitor and args.monitor == "orbit":
         om = OrbitMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
-        om_tasks = om.get_recent_orbit_tasks()
+        om_tasks = om.get_bad_reformatting_tasks(start_time=args.start_time, stop_time=args.stop_time)
         om_tasks_str = "\n".join([str(t) for t in om_tasks])
         logger.info(f"Orbit monitor tasks to run:\n{om_tasks_str}")
         tasks += om_tasks

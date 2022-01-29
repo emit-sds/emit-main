@@ -249,6 +249,12 @@ class L0IngestBAD(SlurmJobTask):
                     orbit.metadata["associated_bad_sto"] = [stream.bad_path]
                 dm.update_orbit_metadata(orbit_id, {"associated_bad_sto": orbit.metadata["associated_bad_sto"]})
 
+                # Check if orbit has complete bad data
+                if orbit.has_complete_bad_data():
+                    dm.update_orbit_metadata(orbit_id, {"bad_status": "complete"})
+                else:
+                    dm.update_orbit_metadata(orbit_id, {"bad_status": "incomplete"})
+
                 # Save symlink paths to use after moving the file
                 orbit_symlink_paths.append(os.path.join(orbit.raw_dir, stream.bad_name))
                 # orbit_l1a_dirs.append(orbit.l1a_dir)
