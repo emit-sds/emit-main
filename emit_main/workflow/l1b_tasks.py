@@ -186,6 +186,7 @@ class L1BGeolocate(SlurmJobTask):
     orbit_id = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
+    ignore_missing_radiance = luigi.BoolParameter(default=False)
 
     task_namespace = "emit"
 
@@ -209,7 +210,11 @@ class L1BGeolocate(SlurmJobTask):
         orbit = wm.orbit
         dm = wm.database_manager
 
-        # TODO: Check that I have all the acquisition radiance files, or just do that before calling in the monitor?
+        # Check for missing radiance files before proceeding. Override with --ignore_missing_radiance arg
+        if self.ignore_missing_radiance is False and orbit.has_complete_radiance() is False:
+            raise RuntimeError(f"Unable to run {self.task_family} on {self.orbit_id} due to missing radiance files in "
+                               f"orbit.")
+
         # Get acquisitions in orbit (only science, not dark) - radiance and line timestamps
         acquisitions_in_orbit = dm.find_acquisitions_by_orbit_id(orbit.orbit_id)
 
