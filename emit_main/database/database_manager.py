@@ -47,6 +47,19 @@ class DatabaseManager:
         }
         return list(acquisitions_coll.find(query).sort(field, sort))
 
+    def find_acquisitions_for_mesma(self, start, stop):
+        acquisitions_coll = self.db.acquisitions
+        # Query for acquisitions with complete l1b outputs but no mesma outputs in time range
+        query = {
+            "products.l1b.rdn.img_path": {"$exists": 1},
+            "products.l1b.glt.img_path": {"$exists": 1},
+            "products.l1b.loc.img_path": {"$exists": 1},
+            "products.l3.cover.img_path": {"$exists": 0},
+            "last_modified": {"$gte": start, "$lte": stop},
+            "build_num": self.config["build_num"]
+        }
+        return list(acquisitions_coll.find(query))
+
     def insert_acquisition(self, metadata):
         if self.find_acquisition_by_id(metadata["acquisition_id"]) is None:
             utc_now = datetime.datetime.now(tz=datetime.timezone.utc)

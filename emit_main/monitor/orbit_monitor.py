@@ -5,7 +5,6 @@ orbit-based BAD data products and runs geolocation
 Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
-import datetime
 import logging
 import os
 
@@ -69,3 +68,5 @@ class OrbitMonitor:
                                       orbit_id=orbit['orbit_id'],
                                       level=self.level,
                                       partition=self.partition))
+
+        return tasks

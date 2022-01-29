@@ -380,7 +380,7 @@ class L1BGeolocate(SlurmJobTask):
         for path in ancillary_workdir_paths:
             wm.copy(path, os.path.join(orbit.l1b_geo_work_dir, os.path.basename(path)))
 
-        # Update product dictionary
+        # Update metadata and product dictionary
         dm.update_orbit_metadata(orbit.orbit_id, {"products.l1b.acquisitions": acq_prod_map})
 
         # Add processing log
