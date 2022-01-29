@@ -47,6 +47,17 @@ class DatabaseManager:
         }
         return list(acquisitions_coll.find(query).sort(field, sort))
 
+    def find_acquisitions_for_calibration(self, start, stop):
+        acquisitions_coll = self.db.acquisitions
+        # Query for acquisitions with complete l1a raw outputs but no l1b rdn outputs in time range
+        query = {
+            "products.l1a.raw.img_path": {"$exists": 1},
+            "products.l1b.rdn.img_path": {"$exists": 0},
+            "last_modified": {"$gte": start, "$lte": stop},
+            "build_num": self.config["build_num"]
+        }
+        return list(acquisitions_coll.find(query))
+
     def find_acquisitions_for_mesma(self, start, stop):
         acquisitions_coll = self.db.acquisitions
         # Query for acquisitions with complete l1b outputs but no mesma outputs in time range

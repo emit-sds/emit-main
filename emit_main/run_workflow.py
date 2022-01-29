@@ -37,7 +37,7 @@ def parse_args():
     product_choices = ["l0hosc", "l0daac", "l0plan", "l1aeng", "l1aframe", "l1aframereport", "l1araw", "l1adaac",
                        "l1abad", "l1bcal", "l1bgeo", "l1brdnformat", "l1brdndaac", "l1battdaac", "l2arefl", "l2amask",
                        "l2aformat", "l2adaac", "l2babun", "l2bformat", "l2bdaac", "l3unmix"]
-    monitor_choices = ["ingest", "frames", "bad", "geo", "l2", "email"]
+    monitor_choices = ["ingest", "frames", "cal", "bad", "geo", "l2", "email"]
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--config_path",
                         help="Path to config file")
@@ -345,13 +345,21 @@ def main():
         logger.info(f"Orbit monitor geolocation tasks to run:\n{om_geo_tasks_str}")
         tasks += om_geo_tasks
 
+    # Get tasks from acquisition monitor for calibration tasks
+    if args.monitor and args.monitor == "cal":
+        am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
+        am_cal_tasks = am.get_calibration_tasks(start_time=args.start_time, stop_time=args.stop_time)
+        am_cal_tasks_str = "\n".join([str(t) for t in am_cal_tasks])
+        logger.info(f"Acquisition monitor calibration tasks to run:\n{am_cal_tasks_str}")
+        tasks += am_cal_tasks
+
     # Get tasks from acquisition monitor for MESMA tasks
     if args.monitor and args.monitor == "l2":
         am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
-        am_tasks = am.get_mesma_tasks(start_time=args.start_time, stop_time=args.stop_time)
-        am_tasks_str = "\n".join([str(t) for t in am_tasks])
-        logger.info(f"Acquisition monitor MESMA tasks to run:\n{am_tasks_str}")
-        tasks += am_tasks
+        am_mesma_tasks = am.get_mesma_tasks(start_time=args.start_time, stop_time=args.stop_time)
+        am_mesma_tasks_str = "\n".join([str(t) for t in am_mesma_tasks])
+        logger.info(f"Acquisition monitor MESMA tasks to run:\n{am_mesma_tasks_str}")
+        tasks += am_mesma_tasks
 
     # Get tasks from products args
     if args.products:
