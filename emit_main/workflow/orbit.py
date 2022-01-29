@@ -173,5 +173,3 @@ class Orbit:
 
         # If we made it this far, then return True
         return True
-
-

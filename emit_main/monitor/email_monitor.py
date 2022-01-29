@@ -84,14 +84,14 @@ class EmailMonitor:
                 identifier = response["identifier"]
             except KeyError:
                 logger.info(f"Unable to find identifier in email message with subject \"{item.subject}\" dated "
-                               f"{time_received}. Leaving in inbox.")
+                            f"{time_received}. Leaving in inbox.")
                 continue
             # Get response status
             try:
                 response_status = response["response"]["status"].upper()
             except KeyError:
                 logger.info(f"Unable to find response status in email message with subject \"{item.subject}\" dated "
-                               f"{time_received}. Leaving in inbox.")
+                            f"{time_received}. Leaving in inbox.")
                 continue
 
             # Lookup granule report by identifier. If not found, then assume it was submitted by a different environment

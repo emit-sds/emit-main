@@ -120,7 +120,7 @@ def parse_args():
     if args.stop_time:
         try:
             args.stop_time = datetime.datetime.strptime(args.stop_time, "%Y-%m-%dT%H:%M:%S")
-        except:
+        except ValueError:
             print("ERROR: Unable to get date from stop_time arg")
             sys.exit(1)
     else:
@@ -130,7 +130,7 @@ def parse_args():
     if args.start_time:
         try:
             args.start_time = datetime.datetime.strptime(args.start_time, "%Y-%m-%dT%H:%M:%S")
-        except:
+        except ValueError:
             print("ERROR: Unable to get date from start_time arg")
             sys.exit(1)
     else:
