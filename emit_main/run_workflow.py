@@ -11,6 +11,8 @@ import os
 import shutil
 import sys
 
+from argparse import RawTextHelpFormatter
+
 import luigi
 
 from emit_main.monitor.acquisition_monitor import AcquisitionMonitor
@@ -38,7 +40,12 @@ def parse_args():
                        "l1abad", "l1bcal", "l1bgeo", "l1brdnformat", "l1brdndaac", "l1battdaac", "l2arefl", "l2amask",
                        "l2aformat", "l2adaac", "l2babun", "l2bformat", "l2bdaac", "l3unmix"]
     monitor_choices = ["ingest", "frames", "cal", "bad", "geo", "l2", "email"]
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description="Description: This is the top-level run script for executing the various EMIT SDS workflow and "
+                    "monitor tasks.\n"
+                    "Operating Environment: Python 3.x. See setup.py file for specific dependencies.\n"
+                    "Outputs: See list of product choices.",
+        formatter_class=RawTextHelpFormatter)
     parser.add_argument("-c", "--config_path",
                         help="Path to config file")
     parser.add_argument("-m", "--monitor",
