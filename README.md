@@ -4,11 +4,13 @@ NOTE - at this time the EMIT repositories are not supporting Pull Requests from 
 
 ## Description
 
-This is the governing repository for the EMIT SDS which manages the throughput of data between level-specific repositories.  This repo includes the workflow manager, database manager, and monitor code.
+Welcome to the emit-main repository.  This is the governing repository for the EMIT SDS which manages the throughput of data between level-specific repositories.  This repo includes the workflow manager, database manager, and monitor code.
 
 To execute a section of the SDS, use the emit_main/run_workflow.py script, and to update / modify individual PGEs see the specific pge within emit_main/workflow/*_task.py
 
 The implemented workflow is based on dependencies, meaning that if you call a routine that requires output from a prior series of routines, everything will be executed to get to the specified point.
+
+To understand how this repository is linked to the rest of the emit-sds repositories, please see the [repository guide](https://github.com/emit-sds/emit-main/wiki/Repository-Guide).
 
 ## Installation Instructions
 
