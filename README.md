@@ -1,6 +1,6 @@
 # emit-main
 
-NOTE - at this time the EMIT repositories are not supporting Pull Requests from members outside of the EMIT-SDS Team.  This is expected to change in March, and guidance on branches will be provided at that time. At present, public migration of this repository is a work-in-progress, and not all features are yet fully up to date.  See the **develop** branch - set as default - for the latest code._
+NOTE - at this time the EMIT repositories are not supporting Pull Requests from members outside of the EMIT-SDS Team.  This is expected to change in March, and guidance on branches will be provided at that time. At present, public migration of this repository is a work-in-progress, and not all features are yet fully up to date.  See the **develop** branch - set as default - for the latest code.
 
 ## Description
 
@@ -11,6 +11,10 @@ To execute a section of the SDS, use the emit_main/run_workflow.py script, and t
 The implemented workflow is based on dependencies, meaning that if you call a routine that requires output from a prior series of routines, everything will be executed to get to the specified point.
 
 To understand how this repository is linked to the rest of the emit-sds repositories, please see the [repository guide](https://github.com/emit-sds/emit-main/wiki/Repository-Guide).
+
+## Dependency Requirements
+
+This repository is based on Python 3.x.  See `emit-main/setup.py` for specific dependencies.
 
 ## Installation Instructions
 
@@ -40,10 +44,6 @@ Run pip install:
 cd emit-utils
 pip install -e .
 ```
-
-## Dependency Requirements
-
-This repository is based on Python 3.x.  See `emit-main/setup.py` for specific dependencies.
 
 ## Example Execution Commands
 
