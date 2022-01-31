@@ -62,34 +62,47 @@ class EmailMonitor:
         logger.info(f"Attempting to process {self.acct.inbox.total_count} messages in inbox for DAAC delivery responses.")
         dm = self.wm.database_manager
         for item in items:
+            # Get time received
+            time_received = item.datetime_received.astimezone(self.acct.default_timezone)
+
             # Check that the subject includes "AWS Notification Message"
             if "AWS Notification Message" not in item.subject:
-                logger.info(f"Message with subject \"{item.subject}\" does not appear to be an AWS Notification "
-                            f"Message. Leaving in inbox.")
+                logger.info(f"Message with subject \"{item.subject}\" dated {time_received} does not appear to be an "
+                            f"AWS Notification Message. Leaving in inbox.")
                 continue
 
             # Check that body starts with "{" to indicate a JSON response
             if not item.body.startswith("{"):
-                logger.info(f"Unable to find JSON at start of message with subject \"{item.subject}\". Leaving in "
-                            f"inbox.")
+                logger.info(f"Unable to find JSON at start of message with subject \"{item.subject}\" dated "
+                            f"{time_received}. Leaving in inbox.")
                 continue
+
             # Now get JSON response
             response = json.loads(item.body.split("\n")[0].rstrip("\r"))
+            # Get identifier
+            try:
+                identifier = response["identifier"]
+            except KeyError:
+                logger.info(f"Unable to find identifier in email message with subject \"{item.subject}\" dated "
+                            f"{time_received}. Leaving in inbox.")
+                continue
+            # Get response status
             try:
                 response_status = response["response"]["status"].upper()
             except KeyError:
-                logger.warning(f"Unable to find response status in email message with subject \"{item.subject}\"")
+                logger.info(f"Unable to find response status in email message with subject \"{item.subject}\" dated "
+                            f"{time_received}. Leaving in inbox.")
                 continue
 
             # Lookup granule report by identifier. If not found, then assume it was submitted by a different environment
-            if dm.find_granule_report_by_id(response["identifier"]) is None:
-                logger.info(f"Cannot find granule report for submission {response['identifier']}. Leaving message in "
-                            f"inbox.")
+            if dm.find_granule_report_by_id(identifier) is None:
+                logger.info(f"Cannot find granule report for submission {response['identifier']} dated "
+                            f"{time_received}. Leaving message in inbox.")
                 continue
 
             # Otherwise, look at response status.  Update DB and move message out of inbox to success or failure folders
             if response_status == "SUCCESS":
-                dm.update_granule_report_submission_statuses(response["identifier"], response_status)
+                dm.update_granule_report_submission_statuses(identifier, response_status)
                 item.move(self.delivery_success_folder)
             if response_status == "FAILURE":
                 if "errorCode" in response["response"]:
@@ -100,6 +113,6 @@ class EmailMonitor:
                     error_message = response["response"]["errorMessage"]
                 else:
                     error_message = ""
-                dm.update_granule_report_submission_statuses(response["identifier"],
+                dm.update_granule_report_submission_statuses(identifier,
                                                              ",".join([response_status, error_code, error_message]))
                 item.move(self.delivery_success_folder)

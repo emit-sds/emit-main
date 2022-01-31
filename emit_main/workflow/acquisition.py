@@ -54,14 +54,6 @@ class Acquisition:
 
         self.__dict__.update(self._build_acquisition_paths())
 
-        # Build NetCDF path prefixes (these can't be fully built due to timestamp on the end of the filename
-        self.daac_l1brad_prefix = f"EMITL1B_RAD.0{self.config['processing_version']}_{self.acquisition_id[4:]}_" \
-            f"o{self.orbit}_s{self.scene}"
-        self.daac_l2arfl_prefix = f"EMITL2A_RFL.0{self.config['processing_version']}_{self.acquisition_id[4:]}_" \
-                                  f"o{self.orbit}_s{self.scene}"
-        self.daac_l2babun_prefix = f"EMITL2B_MIN.0{self.config['processing_version']}_{self.acquisition_id[4:]}_" \
-                                   f"o{self.orbit}_s{self.scene}"
-
         # Add sub-dirs
         self.frames_dir = self.raw_img_path.replace("_raw_", "_frames_").replace(".img", "")
         self.decomp_dir = self.frames_dir.replace("_frames_", "_decomp_")
@@ -73,7 +65,13 @@ class Acquisition:
         for d in self.dirs:
             wm.makedirs(d)
 
-        # Build path for DAAC delivery on staging server
+        # Build granule ur and paths for DAAC delivery on staging server
+        self.collection_version = f"0{self.config['processing_version']}"
+        daac_start_time_str = self.start_time.strftime("%Y%m%dT%H%M%S")
+        self.raw_granule_ur = f"EMIT_L1A_RAW_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.scene}"
+        self.rdn_granule_ur = f"EMIT_L1B_RAD_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.scene}"
+        self.rfl_granule_ur = f"EMIT_L2A_RFL_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.scene}"
+        self.abun_granule_ur = f"EMIT_L2B_MIN_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.scene}"
         self.daac_staging_dir = os.path.join(self.config["daac_base_dir"], wm.config['environment'], "products",
                                              self.start_time.strftime("%Y%m%d"))
         self.daac_uri_base = f"https://{self.config['daac_server_external']}/emit/lpdaac/{wm.config['environment']}/" \

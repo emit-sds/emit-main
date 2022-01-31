@@ -2,7 +2,7 @@
 
 # $1 is the environment, either "dev", "test", or "ops"
 # $2 is the conda environment
-# $3 is the monitor to run ("ingest", "frames", "orbit", "email")
+# $3 is the monitor to run ("ingest", "frames", "bad", "geo", "email")
 # $4 Optional args to pass into run_workflow (like --test_mode)
 
 T=$(date)
