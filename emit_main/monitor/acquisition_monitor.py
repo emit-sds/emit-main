@@ -50,11 +50,11 @@ class AcquisitionMonitor:
 
         return tasks
 
-    def get_mesma_tasks(self, start_time, stop_time):
+    def get_l2_tasks(self, start_time, stop_time):
         tasks = []
         # Find acquisitions within time range
         dm = self.wm.database_manager
-        acquisitions = dm.find_acquisitions_for_mesma(start=start_time, stop=stop_time)
+        acquisitions = dm.find_acquisitions_for_l2(start=start_time, stop=stop_time)
 
         # If no results, just return empty list
         if len(acquisitions) == 0:

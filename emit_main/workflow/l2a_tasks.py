@@ -390,7 +390,8 @@ class L2ADeliver(SlurmJobTask):
     def requires(self):
 
         logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
-        return None
+        return L2AFormat(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+                         partition=self.partition)
 
     def output(self):
 

@@ -360,13 +360,13 @@ def main():
         logger.info(f"Acquisition monitor calibration tasks to run:\n{am_cal_tasks_str}")
         tasks += am_cal_tasks
 
-    # Get tasks from acquisition monitor for MESMA tasks
+    # Get tasks from acquisition monitor for L2+ tasks
     if args.monitor and args.monitor == "l2":
         am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
-        am_mesma_tasks = am.get_mesma_tasks(start_time=args.start_time, stop_time=args.stop_time)
-        am_mesma_tasks_str = "\n".join([str(t) for t in am_mesma_tasks])
-        logger.info(f"Acquisition monitor MESMA tasks to run:\n{am_mesma_tasks_str}")
-        tasks += am_mesma_tasks
+        am_l2_tasks = am.get_l2_tasks(start_time=args.start_time, stop_time=args.stop_time)
+        am_l2_tasks_str = "\n".join([str(t) for t in am_l2_tasks])
+        logger.info(f"Acquisition monitor L2 tasks to run:\n{am_l2_tasks_str}")
+        tasks += am_l2_tasks
 
     # Get tasks from products args
     if args.products:
