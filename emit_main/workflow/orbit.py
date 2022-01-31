@@ -156,10 +156,13 @@ class Orbit:
         acquisition_ids = list(set(acquisition_ids))
         acquisition_ids.sort()
 
-        # Look up acquisitions to see if rdn product has been generated. Return False if not.
+        # Look up acquisitions to see if it is science data and rdn product has been generated. Return False if not.
+        # Keep track of number of science acquisitions
+        num_science = 0
         for id in acquisition_ids:
             acq = dm.find_acquisition_by_id(id)
-            if acq is not None:
+            if acq is not None and acq["submode"] == "science":
+                num_science += 1
                 try:
                     rdn_img_path = acq["products"]["l1b"]["rdn"]["img_path"]
                 except KeyError:
@@ -170,6 +173,10 @@ class Orbit:
                     wm.print(__name__, f"Acquisition {id} in orbit {self.orbit_id} has rdn_img_path of {rdn_img_path} "
                              f"but file does not exist.")
                     return False
+
+        if num_science == 0:
+            wm.print(__name__, f"Did not find any science acquisitions while checking acquisitions in orbit "
+                     f"{self.orbit_id}")
 
         # If we made it this far, then return True
         return True

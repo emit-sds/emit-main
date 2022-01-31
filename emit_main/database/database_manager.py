@@ -49,8 +49,9 @@ class DatabaseManager:
 
     def find_acquisitions_for_calibration(self, start, stop):
         acquisitions_coll = self.db.acquisitions
-        # Query for acquisitions with complete l1a raw outputs but no l1b rdn outputs in time range
+        # Query for "science" acquisitions with complete l1a raw outputs but no l1b rdn outputs in time range
         query = {
+            "submode": "science",
             "products.l1a.raw.img_path": {"$exists": 1},
             "products.l1b.rdn.img_path": {"$exists": 0},
             "last_modified": {"$gte": start, "$lte": stop},
