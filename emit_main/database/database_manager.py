@@ -33,9 +33,10 @@ class DatabaseManager:
         acquisitions_coll = self.db.acquisitions
         return acquisitions_coll.find_one({"acquisition_id": acquisition_id, "build_num": self.config["build_num"]})
 
-    def find_acquisition_by_dcid(self, dcid):
+    def find_acquisitions_by_orbit_id(self, orbit_id):
         acquisitions_coll = self.db.acquisitions
-        return acquisitions_coll.find_one({"dcid": dcid, "build_num": self.config["build_num"]})
+        query = {"orbit": orbit_id, "build_num": self.config["build_num"]}
+        return list(acquisitions_coll.find(query).sort("acquisition_id", 1))
 
     def find_acquisitions_touching_date_range(self, submode, field, start, stop, sort=1):
         acquisitions_coll = self.db.acquisitions
@@ -45,6 +46,31 @@ class DatabaseManager:
             "build_num": self.config["build_num"]
         }
         return list(acquisitions_coll.find(query).sort(field, sort))
+
+    def find_acquisitions_for_calibration(self, start, stop):
+        acquisitions_coll = self.db.acquisitions
+        # Query for "science" acquisitions with complete l1a raw outputs but no l1b rdn outputs in time range
+        query = {
+            "submode": "science",
+            "products.l1a.raw.img_path": {"$exists": 1},
+            "products.l1b.rdn.img_path": {"$exists": 0},
+            "last_modified": {"$gte": start, "$lte": stop},
+            "build_num": self.config["build_num"]
+        }
+        return list(acquisitions_coll.find(query))
+
+    def find_acquisitions_for_mesma(self, start, stop):
+        acquisitions_coll = self.db.acquisitions
+        # Query for acquisitions with complete l1b outputs but no mesma outputs in time range
+        query = {
+            "products.l1b.rdn.img_path": {"$exists": 1},
+            "products.l1b.glt.img_path": {"$exists": 1},
+            "products.l1b.loc.img_path": {"$exists": 1},
+            "products.l3.cover.img_path": {"$exists": 0},
+            "last_modified": {"$gte": start, "$lte": stop},
+            "build_num": self.config["build_num"]
+        }
+        return list(acquisitions_coll.find(query))
 
     def insert_acquisition(self, metadata):
         if self.find_acquisition_by_id(metadata["acquisition_id"]) is None:
@@ -187,6 +213,10 @@ class DatabaseManager:
         data_collections_coll = self.db.data_collections
         return data_collections_coll.find_one({"dcid": dcid, "build_num": self.config["build_num"]})
 
+    def find_data_collections_by_orbit_id(self, orbit_id):
+        data_collections_coll = self.db.data_collections
+        return list(data_collections_coll.find({"orbit": orbit_id, "build_num": self.config["build_num"]}))
+
     def find_data_collections_for_reassembly(self, start, stop):
         data_collections_coll = self.db.data_collections
         # Query for data collections with complete set of frames, last modified within start/stop range and
@@ -246,6 +276,31 @@ class DatabaseManager:
             "build_num": self.config["build_num"]
         }
         return list(orbits_coll.find(query).sort("start_time", sort))
+
+    def find_orbits_for_bad_reformatting(self, start, stop):
+        orbits_coll = self.db.orbits
+        # Query for orbits with complete set of bad data, last modified within start/stop range and
+        # that don't have an associated bad netcdf file
+        query = {
+            "bad_status": "complete",
+            "last_modified": {"$gte": start, "$lte": stop},
+            "associated_bad_netcdf": {"$exists": 0},
+            "build_num": self.config["build_num"]
+        }
+        return list(orbits_coll.find(query))
+
+    def find_orbits_for_geolocation(self, start, stop):
+        orbits_coll = self.db.orbits
+        # Query for orbits with complete set of radiance files, an associated BAD netcdf file, last modified within
+        # start/stop range, and no products.l1b.acquisitions
+        query = {
+            "radiance_status": "complete",
+            "last_modified": {"$gte": start, "$lte": stop},
+            "associated_bad_netcdf": {"$exists": 1},
+            "products.l1b.acquisitions": {"$exists": 0},
+            "build_num": self.config["build_num"]
+        }
+        return list(orbits_coll.find(query))
 
     def insert_orbit(self, metadata):
         if self.find_orbit_by_id(metadata["orbit_id"]) is None:

@@ -6,6 +6,7 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 
 import datetime
 import glob
+import json
 import logging
 import os
 
@@ -13,10 +14,11 @@ import luigi
 import spectral.io.envi as envi
 
 
-from emit_main.workflow.output_targets import StreamTarget, DataCollectionTarget, OrbitTarget
+from emit_main.workflow.output_targets import StreamTarget, DataCollectionTarget, OrbitTarget, AcquisitionTarget
 from emit_main.workflow.l0_tasks import L0StripHOSC
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_main.workflow.workflow_manager import WorkflowManager
+from emit_utils import daac_converter
 
 logger = logging.getLogger("emit-main")
 
@@ -427,6 +429,7 @@ class L1AReassembleRaw(SlurmJobTask):
             acq_decomp_frame_paths.sort()
 
             # Define acquisition metadata
+            daynight = "Day" if submode.lower() == "science" else "Night"
             acq_meta = {
                 "acquisition_id": acq_id,
                 "build_num": wm.config["build_num"],
@@ -436,6 +439,7 @@ class L1AReassembleRaw(SlurmJobTask):
                 "orbit": orbit,
                 "scene": scene,
                 "submode": submode.lower(),
+                "daynight": daynight,
                 "associated_dcid": self.dcid
             }
 
@@ -514,6 +518,7 @@ class L1AReassembleRaw(SlurmJobTask):
                 os.path.getmtime(acq.raw_img_path), tz=datetime.timezone.utc)
             hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
             hdr["emit data product version"] = wm.config["processing_version"]
+            hdr["emit acquisition daynight"] = acq.daynight
             envi.write_envi_header(acq.raw_hdr_path, hdr)
 
             # Update products with frames and decompressed frames:
@@ -711,6 +716,179 @@ class L1AFrameReport(SlurmJobTask):
         }
 
         dm.insert_data_collection_log_entry(dc.dcid, log_entry)
+
+
+class L1ADeliver(SlurmJobTask):
+    """
+    Stages Raw and UMM-G files and submits notification to DAAC interface
+    :returns: Staged L1A files
+    """
+
+    config_path = luigi.Parameter()
+    acquisition_id = luigi.Parameter()
+    level = luigi.Parameter()
+    partition = luigi.Parameter()
+
+    task_namespace = "emit"
+    n_cores = 1
+    memory = 30000
+
+    def requires(self):
+
+        logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
+        return None
+
+    def output(self):
+
+        logger.debug(f"{self.task_family} output: {self.acquisition_id}")
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family)
+
+    def work(self):
+
+        logger.debug(f"{self.task_family} work: {self.acquisition_id}")
+
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        acq = wm.acquisition
+        pge = wm.pges["emit-main"]
+
+        # Get local SDS names
+        ummg_path = acq.raw_img_path.replace(".img", ".cmr.json")
+
+        # Create local/tmp daac names and paths
+        daac_raw_name = f"{acq.raw_granule_ur}.img"
+        daac_ummg_name = f"{acq.raw_granule_ur}.cmr.json"
+        daac_raw_path = os.path.join(self.tmp_dir, daac_raw_name)
+        daac_ummg_path = os.path.join(self.tmp_dir, daac_ummg_name)
+
+        # Copy files to tmp dir and rename
+        wm.copy(acq.raw_img_path, daac_raw_path)
+
+        # First create the UMM-G file
+        creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.raw_img_path), tz=datetime.timezone.utc)
+        ummg = daac_converter.initialize_ummg(acq.raw_granule_ur, creation_time, "EMITL1ARAW")
+        daynight = "Day" if acq.submode == "science" else "Night"
+        ummg = daac_converter.add_data_file_ummg(ummg, daac_raw_path, daynight)
+        # TODO: replace w/ database read or read from L1B Geolocate PGE
+        tmp_boundary_points_list = [[-118.53, 35.85], [-118.53, 35.659], [-118.397, 35.659], [-118.397, 35.85]]
+        ummg = daac_converter.add_boundary_ummg(ummg, tmp_boundary_points_list)
+        daac_converter.dump_json(ummg, ummg_path)
+        wm.change_group_ownership(ummg_path)
+
+        # Copy ummg file to tmp dir and rename
+        wm.copy(ummg_path, daac_ummg_path)
+
+        # Copy files to staging server
+        partial_dir_arg = f"--partial-dir={acq.daac_partial_dir}"
+        log_file_arg = f"--log-file={os.path.join(self.tmp_dir, 'rsync.log')}"
+        target = f"{wm.config['daac_server_internal']}:{acq.daac_staging_dir}/"
+        group = f"emit-{wm.config['environment']}" if wm.config["environment"] in ("test", "ops") else "emit-dev"
+        # This command only makes the directory and changes ownership if the directory doesn't exist
+        cmd_make_target = ["ssh", wm.config["daac_server_internal"], "\"if", "[", "!", "-d",
+                           f"'{acq.daac_staging_dir}'", "];", "then", "mkdir", f"{acq.daac_staging_dir};", "chgrp",
+                           group, f"{acq.daac_staging_dir};", "fi\""]
+        pge.run(cmd_make_target, tmp_dir=self.tmp_dir)
+
+        for path in (daac_raw_path, daac_ummg_path):
+            cmd_rsync = ["rsync", "-azv", partial_dir_arg, log_file_arg, path, target]
+            pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
+
+        # Build notification dictionary
+        utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
+        cnm_submission_id = f"{acq.raw_granule_ur}_{utc_now.strftime('%Y%m%dt%H%M%S')}"
+        cnm_submission_path = os.path.join(acq.l1a_data_dir, cnm_submission_id + "_cnm.json")
+        target_src_map = {
+            daac_raw_name: os.path.basename(acq.raw_img_path),
+            daac_ummg_name: os.path.basename(ummg_path)
+        }
+        notification = {
+            "collection": "EMITL1ARAW",
+            "provider": wm.config["daac_provider"],
+            "identifier": cnm_submission_id,
+            "version": wm.config["cnm_version"],
+            "product": {
+                "name": acq.raw_granule_ur,
+                "dataVersion": acq.collection_version,
+                "files": [
+                    {
+                        "name": daac_raw_name,
+                        "uri": acq.daac_uri_base + daac_raw_name,
+                        "type": "data",
+                        "size": os.path.getsize(daac_raw_path),
+                        "checksumType": "sha512",
+                        "checksum": daac_converter.calc_checksum(daac_raw_path, "sha512")
+                    },
+                    {
+                        "name": daac_ummg_name,
+                        "uri": acq.daac_uri_base + daac_ummg_name,
+                        "type": "metadata",
+                        "size": os.path.getsize(daac_ummg_path),
+                        "checksumType": "sha512",
+                        "checksum": daac_converter.calc_checksum(daac_ummg_path, "sha512")
+                    }
+                ]
+            }
+        }
+
+        # Write notification submission to file
+        with open(cnm_submission_path, "w") as f:
+            f.write(json.dumps(notification, indent=4))
+        wm.change_group_ownership(cnm_submission_path)
+
+        # Submit notification via AWS SQS
+        cmd_aws = [wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", wm.config["daac_submission_url"], "--message-body",
+                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"]]
+        pge.run(cmd_aws, tmp_dir=self.tmp_dir)
+        cnm_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(cnm_submission_path),
+                                                            tz=datetime.timezone.utc)
+
+        # Record delivery details in DB for reconciliation report
+        dm = wm.database_manager
+        for file in notification["product"]["files"]:
+            delivery_report = {
+                "timestamp": utc_now,
+                "extended_build_num": wm.config["extended_build_num"],
+                "collection": notification["collection"],
+                "version": notification["product"]["dataVersion"],
+                "sds_filename": target_src_map[file["name"]],
+                "daac_filename": file["name"],
+                "size": file["size"],
+                "checksum": file["checksum"],
+                "checksum_type": file["checksumType"],
+                "submission_id": cnm_submission_id,
+                "submission_status": "submitted"
+            }
+            dm.insert_granule_report(delivery_report)
+
+        # Update db with log entry
+        if "raw_daac_submissions" in acq.metadata["products"]["l1a"] and \
+                acq.metadata["products"]["l1a"]["raw_daac_submissions"] is not None:
+            acq.metadata["products"]["l1a"]["raw_daac_submissions"].append(cnm_submission_path)
+        else:
+            acq.metadata["products"]["l1a"]["raw_daac_submissions"] = [cnm_submission_path]
+        dm.update_acquisition_metadata(
+            acq.acquisition_id,
+            {"products.l1a.raw_daac_submissions": acq.metadata["products"]["l1a"]["raw_daac_submissions"]})
+
+        log_entry = {
+            "task": self.task_family,
+            "pge_name": pge.repo_url,
+            "pge_version": pge.version_tag,
+            "pge_input_files": {
+                "raw_img_path": acq.raw_img_path
+            },
+            "pge_run_command": " ".join(cmd_aws),
+            "documentation_version": "TBD",
+            "product_creation_time": cnm_creation_time,
+            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
+            "completion_status": "SUCCESS",
+            "output": {
+                "l1a_raw_ummg_path": ummg_path,
+                "l1a_raw_cnm_submission_path": cnm_submission_path
+            }
+        }
+
+        dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
 
 
 class L1AReformatEDP(SlurmJobTask):

@@ -5,6 +5,7 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
 import datetime
+import json
 import logging
 import os
 
@@ -18,6 +19,7 @@ from emit_main.workflow.l1b_tasks import L1BGeolocate
 from emit_main.workflow.l2a_tasks import L2AMask, L2AReflectance
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_utils.file_checks import envi_header
+from emit_utils import daac_converter
 
 logger = logging.getLogger("emit-main")
 
@@ -208,38 +210,27 @@ class L2BFormat(SlurmJobTask):
         tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
         wm.makedirs(tmp_output_dir)
         tmp_daac_nc_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l2b.nc")
-        tmp_ummg_json_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l2b_ummg.json")
         tmp_log_path = os.path.join(self.local_tmp_dir, "output_conversion_pge.log")
 
         cmd = ["python", output_generator_exe, tmp_daac_nc_path, acq.abun_img_path, acq.abununcert_img_path,
-               acq.loc_img_path, acq.glt_img_path, "--ummg_file", tmp_ummg_json_path, "--log_file",
+               acq.loc_img_path, acq.glt_img_path, "--log_file",
                tmp_log_path]
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
         # Copy and rename output files back to /store
-        utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
-        daac_nc_path = os.path.join(acq.l2b_data_dir,
-                                    f"{acq.daac_l2babun_prefix}_{utc_now.strftime('%Y%m%dt%H%M%S')}.nc")
-        daac_ummg_json_path = daac_nc_path.replace(".nc", "_ummg.json")
-        log_path = daac_nc_path.replace(".nc", "_pge.log")
-        wm.copy(tmp_daac_nc_path, daac_nc_path)
-        wm.copy(tmp_ummg_json_path, daac_ummg_json_path)
+        nc_path = acq.abun_img_path.replace(".img", ".nc")
+        log_path = nc_path.replace(".nc", "_nc_pge.log")
+        wm.copy(tmp_daac_nc_path, nc_path)
         wm.copy(tmp_log_path, log_path)
 
         # PGE writes metadata to db
+        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(nc_path), tz=datetime.timezone.utc)
         dm = wm.database_manager
-        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(daac_nc_path), tz=datetime.timezone.utc)
         product_dict_netcdf = {
-            "netcdf_path": daac_nc_path,
+            "netcdf_path": nc_path,
             "created": nc_creation_time
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2b.abun_netcdf": product_dict_netcdf})
-
-        product_dict_ummg = {
-            "ummg_json_path": daac_ummg_json_path,
-            "created": datetime.datetime.fromtimestamp(os.path.getmtime(daac_ummg_json_path), tz=datetime.timezone.utc)
-        }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2b.abun_ummg": product_dict_ummg})
 
         log_entry = {
             "task": self.task_family,
@@ -257,9 +248,188 @@ class L2BFormat(SlurmJobTask):
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
-                "l2b_abun_netcdf_path": daac_nc_path,
-                "l2b_abun_ummg_path:": daac_ummg_json_path
+                "l2b_abun_netcdf_path": nc_path
             }
         }
 
+        dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
+
+
+class L2BDeliver(SlurmJobTask):
+    """
+    Stages NetCDF and UMM-G files and submits notification to DAAC interface
+    :returns: Staged L2A files
+    """
+
+    config_path = luigi.Parameter()
+    acquisition_id = luigi.Parameter()
+    level = luigi.Parameter()
+    partition = luigi.Parameter()
+
+    task_namespace = "emit"
+    n_cores = 1
+    memory = 30000
+
+    def requires(self):
+
+        logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
+        return None
+
+    def output(self):
+
+        logger.debug(f"{self.task_family} output: {self.acquisition_id}")
+        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return AcquisitionTarget(acquisition=acq, task_family=self.task_family)
+
+    def work(self):
+
+        logger.debug(f"{self.task_family} work: {self.acquisition_id}")
+
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        acq = wm.acquisition
+        pge = wm.pges["emit-main"]
+
+        # Get local SDS names
+        nc_path = acq.abun_img_path.replace(".img", ".nc")
+        ummg_path = nc_path.replace(".nc", ".cmr.json")
+
+        # Create local/tmp daac names and paths
+        daac_nc_name = f"{acq.abun_granule_ur}.nc"
+        daac_ummg_name = f"{acq.abun_granule_ur}.cmr.json"
+        daac_nc_path = os.path.join(self.tmp_dir, daac_nc_name)
+        daac_ummg_path = os.path.join(self.tmp_dir, daac_ummg_name)
+
+        # Copy files to tmp dir and rename
+        wm.copy(nc_path, daac_nc_path)
+
+        # Create the UMM-G file
+        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(nc_path), tz=datetime.timezone.utc)
+        daynight = "Day" if acq.submode == "science" else "Night"
+        ummg = daac_converter.initialize_ummg(acq.abun_granule_ur, nc_creation_time, "EMITL2BMIN")
+        ummg = daac_converter.add_data_file_ummg(ummg, daac_nc_path, daynight)
+        # TODO: Add browse image
+        # TODO: replace w/ database read or read from L1B Geolocate PGE
+        tmp_boundary_points_list = [[-118.53, 35.85], [-118.53, 35.659], [-118.397, 35.659], [-118.397, 35.85]]
+        ummg = daac_converter.add_boundary_ummg(ummg, tmp_boundary_points_list)
+        daac_converter.dump_json(ummg, ummg_path)
+        wm.change_group_ownership(ummg_path)
+
+        # Copy ummg file to tmp dir and rename
+        wm.copy(ummg_path, daac_ummg_path)
+
+        # Copy files to staging server
+        partial_dir_arg = f"--partial-dir={acq.daac_partial_dir}"
+        log_file_arg = f"--log-file={os.path.join(self.tmp_dir, 'rsync.log')}"
+        target = f"{wm.config['daac_server_internal']}:{acq.daac_staging_dir}/"
+        group = f"emit-{wm.config['environment']}" if wm.config["environment"] in ("test", "ops") else "emit-dev"
+        # This command only makes the directory and changes ownership if the directory doesn't exist
+        cmd_make_target = ["ssh", wm.config["daac_server_internal"], "\"if", "[", "!", "-d",
+                           f"'{acq.daac_staging_dir}'", "];", "then", "mkdir", f"{acq.daac_staging_dir};", "chgrp",
+                           group, f"{acq.daac_staging_dir};", "fi\""]
+        pge.run(cmd_make_target, tmp_dir=self.tmp_dir)
+
+        for path in (daac_nc_path, daac_ummg_path):
+            cmd_rsync = ["rsync", "-azv", partial_dir_arg, log_file_arg, path, target]
+            pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
+
+        # Build notification dictionary
+        utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
+        cnm_submission_id = f"{acq.abun_granule_ur}_{utc_now.strftime('%Y%m%dt%H%M%S')}"
+        cnm_submission_path = os.path.join(acq.l2b_data_dir, cnm_submission_id + "_cnm.json")
+        target_src_map = {
+            daac_nc_name: os.path.basename(nc_path),
+            daac_ummg_name: os.path.basename(ummg_path)
+        }
+        notification = {
+            "collection": "EMITL2BMIN",
+            "provider": wm.config["daac_provider"],
+            "identifier": cnm_submission_id,
+            "version": wm.config["cnm_version"],
+            "product": {
+                "name": acq.abun_granule_ur,
+                "dataVersion": acq.collection_version,
+                "files": [
+                    {
+                        "name": daac_nc_name,
+                        "uri": acq.daac_uri_base + daac_nc_name,
+                        "type": "data",
+                        "size": os.path.getsize(daac_nc_name),
+                        "checksumType": "sha512",
+                        "checksum": daac_converter.calc_checksum(daac_nc_path, "sha512")
+                    },
+                    {
+                        "name": daac_ummg_name,
+                        "uri": acq.daac_uri_base + daac_ummg_name,
+                        "type": "metadata",
+                        "size": os.path.getsize(daac_ummg_path),
+                        "checksumType": "sha512",
+                        "checksum": daac_converter.calc_checksum(daac_ummg_path, "sha512")
+                    }
+                ]
+            }
+        }
+
+        # Write notification submission to file
+        with open(cnm_submission_path, "w") as f:
+            f.write(json.dumps(notification, indent=4))
+        wm.change_group_ownership(cnm_submission_path)
+
+        # Submit notification via AWS SQS
+        cmd_aws = [wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", wm.config["daac_submission_url"], "--message-body",
+                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"]]
+        pge.run(cmd_aws, tmp_dir=self.tmp_dir)
+        cnm_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(cnm_submission_path),
+                                                            tz=datetime.timezone.utc)
+
+        # Record delivery details in DB for reconciliation report
+        dm = wm.database_manager
+        for file in notification["product"]["files"]:
+            delivery_report = {
+                "timestamp": utc_now,
+                "extended_build_num": wm.config["extended_build_num"],
+                "collection": notification["collection"],
+                "version": notification["product"]["dataVersion"],
+                "sds_filename": target_src_map[file["name"]],
+                "daac_filename": file["name"],
+                "size": file["size"],
+                "checksum": file["checksum"],
+                "checksum_type": file["checksumType"],
+                "submission_id": cnm_submission_id,
+                "submission_status": "submitted"
+            }
+            dm.insert_granule_report(delivery_report)
+
+        # Update db with log entry
+        product_dict_ummg = {
+            "ummg_json_path": ummg_path,
+            "created": datetime.datetime.fromtimestamp(os.path.getmtime(ummg_path), tz=datetime.timezone.utc)
+        }
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2b.abun_ummg": product_dict_ummg})
+
+        if "abun_daac_submissions" in acq.metadata["products"]["l2b"] and \
+                acq.metadata["products"]["l2b"]["abun_daac_submissions"] is not None:
+            acq.metadata["products"]["l2b"]["abun_daac_submissions"].append(cnm_submission_path)
+        else:
+            acq.metadata["products"]["l2b"]["abun_daac_submissions"] = [cnm_submission_path]
+        dm.update_acquisition_metadata(
+            acq.acquisition_id,
+            {"products.l2b.abun_daac_submissions": acq.metadata["products"]["l2b"]["abun_daac_submissions"]})
+
+        log_entry = {
+            "task": self.task_family,
+            "pge_name": pge.repo_url,
+            "pge_version": pge.version_tag,
+            "pge_input_files": {
+                "netcdf_path": nc_path
+            },
+            "pge_run_command": " ".join(cmd_aws),
+            "documentation_version": "TBD",
+            "product_creation_time": cnm_creation_time,
+            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
+            "completion_status": "SUCCESS",
+            "output": {
+                "l2b_abun_ummg_path:": ummg_path,
+                "l2b_abun_cnm_submission_path": cnm_submission_path
+            }
+        }
         dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
