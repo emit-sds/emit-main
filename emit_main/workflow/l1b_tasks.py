@@ -192,14 +192,14 @@ class L1BGeolocate(SlurmJobTask):
 
     def requires(self):
 
-        logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
+        logger.debug(f"{self.task_family} requires: {self.orbit_id}")
         return None
 
     def output(self):
 
-        logger.debug(f"{self.task_family} output: {self.acquisition_id}")
-        # wm = WorkflowManager(config_path=self.config_path, orbit_id=self.orbit_id)
-        # return OrbitTarget(orbit=wm.orbit, task_family=self.task_family)
+        logger.debug(f"{self.task_family} output: {self.orbit_id}")
+        wm = WorkflowManager(config_path=self.config_path, orbit_id=self.orbit_id)
+        return OrbitTarget(orbit=wm.orbit, task_family=self.task_family)
         return None
 
     def work(self):

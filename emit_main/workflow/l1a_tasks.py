@@ -736,6 +736,7 @@ class L1ADeliver(SlurmJobTask):
     def requires(self):
 
         logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
+        # TODO: Add dependency for reassemble by looking up DCID
         return None
 
     def output(self):
