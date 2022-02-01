@@ -722,8 +722,8 @@ class L1BAttDeliver(SlurmJobTask):
         ummg = daac_converter.add_data_file_ummg(ummg, daac_nc_path, "Both")
         # TODO: Remove boundary for orbit?
         # TODO: replace w/ database read or read from L1B Geolocate PGE
-        tmp_boundary_points_list = [[-118.53, 35.85], [-118.53, 35.659], [-118.397, 35.659], [-118.397, 35.85]]
-        ummg = daac_converter.add_boundary_ummg(ummg, tmp_boundary_points_list)
+        # tmp_boundary_points_list = [[-118.53, 35.85], [-118.53, 35.659], [-118.397, 35.659], [-118.397, 35.85]]
+        # ummg = daac_converter.add_boundary_ummg(ummg, tmp_boundary_points_list)
         daac_converter.dump_json(ummg, ummg_path)
         wm.change_group_ownership(ummg_path)
 
