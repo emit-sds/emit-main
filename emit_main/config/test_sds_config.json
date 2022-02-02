@@ -61,7 +61,7 @@
     "tetracorder_setup_cmd_path": "/shared/tetracorder5.26a.cmds/cmd-setup-tetrun",
     "versions": [
       {
-        "version_date_range": ["2018-01-01T00:00:00", "2019-01-01T00:00:00"],
+        "version_date_range": ["2017-01-01T00:00:00", "2019-01-01T00:00:00"],
         "isofit_wavelength_path": "/beegfs/scratch/brodrick/emit/megabox/support/synth_wavelengths.txt",
         "isofit_surface_path": "/beegfs/scratch/brodrick/emit/megabox/support/EMIT_synth_surface.mat"
       },
