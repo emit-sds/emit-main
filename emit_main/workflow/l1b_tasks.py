@@ -190,6 +190,8 @@ class L1BGeolocate(SlurmJobTask):
     partition = luigi.Parameter()
     ignore_missing_radiance = luigi.BoolParameter(default=False)
 
+    n_cores = 40
+    memory = 180000
     task_namespace = "emit"
 
     def requires(self):
@@ -228,12 +230,13 @@ class L1BGeolocate(SlurmJobTask):
         for acq in acquisitions_in_orbit:
             if acq["submode"] == "science":
                 try:
+                    line_timestamps_path = acq["products"]["l1a"]["raw_line_timestamps"]["txt_path"]
                     rdn_img_path = acq["products"]["l1b"]["rdn"]["img_path"]
                 except KeyError:
                     wm.print(__name__, f"Could not find a radiance image path for {acq['acquisition_id']} in DB.")
                     continue
                 file_pair = {
-                    "timestamps_file": rdn_img_path.replace("_l1b_", "_l1a_").replace(".img", "_line_timestamps.txt"),
+                    "timestamps_file": line_timestamps_path,
                     "radiance_file": rdn_img_path
                 }
                 input_files["timestamp_radiance_pairs"].append(file_pair)
@@ -241,25 +244,16 @@ class L1BGeolocate(SlurmJobTask):
         # Build run command
         pge = wm.pges["emit-sds-l1b-geo"]
         l1b_geo_install_dir = wm.config["l1b_geo_install_dir"]
-        l1b_geo_pge_exe = os.path.join(l1b_geo_install_dir, "install", "l1b_geo_pge")
+        l1b_geo_pge_exe = os.path.join(l1b_geo_install_dir, "l1b_geo_pge")
         tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
         wm.makedirs(tmp_output_dir)
-        emit_test_data = "/store/shared/emit-test-data/latest"
         l1b_osp_dir = wm.config["l1b_geo_osp_dir"]
 
-        tmp_input_files_path = os.path.join(tmp_output_dir, "l1b_geo_input_files.json")
+        tmp_input_files_path = os.path.join(tmp_output_dir, "l1b_geo_run_config.json")
         with open(tmp_input_files_path, "w") as f:
             f.write(json.dumps(input_files, indent=4))
 
-        # TODO: Change run command to use input_files json
-        cmd = [l1b_geo_pge_exe, tmp_output_dir, l1b_osp_dir,
-               f"{emit_test_data}/*o80000_l1a_att*.nc",
-               f"{emit_test_data}/*o80000_s001_l1a_line_time*.nc",
-               f"{emit_test_data}/*o80000_s001_l1b_rdn*.img",
-               f"{emit_test_data}/*o80000_s002_l1a_line_time*.nc",
-               f"{emit_test_data}/*o80000_s002_l1b_rdn*.img",
-               f"{emit_test_data}/*o80000_s003_l1a_line_time*.nc",
-               f"{emit_test_data}/*o80000_s003_l1b_rdn*.img"]
+        cmd = [l1b_geo_pge_exe, tmp_output_dir, l1b_osp_dir, tmp_input_files_path]
         pge.run(cmd, tmp_dir=self.tmp_dir, use_conda_run=False)
 
         # TODO: Copy back files and update DB
