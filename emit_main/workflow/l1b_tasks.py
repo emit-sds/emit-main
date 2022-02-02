@@ -253,7 +253,7 @@ class L1BGeolocate(SlurmJobTask):
         with open(tmp_input_files_path, "w") as f:
             f.write(json.dumps(input_files, indent=4))
 
-        cmd = [l1b_geo_pge_exe, tmp_output_dir, l1b_osp_dir, tmp_input_files_path]
+        cmd = [l1b_geo_pge_exe, tmp_output_dir, l1b_osp_dir, tmp_input_files_path, "2>", "/dev/null"]
         pge.run(cmd, tmp_dir=self.tmp_dir, use_conda_run=False)
 
         # TODO: Copy back files and update DB
