@@ -35,6 +35,8 @@ class L1BCalibrate(SlurmJobTask):
     partition = luigi.Parameter()
     dark_path = luigi.Parameter(default="")
 
+    n_cores = 40
+    memory = 180000
     task_namespace = "emit"
 
     def requires(self):
@@ -57,7 +59,7 @@ class L1BCalibrate(SlurmJobTask):
         pge = wm.pges["emit-sds-l1b"]
 
         # PGE writes to tmp folder
-        tmp_output_dir = os.path.join(self.tmp_dir, "output")
+        tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
         wm.makedirs(tmp_output_dir)
         tmp_rdn_img_path = os.path.join(tmp_output_dir, os.path.basename(acq.rdn_img_path))
         log_name = os.path.basename(acq.rdn_img_path.replace(".img", "_pge.log"))
@@ -73,7 +75,7 @@ class L1BCalibrate(SlurmJobTask):
                     config[key] = os.path.abspath(os.path.join(pge.repo_dir, value))
                 input_files[key] = config[key]
 
-        tmp_config_path = os.path.join(self.tmp_dir, "l1b_config.json")
+        tmp_config_path = os.path.join(self.local_tmp_dir, "l1b_config.json")
         with open(tmp_config_path, "w") as outfile:
             json.dump(config, outfile)
 

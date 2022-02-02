@@ -68,9 +68,9 @@ def parse_args():
     parser.add_argument("--partition", default="emit",
                         help="The slurm partition to be used - emit (default), debug, standard, patient ")
     parser.add_argument("--start_time",
-                        help="The start time to use for any monitor calls")
+                        help="The start time to use for any monitor calls (YYYY-MM-DDTHH:MM:SS)")
     parser.add_argument("--stop_time",
-                        help="The stop time to use for any monitor calls")
+                        help="The stop time to use for any monitor calls (YYYY-MM-DDTHH:MM:SS)")
     parser.add_argument("--miss_pkt_thresh", default="0.1",
                         help="The threshold of missing packets to total packets which will cause a task to fail")
     parser.add_argument("--ignore_missing_frames", action="store_true",
