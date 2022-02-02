@@ -6,8 +6,11 @@ except ImportError:
 import os
 import shutil
 import sys
+import warnings
 
 from emit_main.workflow.workflow_manager import WorkflowManager
+
+warnings.filterwarnings("ignore")
 
 
 def _do_work_on_compute_node(work_dir):

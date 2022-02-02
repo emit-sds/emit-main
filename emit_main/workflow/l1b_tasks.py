@@ -253,7 +253,7 @@ class L1BGeolocate(SlurmJobTask):
         with open(tmp_input_files_path, "w") as f:
             f.write(json.dumps(input_files, indent=4))
 
-        cmd = [l1b_geo_pge_exe, tmp_output_dir, l1b_osp_dir, tmp_input_files_path, "2>", "/dev/null"]
+        cmd = [l1b_geo_pge_exe, tmp_output_dir, l1b_osp_dir, tmp_input_files_path]
         pge.run(cmd, tmp_dir=self.tmp_dir, use_conda_run=False)
 
         # TODO: Copy back files and update DB
@@ -267,6 +267,8 @@ class L1BGeolocate(SlurmJobTask):
             "l1b_glt_hdr_paths": [],
             "l1b_loc_img_paths": [],
             "l1b_loc_hdr_paths": [],
+            "l1b_obs_img_paths": [],
+            "l1b_obs_hdr_paths": [],
             "l1b_rdn_kmz_paths": [],
             "l1b_rdn_png_paths": []
         }
@@ -279,6 +281,8 @@ class L1BGeolocate(SlurmJobTask):
             tmp_glt_hdr_path = glob.glob(os.path.join(tmp_output_dir, f"{id}*glt*hdr"))[0]
             tmp_loc_img_path = glob.glob(os.path.join(tmp_output_dir, f"{id}*loc*img"))[0]
             tmp_loc_hdr_path = glob.glob(os.path.join(tmp_output_dir, f"{id}*loc*hdr"))[0]
+            tmp_obs_img_path = glob.glob(os.path.join(tmp_output_dir, f"{id}*obs*img"))[0]
+            tmp_obs_hdr_path = glob.glob(os.path.join(tmp_output_dir, f"{id}*obs*hdr"))[0]
             tmp_rdn_kmz_path = glob.glob(os.path.join(tmp_output_dir, f"{id}*rdn*kmz"))[0]
             tmp_rdn_png_path = glob.glob(os.path.join(tmp_output_dir, f"{id}*rdn*png"))[0]
             # Copy tmp paths to /store
@@ -287,6 +291,8 @@ class L1BGeolocate(SlurmJobTask):
             wm.copy(tmp_glt_hdr_path, acq.glt_hdr_path)
             wm.copy(tmp_loc_img_path, acq.loc_img_path)
             wm.copy(tmp_loc_hdr_path, acq.loc_hdr_path)
+            wm.copy(tmp_obs_img_path, acq.obs_img_path)
+            wm.copy(tmp_obs_hdr_path, acq.obs_hdr_path)
             wm.copy(tmp_rdn_kmz_path, acq.rdn_kmz_path)
             wm.copy(tmp_rdn_png_path, acq.rdn_png_path)
             # Symlink from orbits l1b dir to acquisitions l1b dir
@@ -294,6 +300,8 @@ class L1BGeolocate(SlurmJobTask):
             wm.symlink(acq.glt_hdr_path, os.path.join(orbit.l1b_dir, os.path.basename(acq.glt_hdr_path)))
             wm.symlink(acq.loc_img_path, os.path.join(orbit.l1b_dir, os.path.basename(acq.loc_img_path)))
             wm.symlink(acq.loc_hdr_path, os.path.join(orbit.l1b_dir, os.path.basename(acq.loc_hdr_path)))
+            wm.symlink(acq.obs_img_path, os.path.join(orbit.l1b_dir, os.path.basename(acq.obs_img_path)))
+            wm.symlink(acq.obs_hdr_path, os.path.join(orbit.l1b_dir, os.path.basename(acq.obs_hdr_path)))
             wm.symlink(acq.rdn_kmz_path, os.path.join(orbit.l1b_dir, os.path.basename(acq.rdn_kmz_path)))
             wm.symlink(acq.rdn_png_path, os.path.join(orbit.l1b_dir, os.path.basename(acq.rdn_png_path)))
             # Keep track of output paths for processing log
@@ -301,6 +309,8 @@ class L1BGeolocate(SlurmJobTask):
             output_prods["l1b_glt_hdr_paths"].append(acq.glt_hdr_path)
             output_prods["l1b_loc_img_paths"].append(acq.loc_img_path)
             output_prods["l1b_loc_hdr_paths"].append(acq.loc_hdr_path)
+            output_prods["l1b_obs_img_paths"].append(acq.loc_img_path)
+            output_prods["l1b_obs_hdr_paths"].append(acq.loc_hdr_path)
             output_prods["l1b_rdn_kmz_paths"].append(acq.rdn_kmz_path)
             output_prods["l1b_rdn_png_paths"].append(acq.rdn_png_path)
             # Keep track of acquisition product map for products
@@ -315,6 +325,12 @@ class L1BGeolocate(SlurmJobTask):
                     "img_path": acq.loc_img_path,
                     "hdr_path": acq.loc_hdr_path,
                     "created": datetime.datetime.fromtimestamp(os.path.getmtime(acq.loc_img_path),
+                                                               tz=datetime.timezone.utc)
+                },
+                "obs": {
+                    "img_path": acq.obs_img_path,
+                    "hdr_path": acq.obs_hdr_path,
+                    "created": datetime.datetime.fromtimestamp(os.path.getmtime(acq.obs_img_path),
                                                                tz=datetime.timezone.utc)
                 },
                 "rdn_kmz": {
@@ -333,13 +349,14 @@ class L1BGeolocate(SlurmJobTask):
             # Update hdr files
             acq_input_files = {
                 "attitude_ephemeris_file": orbit.uncorr_att_eph_path,
-                "timestamp_file": acq.rdn_img_path.replace("_l1b_", "_l1a_").replace(".img", "_line_timestamps.txt"),
+                "timestamp_file": acq.raw_img_path.replace(".img", "_line_timestamps.txt"),
                 "radiance_file": acq.rdn_img_path
             }
             input_files_arr = ["{}={}".format(key, value) for key, value in acq_input_files.items()]
             doc_version = "EMIT SDS L1B JPL-D 104187, Initial"
             for img_path, hdr_path in [(acq.glt_img_path, acq.glt_hdr_path),
-                                       (acq.loc_img_path, acq.loc_hdr_path)]:
+                                       (acq.loc_img_path, acq.loc_hdr_path),
+                                       (acq.obs_img_path, acq.obs_hdr_path)]:
 
                 hdr = envi.read_envi_header(hdr_path)
                 hdr["emit acquisition start time"] = acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
@@ -356,6 +373,9 @@ class L1BGeolocate(SlurmJobTask):
                 if "_loc_" in img_path:
                     creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.loc_img_path),
                                                                     tz=datetime.timezone.utc)
+                if "_obs_" in img_path:
+                    creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.obs_img_path),
+                                                                    tz=datetime.timezone.utc)
                 hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
                 hdr["emit data product version"] = wm.config["processing_version"]
                 hdr["emit acquisition daynight"] = acq.daynight
@@ -365,6 +385,7 @@ class L1BGeolocate(SlurmJobTask):
             # Write product dict
             dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.glt": acq_prod_map[id]["glt"]})
             dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.loc": acq_prod_map[id]["loc"]})
+            dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.obs": acq_prod_map[id]["obs"]})
             dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn_kmz": acq_prod_map[id]["rdn_kmz"]})
             dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn_png": acq_prod_map[id]["rdn_png"]})
 
@@ -373,6 +394,7 @@ class L1BGeolocate(SlurmJobTask):
         wm.makedirs(orbit.l1b_geo_work_dir)
         ancillary_workdir_paths = glob.glob(os.path.join(tmp_output_dir, "l1b_geo*"))
         ancillary_workdir_paths += glob.glob(os.path.join(tmp_output_dir, "map*"))
+        ancillary_workdir_paths += glob.glob(os.path.join(tmp_output_dir, "*_geoqa_*"))
         for path in ancillary_workdir_paths:
             wm.copy(path, os.path.join(orbit.l1b_geo_work_dir, os.path.basename(path)))
 

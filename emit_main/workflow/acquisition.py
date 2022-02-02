@@ -105,7 +105,6 @@ class Acquisition:
             },
             "l1b": {
                 "rdn": ["img", "hdr", "png", "kmz"],
-                "rdnrg": ["png", "kmz"],
                 "loc": ["img", "hdr"],
                 "obs": ["img", "hdr"],
                 "glt": ["img", "hdr"],
