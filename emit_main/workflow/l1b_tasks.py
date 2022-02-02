@@ -390,15 +390,26 @@ class L1BGeolocate(SlurmJobTask):
             dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn_png": acq_prod_map[id]["rdn_png"]})
 
         # Finish updating orbit level properties
+        # Copy back corrected att/eph
+        tmp_corr_att_eph_path = glob.glob(os.path.join(tmp_output_dir, "*l1b_att*nc"))[0]
+        wm.copy(tmp_corr_att_eph_path, orbit.corr_att_eph_path)
+
         # Copy back remainder of work directory
         wm.makedirs(orbit.l1b_geo_work_dir)
         ancillary_workdir_paths = glob.glob(os.path.join(tmp_output_dir, "l1b_geo*"))
         ancillary_workdir_paths += glob.glob(os.path.join(tmp_output_dir, "map*"))
         ancillary_workdir_paths += glob.glob(os.path.join(tmp_output_dir, "*_geoqa_*"))
+        ancillary_workdir_paths += glob.glob(os.path.join(tmp_output_dir, "extra*"))
         for path in ancillary_workdir_paths:
             wm.copy(path, os.path.join(orbit.l1b_geo_work_dir, os.path.basename(path)))
 
         # Update metadata and product dictionary
+        corr_att_product_dict = {
+            "nc_path": orbit.corr_att_eph_path,
+            "created": datetime.datetime.fromtimestamp(os.path.getmtime(orbit.corr_att_eph_path),
+                                                       tz=datetime.timezone.utc)
+        }
+        dm.update_orbit_metadata(orbit.orbit_id, {"products.l1b.corr_att_eph": corr_att_product_dict})
         dm.update_orbit_metadata(orbit.orbit_id, {"products.l1b.acquisitions": acq_prod_map})
 
         # Add processing log
