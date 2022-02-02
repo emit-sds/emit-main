@@ -33,7 +33,7 @@
   },
 
   "build_config": {
-    "extended_build_num": "000600",
+    "extended_build_num": "010000",
     "conda_base_dir": "/shared/anaconda3/"
   },
 
@@ -49,7 +49,8 @@
   },
 
   "ancillary_paths": {
-    "dem_path": "/shared/dem/TBD",
+    "l1b_geo_install_dir": "/store/emit/dev/repos/emit-sds-l1b-geo",
+    "l1b_geo_osp_dir": "/store/emit/dev/resources/l1_osp_aviris_ng_dir",
     "isofit_wavelength_path": "repos/emit-sds-l2a/surface_v1/release_1_20170320_ang20170228_wavelength_fit.txt",
     "isofit_surface_path": "repos/emit-sds-l2a/surface_v1/release_1_basic_surface.mat",
     "isofit_emulator_base": "/shared/sRTMnet/sRTMnet_v100",
@@ -60,7 +61,7 @@
     "tetracorder_setup_cmd_path": "/shared/tetracorder5.26a.cmds/cmd-setup-tetrun",
     "versions": [
       {
-        "version_date_range": ["2018-01-01T00:00:00", "2019-01-01T00:00:00"],
+        "version_date_range": ["2017-01-01T00:00:00", "2019-01-01T00:00:00"],
         "isofit_wavelength_path": "/beegfs/scratch/brodrick/emit/megabox/support/synth_wavelengths.txt",
         "isofit_surface_path": "/beegfs/scratch/brodrick/emit/megabox/support/EMIT_synth_surface.mat"
       },

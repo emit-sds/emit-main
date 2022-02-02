@@ -1,0 +1,69 @@
+{
+  "repositories": [
+    {
+      "url": "git@github.jpl.nasa.gov:emit-sds/emit-main.git",
+      "tag": "v1.0.0",
+      "conda_env": "emit-main-20220120"
+    },
+    {
+      "url": "git@github.jpl.nasa.gov:emit-sds/emit-utils.git",
+      "tag": "v1.0.0",
+      "conda_env": "emit-main-20220120"
+    },
+    {
+      "url": "git@github.jpl.nasa.gov:emit/emit-ios.git",
+      "tag": "0.5.11",
+      "conda_env": "emit-main-20220120"
+    },
+    {
+      "url": "git@github.jpl.nasa.gov:emit/emit-l0edp.git",
+      "tag": "1.0.2",
+      "conda_env": "emit-main-20220120"
+    },
+    {
+      "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l0.git",
+      "tag": "v1.0.0",
+      "conda_env": "emit-main-20220120"
+    },
+    {
+      "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l1a.git",
+      "tag": "v1.0.0",
+      "conda_env": "emit-main-20220120"
+    },
+    {
+      "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l1b.git",
+      "tag": "v1.0.0",
+      "conda_env": "emit-main-20220120"
+    },
+    {
+      "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l1b-geo.git",
+      "tag": "v1.0.0",
+      "conda_env": "emit-main-20220120"
+    },
+    {
+      "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l2a.git",
+      "tag": "v1.0.0",
+      "conda_env": "emit-main-20220120"
+    },
+    {
+      "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l2b.git",
+      "tag": "v1.0.0",
+      "conda_env": "emit-main-20220120"
+    },
+    {
+      "url": "https://github.com/isofit/isofit.git",
+      "tag": "v2.9.1",
+      "conda_env": "emit-main"
+    },
+    {
+      "url": "git@github.jpl.nasa.gov:flex-data-compression/EMIT_FLEX_codec.git",
+      "tag": "EMIT_flexcodec_1_0",
+      "conda_env": "emit-main-20220120"
+    },
+    {
+      "url": "git@github.jpl.nasa.gov:aviris/NGIS_Check_Line_Frame.git",
+      "tag": "emit-sds-0.4.0",
+      "conda_env": "emit-check-line-frame"
+    }
+  ]
+}

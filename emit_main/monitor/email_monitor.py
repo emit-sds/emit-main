@@ -115,4 +115,4 @@ class EmailMonitor:
                     error_message = ""
                 dm.update_granule_report_submission_statuses(identifier,
                                                              ",".join([response_status, error_code, error_message]))
-                item.move(self.delivery_success_folder)
+                item.move(self.delivery_failure_folder)

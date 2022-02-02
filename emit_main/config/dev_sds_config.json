@@ -49,8 +49,8 @@
   },
 
   "ancillary_paths": {
-    "l1b_geo_install_dir": "/store/smyth/emit-sds-l1b-geo-install",
-    "l1b_geo_osp_dir": "/store/shared/emit-test-data/latest/l1_osp_dir",
+    "l1b_geo_install_dir": "/store/emit/dev/repos/emit-sds-l1b-geo",
+    "l1b_geo_osp_dir": "/store/emit/dev/resources/l1_osp_aviris_ng_dir",
     "isofit_wavelength_path": "repos/emit-sds-l2a/surface_v1/release_1_20170320_ang20170228_wavelength_fit.txt",
     "isofit_surface_path": "repos/emit-sds-l2a/surface_v1/release_1_basic_surface.mat",
     "isofit_emulator_base": "/shared/sRTMnet/sRTMnet_v100",
