@@ -66,6 +66,7 @@ class DatabaseManager:
             "products.l1b.rdn.img_path": {"$exists": 1},
             "products.l1b.glt.img_path": {"$exists": 1},
             "products.l1b.loc.img_path": {"$exists": 1},
+            "products.l1b.obs.img_path": {"$exists": 1},
             "products.l2a.rfl.img_path": {"$exists": 0},
             "last_modified": {"$gte": start, "$lte": stop},
             "build_num": self.config["build_num"]
