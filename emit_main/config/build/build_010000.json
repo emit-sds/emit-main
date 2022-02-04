@@ -11,16 +11,6 @@
       "conda_env": "emit-main-20220204"
     },
     {
-      "url": "git@github.jpl.nasa.gov:emit/emit-ios.git",
-      "tag": "0.5.11",
-      "conda_env": "emit-main-20220204"
-    },
-    {
-      "url": "git@github.jpl.nasa.gov:emit/emit-l0edp.git",
-      "tag": "1.0.2",
-      "conda_env": "emit-main-20220204"
-    },
-    {
       "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l0.git",
       "tag": "v1.0.0",
       "conda_env": "emit-main-20220204"
@@ -58,6 +48,16 @@
     {
       "url": "https://github.com/isofit/isofit.git",
       "tag": "v2.9.2",
+      "conda_env": "emit-main-20220204"
+    },
+    {
+      "url": "git@github.jpl.nasa.gov:emit/emit-ios.git",
+      "tag": "0.5.11",
+      "conda_env": "emit-main-20220204"
+    },
+    {
+      "url": "git@github.jpl.nasa.gov:emit/emit-l0edp.git",
+      "tag": "1.0.2",
       "conda_env": "emit-main-20220204"
     },
     {
