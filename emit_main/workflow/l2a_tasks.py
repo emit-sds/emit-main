@@ -78,7 +78,7 @@ class L2AReflectance(SlurmJobTask):
         cmd = ["python", apply_oe_exe, acq.rdn_img_path, acq.loc_img_path, acq.obs_img_path, self.local_tmp_dir, "emit",
                "--presolve=1", "--empirical_line=1", "--emulator_base=" + emulator_base,
                "--n_cores", str(self.n_cores),
-               #"--wavelength_path", wavelength_path,
+               # "--wavelength_path", wavelength_path,
                "--surface_path", surface_path,
                "--ray_temp_dir", "/tmp/ray-" + os.path.basename(self.local_tmp_dir),
                "--log_file", tmp_log_path,
