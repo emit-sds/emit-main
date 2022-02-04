@@ -39,7 +39,7 @@
 
   "daac_config": {
     "aws_cli_exe": "/shared/aws-cli/v2/current/bin/aws",
-    "aws_profile": "emit-sqs",
+    "aws_profile": "default",
     "cnm_version": "1.4",
     "daac_submission_url": "https://sqs.us-west-2.amazonaws.com/560130786230/lp-uat-ingest-forward-processing",
     "daac_provider": "JPL_EMIT_SDS",
