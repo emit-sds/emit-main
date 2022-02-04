@@ -49,9 +49,11 @@
   },
 
   "ancillary_paths": {
+    "decompression_constants_path": "repos/emit-sds-l1a/decompression/constants.txt",
+    "decompression_init_data_path": "repos/emit-sds-l1a/decompression/FPGA_Data_Initialization_File_CREATE_COMPRESSION_INIT_DATA_328_e0.bin",
+    "l1b_config_path": "repos/emit-sds-l1b/config/tvac2_config.json",
     "l1b_geo_install_dir": "/store/emit/dev/repos/emit-sds-l1b-geo",
     "l1b_geo_osp_dir": "/store/emit/dev/resources/l1_osp_aviris_ng_dir",
-    "isofit_wavelength_path": "repos/emit-sds-l2a/surface_v1/release_1_20170320_ang20170228_wavelength_fit.txt",
     "isofit_surface_path": "/beegfs/store/emit/test/repos/emit-sds-l2a/surface_v2/surface_filtered_emit_synthetic.mat",
     "isofit_emulator_base": "/shared/sRTMnet/sRTMnet_v100",
     "isofit_sixs_dir": "/shared/sixs",
@@ -59,18 +61,6 @@
     "tetracorder_path": "/shared/tetracorder5.26",
     "tetracorder_library_dir": "/beegfs/store/tetracorder/official_libraries",
     "tetracorder_setup_cmd_path": "/shared/tetracorder5.26a.cmds/cmd-setup-tetrun",
-    "versions": [
-      {
-        "version_date_range": ["2017-01-01T00:00:00", "2019-01-01T00:00:00"],
-        "isofit_wavelength_path": "/beegfs/scratch/brodrick/emit/megabox/support/synth_wavelengths.txt",
-        "isofit_surface_path": "/beegfs/scratch/brodrick/emit/megabox/support/EMIT_synth_surface.mat"
-      },
-      {
-        "version_date_range": ["2021-01-01T00:00:00", "2022-03-01T00:00:00"],
-        "l1b_config_path": "repos/emit-sds-l1b/config/tvac2_config.json",
-        "decompression_constants_path": "repos/emit-sds-l1a/decompression/constants.txt",
-        "decompression_init_data_path": "repos/emit-sds-l1a/decompression/FPGA_Data_Initialization_File_CREATE_COMPRESSION_INIT_DATA_328_e0.bin"
-      }
-    ]
+    "versions": []
   }
 }
