@@ -13,7 +13,6 @@ dependencies:
   - pycodestyle=2.6.0
   - rust=1.46.0
   - scipy=1.6.2
-  - matplotlib=2.2.3
   - scikit-learn=0.24.1
   - scikit-image=0.17.2
   - sortedcontainers=2.4.0
@@ -27,6 +26,7 @@ dependencies:
   - pip=21.0.1
   - pip:
     - spectral==0.22.2
+    - matplotlib==2.2.3
     - xxhash==1.4.4
     - ray==1.2.0
     - tensorflow==2.0.1
