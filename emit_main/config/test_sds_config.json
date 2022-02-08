@@ -5,8 +5,8 @@
     "processing_version": "01",
     "luigi_local_scheduler": false,
     "luigi_workers": 2,
-    "tetracorder_library_basename": "emitsyn",
-    "tetracorder_library_cmdname": "emit_synt"
+    "tetracorder_library_basename": "06es22a",
+    "tetracorder_library_cmdname": "emit_synt_288"
   },
 
   "filesystem_config": {
