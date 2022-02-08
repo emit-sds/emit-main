@@ -40,7 +40,7 @@ class L2AReflectance(SlurmJobTask):
 
     def requires(self):
 
-        logger.debug(self.task_family + " requires")
+        logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
         return (L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
@@ -50,13 +50,13 @@ class L2AReflectance(SlurmJobTask):
 
     def output(self):
 
-        logger.debug(self.task_family + " output")
+        logger.debug(f"{self.task_family} output: {self.acquisition_id}")
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family)
 
     def work(self):
 
-        logger.debug(self.task_family + " run")
+        logger.debug(f"{self.task_family} run: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
