@@ -82,7 +82,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
         # TODO: What should the search window be here for finding previous stream files?
         prev_streams = dm.find_streams_touching_date_range("1675", "stop_time",
                                                            stream.start_time - datetime.timedelta(seconds=1),
-                                                           stream.start_time + datetime.timedelta(minutes=1),
+                                                           stream.start_time + datetime.timedelta(seconds=1),
                                                            sort=-1)
         prev_stream_path = None
         if prev_streams is not None and len(prev_streams) > 0:
