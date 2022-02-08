@@ -6,8 +6,7 @@
     "luigi_local_scheduler": false,
     "luigi_workers": 2,
     "tetracorder_library_basename": "emitsyn",
-    "tetracorder_library_cmdname": "emit_synt",
-    "julia_exe": "/shared/julia-1.6.5/bin/julia"
+    "tetracorder_library_cmdname": "emit_synt"
   },
 
   "filesystem_config": {
