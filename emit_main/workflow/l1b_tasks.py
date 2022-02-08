@@ -274,8 +274,6 @@ class L1BGeolocate(SlurmJobTask):
             "l1b_rdn_png_paths": []
         }
         acq_prod_map = {}
-        first_acq_start = None
-        last_acq_end = None
         for id in acquisition_ids:
             wm_acq = WorkflowManager(config_path=self.config_path, acquisition_id=id)
             acq = wm_acq.acquisition
@@ -392,11 +390,6 @@ class L1BGeolocate(SlurmJobTask):
             dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn_kmz": acq_prod_map[id]["rdn_kmz"]})
             dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn_png": acq_prod_map[id]["rdn_png"]})
 
-            if first_acq_start is None or acq.start_time_with_tz < first_acq_start:
-                first_acq_start = acq.start_time_with_tz
-            if last_acq_end is None or acq.stop_time_with_tz > last_acq_end:
-                last_acq_end = acq.stop_time_with_tz
-
         # Finish updating orbit level properties
         # Copy back corrected att/eph
         tmp_corr_att_eph_path = glob.glob(os.path.join(tmp_output_dir, "*l1b_att*nc"))[0]
@@ -412,9 +405,8 @@ class L1BGeolocate(SlurmJobTask):
         This product is generated at the orbit level.\
         "
         ae_nc.product_version = wm.config["extended_build_num"]
-
-        ae_nc.time_coverage_start = first_acq_start.strftime("%Y-%m-%dT%H:%M:%S%z")
-        ae_nc.time_coverage_end = last_acq_end.strftime("%Y-%m-%dT%H:%M:%S%z")
+        ae_nc.time_coverage_start = orbit.start_time.strftime("%Y-%m-%dT%H:%M:%S%z")
+        ae_nc.time_coverage_end = orbit.stop_time.strftime("%Y-%m-%dT%H:%M:%S%z")
 
         ae_nc.sync()
         ae_nc.close()
