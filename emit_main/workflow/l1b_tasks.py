@@ -13,6 +13,7 @@ import os
 
 import luigi
 import spectral.io.envi as envi
+import netCDF4
 
 from emit_main.workflow.acquisition import Acquisition
 from emit_main.workflow.output_targets import AcquisitionTarget, OrbitTarget
@@ -273,6 +274,8 @@ class L1BGeolocate(SlurmJobTask):
             "l1b_rdn_png_paths": []
         }
         acq_prod_map = {}
+        first_acq_start = None
+        last_acq_end = None
         for id in acquisition_ids:
             wm_acq = WorkflowManager(config_path=self.config_path, acquisition_id=id)
             acq = wm_acq.acquisition
@@ -389,9 +392,33 @@ class L1BGeolocate(SlurmJobTask):
             dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn_kmz": acq_prod_map[id]["rdn_kmz"]})
             dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn_png": acq_prod_map[id]["rdn_png"]})
 
+            if first_acq_start is None or acq.start_time_with_tz < first_acq_start:
+                first_acq_start = acq.start_time_with_tz
+            if last_acq_end is None or acq.stop_time_with_tz > last_acq_end:
+                last_acq_end = acq.stop_time_with_tz
+
         # Finish updating orbit level properties
         # Copy back corrected att/eph
         tmp_corr_att_eph_path = glob.glob(os.path.join(tmp_output_dir, "*l1b_att*nc"))[0]
+
+        # Update attitude/ephemeris netcdf metadata before copy
+        ae_nc = netCDF4.Dataset(tmp_corr_att_eph_path, 'r+')
+        daac_converter.makeGlobalAttrBase(ae_nc)
+        ae_nc.title = "EMIT L1B Corrected Spacecraft Attitude and Ephemeris (ATT), V001" 
+        ae_nc.summary = ae_nc.summary + \
+        f"\\n\\nThis collection contains L1B Corrected Spacecraft Attitude and Ephemeris (ATT).\
+        ATT contains the uncorrected Broadcast Ancillary Data (BAD) ephemeris and attitude quaternions \
+        from the ISS, and the data after correction by the geolocation process. \
+        This product is generated at the orbit level.\
+        "
+        ae_nc.product_version = wm.config["extended_build_num"]
+
+        ae_nc.time_coverage_start = first_acq_start.strftime("%Y-%m-%dT%H:%M:%S%z")
+        ae_nc.time_coverage_end = last_acq_end.strftime("%Y-%m-%dT%H:%M:%S%z")
+
+        ae_nc.sync()
+
+
         wm.copy(tmp_corr_att_eph_path, orbit.corr_att_eph_path)
 
         # Copy back remainder of work directory
