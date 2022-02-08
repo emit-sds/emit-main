@@ -105,7 +105,7 @@ class L3Unmix(SlurmJobTask):
 
         # PGE writes metadata to db
         dm = wm.database_manager
-        product_dict = {
+        product_dict_cover = {
             "img_path": acq.cover_img_path,
             "hdr_path": acq.cover_hdr_path,
             "created": creation_time,
@@ -115,7 +115,19 @@ class L3Unmix(SlurmJobTask):
                 "bands": hdr["bands"]
             }
         }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l3.cover": product_dict})
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l3.cover": product_dict_cover})
+
+        product_dict_cover_uncert = {
+            "img_path": acq.coveruncert_img_path,
+            "hdr_path": acq.coveruncert_hdr_path,
+            "created": creation_time,
+            "dimensions": {
+                "lines": hdr["lines"],
+                "samples": hdr["samples"],
+                "bands": hdr["bands"]
+            }
+        }
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l3.coveruncert": product_dict_cover_uncert})
 
         log_entry = {
             "task": self.task_family,
