@@ -254,11 +254,13 @@ def task_failure(task, e):
         "error_message": str(e)
     }
 
-    stream_tasks = ("emit.L0StripHOSC", "emit.L1ADepacketizeScienceFrames", "emit.L1AReformatEDP", "emit.L0IngestBAD")
+    stream_tasks = ("emit.L0StripHOSC", "emit.L1ADepacketizeScienceFrames", "emit.L1AReformatEDP", "emit.L0IngestBAD",
+                    "emit.L0Deliver")
     data_collection_tasks = ("emit.L1AReassembleRaw", "emit.L1AFrameReport")
-    acquisition_tasks = ("emit.L1BCalibrate", "emit.L1BRdnFormat", "emit.L1BRdnDeliver", "emit.L2AReflectance",
-                         "emit.L2AMask", "emit.L2BAbundance", "emit.L3Unmix")
-    orbit_tasks = ("emit.L1AReformatBAD")
+    acquisition_tasks = ("emit.L1ADeliver", "emit.L1BCalibrate", "emit.L1BRdnFormat", "emit.L1BRdnDeliver",
+                         "emit.L2AReflectance", "emit.L2AMask", "emit.L2AFormat", "emit.L2ADeliver",
+                         "emit.L2BAbundance", "emit.L2BFormat", "emit.L2BDeliver", "emit.L3Unmix")
+    orbit_tasks = ("emit.L1AReformatBAD", "emit.L1BGeolocate", "emit.L1BAttDeliver")
 
     dm = wm.database_manager
     if task.task_family in acquisition_tasks and dm.find_acquisition_by_id(task.acquisition_id) is not None:
