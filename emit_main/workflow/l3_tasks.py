@@ -75,7 +75,7 @@ class L3Unmix(SlurmJobTask):
                      "brightness", "--n_mc", "100", "--reflectance_uncertainty_file", acq.uncert_img_path,
                      "--spectral_starting_column", "2", "--num_endmembers", "-1", "--log_file", log_path]
 
-        pge.run(cmd_unmix, tmp_dir=self.tmp_dir, env=env)
+        pge.run(cmd_unmix, tmp_dir=self.tmp_dir, env=env, use_conda_run=False)
 
         wm.copy(f'{output_base}_fractional_cover', acq.cover_img_path)
         wm.copy(f'{output_base}_fractional_cover.hdr', acq.cover_hdr_path)
