@@ -417,6 +417,7 @@ class L1BGeolocate(SlurmJobTask):
         ae_nc.time_coverage_end = last_acq_end.strftime("%Y-%m-%dT%H:%M:%S%z")
 
         ae_nc.sync()
+        ae_nc.close()
 
 
         wm.copy(tmp_corr_att_eph_path, orbit.corr_att_eph_path)
