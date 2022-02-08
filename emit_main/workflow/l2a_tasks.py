@@ -65,22 +65,19 @@ class L2AReflectance(SlurmJobTask):
         # Build PGE cmd
         apply_oe_exe = os.path.join(wm.pges["isofit"].repo_dir, "isofit", "utils", "apply_oe.py")
         tmp_log_path = os.path.join(self.local_tmp_dir, "isofit.log")
-        wavelength_path = wm.config["isofit_wavelength_path"]
         surface_path = wm.config["isofit_surface_path"]
         emulator_base = wm.config["isofit_emulator_base"]
         input_files = {
             "radiance_file": acq.rdn_img_path,
             "pixel_locations_file": acq.loc_img_path,
             "observation_parameters_file": acq.obs_img_path,
-            "wavelength_file": wavelength_path,
             "surface_file": surface_path
         }
         cmd = ["python", apply_oe_exe, acq.rdn_img_path, acq.loc_img_path, acq.obs_img_path, self.local_tmp_dir, "emit",
                "--presolve=1", "--empirical_line=1", "--emulator_base=" + emulator_base,
                "--n_cores", str(self.n_cores),
-               # "--wavelength_path", wavelength_path,
                "--surface_path", surface_path,
-               "--ray_temp_dir", "/tmp/ray-" + os.path.basename(self.local_tmp_dir),
+               "--ray_temp_dir", "/tmp/ray",
                "--log_file", tmp_log_path,
                "--logging_level", self.level]
 
