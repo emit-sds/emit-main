@@ -74,7 +74,7 @@ class L3Unmix(SlurmJobTask):
         # Build command
         cmd_unmix = ['julia', '-p', str(self.n_cores), unmix_exe, acq.rfl_img_path, endmember_path, endmember_key, output_base, "--normalization",
                      "brightness", "--n_mc", "50", "--reflectance_uncertainty_file", acq.uncert_img_path,
-                     "--spectral_starting_column", "2", "--num_endmembers", "3", "--log_file", log_path]
+                     "--spectral_starting_column", "2", "--num_endmembers", "3", "--log_file", tmp_log_path]
 
         pge.run(cmd_unmix, tmp_dir=self.tmp_dir, env=env, use_conda_run=False)
 
