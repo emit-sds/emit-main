@@ -60,7 +60,7 @@ class L3Unmix(SlurmJobTask):
 
         # Build PGE commands for run_tetracorder_pge.sh
         unmix_exe = os.path.join(pge.repo_dir, "unmix.jl")
-        endmember_path = os.path.join(pge.repo_dir, "data", "endmember_library.csv")
+        endmember_path = os.path.join(pge.repo_dir, "data", "basic_endmember_library.csv")
         endmember_key = "Class"
         log_path = acq.cover_img_path.replace(".img", "_pge.log")
         output_base = os.path.join(self.local_tmp_dir, "unmixing_output")
@@ -72,8 +72,8 @@ class L3Unmix(SlurmJobTask):
 
         # Build command
         cmd_unmix = ['julia', '-p', str(self.n_cores), unmix_exe, acq.rfl_img_path, endmember_path, endmember_key, output_base, "--normalization",
-                     "brightness", "--n_mc", "100", "--reflectance_uncertainty_file", acq.uncert_img_path,
-                     "--spectral_starting_column", "2", "--num_endmembers", "-1", "--log_file", log_path]
+                     "brightness", "--n_mc", "50", "--reflectance_uncertainty_file", acq.uncert_img_path,
+                     "--spectral_starting_column", "2", "--num_endmembers", "3", "--log_file", log_path]
 
         pge.run(cmd_unmix, tmp_dir=self.tmp_dir, env=env, use_conda_run=False)
 
