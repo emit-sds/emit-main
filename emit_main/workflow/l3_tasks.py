@@ -62,7 +62,8 @@ class L3Unmix(SlurmJobTask):
         unmix_exe = os.path.join(pge.repo_dir, "unmix.jl")
         endmember_path = os.path.join(pge.repo_dir, "data", "basic_endmember_library.csv")
         endmember_key = "Class"
-        log_path = acq.cover_img_path.replace(".img", "_pge.log")
+        tmp_log_path = os.path.join(self.local_tmp_dir,
+                                    os.path.basename(acq.cover_img_path).replace(".img", "_pge.log"))
         output_base = os.path.join(self.local_tmp_dir, "unmixing_output")
 
         # Set up environment variables
@@ -81,6 +82,7 @@ class L3Unmix(SlurmJobTask):
         wm.copy(f'{output_base}_fractional_cover.hdr', acq.cover_hdr_path)
         wm.copy(f'{output_base}_fractional_cover_uncertainty', acq.coveruncert_img_path)
         wm.copy(f'{output_base}_fractional_cover_uncertainty.hdr', acq.coveruncert_hdr_path)
+        wm.copy(tmp_log_path, acq.cover_img_path.replace(".img", "_pge.log"))
 
         input_files = {
             "reflectance_file": acq.rfl_img_path,
