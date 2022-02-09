@@ -54,7 +54,7 @@
     "l1b_config_path": "repos/emit-sds-l1b/config/tvac2_config.json",
     "l1b_geo_install_dir": "/store/emit/dev/repos/emit-sds-l1b-geo",
     "l1b_geo_osp_dir": "/store/emit/dev/resources/l1_osp_aviris_ng_dir",
-    "isofit_surface_path": "/beegfs/store/emit/test/repos/emit-sds-l2a/surface_v2/surface_filtered_emit_synthetic.mat",
+    "isofit_surface_path": "repos/emit-sds-l2a/surface_v2/surface_filtered_emit_synthetic.mat",
     "isofit_emulator_base": "/shared/sRTMnet/sRTMnet_v100",
     "isofit_sixs_dir": "/shared/sixs",
     "specpr_path": "/shared/specpr",

@@ -9,6 +9,7 @@ import logging
 import os
 
 from emit_main.workflow.l1b_tasks import L1BCalibrate
+from emit_main.workflow.l2b_tasks import L2BAbundance
 from emit_main.workflow.l3_tasks import L3Unmix
 from emit_main.workflow.workflow_manager import WorkflowManager
 
@@ -63,6 +64,11 @@ class AcquisitionMonitor:
             return tasks
 
         for acq in acquisitions:
+            logger.info(f"Creating L2BAbundance task for acquisition {acq['acquisition_id']}")
+            tasks.append(L2BAbundance(config_path=self.config_path,
+                                      acquisition_id=acq["acquisition_id"],
+                                      level=self.level,
+                                      partition=self.partition))
             logger.info(f"Creating L3Unmix task for acquisition {acq['acquisition_id']}")
             tasks.append(L3Unmix(config_path=self.config_path,
                                  acquisition_id=acq["acquisition_id"],
