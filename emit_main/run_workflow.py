@@ -68,9 +68,9 @@ def parse_args():
     parser.add_argument("--partition", default="emit",
                         help="The slurm partition to be used - emit (default), debug, standard, patient ")
     parser.add_argument("--start_time",
-                        help="The start time to use for any monitor calls")
+                        help="The start time to use for any monitor calls (YYYY-MM-DDTHH:MM:SS)")
     parser.add_argument("--stop_time",
-                        help="The stop time to use for any monitor calls")
+                        help="The stop time to use for any monitor calls (YYYY-MM-DDTHH:MM:SS)")
     parser.add_argument("--miss_pkt_thresh", default="0.1",
                         help="The threshold of missing packets to total packets which will cause a task to fail")
     parser.add_argument("--ignore_missing_frames", action="store_true",
@@ -254,11 +254,13 @@ def task_failure(task, e):
         "error_message": str(e)
     }
 
-    stream_tasks = ("emit.L0StripHOSC", "emit.L1ADepacketizeScienceFrames", "emit.L1AReformatEDP", "emit.L0IngestBAD")
+    stream_tasks = ("emit.L0StripHOSC", "emit.L1ADepacketizeScienceFrames", "emit.L1AReformatEDP", "emit.L0IngestBAD",
+                    "emit.L0Deliver")
     data_collection_tasks = ("emit.L1AReassembleRaw", "emit.L1AFrameReport")
-    acquisition_tasks = ("emit.L1BCalibrate", "emit.L1BRdnFormat", "emit.L1BRdnDeliver", "emit.L2AReflectance",
-                         "emit.L2AMask", "emit.L2BAbundance", "emit.L3Unmix")
-    orbit_tasks = ("emit.L1AReformatBAD")
+    acquisition_tasks = ("emit.L1ADeliver", "emit.L1BCalibrate", "emit.L1BRdnFormat", "emit.L1BRdnDeliver",
+                         "emit.L2AReflectance", "emit.L2AMask", "emit.L2AFormat", "emit.L2ADeliver",
+                         "emit.L2BAbundance", "emit.L2BFormat", "emit.L2BDeliver", "emit.L3Unmix")
+    orbit_tasks = ("emit.L1AReformatBAD", "emit.L1BGeolocate", "emit.L1BAttDeliver")
 
     dm = wm.database_manager
     if task.task_family in acquisition_tasks and dm.find_acquisition_by_id(task.acquisition_id) is not None:
@@ -360,13 +362,13 @@ def main():
         logger.info(f"Acquisition monitor calibration tasks to run:\n{am_cal_tasks_str}")
         tasks += am_cal_tasks
 
-    # Get tasks from acquisition monitor for MESMA tasks
+    # Get tasks from acquisition monitor for L2+ tasks
     if args.monitor and args.monitor == "l2":
         am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
-        am_mesma_tasks = am.get_mesma_tasks(start_time=args.start_time, stop_time=args.stop_time)
-        am_mesma_tasks_str = "\n".join([str(t) for t in am_mesma_tasks])
-        logger.info(f"Acquisition monitor MESMA tasks to run:\n{am_mesma_tasks_str}")
-        tasks += am_mesma_tasks
+        am_l2_tasks = am.get_l2_tasks(start_time=args.start_time, stop_time=args.stop_time)
+        am_l2_tasks_str = "\n".join([str(t) for t in am_l2_tasks])
+        logger.info(f"Acquisition monitor L2 tasks to run:\n{am_l2_tasks_str}")
+        tasks += am_l2_tasks
 
     # Get tasks from products args
     if args.products:

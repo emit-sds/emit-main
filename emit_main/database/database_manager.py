@@ -57,16 +57,28 @@ class DatabaseManager:
             "last_modified": {"$gte": start, "$lte": stop},
             "build_num": self.config["build_num"]
         }
-        return list(acquisitions_coll.find(query))
+        results = list(acquisitions_coll.find(query))
+        acqs_ready_for_cal = []
+        for acq in results:
+            recent_darks = self.find_acquisitions_touching_date_range(
+                "dark",
+                "stop_time",
+                acq["start_time"] - datetime.timedelta(minutes=200),
+                acq["start_time"],
+                sort=-1)
+            if recent_darks is not None and len(recent_darks) > 0:
+                acqs_ready_for_cal.append(acq)
+        return acqs_ready_for_cal
 
-    def find_acquisitions_for_mesma(self, start, stop):
+    def find_acquisitions_for_l2(self, start, stop):
         acquisitions_coll = self.db.acquisitions
-        # Query for acquisitions with complete l1b outputs but no mesma outputs in time range
+        # Query for acquisitions with complete l1b outputs but no rfl outputs in time range
         query = {
             "products.l1b.rdn.img_path": {"$exists": 1},
             "products.l1b.glt.img_path": {"$exists": 1},
             "products.l1b.loc.img_path": {"$exists": 1},
-            "products.l3.cover.img_path": {"$exists": 0},
+            "products.l1b.obs.img_path": {"$exists": 1},
+            "products.l2a.rfl.img_path": {"$exists": 0},
             "last_modified": {"$gte": start, "$lte": stop},
             "build_num": self.config["build_num"]
         }

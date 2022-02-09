@@ -82,7 +82,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
         # TODO: What should the search window be here for finding previous stream files?
         prev_streams = dm.find_streams_touching_date_range("1675", "stop_time",
                                                            stream.start_time - datetime.timedelta(seconds=1),
-                                                           stream.start_time + datetime.timedelta(minutes=1),
+                                                           stream.start_time + datetime.timedelta(seconds=1),
                                                            sort=-1)
         prev_stream_path = None
         if prev_streams is not None and len(prev_streams) > 0:
@@ -736,6 +736,7 @@ class L1ADeliver(SlurmJobTask):
     def requires(self):
 
         logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
+        # TODO: Add dependency for reassemble by looking up DCID
         return None
 
     def output(self):
@@ -849,9 +850,11 @@ class L1ADeliver(SlurmJobTask):
                 "timestamp": utc_now,
                 "extended_build_num": wm.config["extended_build_num"],
                 "collection": notification["collection"],
-                "version": notification["product"]["dataVersion"],
+                "collection_version": notification["product"]["dataVersion"],
                 "sds_filename": target_src_map[file["name"]],
                 "daac_filename": file["name"],
+                "uri": file["uri"],
+                "type": file["type"],
                 "size": file["size"],
                 "checksum": file["checksum"],
                 "checksum_type": file["checksumType"],

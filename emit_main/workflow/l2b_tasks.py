@@ -273,7 +273,8 @@ class L2BDeliver(SlurmJobTask):
     def requires(self):
 
         logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
-        return None
+        return L2BFormat(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+                         partition=self.partition)
 
     def output(self):
 
@@ -388,9 +389,11 @@ class L2BDeliver(SlurmJobTask):
                 "timestamp": utc_now,
                 "extended_build_num": wm.config["extended_build_num"],
                 "collection": notification["collection"],
-                "version": notification["product"]["dataVersion"],
+                "collection_version": notification["product"]["dataVersion"],
                 "sds_filename": target_src_map[file["name"]],
                 "daac_filename": file["name"],
+                "uri": file["uri"],
+                "type": file["type"],
                 "size": file["size"],
                 "checksum": file["checksum"],
                 "checksum_type": file["checksumType"],
