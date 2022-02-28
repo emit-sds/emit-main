@@ -33,7 +33,7 @@
   },
 
   "build_config": {
-    "extended_build_num": "010000",
+    "extended_build_num": "010100",
     "conda_base_dir": "/shared/anaconda3/"
   },
 
