@@ -397,7 +397,7 @@ class L1BGeolocate(SlurmJobTask):
         # Update attitude/ephemeris netcdf metadata before copy
         ae_nc = netCDF4.Dataset(tmp_corr_att_eph_path, 'r+')
         daac_converter.makeGlobalAttrBase(ae_nc)
-        ae_nc.title = "EMIT L1B Corrected Spacecraft Attitude and Ephemeris (ATT), V001"
+        ae_nc.title = "EMIT L1B Corrected Spacecraft Attitude and Ephemeris V001"
         ae_nc.summary = ae_nc.summary + \
             f"\\n\\nThis collection contains L1B Corrected Spacecraft Attitude and Ephemeris (ATT).\
             ATT contains the uncorrected Broadcast Ancillary Data (BAD) ephemeris and attitude quaternions \
