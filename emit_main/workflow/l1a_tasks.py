@@ -758,12 +758,18 @@ class L1ADeliver(SlurmJobTask):
 
         # Create local/tmp daac names and paths
         daac_raw_name = f"{acq.raw_granule_ur}.img"
+        daac_raw_hdr_name = f"{acq.raw_granule_ur}.hdr"
+        daac_browse_name = f"{acq.raw_granule_ur}.png"
         daac_ummg_name = f"{acq.raw_granule_ur}.cmr.json"
         daac_raw_path = os.path.join(self.tmp_dir, daac_raw_name)
+        daac_raw_hdr_path = os.path.join(self.tmp_dir, daac_raw_hdr_name)
+        daac_browse_path = os.path.join(self.tmp_dir, daac_browse_name)
         daac_ummg_path = os.path.join(self.tmp_dir, daac_ummg_name)
 
         # Copy files to tmp dir and rename
         wm.copy(acq.raw_img_path, daac_raw_path)
+        wm.copy(acq.raw_hdr_path, daac_raw_hdr_path)
+        wm.copy(acq.rdn_png_path, daac_browse_path)
 
         # First create the UMM-G file
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.raw_img_path), tz=datetime.timezone.utc)
@@ -790,7 +796,7 @@ class L1ADeliver(SlurmJobTask):
                            group, f"{acq.daac_staging_dir};", "fi\""]
         pge.run(cmd_make_target, tmp_dir=self.tmp_dir)
 
-        for path in (daac_raw_path, daac_ummg_path):
+        for path in (daac_raw_path, daac_raw_hdr_path, daac_browse_path, daac_ummg_path):
             cmd_rsync = ["rsync", "-azv", partial_dir_arg, log_file_arg, path, target]
             pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
 
@@ -818,6 +824,22 @@ class L1ADeliver(SlurmJobTask):
                         "size": os.path.getsize(daac_raw_path),
                         "checksumType": "sha512",
                         "checksum": daac_converter.calc_checksum(daac_raw_path, "sha512")
+                    },
+                    {
+                        "name": daac_raw_hdr_name,
+                        "uri": acq.daac_uri_base + daac_raw_hdr_name,
+                        "type": "data",
+                        "size": os.path.getsize(daac_raw_hdr_path),
+                        "checksumType": "sha512",
+                        "checksum": daac_converter.calc_checksum(daac_raw_hdr_path, "sha512")
+                    },
+                    {
+                        "name": daac_browse_name,
+                        "uri": acq.daac_uri_base + daac_browse_name,
+                        "type": "browse",
+                        "size": os.path.getsize(daac_browse_path),
+                        "checksumType": "sha512",
+                        "checksum": daac_converter.calc_checksum(daac_browse_path, "sha512")
                     },
                     {
                         "name": daac_ummg_name,
@@ -878,7 +900,9 @@ class L1ADeliver(SlurmJobTask):
             "pge_name": pge.repo_url,
             "pge_version": pge.version_tag,
             "pge_input_files": {
-                "raw_img_path": acq.raw_img_path
+                "raw_img_path": acq.raw_img_path,
+                "raw_hdr_path": acq.raw_hdr_path,
+                "rdn_png_path": acq.rdn_png_path
             },
             "pge_run_command": " ".join(cmd_aws),
             "documentation_version": "TBD",
