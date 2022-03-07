@@ -806,6 +806,8 @@ class L1ADeliver(SlurmJobTask):
         cnm_submission_path = os.path.join(acq.l1a_data_dir, cnm_submission_id + "_cnm.json")
         target_src_map = {
             daac_raw_name: os.path.basename(acq.raw_img_path),
+            daac_raw_hdr_name: os.path.basename(acq.raw_hdr_path),
+            daac_browse_name: os.path.basename(acq.rdn_png_path),
             daac_ummg_name: os.path.basename(ummg_path)
         }
         notification = {
