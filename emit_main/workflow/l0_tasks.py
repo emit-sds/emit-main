@@ -192,6 +192,8 @@ class L0IngestBAD(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
 
+    memory = 90000
+
     task_namespace = "emit"
 
     def requires(self):
@@ -340,6 +342,8 @@ class L0ProcessPlanningProduct(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
 
+    memory = 90000
+
     task_namespace = "emit"
 
     def requires(self):
@@ -484,6 +488,8 @@ class L0Deliver(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
     miss_pkt_thresh = luigi.FloatParameter(default=0.1)
+
+    memory = 90000
 
     task_namespace = "emit"
 
