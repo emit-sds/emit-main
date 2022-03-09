@@ -31,15 +31,12 @@ class L0StripHOSC(SlurmJobTask):
     partition = luigi.Parameter()
     miss_pkt_thresh = luigi.FloatParameter(default=0.1)
 
+    memory = 90000
+
     task_namespace = "emit"
 
     def requires(self):
         logger.debug(f"{self.task_family} requires: {self.stream_path}")
-        wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
-        if wm.stream is None:
-            # Insert new stream in db
-            dm = wm.database_manager
-            dm.insert_hosc_stream(os.path.basename(self.stream_path))
         return None
 
     def output(self):
@@ -50,8 +47,7 @@ class L0StripHOSC(SlurmJobTask):
     def work(self):
         logger.debug(f"{self.task_family} work: {self.stream_path}")
 
-        wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
-        stream = wm.stream
+        wm = WorkflowManager(config_path=self.config_path)
         pge = wm.pges["emit-sds-l0"]
 
         # Build command and run
@@ -61,11 +57,14 @@ class L0StripHOSC(SlurmJobTask):
         # Create input dir and copy stream file into dir
         tmp_input_dir = os.path.join(self.local_tmp_dir, "input")
         wm.makedirs(tmp_input_dir)
-        tmp_input_path = os.path.join(tmp_input_dir, os.path.basename(self.stream_path))
+        hosc_name = os.path.basename(self.stream_path)
+        # TODO: Get apid based on new filename
+        apid = hosc_name.split("_")[1]
+        tmp_input_path = os.path.join(tmp_input_dir, hosc_name)
         wm.copy(self.stream_path, tmp_input_path)
         # Create output dir and log file name
         tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
-        l0_pge_log_name = stream.hosc_name.replace(".bin", "_l0_pge.log")
+        l0_pge_log_name = os.path.basename(tmp_input_path).replace(".bin", "_l0_pge.log")
         tmp_log = os.path.join(tmp_output_dir, l0_pge_log_name)
         # Set up command
         cmd = [sds_l0_exe, tmp_input_dir, tmp_output_dir, tmp_log, sds_packet_count_exe, ios_l0_proc]
@@ -75,9 +74,9 @@ class L0StripHOSC(SlurmJobTask):
         env["AIT_ISS_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "sim.yaml")
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
-        # Get tmp ccsds and log names
-        tmp_ccsds_path = glob.glob(os.path.join(tmp_output_dir, stream.apid + "*.bin"))[0]
-        tmp_report_path = glob.glob(os.path.join(tmp_output_dir, stream.apid + "*_report.txt"))[0]
+        # Get tmp ccsds and log name
+        tmp_ccsds_path = glob.glob(os.path.join(tmp_output_dir, apid + "*.bin"))[0]
+        tmp_report_path = glob.glob(os.path.join(tmp_output_dir, apid + "*_report.txt"))[0]
 
         # Check report file to see if missing PSCs exceed threshold
         packet_count = 0
@@ -86,29 +85,43 @@ class L0StripHOSC(SlurmJobTask):
             for line in f.readlines():
                 if "Packet Count" in line:
                     packet_count = int(line.rstrip("\n").split(" ")[-1])
-                if "Missing PSC Count" in line:
+                if "PSC Errors Encountered" in line:
                     missing_packets = int(line.rstrip("\n").split(" ")[-1])
         miss_pkt_percent = missing_packets / packet_count
         if missing_packets / packet_count >= self.miss_pkt_thresh:
-            raise RuntimeError(f"Missing {missing_packets} packets out of {packet_count} total is greater than the "
+            raise RuntimeError(f"{missing_packets} PSC errors out of {packet_count} total is greater than the "
                                f"missing packet threshold of {self.miss_pkt_thresh}")
 
-        # TODO: Add check for "File Size Match" in PGE
-        # TODO: Replace start/stop with CCSDS start and stop
         # Set up command to get CCSDS start/stop times
-        # get_start_stop_exe = os.path.join(pge.repo_dir, "get_ccsds_start_stop_times.py")
-        # start_stop_json = tmp_ccsds_path.replace(".bin", ".json")
-        # cmd_timing = ["python", get_start_stop_exe, tmp_ccsds_path, start_stop_json]
-        # pge.run(cmd_timing, tmp_dir=self.tmp_dir, env=env)
+        get_start_stop_exe = os.path.join(pge.repo_dir, "get_ccsds_start_stop_times.py")
+        start_stop_json = os.path.join(tmp_output_dir, os.path.basename(tmp_ccsds_path).replace(".bin", ".json"))
+        cmd_timing = ["python", get_start_stop_exe, tmp_ccsds_path, start_stop_json]
+        pge.run(cmd_timing, tmp_dir=self.tmp_dir, env=env)
+        with open(start_stop_json, "r") as f:
+            timing = json.load(f)
 
-        # Get CCSDS start time and file name and report name
-        tmp_ccsds_name = os.path.basename(tmp_ccsds_path)
-        ccsds_start_time_str = tmp_ccsds_name.split("_")[1]
-        ccsds_start_time = datetime.datetime.strptime(ccsds_start_time_str, "%Y-%m-%dT%H:%M:%S")
+        # Insert new stream in DB
+        dm = wm.database_manager
+        metadata = {
+            "apid": apid,
+            "start_time": datetime.datetime.strptime(timing["start_time"], "%Y-%m-%dT%H:%M:%S"),
+            "stop_time": datetime.datetime.strptime(timing["stop_time"], "%Y-%m-%dT%H:%M:%S"),
+            "build_num": wm.config["build_num"],
+            "processing_version": wm.config["processing_version"],
+            "hosc_name": hosc_name,
+            "processing_log": []
+        }
+        dm.insert_hosc_ccsds_stream(hosc_name, metadata)
+
+        # Get the workflow manager again with the stream object
+        wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
+        stream = wm.stream
+
+        # Build the CCSDS file name and report name using the UTC start time derived from the data
         ccsds_name = "_".join([
             wm.config["instrument"],
             stream.apid,
-            ccsds_start_time.strftime("%Y%m%dt%H%M%S"),
+            stream.start_time.strftime("%Y%m%dt%H%M%S"),
             "l0",
             "ccsds",
             "b" + wm.config["build_num"],
@@ -132,7 +145,6 @@ class L0StripHOSC(SlurmJobTask):
         # Update DB
         metadata = {
             "ccsds_name": ccsds_name,
-            "ccsds_start_time": ccsds_start_time,
             "products": {
                 "raw": {
                     "hosc_path": stream.hosc_path,
@@ -145,7 +157,6 @@ class L0StripHOSC(SlurmJobTask):
                 }
             }
         }
-        dm = wm.database_manager
         dm.update_stream_metadata(stream.hosc_name, metadata)
 
         doc_version = "Space Packet Protocol, CCSDS 133.0-B-1 (with Issue 1, Cor. 1, Sept. 2010 and Issue 1, Cor. 2, " \
