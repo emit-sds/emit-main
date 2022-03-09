@@ -37,7 +37,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
     test_mode = luigi.BoolParameter(default=False)
     override_output = luigi.BoolParameter(default=False)
 
-    memory = 30000
+    memory = 90000
     local_tmp_space = 125000
 
     task_namespace = "emit"
@@ -82,15 +82,25 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
         # TODO: What should the search window be here for finding previous stream files?
         prev_streams = dm.find_streams_touching_date_range("1675", "stop_time",
                                                            stream.start_time - datetime.timedelta(seconds=1),
-                                                           stream.start_time + datetime.timedelta(seconds=1),
+                                                           stream.start_time + datetime.timedelta(minutes=1),
                                                            sort=-1)
+
         prev_stream_path = None
         if prev_streams is not None and len(prev_streams) > 0:
-            try:
-                prev_stream_path = prev_streams[0]["products"]["l0"]["ccsds_path"]
-            except KeyError:
-                wm.print(__name__, f"Could not find a previous stream path for {stream.ccsds_path} in DB.")
-                pass
+            # First iterate through and find the first previous stream file that starts before the current stream file
+            index = None
+            for i in range(len(prev_streams)):
+                if prev_streams[i]["start_time"] < stream.start_time:
+                    index = i
+                    break
+
+            # If we found one, then try to get the previous stream path
+            if index is not None:
+                try:
+                    prev_stream_path = prev_streams[index]["products"]["l0"]["ccsds_path"]
+                except KeyError:
+                    wm.print(__name__, f"Could not find a previous stream path for {stream.ccsds_path} in DB.")
+                    pass
 
         if prev_stream_path is not None:
             wm_tmp = WorkflowManager(config_path=self.config_path, stream_path=prev_stream_path)
@@ -102,6 +112,9 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
                         if "Bytes read since last index" in line:
                             bytes_read = int(line.rstrip("\n").split(" ")[-1])
                             break
+            else:
+                raise RuntimeError(f"While processing {stream.ccsds_name}, found previous stream file at "
+                                   f"{prev_stream_path}, but no report at {prev_stream_report}. Unable to proceed.")
 
             # Append optional args and run
             cmd.extend(["--prev_stream_path", prev_stream_path])
@@ -272,7 +285,7 @@ class L1AReassembleRaw(SlurmJobTask):
     acq_chunksize = luigi.IntParameter(default=1280)
     test_mode = luigi.BoolParameter(default=False)
 
-    memory = 30000
+    memory = 90000
     local_tmp_space = 125000
 
     task_namespace = "emit"
@@ -731,7 +744,7 @@ class L1ADeliver(SlurmJobTask):
 
     task_namespace = "emit"
     n_cores = 1
-    memory = 30000
+    memory = 90000
 
     def requires(self):
 
@@ -758,12 +771,18 @@ class L1ADeliver(SlurmJobTask):
 
         # Create local/tmp daac names and paths
         daac_raw_name = f"{acq.raw_granule_ur}.img"
+        daac_raw_hdr_name = f"{acq.raw_granule_ur}.hdr"
+        daac_browse_name = f"{acq.raw_granule_ur}.png"
         daac_ummg_name = f"{acq.raw_granule_ur}.cmr.json"
         daac_raw_path = os.path.join(self.tmp_dir, daac_raw_name)
+        daac_raw_hdr_path = os.path.join(self.tmp_dir, daac_raw_hdr_name)
+        daac_browse_path = os.path.join(self.tmp_dir, daac_browse_name)
         daac_ummg_path = os.path.join(self.tmp_dir, daac_ummg_name)
 
         # Copy files to tmp dir and rename
         wm.copy(acq.raw_img_path, daac_raw_path)
+        wm.copy(acq.raw_hdr_path, daac_raw_hdr_path)
+        wm.copy(acq.rdn_png_path, daac_browse_path)
 
         # First create the UMM-G file
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.raw_img_path), tz=datetime.timezone.utc)
@@ -790,7 +809,7 @@ class L1ADeliver(SlurmJobTask):
                            group, f"{acq.daac_staging_dir};", "fi\""]
         pge.run(cmd_make_target, tmp_dir=self.tmp_dir)
 
-        for path in (daac_raw_path, daac_ummg_path):
+        for path in (daac_raw_path, daac_raw_hdr_path, daac_browse_path, daac_ummg_path):
             cmd_rsync = ["rsync", "-azv", partial_dir_arg, log_file_arg, path, target]
             pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
 
@@ -800,6 +819,8 @@ class L1ADeliver(SlurmJobTask):
         cnm_submission_path = os.path.join(acq.l1a_data_dir, cnm_submission_id + "_cnm.json")
         target_src_map = {
             daac_raw_name: os.path.basename(acq.raw_img_path),
+            daac_raw_hdr_name: os.path.basename(acq.raw_hdr_path),
+            daac_browse_name: os.path.basename(acq.rdn_png_path),
             daac_ummg_name: os.path.basename(ummg_path)
         }
         notification = {
@@ -818,6 +839,22 @@ class L1ADeliver(SlurmJobTask):
                         "size": os.path.getsize(daac_raw_path),
                         "checksumType": "sha512",
                         "checksum": daac_converter.calc_checksum(daac_raw_path, "sha512")
+                    },
+                    {
+                        "name": daac_raw_hdr_name,
+                        "uri": acq.daac_uri_base + daac_raw_hdr_name,
+                        "type": "data",
+                        "size": os.path.getsize(daac_raw_hdr_path),
+                        "checksumType": "sha512",
+                        "checksum": daac_converter.calc_checksum(daac_raw_hdr_path, "sha512")
+                    },
+                    {
+                        "name": daac_browse_name,
+                        "uri": acq.daac_uri_base + daac_browse_name,
+                        "type": "browse",
+                        "size": os.path.getsize(daac_browse_path),
+                        "checksumType": "sha512",
+                        "checksum": daac_converter.calc_checksum(daac_browse_path, "sha512")
                     },
                     {
                         "name": daac_ummg_name,
@@ -878,7 +915,9 @@ class L1ADeliver(SlurmJobTask):
             "pge_name": pge.repo_url,
             "pge_version": pge.version_tag,
             "pge_input_files": {
-                "raw_img_path": acq.raw_img_path
+                "raw_img_path": acq.raw_img_path,
+                "raw_hdr_path": acq.raw_hdr_path,
+                "rdn_png_path": acq.rdn_png_path
             },
             "pge_run_command": " ".join(cmd_aws),
             "documentation_version": "TBD",
@@ -906,7 +945,7 @@ class L1AReformatEDP(SlurmJobTask):
     partition = luigi.Parameter()
     miss_pkt_thresh = luigi.FloatParameter()
 
-    memory = 30000
+    memory = 90000
     local_tmp_space = 125000
 
     task_namespace = "emit"
@@ -1011,7 +1050,7 @@ class L1AReformatBAD(SlurmJobTask):
     partition = luigi.Parameter()
     ignore_missing_bad = luigi.BoolParameter(default=False)
 
-    memory = 30000
+    memory = 90000
     local_tmp_space = 125000
 
     task_namespace = "emit"

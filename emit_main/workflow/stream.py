@@ -35,7 +35,6 @@ class Stream:
         self.__dict__.update(self.metadata)
 
         # Get config properties
-        # TODO: Use hosc_start_time as start_time if start_time doesn't exist need to set hosc_start_time first
         self.config = Config(config_path, self.start_time).get_dictionary()
 
         # Create base directories and add to list to create directories later

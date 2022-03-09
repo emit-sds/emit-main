@@ -140,31 +140,11 @@ class DatabaseManager:
         }
         return list(streams_coll.find(query).sort(start_field, sort))
 
-    def insert_hosc_stream(self, hosc_name):
-        if self.find_stream_by_name(hosc_name) is None:
-            if "_hsc.bin" not in hosc_name:
-                raise RuntimeError(f"Attempting to insert HOSC stream file in DB with name {hosc_name}. Does not "
-                                   f"appear to be a HOSC file")
-            tokens = hosc_name.split("_")
-            apid = tokens[1]
-            # Need to add first two year digits
-            start_time_str = "20" + tokens[2]
-            stop_time_str = "20" + tokens[3]
-            # These dates are already in UTC and will be stored in the DB as UTC by default
-            start_time = datetime.datetime.strptime(start_time_str, "%Y%m%d%H%M%S")
-            stop_time = datetime.datetime.strptime(stop_time_str, "%Y%m%d%H%M%S")
+    def insert_hosc_ccsds_stream(self, name, metadata):
+        if self.find_stream_by_name(name) is None:
             utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
-            metadata = {
-                "apid": apid,
-                "start_time": start_time,
-                "stop_time": stop_time,
-                "build_num": self.config["build_num"],
-                "processing_version": self.config["processing_version"],
-                "hosc_name": hosc_name,
-                "processing_log": [],
-                "created": utc_now,
-                "last_modified": utc_now
-            }
+            metadata["created"] = utc_now
+            metadata["last_modified"] = utc_now
             streams_coll = self.db.streams
             streams_coll.insert_one(metadata)
 
