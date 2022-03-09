@@ -82,15 +82,25 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
         # TODO: What should the search window be here for finding previous stream files?
         prev_streams = dm.find_streams_touching_date_range("1675", "stop_time",
                                                            stream.start_time - datetime.timedelta(seconds=1),
-                                                           stream.start_time + datetime.timedelta(seconds=1),
+                                                           stream.start_time + datetime.timedelta(minutes=1),
                                                            sort=-1)
+
         prev_stream_path = None
         if prev_streams is not None and len(prev_streams) > 0:
-            try:
-                prev_stream_path = prev_streams[0]["products"]["l0"]["ccsds_path"]
-            except KeyError:
-                wm.print(__name__, f"Could not find a previous stream path for {stream.ccsds_path} in DB.")
-                pass
+            # First iterate through and find the first previous stream file that starts before the current stream file
+            index = None
+            for i in range(len(prev_streams)):
+                if prev_streams[i]["start_time"] < stream.start_time:
+                    index = i
+                    break
+
+            # If we found one, then try to get the previous stream path
+            if index is not None:
+                try:
+                    prev_stream_path = prev_streams[index]["products"]["l0"]["ccsds_path"]
+                except KeyError:
+                    wm.print(__name__, f"Could not find a previous stream path for {stream.ccsds_path} in DB.")
+                    pass
 
         if prev_stream_path is not None:
             wm_tmp = WorkflowManager(config_path=self.config_path, stream_path=prev_stream_path)
@@ -102,6 +112,9 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
                         if "Bytes read since last index" in line:
                             bytes_read = int(line.rstrip("\n").split(" ")[-1])
                             break
+            else:
+                raise RuntimeError(f"While processing {stream.ccsds_name}, found previous stream file at "
+                                   f"{prev_stream_path}, but no report at {prev_stream_report}. Unable to proceed.")
 
             # Append optional args and run
             cmd.extend(["--prev_stream_path", prev_stream_path])
