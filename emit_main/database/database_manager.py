@@ -130,16 +130,6 @@ class DatabaseManager:
         }
         return list(streams_coll.find(query).sort(field, sort))
 
-    def find_streams_encompassing_date_range(self, apid, start_field, stop_field, query_start, query_stop, sort=1):
-        streams_coll = self.db.streams
-        query = {
-            "apid": apid,
-            start_field: {"$lt": query_start},
-            stop_field: {"$gt": query_stop},
-            "build_num": self.config["build_num"]
-        }
-        return list(streams_coll.find(query).sort(start_field, sort))
-
     def insert_hosc_ccsds_stream(self, name, metadata):
         if self.find_stream_by_name(name) is None:
             utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
