@@ -130,15 +130,19 @@ class DatabaseManager:
         }
         return list(streams_coll.find(query).sort(field, sort))
 
-    def find_streams_encompassing_date_range(self, apid, start_field, stop_field, query_start, query_stop, sort=1):
+    def find_streams_for_edp_reformatting(self, start, stop):
         streams_coll = self.db.streams
+        # Query for 1674 streams that have l0 ccsds products but no l1a products which were last modified between
+        # start and stop times (typically they need to be older than a certain amount of time to make sure the
+        # 1676 ancillary file exists
         query = {
-            "apid": apid,
-            start_field: {"$lt": query_start},
-            stop_field: {"$gt": query_stop},
+            "apid": "1674",
+            "last_modified": {"$gte": start, "$lte": stop},
+            "products.l0.ccsds_path": {"$exists": 1},
+            "products.l1a": {"$exists": 0},
             "build_num": self.config["build_num"]
         }
-        return list(streams_coll.find(query).sort(start_field, sort))
+        return list(streams_coll.find(query))
 
     def insert_hosc_ccsds_stream(self, name, metadata):
         if self.find_stream_by_name(name) is None:
