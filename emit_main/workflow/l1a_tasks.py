@@ -973,9 +973,9 @@ class L1AReformatEDP(SlurmJobTask):
         dm = wm.database_manager
         # TODO: What should this query time be?  Up to 2 hours?
         anc_streams = dm.find_streams_touching_date_range("1676", "start_time",
-                                                                stream.start_time - datetime.timedelta(seconds=1),
-                                                                stream.start_time + datetime.timedelta(minutes=4)
-                                                                )
+                                                          stream.start_time - datetime.timedelta(seconds=1),
+                                                          stream.start_time + datetime.timedelta(minutes=4)
+                                                          )
         anc_stream_path = None
         if anc_streams is not None and len(anc_streams) > 0:
             try:
@@ -984,9 +984,7 @@ class L1AReformatEDP(SlurmJobTask):
                 wm.print(__name__, f"Could not find a ancillary 1676 stream path for {stream.ccsds_path} in DB.")
                 raise RuntimeError(f"Could not find a ancillary 1676 stream path for {stream.ccsds_path} in DB.")
 
-
         # Build command
-        # sds_l1a_eng_exe = os.path.join(pge.repo_dir, "run_l1a_eng.sh")
         l1_edp_exe = os.path.join(pge.repo_dir, "emit", "bin", "emit_l1_edp.py")
         tmp_input_dir = os.path.join(self.local_tmp_dir, "input")
         tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
@@ -1002,8 +1000,7 @@ class L1AReformatEDP(SlurmJobTask):
         for path in input_files.values():
             wm.copy(path, tmp_input_dir)
 
-        # cmd = [sds_l1a_eng_exe, stream.ccsds_path, self.local_tmp_dir, l1_edp_exe]
-        # python ${L1_EDP_EXE} --input-dir=${L1_INPUT} --output-dir=${L1_OUTPUT} --log-dir=${L1_LOGS
+        # python ${L1_EDP_EXE} --input-dir=${L1_INPUT} --output-dir=${L1_OUTPUT} --log-dir=${L1_LOGS}
         cmd = ["python", l1_edp_exe,
                f"--input-dir={tmp_input_dir}",
                f"--output-dir={tmp_output_dir}",
@@ -1029,14 +1026,14 @@ class L1AReformatEDP(SlurmJobTask):
         outputs = {}
         for path in tmp_edp_prod_paths:
             edp_name = os.path.basename(path)
-            prod_path = base_edp_path.replace(".ext", edp_name)
+            prod_path = base_edp_path.replace(".ext", f"_{edp_name}")
             wm.copy(path, prod_path)
             subheader_id = edp_name.split("_")[0]
             product_dict[subheader_id] = {
                 f"{subheader_id}_path": prod_path,
                 "created": datetime.datetime.fromtimestamp(os.path.getmtime(prod_path), tz=datetime.timezone.utc)
             }
-            outputs = {f"l1a_edp_{subheader_id}_path": prod_path}
+            outputs[f"l1a_edp_{subheader_id}_path"] = prod_path
         wm.copy(tmp_report_path, report_path)
         l1a_pge_log_path = base_edp_path.replace(".ext", "_pge.log")
         wm.copy(glob.glob(os.path.join(tmp_log_dir, "*"))[0], l1a_pge_log_path)

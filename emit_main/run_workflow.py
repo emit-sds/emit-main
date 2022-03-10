@@ -39,7 +39,7 @@ def parse_args():
     product_choices = ["l0hosc", "l0daac", "l0plan", "l1aeng", "l1aframe", "l1aframereport", "l1araw", "l1adaac",
                        "l1abad", "l1bcal", "l1bgeo", "l1brdnformat", "l1brdndaac", "l1battdaac", "l2arefl", "l2amask",
                        "l2aformat", "l2adaac", "l2babun", "l2bformat", "l2bdaac", "l3unmix"]
-    monitor_choices = ["ingest", "frames", "cal", "bad", "geo", "l2", "email"]
+    monitor_choices = ["ingest", "frames", "edp", "cal", "bad", "geo", "l2", "email"]
     parser = argparse.ArgumentParser(
         description="Description: This is the top-level run script for executing the various EMIT SDS workflow and "
                     "monitor tasks.\n"
@@ -337,6 +337,15 @@ def main():
         fm_tasks_str = "\n".join([str(t) for t in fm_tasks])
         logger.info(f"Frames monitor tasks to run:\n{fm_tasks_str}")
         tasks += fm_tasks
+
+    # Get tasks from edp monitor
+    if args.monitor and args.monitor == "edp":
+        im = IngestMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
+                           miss_pkt_thresh=args.miss_pkt_thresh, test_mode=args.test_mode)
+        im_edp_tasks = im.get_edp_reformatting_tasks(start_time=args.start_time, stop_time=args.stop_time)
+        im_edp_tasks_str = "\n".join([str(t) for t in im_edp_tasks])
+        logger.info(f"Ingest monitor EDP tasks to run:\n{im_edp_tasks_str}")
+        tasks += im_edp_tasks
 
     # Get tasks from orbit monitor for BAD tasks
     if args.monitor and args.monitor == "bad":

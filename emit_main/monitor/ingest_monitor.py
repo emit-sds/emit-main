@@ -9,7 +9,7 @@ import logging
 import os
 
 from emit_main.config.config import Config
-from emit_main.workflow.l0_tasks import L0ProcessPlanningProduct, L0IngestBAD
+from emit_main.workflow.l0_tasks import L0StripHOSC, L0ProcessPlanningProduct, L0IngestBAD
 from emit_main.workflow.l1a_tasks import L1AReformatEDP, L1ADepacketizeScienceFrames
 
 logger = logging.getLogger("emit-main")
@@ -42,9 +42,9 @@ class IngestMonitor:
 
         # Make directories if they don't exist
         from emit_main.workflow.workflow_manager import WorkflowManager
-        wm = WorkflowManager(config_path=config_path)
+        self.wm = WorkflowManager(config_path=config_path)
         for d in self.dirs:
-            wm.makedirs(d)
+            self.wm.makedirs(d)
 
     def ingest_files(self):
         """
@@ -56,6 +56,29 @@ class IngestMonitor:
             paths += glob.glob(m)
         logger.info(f"Found paths to ingest: {paths}")
         return self._ingest_file_list(paths)
+
+    def get_edp_reformatting_tasks(self, start_time, stop_time):
+        tasks = []
+        # Find 1674 files in time range that don't have engineering products yet
+        dm = self.wm.database_manager
+        streams = dm.find_streams_for_edp_reformatting(start=start_time, stop=stop_time)
+
+        # If no results, just return empty list
+        if len(streams) == 0:
+            logger.info(f"Did not find any 1674 streams modified between {start_time} and {stop_time} needing EDP "
+                        f"reformatting tasks. Not executing any tasks.")
+            return tasks
+
+        for stream in streams:
+            stream_path = stream["products"]["l0"]["ccsds_path"]
+            logger.info(f"Creating L1AReformatEDP task for path {stream_path}")
+            tasks.append(L1AReformatEDP(config_path=self.config_path,
+                                        stream_path=stream_path,
+                                        level=self.level,
+                                        partition=self.partition,
+                                        miss_pkt_thresh=self.miss_pkt_thresh))
+
+        return tasks
 
     def ingest_files_by_time_range(self, start_time, stop_time):
         """
@@ -75,13 +98,14 @@ class IngestMonitor:
             if p.endswith("hsc.bin"):
                 apid = os.path.basename(p).split("_")[1]
                 # Run different tasks based on apid (engineering or science). 1674 is engineering. 1675 is science.
-                if apid == "1674" or apid == "1482":
-                    logger.info(f"Creating L1AReformatEDP task for path {p}")
-                    tasks.append(L1AReformatEDP(config_path=self.config_path,
-                                                stream_path=p,
-                                                level=self.level,
-                                                partition=self.partition,
-                                                miss_pkt_thresh=self.miss_pkt_thresh))
+                if apid in ("1674", "1676", "1482"):
+                    logger.info(f"Creating L0StripHOSC task for path {p}")
+                    tasks.append(L0StripHOSC(config_path=self.config_path,
+                                             stream_path=p,
+                                             level=self.level,
+                                             partition=self.partition,
+                                             miss_pkt_thresh=self.miss_pkt_thresh))
+
                 if apid == "1675":
                     logger.info(f"Creating L1ADepacketizeScienceFrames task for path {p}")
                     tasks.append(L1ADepacketizeScienceFrames(config_path=self.config_path,
@@ -90,6 +114,7 @@ class IngestMonitor:
                                                              partition=self.partition,
                                                              miss_pkt_thresh=self.miss_pkt_thresh,
                                                              test_mode=self.test_mode))
+
             # Process Planning Product files
             if p.endswith(".json"):
                 logger.info(f"Creating L0ProcessPlanningProduct task for path {p}")
