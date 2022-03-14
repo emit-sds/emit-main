@@ -34,7 +34,7 @@
 
   "build_config": {
     "extended_build_num": "000000",
-    "conda_base_dir": "/shared/anaconda3/"
+    "conda_base_dir": "/beegfs/store/shared/anaconda3/"
   },
 
   "daac_config": {
