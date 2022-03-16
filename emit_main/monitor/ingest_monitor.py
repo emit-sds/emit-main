@@ -50,7 +50,7 @@ class IngestMonitor:
         """
         Process all files in ingest folder
         """
-        matches = [os.path.join(self.ingest_dir, m) for m in ("emit_167*", "*.json", "*.sto")]
+        matches = [os.path.join(self.ingest_dir, m) for m in ("*hsc.bin", "*.json", "*.sto")]
         paths = []
         for m in matches:
             paths += glob.glob(m)
@@ -95,10 +95,10 @@ class IngestMonitor:
         tasks = []
         for p in paths:
             # Process HOSC files
-            if os.path.basename(p).startswith("emit_167"):
+            if p.endswith("hsc.bin"):
                 apid = os.path.basename(p).split("_")[1]
                 # Run different tasks based on apid (engineering or science). 1674 is engineering. 1675 is science.
-                if apid in ("1674", "1676"):
+                if apid in ("1674", "1676", "1482"):
                     logger.info(f"Creating L0StripHOSC task for path {p}")
                     tasks.append(L0StripHOSC(config_path=self.config_path,
                                              stream_path=p,
