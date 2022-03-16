@@ -51,20 +51,23 @@ for file in ${SFTP_DIR}/*; do
             chmod ug+rw ${file} ${file}.rpsm
             # Add a date folder if it doesn't exist
             if [[ ! -e ${DATE_DIR} ]]; then
+                echo "$(date +"%F %T,%3N"): Adding folder ${DATE_DIR}"
                 mkdir -p ${DATE_DIR}
                 chgrp $GROUP ${DATE_DIR}
                 chmod ug+rw ${DATE_DIR}
             fi
             # Add _hsc.bin suffix to HOSC files to play nice with existing ingest code
-            fname = $(basename $file)
+            fname=$(basename $file)
             if [[ $fname == emit_167* ]]; then
                 mv $file ${INGEST_DIR}/${fname}_hsc.bin
+                echo "$(date +"%F %T,%3N"): Moved ${file} to ${INGEST_DIR}/${fname}_hsc.bin"
             else
                 mv $file ${INGEST_DIR}/
+                echo "$(date +"%F %T,%3N"): Moved ${file} to ${INGEST_DIR}/${fname}"
             fi
             # Move rpsm file to archive
             mv ${file}.rpsm ${DATE_DIR}/
-            echo "$(date +"%F %T,%3N"): Moved ${file} to ${INGEST_DIR}/ and ${file}.rpsm to ${DATE_DIR}/"
+            echo "$(date +"%F %T,%3N"): Moved ${file}.rpsm to ${DATE_DIR}/"
         else
             echo "$(date +"%F %T,%3N"): Found ${file}, but no corresponding .rpsm file. Moving ${file} to ${ERROR_DIR}/"
             chgrp $GROUP ${file}
