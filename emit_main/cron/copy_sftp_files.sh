@@ -10,7 +10,7 @@ conda activate $2
 
 INGEST_DIR=/store/emit/$1/ingest
 SFTP_DIR=${INGEST_DIR}/sftp
-RPSM_DIR=${SFTP_DIR}/rpsms
+RPSM_DIR=${SFTP_DIR}/rpsm_archive
 DATE_DIR=${RPSM_DIR}/$(date "+%Y%m%d")
 ERROR_DIR=${SFTP_DIR}/errors
 
@@ -28,12 +28,6 @@ if [[ ! -e ${RPSM_DIR} ]]; then
     chmod ug+rw ${RPSM_DIR}
 fi
 
-if [[ ! -e ${DATE_DIR} ]]; then
-    mkdir -p ${DATE_DIR}
-    chgrp $GROUP ${DATE_DIR}
-    chmod ug+rw ${DATE_DIR}
-fi
-
 if [[ ! -e ${ERROR_DIR} ]]; then
     mkdir -p ${ERROR_DIR}
     chgrp $GROUP ${ERROR_DIR}
@@ -47,7 +41,7 @@ export AIT_ISS_CONFIG=/store/emit/$1/repos/emit-ios/config/sim.yaml
 # Copy data from remote /sftp/emitops/sds folder to local sftp folder
 echo "$(date +"%F %T,%3N"): Attempting to copy data from sftp.jpl.nasa.gov..."
 python /store/emit/$1/repos/emit-ios/emit/bin/emit_sftp_copy.py ${SFTP_DIR} --sftp_path /sftp/emitops/sds --rpsm
-echo "$(date +"%F %T,%3N"): Data copied from sftp.jpl.nasa.gov."
+echo "$(date +"%F %T,%3N"): emit_sftp_copy.py script completed."
 
 for file in ${SFTP_DIR}/*; do
     if [[ -f "$file" && $file != *rpsm ]]; then
@@ -55,6 +49,12 @@ for file in ${SFTP_DIR}/*; do
             echo "$(date +"%F %T,%3N"): Found ${file} and corresponding ${file}.rpsm"
             chgrp $GROUP ${file} ${file}.rpsm
             chmod ug+rw ${file} ${file}.rpsm
+            # Add a date folder if it doesn't exist
+            if [[ ! -e ${DATE_DIR} ]]; then
+                mkdir -p ${DATE_DIR}
+                chgrp $GROUP ${DATE_DIR}
+                chmod ug+rw ${DATE_DIR}
+            fi
             mv $file ${INGEST_DIR}/
             mv ${file}.rpsm ${DATE_DIR}/
             echo "$(date +"%F %T,%3N"): Moved ${file} to ${INGEST_DIR}/ and ${file}.rpsm to ${DATE_DIR}/"
