@@ -519,8 +519,7 @@ class L1AReassembleRaw(SlurmJobTask):
             raw_waterfall_exe = os.path.join(pge_reassemble.repo_dir, "util", "raw_waterfall.py")
             waterfall_cmd = ["python", raw_waterfall_exe, tmp_raw_path]
             pge_reassemble.run(waterfall_cmd, tmp_dir=self.tmp_dir, env=env)
-            wm.copy(tmp_raw_path.replace(".img", "_waterfall.png"),
-                    acq.raw_img_path.replace(".img", "_waterfall.png"))
+            wm.copy(tmp_raw_path.replace(".img", "_waterfall.png"), acq.raw_img_path.replace(".img", "_waterfall.png"))
 
             # Update hdr files
             input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
