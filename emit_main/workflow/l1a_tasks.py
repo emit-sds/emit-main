@@ -515,6 +515,13 @@ class L1AReassembleRaw(SlurmJobTask):
             rawqa_file.close()
             wm.change_group_ownership(acq.rawqa_txt_path)
 
+            # Create raw waterfall
+            raw_waterfall_exe = os.path.join(pge_reassemble.repo_dir, "util", "raw_waterfall.py")
+            waterfall_cmd = ["python", raw_waterfall_exe, tmp_raw_path]
+            pge_reassemble.run(waterfall_cmd, tmp_dir=self.tmp_dir, env=env)
+            wm.copy(tmp_raw_path.replace(".img", "_waterfall.png"),
+                    acq.raw_img_path.replace(".img", "_waterfall.png"))
+
             # Update hdr files
             input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
             doc_version = "EMIT SDS L1A JPL-D 104186, Initial"
