@@ -58,7 +58,7 @@ for file in ${SFTP_DIR}/*; do
             fi
             # Add _hsc.bin suffix to HOSC files to play nice with existing ingest code
             fname=$(basename $file)
-            if [[ $fname == emit_167* ]]; then
+            if [[ $fname == emit_167* || $fname == EMIT_167* ]]; then
                 mv $file ${INGEST_DIR}/${fname}_hsc.bin
                 echo "$(date +"%F %T,%3N"): Moved ${file} to ${INGEST_DIR}/${fname}_hsc.bin"
             else
