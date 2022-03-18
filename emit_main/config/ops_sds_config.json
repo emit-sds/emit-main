@@ -33,12 +33,12 @@
   },
 
   "build_config": {
-    "extended_build_num": "010100",
-    "conda_base_dir": "/shared/anaconda3/"
+    "extended_build_num": "010200",
+    "conda_base_dir": "/beegfs/store/shared/anaconda3/"
   },
 
   "daac_config": {
-    "aws_cli_exe": "/shared/aws-cli/v2/current/bin/aws",
+    "aws_cli_exe": "/beegfs/store/shared/aws-cli/v2/current/bin/aws",
     "aws_profile": "default",
     "cnm_version": "1.4",
     "daac_submission_url": "https://sqs.us-west-2.amazonaws.com/560130786230/lp-uat-ingest-forward-processing",
@@ -55,12 +55,12 @@
     "l1b_geo_install_dir": "/store/emit/dev/repos/emit-sds-l1b-geo",
     "l1b_geo_osp_dir": "/store/emit/dev/resources/l1_osp_aviris_ng_dir",
     "isofit_surface_path": "repos/emit-sds-l2a/surface_v2/surface_filtered_emit_synthetic.mat",
-    "isofit_emulator_base": "/shared/sRTMnet/sRTMnet_v100",
-    "isofit_sixs_dir": "/shared/sixs",
-    "specpr_path": "/shared/specpr",
-    "tetracorder_path": "/shared/tetracorder5.26",
+    "isofit_emulator_base": "/beegfs/store/shared/sRTMnet_v100",
+    "isofit_sixs_dir": "/beegfs/store/shared/sixs",
+    "specpr_path": "/beegfs/store/shared/specpr",
+    "tetracorder_path": "/beegfs/store/shared/tetracorder5.26",
     "tetracorder_library_dir": "/beegfs/store/tetracorder/official_libraries",
-    "tetracorder_setup_cmd_path": "/shared/tetracorder5.26a.cmds/cmd-setup-tetrun",
+    "tetracorder_setup_cmd_path": "/beegfs/store/shared/tetracorder5.26a.cmds/cmd-setup-tetrun",
     "versions": []
   }
 }

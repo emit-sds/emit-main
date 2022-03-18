@@ -187,8 +187,11 @@ class WorkflowManager:
     def makedirs(self, d):
         # Make directory if it doesn't exist
         if not os.path.exists(d):
-            os.makedirs(d)
-            self.change_group_ownership(d)
+            try:
+                os.makedirs(d)
+                self.change_group_ownership(d)
+            except Exception as e:
+                self.print(__name__, f"Unable to make directory {d}, but proceeding anyway...")
 
     def copy(self, src, dst):
         shutil.copy2(src, dst)

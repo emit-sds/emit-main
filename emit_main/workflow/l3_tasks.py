@@ -68,8 +68,8 @@ class L3Unmix(SlurmJobTask):
 
         # Set up environment variables
         env = os.environ.copy()
-        env["PATH"] = "/shared/julia-1.6.5/bin:${PATH}"
-        env["JULIA_DEPOT_PATH"] = "/shared/.julia_165_shared"
+        env["PATH"] = "/beegfs/store/shared/julia-1.6.5/bin:${PATH}"
+        env["JULIA_DEPOT_PATH"] = "/beegfs/store/shared/.julia_165_shared"
 
         # Build command
         cmd_unmix = ['julia', '-p', str(self.n_cores), unmix_exe, acq.rfl_img_path, endmember_path, endmember_key, output_base, "--normalization",
