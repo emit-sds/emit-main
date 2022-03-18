@@ -356,6 +356,7 @@ class L1AReassembleRaw(SlurmJobTask):
         compute_line_stats_exe = os.path.join(pge_line_stats.repo_dir, "python", "compute_line_stats.py")
         tmp_image_dir = os.path.join(self.local_tmp_dir, "image")
         tmp_decomp_no_header_paths = glob.glob(os.path.join(tmp_image_dir, "*.decomp_no_header"))
+        tmp_decomp_no_header_paths = [p for p in tmp_decomp_no_header_paths if os.path.getsize(p) > 0]
         tmp_decomp_no_header_paths.sort()
         tmp_no_header_list = os.path.join(self.local_tmp_dir, "no_header_list.txt")
         with open(tmp_no_header_list, "w") as f:
