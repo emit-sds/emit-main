@@ -104,15 +104,15 @@ class Acquisition:
                 "rawqa": ["txt"]
             },
             "l1b": {
-                "rdn": ["img", "hdr", "png", "kmz"],
+                "rdn": ["img", "hdr", "png", "kmz", "nc"],
                 "loc": ["img", "hdr"],
-                "obs": ["img", "hdr"],
+                "obs": ["img", "hdr", "nc"],
                 "glt": ["img", "hdr"],
                 "daac": ["nc", "json"]
             },
             "l2a": {
-                "rfl": ["img", "hdr"],
-                "uncert": ["img", "hdr"],
+                "rfl": ["img", "hdr", "nc"],
+                "uncert": ["img", "hdr", "nc"],
                 "lbl": ["img", "hdr"],
                 "lblort": ["img", "hdr"],
                 "statesubs": ["img", "hdr"],

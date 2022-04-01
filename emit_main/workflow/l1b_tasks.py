@@ -496,19 +496,17 @@ class L1BRdnFormat(SlurmJobTask):
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
         # Copy and rename output files back to /store
-        nc_rdn_path = acq.rdn_img_path.replace(".img", ".nc")
-        nc_obs_path = acq.obs_img_path.replace(".img", ".nc")
-        log_path = nc_rdn_path.replace(".nc", "_nc_pge.log")
-        wm.copy(tmp_daac_rdn_nc_path, nc_rdn_path)
-        wm.copy(tmp_daac_obs_nc_path, nc_obs_path)
+        log_path = acq.rdn_nc_path.replace(".nc", "_nc_pge.log")
+        wm.copy(tmp_daac_rdn_nc_path, acq.rdn_nc_path)
+        wm.copy(tmp_daac_obs_nc_path, acq.obs_nc_path)
         wm.copy(tmp_log_path, log_path)
 
         # PGE writes metadata to db
         dm = wm.database_manager
-        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(nc_rdn_path), tz=datetime.timezone.utc)
+        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rdn_nc_path), tz=datetime.timezone.utc)
         product_dict_netcdf = {
-            "netcdf_rdn_path": nc_rdn_path,
-            "netcdf_obs_path": nc_obs_path,
+            "netcdf_rdn_path": acq.rdn_nc_path,
+            "netcdf_obs_path": acq.obs_nc_path,
             "created": nc_creation_time
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn_netcdf": product_dict_netcdf})
@@ -529,8 +527,8 @@ class L1BRdnFormat(SlurmJobTask):
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
-                "l1b_rdn_netcdf_path": nc_rdn_path,
-                "l1b_obs_netcdf_path": nc_obs_path
+                "l1b_rdn_netcdf_path": acq.rdn_nc_path,
+                "l1b_obs_netcdf_path": acq.obs_nc_path
             }
         }
 
