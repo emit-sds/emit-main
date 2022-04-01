@@ -91,7 +91,7 @@ class L2AReflectance(SlurmJobTask):
         tmp_rfl_hdr_path = envi_header(tmp_rfl_path)
         tmp_uncert_path = os.path.join(self.local_tmp_dir, "output",
                                        self.acquisition_id + "_uncert")
-        tmp_uncert_hdr_path = envi_header(tmp_uncert_path)
+        tmp_rfluncert_hdr_path = envi_header(tmp_rfluncert_path)
         tmp_lbl_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_lbl")
         tmp_lbl_hdr_path = envi_header(tmp_lbl_path)
         tmp_statesubs_path = os.path.join(
@@ -99,8 +99,8 @@ class L2AReflectance(SlurmJobTask):
         tmp_statesubs_hdr_path = envi_header(tmp_statesubs_path)
         wm.copy(tmp_rfl_path, acq.rfl_img_path)
         wm.copy(tmp_rfl_hdr_path, acq.rfl_hdr_path)
-        wm.copy(tmp_uncert_path, acq.uncert_img_path)
-        wm.copy(tmp_uncert_hdr_path, acq.uncert_hdr_path)
+        wm.copy(tmp_uncert_path, acq.rfluncert_img_path)
+        wm.copy(tmp_rfluncert_hdr_path, acq.rfluncert_hdr_path)
         wm.copy(tmp_lbl_path, acq.lbl_img_path)
         wm.copy(tmp_lbl_hdr_path, acq.lbl_hdr_path)
         wm.copy(tmp_statesubs_path, acq.statesubs_img_path)
@@ -114,7 +114,7 @@ class L2AReflectance(SlurmJobTask):
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
         doc_version = "EMIT SDS L2A JPL-D 104236, Rev B"
         dm = wm.database_manager
-        for img_path, hdr_path in [(acq.rfl_img_path, acq.rfl_hdr_path), (acq.uncert_img_path, acq.uncert_hdr_path)]:
+        for img_path, hdr_path in [(acq.rfl_img_path, acq.rfl_hdr_path), (acq.rfluncert_img_path, acq.rfluncert_hdr_path)]:
             hdr = envi.read_envi_header(hdr_path)
             hdr["emit acquisition start time"] = acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
             hdr["emit acquisition stop time"] = acq.stop_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
@@ -162,8 +162,8 @@ class L2AReflectance(SlurmJobTask):
             "output": {
                 "l2a_rfl_img_path": acq.rfl_img_path,
                 "l2a_rfl_hdr_path:": acq.rfl_hdr_path,
-                "l2a_uncert_img_path": acq.uncert_img_path,
-                "l2a_uncert_hdr_path:": acq.uncert_hdr_path
+                "l2a_rfluncert_img_path": acq.rfluncert_img_path,
+                "l2a_rfluncert_hdr_path:": acq.rfluncert_hdr_path
             }
         }
 
@@ -328,7 +328,7 @@ class L2AFormat(SlurmJobTask):
         tmp_log_path = os.path.join(self.local_tmp_dir, "output_conversion_pge.log")
 
         cmd = ["python", output_generator_exe, tmp_daac_rfl_nc_path, tmp_daac_rfl_unc_nc_path, 
-               tmp_daac_mask_nc_path, acq.rfl_img_path, acq.uncert_img_path,
+               tmp_daac_mask_nc_path, acq.rfl_img_path, acq.rfluncert_img_path,
                acq.mask_img_path, acq.loc_img_path, acq.glt_img_path, "--log_file",
                tmp_log_path]
         pge.run(cmd, tmp_dir=self.tmp_dir)
@@ -357,7 +357,7 @@ class L2AFormat(SlurmJobTask):
             "pge_version": pge.version_tag,
             "pge_input_files": {
                 "rfl_img_path": acq.rfl_img_path,
-                "rfl_unert_img_path": acq.uncert_img_path,
+                "rfl_uncert_img_path": acq.rfluncert_img_path,
                 "mask_img_path": acq.mask_img_path,
                 "loc_img_path": acq.loc_img_path,
                 "glt_img_path": acq.glt_img_path

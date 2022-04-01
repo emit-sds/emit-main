@@ -112,7 +112,7 @@ class Acquisition:
             },
             "l2a": {
                 "rfl": ["img", "hdr", "nc"],
-                "uncert": ["img", "hdr", "nc"],
+                "rfluncert": ["img", "hdr", "nc"],
                 "lbl": ["img", "hdr"],
                 "lblort": ["img", "hdr"],
                 "statesubs": ["img", "hdr"],
