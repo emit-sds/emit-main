@@ -507,7 +507,8 @@ class L1BRdnFormat(SlurmJobTask):
         dm = wm.database_manager
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(nc_rdn_path), tz=datetime.timezone.utc)
         product_dict_netcdf = {
-            "netcdf_path": nc_rdn_path,
+            "netcdf_rdn_path": nc_rdn_path,
+            "netcdf_obs_path": nc_obs_path,
             "created": nc_creation_time
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn_netcdf": product_dict_netcdf})
