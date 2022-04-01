@@ -322,25 +322,31 @@ class L2AFormat(SlurmJobTask):
         output_generator_exe = os.path.join(pge.repo_dir, "output_conversion.py")
         tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
         wm.makedirs(tmp_output_dir)
-        tmp_daac_nc_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l2a.nc")
+        tmp_daac_rfl_nc_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l2a_rfl.nc")
+        tmp_daac_rfl_unc_nc_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l2a_rfl_unc.nc")
+        tmp_daac_mask_nc_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l2a_mask.nc")
         tmp_log_path = os.path.join(self.local_tmp_dir, "output_conversion_pge.log")
 
-        cmd = ["python", output_generator_exe, tmp_daac_nc_path, acq.rfl_img_path, acq.uncert_img_path,
+        cmd = ["python", output_generator_exe, tmp_daac_rfl_nc_path, tmp_daac_rfl_unc_nc_path, 
+               tmp_daac_mask_nc_path, acq.rfl_img_path, acq.uncert_img_path,
                acq.mask_img_path, acq.loc_img_path, acq.glt_img_path, "--log_file",
                tmp_log_path]
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
         # Copy and rename output files back to /store
-        nc_path = acq.rfl_img_path.replace(".img", ".nc")
-        log_path = nc_path.replace(".nc", "_nc_pge.log")
-        wm.copy(tmp_daac_nc_path, nc_path)
+        log_path = acq.rfl_img_path.replace(".nc", "_nc_pge.log")
+        wm.copy(tmp_daac_rfl_nc_path, acq.rfl_nc_path)
+        wm.copy(tmp_daac_rfl_unc_nc_path, acq.uncert_nc_path)
+        wm.copy(tmp_daac_mask_nc_path, acq.mask_nc_path)
         wm.copy(tmp_log_path, log_path)
 
         # PGE writes metadata to db
-        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(nc_path), tz=datetime.timezone.utc)
+        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rfl_nc_path), tz=datetime.timezone.utc)
         dm = wm.database_manager
         product_dict_netcdf = {
-            "netcdf_path": nc_path,
+            "netcdf_rfl_path": acq.rfl_nc_path,
+            "netcdf_rfl_unc_path": acq.uncert_nc_path,
+            "netcdf_mask_path": acq.mask_nc_path,
             "created": nc_creation_time
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2a.rfl_netcdf": product_dict_netcdf})
@@ -362,7 +368,9 @@ class L2AFormat(SlurmJobTask):
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
-                "l2a_rfl_netcdf_path": nc_path
+                "l2a_rfl_netcdf_path": acq.rfl_nc_path,
+                "l2a_rfl_unc_netcdf_path": acq.uncert_nc_path,
+                "l2a_mask_netcdf_path": acq.mask_nc_path
             }
         }
 
