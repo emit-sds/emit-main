@@ -488,23 +488,26 @@ class L1BRdnFormat(SlurmJobTask):
         output_generator_exe = os.path.join(pge.repo_dir, "output_conversion.py")
         tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
         wm.makedirs(tmp_output_dir)
-        tmp_daac_nc_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l1b_rdn.nc")
+        tmp_daac_rdn_nc_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l1b_rdn.nc")
+        tmp_daac_obs_nc_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l1b_obs.nc")
         tmp_log_path = os.path.join(self.local_tmp_dir, "output_conversion_pge.log")
-        cmd = ["python", output_generator_exe, tmp_daac_nc_path, acq.rdn_img_path, acq.obs_img_path, acq.loc_img_path,
+        cmd = ["python", output_generator_exe, tmp_daac_rdn_nc_path, tmp_daac_obs_nc_path, acq.rdn_img_path, acq.obs_img_path, acq.loc_img_path,
                acq.glt_img_path, "--log_file", tmp_log_path]
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
         # Copy and rename output files back to /store
-        nc_path = acq.rdn_img_path.replace(".img", ".nc")
-        log_path = nc_path.replace(".nc", "_nc_pge.log")
-        wm.copy(tmp_daac_nc_path, nc_path)
+        nc_rdn_path = acq.rdn_img_path.replace(".img", ".nc")
+        nc_obs_path = acq.obs_img_path.replace(".img", ".nc")
+        log_path = nc_rdn_path.replace(".nc", "_nc_pge.log")
+        wm.copy(tmp_daac_rdn_nc_path, nc_rdn_path)
+        wm.copy(tmp_daac_obs_nc_path, nc_obs_path)
         wm.copy(tmp_log_path, log_path)
 
         # PGE writes metadata to db
         dm = wm.database_manager
-        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(nc_path), tz=datetime.timezone.utc)
+        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(nc_rdn_path), tz=datetime.timezone.utc)
         product_dict_netcdf = {
-            "netcdf_path": nc_path,
+            "netcdf_path": nc_rdn_path,
             "created": nc_creation_time
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn_netcdf": product_dict_netcdf})
@@ -525,7 +528,8 @@ class L1BRdnFormat(SlurmJobTask):
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
-                "l1b_rdn_netcdf_path": nc_path
+                "l1b_rdn_netcdf_path": nc_rdn_path,
+                "l1b_obs_netcdf_path": nc_obs_path
             }
         }
 
