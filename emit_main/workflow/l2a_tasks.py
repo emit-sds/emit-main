@@ -89,7 +89,7 @@ class L2AReflectance(SlurmJobTask):
         # Copy output files to l2a dir and rename
         tmp_rfl_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_rfl")
         tmp_rfl_hdr_path = envi_header(tmp_rfl_path)
-        tmp_uncert_path = os.path.join(self.local_tmp_dir, "output",
+        tmp_rfluncert_path = os.path.join(self.local_tmp_dir, "output",
                                        self.acquisition_id + "_uncert")
         tmp_rfluncert_hdr_path = envi_header(tmp_rfluncert_path)
         tmp_lbl_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_lbl")
@@ -99,7 +99,7 @@ class L2AReflectance(SlurmJobTask):
         tmp_statesubs_hdr_path = envi_header(tmp_statesubs_path)
         wm.copy(tmp_rfl_path, acq.rfl_img_path)
         wm.copy(tmp_rfl_hdr_path, acq.rfl_hdr_path)
-        wm.copy(tmp_uncert_path, acq.rfluncert_img_path)
+        wm.copy(tmp_rfluncert_path, acq.rfluncert_img_path)
         wm.copy(tmp_rfluncert_hdr_path, acq.rfluncert_hdr_path)
         wm.copy(tmp_lbl_path, acq.lbl_img_path)
         wm.copy(tmp_lbl_hdr_path, acq.lbl_hdr_path)
