@@ -209,7 +209,6 @@ class L2AMask(SlurmJobTask):
         tmp_output_dir = os.path.join(self.tmp_dir, "output")
         wm.makedirs(tmp_output_dir)
 
-        tmp_rho_path = os.path.join(tmp_output_dir, self.acquisition_id + "_rho")
         tmp_mask_path = os.path.join(tmp_output_dir, os.path.basename(acq.mask_img_path))
         tmp_mask_hdr_path = envi_header(tmp_mask_path)
         solar_irradiance_path = os.path.join(pge.repo_dir, "data", "kurudz_0.1nm.dat")
@@ -224,7 +223,7 @@ class L2AMask(SlurmJobTask):
         }
 
         cmd = ["python", make_masks_exe, acq.rdn_img_path, acq.loc_img_path, acq.lbl_img_path, acq.statesubs_img_path,
-               solar_irradiance_path, tmp_rho_path, tmp_mask_path]
+               solar_irradiance_path, tmp_mask_path]
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
         # Copy mask files to l2a dir
