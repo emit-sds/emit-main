@@ -225,7 +225,7 @@ class L2AMask(SlurmJobTask):
         }
 
         cmd = ["python", make_masks_exe, acq.rdn_img_path, acq.loc_img_path, acq.lbl_img_path, acq.statesubs_img_path,
-               solar_irradiance_path, tmp_mask_path, "--n_cores", self.n_cores]
+               solar_irradiance_path, tmp_mask_path, "--n_cores", str(self.n_cores)]
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
         # Copy mask files to l2a dir
