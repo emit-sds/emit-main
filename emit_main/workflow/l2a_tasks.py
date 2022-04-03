@@ -337,7 +337,7 @@ class L2AFormat(SlurmJobTask):
         # Copy and rename output files back to /store
         log_path = acq.rfl_img_path.replace(".nc", "_nc_pge.log")
         wm.copy(tmp_daac_rfl_nc_path, acq.rfl_nc_path)
-        wm.copy(tmp_daac_rfl_unc_nc_path, acq.uncert_nc_path)
+        wm.copy(tmp_daac_rfl_unc_nc_path, acq.rfluncert_nc_path)
         wm.copy(tmp_daac_mask_nc_path, acq.mask_nc_path)
         wm.copy(tmp_log_path, log_path)
 
@@ -346,7 +346,7 @@ class L2AFormat(SlurmJobTask):
         dm = wm.database_manager
         product_dict_netcdf = {
             "netcdf_rfl_path": acq.rfl_nc_path,
-            "netcdf_rfl_unc_path": acq.uncert_nc_path,
+            "netcdf_rfl_unc_path": acq.rfluncert_nc_path,
             "netcdf_mask_path": acq.mask_nc_path,
             "created": nc_creation_time
         }
@@ -370,7 +370,7 @@ class L2AFormat(SlurmJobTask):
             "completion_status": "SUCCESS",
             "output": {
                 "l2a_rfl_netcdf_path": acq.rfl_nc_path,
-                "l2a_rfl_unc_netcdf_path": acq.uncert_nc_path,
+                "l2a_rfl_unc_netcdf_path": acq.rfluncert_nc_path,
                 "l2a_mask_netcdf_path": acq.mask_nc_path
             }
         }
