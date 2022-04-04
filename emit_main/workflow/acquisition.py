@@ -120,8 +120,8 @@ class Acquisition:
             },
             "l2b": {
                 "tetra": ["dir"],
-                "abun": ["img", "hdr"],
-                "abununcert": ["img", "hdr"]
+                "abun": ["img", "hdr", "nc"],
+                "abununcert": ["img", "hdr", "nc"]
             },
             "l3": {
                 "cover": ["img", "hdr"],
