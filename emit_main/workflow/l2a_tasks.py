@@ -335,7 +335,7 @@ class L2AFormat(SlurmJobTask):
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
         # Copy and rename output files back to /store
-        log_path = acq.rfl_img_path.replace(".nc", "_nc_pge.log")
+        log_path = acq.rfl_nc_path.replace(".nc", "_nc_pge.log")
         wm.copy(tmp_daac_rfl_nc_path, acq.rfl_nc_path)
         wm.copy(tmp_daac_rfl_unc_nc_path, acq.rfluncert_nc_path)
         wm.copy(tmp_daac_mask_nc_path, acq.mask_nc_path)
