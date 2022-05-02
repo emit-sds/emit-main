@@ -111,7 +111,7 @@ class L0StripHOSC(SlurmJobTask):
             "hosc_name": hosc_name,
             "processing_log": []
         }
-        dm.insert_hosc_ccsds_stream(hosc_name, metadata)
+        dm.insert_stream(hosc_name, metadata)
 
         # Get the workflow manager again with the stream object
         wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
@@ -209,18 +209,12 @@ class L0IngestBAD(SlurmJobTask):
     def work(self):
         logger.debug(f"{self.task_family} work: {self.stream_path}")
 
-        # Insert BAD stream into DB
+        # Get workflow manager
         wm = WorkflowManager(config_path=self.config_path)
-        dm = wm.database_manager
-        dm.insert_bad_stream(os.path.basename(self.stream_path))
-        logger.debug(f"Inserted BAD stream file into DB using path {self.stream_path}")
-
-        # Get workflow manager again, now with stream_path
-        wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
-        stream = wm.stream
         pge = wm.pges["emit-ios"]
 
         # Generate CSV version of file
+        bad_name = os.path.basename(self.stream_path)
         sto_to_csv_exe = os.path.join(pge.repo_dir, "emit", "bin", "emit_iss_sto_to_csv.py")
         tmp_output_dir = os.path.join(self.tmp_dir, "output")
         wm.makedirs(tmp_output_dir)
@@ -230,6 +224,35 @@ class L0IngestBAD(SlurmJobTask):
         env["AIT_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "config.yaml")
         env["AIT_ISS_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "sim.yaml")
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
+
+        # Get tmp output path for CSV
+        tmp_csv_path = os.path.join(tmp_output_dir, "iss_bad_data_joined.csv")
+
+        # Set up command to get BAD start/stop times
+        pge_l0 = wm.pges["emit-sds-l0"]
+        get_start_stop_exe = os.path.join(pge_l0.repo_dir, "get_bad_start_stop_times.py")
+        start_stop_json = os.path.join(tmp_output_dir, os.path.basename(tmp_csv_path).replace(".csv", ".json"))
+        cmd_timing = ["python", get_start_stop_exe, tmp_csv_path, start_stop_json]
+        pge.run(cmd_timing, tmp_dir=self.tmp_dir, env=env)
+        with open(start_stop_json, "r") as f:
+            timing = json.load(f)
+
+        # Insert new stream in DB
+        dm = wm.database_manager
+        metadata = {
+            "apid": "bad",
+            "start_time": datetime.datetime.strptime(timing["start_time"], "%Y-%m-%dT%H:%M:%S"),
+            "stop_time": datetime.datetime.strptime(timing["stop_time"], "%Y-%m-%dT%H:%M:%S"),
+            "build_num": wm.config["build_num"],
+            "processing_version": wm.config["processing_version"],
+            "bad_name": bad_name,
+            "processing_log": []
+        }
+        dm.insert_stream(bad_name, metadata)
+
+        # Get workflow manager again with stream metadata
+        wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
+        stream = wm.stream
 
         # Find orbits that touch this stream file and update them
         orbits = dm.find_orbits_touching_date_range("start_time", stream.start_time, stream.stop_time) + \
@@ -272,7 +295,7 @@ class L0IngestBAD(SlurmJobTask):
                 orbit_symlink_paths.append(os.path.join(orbit.raw_dir, stream.bad_name))
                 # orbit_l1a_dirs.append(orbit.l1a_dir)
 
-        # TODO: Get start/stop from CSV file (which column(s) to use?)
+
 
         # Move BAD file out of ingest folder
         if "ingest" in self.stream_path:
@@ -366,22 +389,17 @@ class L0ProcessPlanningProduct(SlurmJobTask):
         horizon_start_time = None
         with open(self.plan_prod_path, "r") as f:
             events = json.load(f)
-            orbit_num = None
             orbit_ids = []
             dcids = []
             for e in events:
                 # Check for starting orbit number
                 if e["name"].lower() == "planning horizon start":
-                    orbit_num = e["orbitId"]
                     horizon_start_time = e["datetime"]
 
                 # Check for orbit object
                 if e["name"].lower() == "start orbit":
-                    # Raise error if we don't have a starting orbit number
-                    if orbit_num is None:
-                        raise RuntimeError(f"Planning product {self.plan_prod_path} is missing starting orbit number")
-
                     # Construct orbit object
+                    orbit_num = int(e["orbitId"])
                     orbit_id = str(orbit_num).zfill(5)
                     start_time = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S")
                     orbit_meta = {
@@ -412,33 +430,21 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                     # Keep track of orbit_ids for log entry
                     orbit_ids.append(orbit_id)
 
-                    # Increment orbit_num to continue processing file
-                    orbit_num += 1
-
                 # Check for data collection (i.e. acquisition)
-                # TODO: Add "dark" in when its ready
                 if e["name"].lower() in ("science", "dark"):
-                    # Raise error if we don't have a starting orbit number
-                    if orbit_num is None:
-                        raise RuntimeError(f"Planning product {self.plan_prod_path} is missing starting orbit number")
-
                     # Construct data collection metadata
                     dcid = str(e["dcid"]).zfill(10)
+                    # Convert date strings to datetime objects to store in DB
+                    e["datetime"] = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S")
+                    e["endDatetime"] = datetime.datetime.strptime(e["endDatetime"], "%Y-%m-%dT%H:%M:%S")
                     dc_meta = {
                         "dcid": dcid,
                         "build_num": wm.config["build_num"],
                         "processing_version": wm.config["processing_version"],
-                        "planned_start_time": datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S"),
-                        "planned_stop_time": datetime.datetime.strptime(e["endDatetime"], "%Y-%m-%dT%H:%M:%S"),
                         "orbit": str(e["orbit number"]).zfill(5),
                         "scene": str(e["scene number"]).zfill(3),
                         "submode": e["name"].lower(),
-                        "betaangle": e["betaangle"],
-                        "comments": e["comments"],
-                        "latboresightstart": e["latboresightstart"],
-                        "lonboresightstart": e["lonboresightstart"],
-                        "parameters": e["parameters"],
-                        "sza": e["sza"],
+                        "planning_product": e,
                         "frames_status": ""
                     }
 
