@@ -56,11 +56,18 @@ for file in ${SFTP_DIR}/*; do
                 chgrp $GROUP ${DATE_DIR}
                 chmod ug+rw ${DATE_DIR}
             fi
-            # Add _hsc.bin suffix to HOSC files to play nice with existing ingest code
+            # Add _hsc.bin suffix to HOSC files to play nice with existing ingest code, and unzip BAD files and
+            # append .sto suffix
             fname=$(basename $file)
             if [[ $fname == emit_167* || $fname == EMIT_167* ]]; then
                 mv $file ${INGEST_DIR}/${fname}_hsc.bin
                 echo "$(date +"%F %T,%3N"): Moved ${file} to ${INGEST_DIR}/${fname}_hsc.bin"
+            elif [[ $fname == bad*gz ]]; then
+                gzip -d $file
+                echo "$(date +"%F %T,%3N"): Unzipped ${file}"
+                fname_noext=$(basename $file .gz)
+                mv ${SFTP_DIR}/${fname_noext} ${INGEST_DIR}/${fname_noext}.sto
+                echo "$(date +"%F %T,%3N"): Moved ${SFTP_DIR}/${fname_noext} to ${INGEST_DIR}/${fname_noext}.sto"
             else
                 mv $file ${INGEST_DIR}/
                 echo "$(date +"%F %T,%3N"): Moved ${file} to ${INGEST_DIR}/${fname}"
