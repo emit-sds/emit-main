@@ -66,6 +66,7 @@ class Stream:
                 self.dirs.append(self.frames_dir)
         if self.bad_name:
             self.bad_path = os.path.join(self.raw_dir, self.bad_name)
+            self.extended_bad_path = os.path.join(self.raw_dir, self.extended_bad_name)
 
         # Make directories if they don't exist
         from emit_main.workflow.workflow_manager import WorkflowManager

@@ -214,7 +214,6 @@ class L0IngestBAD(SlurmJobTask):
         pge = wm.pges["emit-ios"]
 
         # Generate CSV version of file
-        bad_name = os.path.basename(self.stream_path)
         sto_to_csv_exe = os.path.join(pge.repo_dir, "emit", "bin", "emit_iss_sto_to_csv.py")
         tmp_output_dir = os.path.join(self.tmp_dir, "output")
         wm.makedirs(tmp_output_dir)
@@ -239,13 +238,19 @@ class L0IngestBAD(SlurmJobTask):
 
         # Insert new stream in DB
         dm = wm.database_manager
+        start_time = datetime.datetime.strptime(timing["start_time"], "%Y-%m-%dT%H:%M:%S")
+        stop_time = datetime.datetime.strptime(timing["stop_time"], "%Y-%m-%dT%H:%M:%S")
+        bad_name = os.path.basename(self.stream_path)
+        suffix = f"_{start_time.strftime('%Y%m%dT%H%M%S')}_{stop_time.strftime('%Y%m%dT%H%M%S')}.sto"
+        extended_bad_name = os.path.basename(self.stream_path).replace(".sto", suffix)
         metadata = {
             "apid": "bad",
-            "start_time": datetime.datetime.strptime(timing["start_time"], "%Y-%m-%dT%H:%M:%S"),
-            "stop_time": datetime.datetime.strptime(timing["stop_time"], "%Y-%m-%dT%H:%M:%S"),
+            "start_time": start_time,
+            "stop_time": stop_time,
             "build_num": wm.config["build_num"],
             "processing_version": wm.config["processing_version"],
             "bad_name": bad_name,
+            "extended_bad_name": extended_bad_name,
             "processing_log": []
         }
         dm.insert_stream(bad_name, metadata)
@@ -279,10 +284,10 @@ class L0IngestBAD(SlurmJobTask):
                 wm_orbit = WorkflowManager(config_path=self.config_path, orbit_id=orbit_id)
                 orbit = wm_orbit.orbit
                 if "associated_bad_sto" in orbit.metadata and orbit.metadata["associated_bad_sto"] is not None:
-                    if stream.bad_path not in orbit.metadata["associated_bad_sto"]:
-                        orbit.metadata["associated_bad_sto"].append(stream.bad_path)
+                    if stream.extended_bad_path not in orbit.metadata["associated_bad_sto"]:
+                        orbit.metadata["associated_bad_sto"].append(stream.extended_bad_path)
                 else:
-                    orbit.metadata["associated_bad_sto"] = [stream.bad_path]
+                    orbit.metadata["associated_bad_sto"] = [stream.extended_bad_path]
                 dm.update_orbit_metadata(orbit_id, {"associated_bad_sto": orbit.metadata["associated_bad_sto"]})
 
                 # Check if orbit has complete bad data
@@ -292,22 +297,24 @@ class L0IngestBAD(SlurmJobTask):
                     dm.update_orbit_metadata(orbit_id, {"bad_status": "incomplete"})
 
                 # Save symlink paths to use after moving the file
-                orbit_symlink_paths.append(os.path.join(orbit.raw_dir, stream.bad_name))
+                orbit_symlink_paths.append(os.path.join(orbit.raw_dir, stream.extended_bad_name))
                 # orbit_l1a_dirs.append(orbit.l1a_dir)
-
-
 
         # Move BAD file out of ingest folder
         if "ingest" in self.stream_path:
             wm.move(self.stream_path, stream.bad_path)
+
+        # Symlink extended bad path to bad path
+        wm.symlink(stream.bad_name, stream.extended_bad_path)
 
         # Symlink to this file from the orbits' raw dirs
         for symlink in orbit_symlink_paths:
             wm.symlink(stream.bad_path, symlink)
 
         # Copy CSV file to l0 dir
-        tmp_csv_path = os.path.join(tmp_output_dir, "iss_bad_data_joined.csv")
-        l0_bad_csv_path = os.path.join(stream.l0_dir, stream.bad_name.replace(".sto", ".csv"))
+        # l0_bad_csv_name = "_".join(["emit", start_time.strftime("%Y%m%dt%H%M%S"), "l0", "bad",
+        #                             "b" + wm.config["build_num"], "v" + wm.config["processing_version"]]) + ".csv"
+        l0_bad_csv_path = os.path.join(stream.l0_dir, extended_bad_name.replace(".sto", ".csv"))
         wm.copy(tmp_csv_path, l0_bad_csv_path)
 
         # Symlink from the BAD l1a folder to the orbits l1a folders
