@@ -95,7 +95,7 @@ def test_stream_insert(config_path):
         "hosc_name": "emit_1675_200101000000_200101020000_200101084102_hsc.bin"
     }
 
-    dm.insert_hosc_ccsds_stream("emit_1675_200101000000_200101020000_200101084102_hsc.bin", metadata)
+    dm.insert_stream("emit_1675_200101000000_200101020000_200101084102_hsc.bin", metadata)
     stream = dm.find_stream_by_name("emit_1675_200101000000_200101020000_200101084102_hsc.bin")
 
     assert stream["hosc_name"] == "emit_1675_200101000000_200101020000_200101084102_hsc.bin"

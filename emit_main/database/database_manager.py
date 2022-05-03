@@ -144,35 +144,11 @@ class DatabaseManager:
         }
         return list(streams_coll.find(query))
 
-    def insert_hosc_ccsds_stream(self, name, metadata):
+    def insert_stream(self, name, metadata):
         if self.find_stream_by_name(name) is None:
             utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
             metadata["created"] = utc_now
             metadata["last_modified"] = utc_now
-            streams_coll = self.db.streams
-            streams_coll.insert_one(metadata)
-
-    def insert_bad_stream(self, bad_name):
-        if self.find_stream_by_name(bad_name) is None:
-            if ".sto" not in bad_name:
-                raise RuntimeError(f"Attempting to insert BAD stream file in DB with name {bad_name}. Does not "
-                                   f"appear to be a BAD STO file")
-            # TODO: This format is not defined yet (e.g. emit_<start_time>_<stop_time>_<production_time>_bad.sto)
-            tokens = bad_name.split(".")[0].split("_")
-            start_time = datetime.datetime.strptime(tokens[1], "%Y%m%dT%H%M%S")
-            stop_time = datetime.datetime.strptime(tokens[2], "%Y%m%dT%H%M%S")
-            utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
-            metadata = {
-                "apid": "bad",
-                "start_time": start_time,
-                "stop_time": stop_time,
-                "build_num": self.config["build_num"],
-                "processing_version": self.config["processing_version"],
-                "bad_name": bad_name,
-                "processing_log": [],
-                "created": utc_now,
-                "last_modified": utc_now
-            }
             streams_coll = self.db.streams
             streams_coll.insert_one(metadata)
 
