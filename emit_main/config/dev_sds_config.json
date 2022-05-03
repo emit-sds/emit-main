@@ -51,7 +51,7 @@
   "ancillary_paths": {
     "decompression_constants_path": "repos/emit-sds-l1a/decompression/constants.txt",
     "decompression_init_data_path": "repos/emit-sds-l1a/decompression/FPGA_Data_Initialization_File_CREATE_COMPRESSION_INIT_DATA_328_e0.bin",
-    "l1b_config_path": "repos/emit-sds-l1b/config/tvac2_config.json",
+    "l1b_config_path": "repos/emit-sds-l1b/config/tvac4_config.json",
     "l1b_geo_install_dir": "/store/emit/dev/repos/emit-sds-l1b-geo",
     "l1b_geo_osp_dir": "/store/emit/dev/resources/l1_osp_aviris_ng_dir",
     "isofit_surface_path": "repos/emit-sds-l2a/surface_v2/surface_filtered_emit_synthetic.mat",
