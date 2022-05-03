@@ -104,24 +104,24 @@ class Acquisition:
                 "rawqa": ["txt"]
             },
             "l1b": {
-                "rdn": ["img", "hdr", "png", "kmz"],
+                "rdn": ["img", "hdr", "png", "kmz", "nc"],
                 "loc": ["img", "hdr"],
-                "obs": ["img", "hdr"],
+                "obs": ["img", "hdr", "nc"],
                 "glt": ["img", "hdr"],
                 "daac": ["nc", "json"]
             },
             "l2a": {
-                "rfl": ["img", "hdr"],
-                "uncert": ["img", "hdr"],
+                "rfl": ["img", "hdr", "nc"],
+                "rfluncert": ["img", "hdr", "nc"],
                 "lbl": ["img", "hdr"],
                 "lblort": ["img", "hdr"],
                 "statesubs": ["img", "hdr"],
-                "mask": ["img", "hdr"]
+                "mask": ["img", "hdr", "nc"]
             },
             "l2b": {
                 "tetra": ["dir"],
-                "abun": ["img", "hdr"],
-                "abununcert": ["img", "hdr"]
+                "abun": ["img", "hdr", "nc"],
+                "abununcert": ["img", "hdr", "nc"]
             },
             "l3": {
                 "cover": ["img", "hdr"],

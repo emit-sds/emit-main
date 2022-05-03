@@ -102,13 +102,13 @@ class L2BAbundance(SlurmJobTask):
             wm.config['tetracorder_library_dir'], f'r{wm.config["tetracorder_library_basename"]}_envi')
         input_files = {
             "reflectance_file": acq.rfl_img_path,
-            "reflectance_uncertainty_file": acq.uncert_img_path,
+            "reflectance_uncertainty_file": acq.rfluncert_img_path,
             "tetracorder_library_basename": wm.config["tetracorder_library_basename"]
         }
         cmd = ["python", aggregator_exe, tmp_tetra_output_path, tmp_abun_path,
                "--calculate_uncertainty", "1",
                "--reflectance_file", acq.rfl_img_path,
-               "--reflectance_uncertainty_file", acq.uncert_img_path,
+               "--reflectance_uncertainty_file", acq.rfluncert_img_path,
                "--reference_library", standard_library,
                "--research_library", research_library,
                ]
@@ -209,25 +209,27 @@ class L2BFormat(SlurmJobTask):
         output_generator_exe = os.path.join(pge.repo_dir, "output_conversion.py")
         tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
         wm.makedirs(tmp_output_dir)
-        tmp_daac_nc_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l2b.nc")
+        tmp_daac_nc_abun_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l2b_abun.nc")
+        tmp_daac_nc_abununcert_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l2b_abununcert.nc")
         tmp_log_path = os.path.join(self.local_tmp_dir, "output_conversion_pge.log")
 
-        cmd = ["python", output_generator_exe, tmp_daac_nc_path, acq.abun_img_path, acq.abununcert_img_path,
-               acq.loc_img_path, acq.glt_img_path, "--log_file",
+        cmd = ["python", output_generator_exe, tmp_daac_nc_abun_path, tmp_daac_nc_abununcert_path,
+               acq.abun_img_path, acq.abununcert_img_path, acq.loc_img_path, acq.glt_img_path, "--log_file",
                tmp_log_path]
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
         # Copy and rename output files back to /store
-        nc_path = acq.abun_img_path.replace(".img", ".nc")
-        log_path = nc_path.replace(".nc", "_nc_pge.log")
-        wm.copy(tmp_daac_nc_path, nc_path)
+        log_path = acq.abun_nc_path.replace(".nc", "_nc_pge.log")
+        wm.copy(tmp_daac_nc_abun_path, acq.abun_nc_path)
+        wm.copy(tmp_daac_nc_abununcert_path, acq.abununcert_nc_path)
         wm.copy(tmp_log_path, log_path)
 
         # PGE writes metadata to db
-        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(nc_path), tz=datetime.timezone.utc)
+        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.abun_nc_path), tz=datetime.timezone.utc)
         dm = wm.database_manager
         product_dict_netcdf = {
-            "netcdf_path": nc_path,
+            "netcdf_abun_path": acq.abun_nc_path,
+            "netcdf_abununcert_path": acq.abununcert_nc_path,
             "created": nc_creation_time
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2b.abun_netcdf": product_dict_netcdf})
@@ -248,7 +250,8 @@ class L2BFormat(SlurmJobTask):
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
-                "l2b_abun_netcdf_path": nc_path
+                "l2b_abun_netcdf_path": acq.abun_nc_path,
+                "l2b_abununcert_netcdf_path": acq.abununcert_nc_path
             }
         }
 
