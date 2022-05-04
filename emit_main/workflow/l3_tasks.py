@@ -56,12 +56,11 @@ class L3Unmix(SlurmJobTask):
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
-        pge = wm.pges["emit-sds-l3"]
+        pge = wm.pges["SpectralUnmixing"]
 
         # Build PGE commands for run_tetracorder_pge.sh
         unmix_exe = os.path.join(pge.repo_dir, "unmix.jl")
-        endmember_path = os.path.join(pge.repo_dir, "data", "basic_endmember_library.csv")
-        endmember_key = "Class"
+        endmember_key = "level_1"
         tmp_log_path = os.path.join(self.local_tmp_dir,
                                     os.path.basename(acq.cover_img_path).replace(".img", "_pge.log"))
         output_base = os.path.join(self.local_tmp_dir, "unmixing_output")
@@ -70,11 +69,13 @@ class L3Unmix(SlurmJobTask):
         env = os.environ.copy()
         env["PATH"] = "/beegfs/store/shared/julia-1.6.5/bin:${PATH}"
         env["JULIA_DEPOT_PATH"] = "/beegfs/store/shared/.julia_165_shared"
+        env["JULIA_PROJECT"] =  pge.repo_dir
 
         # Build command
-        cmd_unmix = ['julia', '-p', str(self.n_cores), unmix_exe, acq.rfl_img_path, endmember_path, endmember_key, output_base, "--normalization",
-                     "brightness", "--n_mc", "50", "--reflectance_uncertainty_file", acq.uncert_img_path,
-                     "--spectral_starting_column", "2", "--num_endmembers", "3", "--log_file", tmp_log_path]
+        cmd_unmix = ['julia', '-p', str(self.n_cores), unmix_exe, acq.rfl_img_path, wm.config["unmixing_library"], 
+                     endmember_key, output_base, "--normalization", "brightness", "--mode", "sma-best",
+                     "--n_mc", "50", "--reflectance_uncertainty_file", acq.uncert_img_path,
+                     "--spectral_starting_column", "8", "--num_endmembers", "20", "--log_file", tmp_log_path]
 
         pge.run(cmd_unmix, tmp_dir=self.tmp_dir, env=env, use_conda_run=False)
 
