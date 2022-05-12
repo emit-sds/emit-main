@@ -802,6 +802,7 @@ class L1ADeliver(SlurmJobTask):
             [daac_raw_path, daac_raw_hdr_path, daac_browse_path],
             daynight,
             ["ENVI", "ASCII", "PNG"])
+        ummg = daac_converter.add_related_url(ummg, l1a_pge.repo_url, "DOWNLOAD SOFTWARE")
         # TODO: replace w/ database read or read from L1B Geolocate PGE
         tmp_boundary_points_list = [[-118.53, 35.85], [-118.53, 35.659], [-118.397, 35.659], [-118.397, 35.85]]
         ummg = daac_converter.add_boundary_ummg(ummg, tmp_boundary_points_list)

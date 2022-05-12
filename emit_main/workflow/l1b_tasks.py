@@ -600,6 +600,7 @@ class L1BRdnDeliver(SlurmJobTask):
             [daac_rdn_nc_path, daac_obs_nc_path, daac_browse_path],
             daynight,
             ["NETCDF-4", "NETCDF-4", "PNG"])
+        ummg = daac_converter.add_related_url(ummg, l1b_pge.repo_url, "DOWNLOAD SOFTWARE")
         # TODO: replace w/ database read or read from L1B Geolocate PGE
         tmp_boundary_points_list = [[-118.53, 35.85], [-118.53, 35.659], [-118.397, 35.659], [-118.397, 35.85]]
         ummg = daac_converter.add_boundary_ummg(ummg, tmp_boundary_points_list)
@@ -807,6 +808,7 @@ class L1BAttDeliver(SlurmJobTask):
                                               wm.config["extended_build_num"], l1bgeo_pge.repo_name,
                                               l1bgeo_pge.version_tag)
         ummg = daac_converter.add_data_files_ummg(ummg, [daac_nc_path], "Both", ["NETCDF-4"])
+        ummg = daac_converter.add_related_url(ummg, l1bgeo_pge.repo_url, "DOWNLOAD SOFTWARE")
         # TODO: Remove boundary for orbit?
         # TODO: replace w/ database read or read from L1B Geolocate PGE
         # tmp_boundary_points_list = [[-118.53, 35.85], [-118.53, 35.659], [-118.397, 35.659], [-118.397, 35.85]]
