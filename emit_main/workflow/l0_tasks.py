@@ -538,9 +538,11 @@ class L0Deliver(SlurmJobTask):
 
         # Create the UMM-G file
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(stream.ccsds_path), tz=datetime.timezone.utc)
+        l0_pge = wm.pges["emit-sds-l0-pge"]
         ummg = daac_converter.initialize_ummg(granule_ur, creation_time, "EMITL0", collection_version,
-                                              wm.config["extended_build_num"])
+                                              wm.config["extended_build_num"], l0_pge.repo_name, l0_pge.version_tag)
         ummg = daac_converter.add_data_files_ummg(ummg, [daac_ccsds_path], "Unspecified", ["CCSDS"])
+        ummg = daac_converter.add_related_url(ummg, l0_pge.repo_url, "DOWNLOAD SOFTWARE")
         ummg_path = stream.ccsds_path.replace(".bin", ".cmr.json")
         daac_converter.dump_json(ummg, ummg_path)
         wm.change_group_ownership(ummg_path)

@@ -442,13 +442,16 @@ class L2ADeliver(SlurmJobTask):
         # Create the UMM-G file
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rfl_nc_path), tz=datetime.timezone.utc)
         daynight = "Day" if acq.submode == "science" else "Night"
+        l2a_pge = wm.pges["emit-sds-l2a"]
         ummg = daac_converter.initialize_ummg(acq.rfl_granule_ur, nc_creation_time, "EMITL2ARFL",
-                                              acq.collection_version, wm.config["extended_build_num"])
+                                              acq.collection_version, wm.config["extended_build_num"],
+                                              l2a_pge.repo_name, l2a_pge.version_tag)
         ummg = daac_converter.add_data_files_ummg(
             ummg,
             [daac_rfl_nc_path, daac_rfluncert_nc_path, daac_mask_nc_path, daac_browse_path],
             daynight,
             ["NETCDF-4", "NETCDF-4", "NETCDF-4", "PNG"])
+        ummg = daac_converter.add_related_url(ummg, l2a_pge.repo_url, "DOWNLOAD SOFTWARE")
         # TODO: replace w/ database read or read from L1B Geolocate PGE
         tmp_boundary_points_list = [[-118.53, 35.85], [-118.53, 35.659], [-118.397, 35.659], [-118.397, 35.85]]
         ummg = daac_converter.add_boundary_ummg(ummg, tmp_boundary_points_list)
