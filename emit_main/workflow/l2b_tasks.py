@@ -214,8 +214,8 @@ class L2BFormat(SlurmJobTask):
         tmp_log_path = os.path.join(self.local_tmp_dir, "output_conversion_pge.log")
 
         cmd = ["python", output_generator_exe, tmp_daac_nc_abun_path, tmp_daac_nc_abununcert_path,
-               acq.abun_img_path, acq.abununcert_img_path, acq.loc_img_path, acq.glt_img_path, "--log_file",
-               tmp_log_path]
+               acq.abun_img_path, acq.abununcert_img_path, acq.loc_img_path, acq.glt_img_path, 
+               "V0" + str(wm.config["processing_version"]), "--log_file", tmp_log_path]
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
         # Copy and rename output files back to /store

@@ -330,8 +330,8 @@ class L2AFormat(SlurmJobTask):
 
         cmd = ["python", output_generator_exe, tmp_daac_rfl_nc_path, tmp_daac_rfl_unc_nc_path, 
                tmp_daac_mask_nc_path, acq.rfl_img_path, acq.rfluncert_img_path,
-               acq.mask_img_path, acq.loc_img_path, acq.glt_img_path, "--log_file",
-               tmp_log_path]
+               acq.mask_img_path, acq.loc_img_path, acq.glt_img_path, "V0" + str(wm.config["processing_version"]), 
+               "--log_file", tmp_log_path]
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
         # Copy and rename output files back to /store
