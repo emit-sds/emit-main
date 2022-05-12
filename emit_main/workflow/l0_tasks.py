@@ -538,10 +538,9 @@ class L0Deliver(SlurmJobTask):
 
         # Create the UMM-G file
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(stream.ccsds_path), tz=datetime.timezone.utc)
-        ummg = daac_converter.initialize_ummg(granule_ur, creation_time, "EMITL0")
-        # TODO: There is no daynight flag on CCSDS files
-        ummg = daac_converter.add_data_file_ummg(ummg, daac_ccsds_path, "Unspecified")
-        # ummg = daac_converter.add_boundary_ummg(ummg, boundary_points_list)
+        ummg = daac_converter.initialize_ummg(granule_ur, creation_time, "EMITL0", collection_version,
+                                              wm.config["extended_build_num"])
+        ummg = daac_converter.add_data_files_ummg(ummg, [daac_ccsds_path], "Unspecified", ["CCSDS"])
         ummg_path = stream.ccsds_path.replace(".bin", ".cmr.json")
         daac_converter.dump_json(ummg, ummg_path)
         wm.change_group_ownership(ummg_path)
