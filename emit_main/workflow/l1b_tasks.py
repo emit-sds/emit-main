@@ -571,8 +571,7 @@ class L1BRdnDeliver(SlurmJobTask):
         pge = wm.pges["emit-main"]
 
         # Get local SDS names
-        # nc_path = acq.rdn_img_path.replace(".img", ".nc")
-        ummg_path = nc_path.replace(".nc", ".cmr.json")
+        ummg_path = acq.rdn_nc_path.replace(".nc", ".cmr.json")
 
         # Create local/tmp daac names and paths
         daac_rdn_nc_name = f"{acq.rdn_granule_ur}.nc"
@@ -801,8 +800,9 @@ class L1BAttDeliver(SlurmJobTask):
 
         # Create the UMM-G file
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(nc_path), tz=datetime.timezone.utc)
-        ummg = daac_converter.initialize_ummg(granule_ur, nc_creation_time, "EMITL1BATT")
-        ummg = daac_converter.add_data_file_ummg(ummg, daac_nc_path, "Both")
+        ummg = daac_converter.initialize_ummg(granule_ur, nc_creation_time, "EMITL1BATT", collection_version,
+                                              wm.config["extended_build_num"])
+        ummg = daac_converter.add_data_files_ummg(ummg, [daac_nc_path], "Both", ["NETCDF-4"])
         # TODO: Remove boundary for orbit?
         # TODO: replace w/ database read or read from L1B Geolocate PGE
         # tmp_boundary_points_list = [[-118.53, 35.85], [-118.53, 35.659], [-118.397, 35.659], [-118.397, 35.85]]

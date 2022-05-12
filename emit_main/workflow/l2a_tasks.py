@@ -414,27 +414,37 @@ class L2ADeliver(SlurmJobTask):
         pge = wm.pges["emit-main"]
 
         # Get local SDS names
-        nc_path = acq.rfl_img_path.replace(".img", ".nc")
-        ummg_path = nc_path.replace(".nc", ".cmr.json")
+        # nc_path = acq.rfl_img_path.replace(".img", ".nc")
+        ummg_path = acq.rfl_nc_path.replace(".nc", ".cmr.json")
 
         # Create local/tmp daac names and paths
-        daac_nc_name = f"{acq.rfl_granule_ur}.nc"
+        daac_rfl_nc_name = f"{acq.rfl_granule_ur}.nc"
+        daac_rfluncert_nc_name = f"{acq.rfluncert_granule_ur}.nc"
+        daac_mask_nc_name = f"{acq.mask_granule_ur}.nc"
         daac_browse_name = f"{acq.rfl_granule_ur}.png"
         daac_ummg_name = f"{acq.rfl_granule_ur}.cmr.json"
-        daac_nc_path = os.path.join(self.tmp_dir, daac_nc_name)
+        daac_rfl_nc_path = os.path.join(self.tmp_dir, daac_rfl_nc_name)
+        daac_rfluncert_nc_path = os.path.join(self.tmp_dir, daac_rfluncert_nc_name)
+        daac_mask_nc_path = os.path.join(self.tmp_dir, daac_mask_nc_name)
         daac_browse_path = os.path.join(self.tmp_dir, daac_browse_name)
         daac_ummg_path = os.path.join(self.tmp_dir, daac_ummg_name)
 
         # Copy files to tmp dir and rename
-        wm.copy(nc_path, daac_nc_path)
+        wm.copy(acq.rfl_nc_path, daac_rfl_nc_path)
+        wm.copy(acq.rfluncert_nc_path, daac_rfluncert_nc_path)
+        wm.copy(acq.mask_nc_path, daac_mask_nc_path)
         wm.copy(acq.rdn_png_path, daac_browse_path)
 
         # Create the UMM-G file
-        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(nc_path), tz=datetime.timezone.utc)
+        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rfl_nc_path), tz=datetime.timezone.utc)
         daynight = "Day" if acq.submode == "science" else "Night"
-        ummg = daac_converter.initialize_ummg(acq.rfl_granule_ur, nc_creation_time, "EMITL2ARFL")
-        ummg = daac_converter.add_data_file_ummg(ummg, daac_nc_path, daynight)
-        # TODO: Add browse image
+        ummg = daac_converter.initialize_ummg(acq.rfl_granule_ur, nc_creation_time, "EMITL2ARFL",
+                                              acq.collection_version, wm.config["extended_build_num"])
+        ummg = daac_converter.add_data_files_ummg(
+            ummg,
+            [daac_rfl_nc_path, daac_rfluncert_nc_path, daac_mask_nc_path, daac_browse_path],
+            daynight,
+            ["NETCDF-4", "NETCDF-4", "NETCDF-4", "PNG"])
         # TODO: replace w/ database read or read from L1B Geolocate PGE
         tmp_boundary_points_list = [[-118.53, 35.85], [-118.53, 35.659], [-118.397, 35.659], [-118.397, 35.85]]
         ummg = daac_converter.add_boundary_ummg(ummg, tmp_boundary_points_list)
@@ -455,7 +465,7 @@ class L2ADeliver(SlurmJobTask):
                            group, f"{acq.daac_staging_dir};", "fi\""]
         pge.run(cmd_make_target, tmp_dir=self.tmp_dir)
 
-        for path in (daac_nc_path, daac_browse_path, daac_ummg_path):
+        for path in (daac_rfl_nc_path, daac_rfluncert_nc_path, daac_mask_nc_path, daac_browse_path, daac_ummg_path):
             cmd_rsync = ["rsync", "-azv", partial_dir_arg, log_file_arg, path, target]
             pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
 
@@ -464,7 +474,9 @@ class L2ADeliver(SlurmJobTask):
         cnm_submission_id = f"{acq.rfl_granule_ur}_{utc_now.strftime('%Y%m%dt%H%M%S')}"
         cnm_submission_path = os.path.join(acq.l2a_data_dir, cnm_submission_id + "_cnm.json")
         target_src_map = {
-            daac_nc_name: os.path.basename(nc_path),
+            daac_rfl_nc_name: os.path.basename(acq.rfl_nc_path),
+            daac_rfluncert_nc_name: os.path.basename(acq.rfluncert_nc_path),
+            daac_mask_nc_name: os.path.basename(acq.mask_nc_path),
             daac_browse_name: os.path.basename(acq.rdn_png_path),
             daac_ummg_name: os.path.basename(ummg_path)
         }
@@ -478,12 +490,28 @@ class L2ADeliver(SlurmJobTask):
                 "dataVersion": acq.collection_version,
                 "files": [
                     {
-                        "name": daac_nc_name,
-                        "uri": acq.daac_uri_base + daac_nc_name,
+                        "name": daac_rfl_nc_name,
+                        "uri": acq.daac_uri_base + daac_rfl_nc_name,
                         "type": "data",
-                        "size": os.path.getsize(daac_nc_name),
+                        "size": os.path.getsize(daac_rfl_nc_name),
                         "checksumType": "sha512",
-                        "checksum": daac_converter.calc_checksum(daac_nc_path, "sha512")
+                        "checksum": daac_converter.calc_checksum(daac_rfl_nc_path, "sha512")
+                    },
+                    {
+                        "name": daac_rfluncert_nc_name,
+                        "uri": acq.daac_uri_base + daac_rfluncert_nc_name,
+                        "type": "data",
+                        "size": os.path.getsize(daac_rfluncert_nc_name),
+                        "checksumType": "sha512",
+                        "checksum": daac_converter.calc_checksum(daac_rfluncert_nc_path, "sha512")
+                    },
+                    {
+                        "name": daac_mask_nc_name,
+                        "uri": acq.daac_uri_base + daac_mask_nc_name,
+                        "type": "data",
+                        "size": os.path.getsize(daac_mask_nc_name),
+                        "checksumType": "sha512",
+                        "checksum": daac_converter.calc_checksum(daac_mask_nc_path, "sha512")
                     },
                     {
                         "name": daac_browse_name,
@@ -558,7 +586,9 @@ class L2ADeliver(SlurmJobTask):
             "pge_name": pge.repo_url,
             "pge_version": pge.version_tag,
             "pge_input_files": {
-                "netcdf_path": nc_path,
+                "rfl_netcdf_path": acq.rfl_nc_path,
+                "rfluncert_netcdf_path": acq.rfluncert_nc_path,
+                "mask_netcdf_path": acq.mask_nc_path,
                 "rdn_png_path": acq.rdn_png_path
             },
             "pge_run_command": " ".join(cmd_aws),
