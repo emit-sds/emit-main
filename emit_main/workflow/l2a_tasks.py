@@ -17,7 +17,7 @@ from emit_main.workflow.output_targets import AcquisitionTarget
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.l1b_tasks import L1BCalibrate, L1BGeolocate
 from emit_main.workflow.slurm import SlurmJobTask
-from emit_utils.file_checks import envi_header
+from emit_utils.file_checks import envi_header, check_cloudfraction
 from emit_utils import daac_converter
 
 logger = logging.getLogger("emit-main")
@@ -228,6 +228,9 @@ class L2AMask(SlurmJobTask):
                solar_irradiance_path, tmp_mask_path, "--n_cores", str(self.n_cores)]
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
+        cloud_fraction = check_cloudfraction(tmp_mask_path)
+        dm.update_acquisition_metadata(acq.acquisition_id, {"cloud_fraction": cloud_fraction})
+
         # Copy mask files to l2a dir
         wm.copy(tmp_mask_path, acq.mask_img_path)
         wm.copy(tmp_mask_hdr_path, acq.mask_hdr_path)
@@ -249,6 +252,7 @@ class L2AMask(SlurmJobTask):
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         hdr["emit data product version"] = wm.config["processing_version"]
         hdr["emit acquisition daynight"] = acq.daynight
+        hdr["emit acquisition cloudfraction"] = acq.cloud_fraction
         envi.write_envi_header(acq.mask_hdr_path, hdr)
 
         # PGE writes metadata to db
