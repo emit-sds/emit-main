@@ -594,7 +594,7 @@ class L1BRdnDeliver(SlurmJobTask):
         l1b_pge = wm.pges["emit-sds-l1b"]
         ummg = daac_converter.initialize_ummg(acq.rdn_granule_ur, nc_creation_time, "EMITL1BRAD",
                                               acq.collection_version, wm.config["extended_build_num"],
-                                              l1b_pge.repo_name, l1b_pge.version_tag)
+                                              l1b_pge.repo_name, l1b_pge.version_tag, cloud_fraction = acq.cloud_fraction)
         ummg = daac_converter.add_data_files_ummg(
             ummg,
             [daac_rdn_nc_path, daac_obs_nc_path, daac_browse_path],

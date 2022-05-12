@@ -445,7 +445,7 @@ class L2ADeliver(SlurmJobTask):
         l2a_pge = wm.pges["emit-sds-l2a"]
         ummg = daac_converter.initialize_ummg(acq.rfl_granule_ur, nc_creation_time, "EMITL2ARFL",
                                               acq.collection_version, wm.config["extended_build_num"],
-                                              l2a_pge.repo_name, l2a_pge.version_tag)
+                                              l2a_pge.repo_name, l2a_pge.version_tag, cloud_fraction = acq.cloud_fraction)
         ummg = daac_converter.add_data_files_ummg(
             ummg,
             [daac_rfl_nc_path, daac_rfluncert_nc_path, daac_mask_nc_path, daac_browse_path],
