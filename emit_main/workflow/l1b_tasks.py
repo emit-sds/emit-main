@@ -591,8 +591,10 @@ class L1BRdnDeliver(SlurmJobTask):
         # Create the UMM-G file
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rdn_nc_path), tz=datetime.timezone.utc)
         daynight = "Day" if acq.submode == "science" else "Night"
+        l1b_pge = wm.pges["emit-sds-l1b"]
         ummg = daac_converter.initialize_ummg(acq.rdn_granule_ur, nc_creation_time, "EMITL1BRAD",
-                                              acq.collection_version, wm.config["extended_build_num"])
+                                              acq.collection_version, wm.config["extended_build_num"],
+                                              l1b_pge.repo_name, l1b_pge.version_tag)
         ummg = daac_converter.add_data_files_ummg(
             ummg,
             [daac_rdn_nc_path, daac_obs_nc_path, daac_browse_path],
@@ -800,8 +802,10 @@ class L1BAttDeliver(SlurmJobTask):
 
         # Create the UMM-G file
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(nc_path), tz=datetime.timezone.utc)
+        l1bgeo_pge = wm.pges["emit-sds-l1b-geo"]
         ummg = daac_converter.initialize_ummg(granule_ur, nc_creation_time, "EMITL1BATT", collection_version,
-                                              wm.config["extended_build_num"])
+                                              wm.config["extended_build_num"], l1bgeo_pge.repo_name,
+                                              l1bgeo_pge.version_tag)
         ummg = daac_converter.add_data_files_ummg(ummg, [daac_nc_path], "Both", ["NETCDF-4"])
         # TODO: Remove boundary for orbit?
         # TODO: replace w/ database read or read from L1B Geolocate PGE
