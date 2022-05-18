@@ -415,6 +415,7 @@ class L1AReassembleRaw(SlurmJobTask):
             stop_time = None
             start_index = None
             stop_index = None
+            is_empty = None
             with open(tmp_report_path, "r") as f:
                 for line in f.readlines():
                     if "Start time" in line:
@@ -427,6 +428,8 @@ class L1AReassembleRaw(SlurmJobTask):
                         start_index = int(line.rstrip("\n").split(": ")[1])
                     if "Last frame number in acquisition" in line:
                         stop_index = int(line.rstrip("\n").split(": ")[1])
+                    if "Acquisition is empty" in line:
+                        is_empty = bool(line.rstrip("\n").split(": ")[1])
 
             # TODO: Check valid date?
             if start_time is None or stop_time is None:
@@ -454,6 +457,7 @@ class L1AReassembleRaw(SlurmJobTask):
                 "scene": scene,
                 "submode": submode.lower(),
                 "daynight": daynight,
+                "is_empty": is_empty,
                 "associated_dcid": self.dcid
             }
 

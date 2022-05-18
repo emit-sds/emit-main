@@ -161,7 +161,7 @@ class Orbit:
         num_science = 0
         for id in acquisition_ids:
             acq = dm.find_acquisition_by_id(id)
-            if acq is not None and acq["submode"] == "science":
+            if acq is not None and acq["submode"] == "science" and acq["is_empty"] is False:
                 num_science += 1
                 try:
                     rdn_img_path = acq["products"]["l1b"]["rdn"]["img_path"]
@@ -177,6 +177,7 @@ class Orbit:
         if num_science == 0:
             wm.print(__name__, f"Did not find any science acquisitions while checking acquisitions in orbit "
                      f"{self.orbit_id}")
+            return False
 
         # If we made it this far, then return True
         return True

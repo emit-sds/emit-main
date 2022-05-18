@@ -90,7 +90,7 @@ class L2AReflectance(SlurmJobTask):
         tmp_rfl_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_rfl")
         tmp_rfl_hdr_path = envi_header(tmp_rfl_path)
         tmp_rfluncert_path = os.path.join(self.local_tmp_dir, "output",
-                                       self.acquisition_id + "_uncert")
+                                          self.acquisition_id + "_uncert")
         tmp_rfluncert_hdr_path = envi_header(tmp_rfluncert_path)
         tmp_lbl_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_lbl")
         tmp_lbl_hdr_path = envi_header(tmp_lbl_path)
@@ -332,10 +332,10 @@ class L2AFormat(SlurmJobTask):
         tmp_daac_mask_nc_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l2a_mask.nc")
         tmp_log_path = os.path.join(self.local_tmp_dir, "output_conversion_pge.log")
 
-        cmd = ["python", output_generator_exe, tmp_daac_rfl_nc_path, tmp_daac_rfl_unc_nc_path, 
+        cmd = ["python", output_generator_exe, tmp_daac_rfl_nc_path, tmp_daac_rfl_unc_nc_path,
                tmp_daac_mask_nc_path, acq.rfl_img_path, acq.rfluncert_img_path,
-               acq.mask_img_path, acq.loc_img_path, acq.glt_img_path, "--log_file",
-               tmp_log_path]
+               acq.mask_img_path, acq.loc_img_path, acq.glt_img_path, "V0" + str(wm.config["processing_version"]),
+               "--log_file", tmp_log_path]
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
         # Copy and rename output files back to /store

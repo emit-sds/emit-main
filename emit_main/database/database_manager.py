@@ -33,15 +33,21 @@ class DatabaseManager:
         acquisitions_coll = self.db.acquisitions
         return acquisitions_coll.find_one({"acquisition_id": acquisition_id, "build_num": self.config["build_num"]})
 
-    def find_acquisitions_by_orbit_id(self, orbit_id):
+    def find_acquisitions_by_orbit_id(self, orbit_id, submode, is_empty):
         acquisitions_coll = self.db.acquisitions
-        query = {"orbit": orbit_id, "build_num": self.config["build_num"]}
+        query = {
+            "orbit": orbit_id,
+            "submode": submode,
+            "is_empty": is_empty,
+            "build_num": self.config["build_num"]
+        }
         return list(acquisitions_coll.find(query).sort("acquisition_id", 1))
 
-    def find_acquisitions_touching_date_range(self, submode, field, start, stop, sort=1):
+    def find_acquisitions_touching_date_range(self, submode, is_empty, field, start, stop, sort=1):
         acquisitions_coll = self.db.acquisitions
         query = {
             "submode": submode,
+            "is_empty": is_empty,
             field: {"$gte": start, "$lte": stop},
             "build_num": self.config["build_num"]
         }
@@ -49,9 +55,10 @@ class DatabaseManager:
 
     def find_acquisitions_for_calibration(self, start, stop):
         acquisitions_coll = self.db.acquisitions
-        # Query for "science" acquisitions with complete l1a raw outputs but no l1b rdn outputs in time range
+        # Query for non-empty "science" acquisitions with complete l1a raw outputs but no l1b rdn outputs in time range
         query = {
             "submode": "science",
+            "is_empty": False,
             "products.l1a.raw.img_path": {"$exists": 1},
             "products.l1b.rdn.img_path": {"$exists": 0},
             "last_modified": {"$gte": start, "$lte": stop},
@@ -62,6 +69,7 @@ class DatabaseManager:
         for acq in results:
             recent_darks = self.find_acquisitions_touching_date_range(
                 "dark",
+                False,
                 "stop_time",
                 acq["start_time"] - datetime.timedelta(minutes=200),
                 acq["start_time"],
