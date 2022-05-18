@@ -88,6 +88,7 @@ class L1BCalibrate(SlurmJobTask):
             # Find dark image - Get most recent dark image, but throw error if not within last 200 minutes
             recent_darks = dm.find_acquisitions_touching_date_range(
                 "dark",
+                False,
                 "stop_time",
                 acq.start_time - datetime.timedelta(minutes=200),
                 acq.start_time,
@@ -220,8 +221,8 @@ class L1BGeolocate(SlurmJobTask):
             raise RuntimeError(f"Unable to run {self.task_family} on {self.orbit_id} due to missing radiance files in "
                                f"orbit.")
 
-        # Get acquisitions in orbit (only science, not dark) - radiance and line timestamps
-        acquisitions_in_orbit = dm.find_acquisitions_by_orbit_id(orbit.orbit_id)
+        # Get acquisitions in orbit (only non-empty science, not dark) - radiance and line timestamps
+        acquisitions_in_orbit = dm.find_acquisitions_by_orbit_id(orbit.orbit_id, "science", False)
 
         # Build input_files dictionary
         input_files = {
@@ -229,18 +230,17 @@ class L1BGeolocate(SlurmJobTask):
             "timestamp_radiance_pairs": []
         }
         for acq in acquisitions_in_orbit:
-            if acq["submode"] == "science":
-                try:
-                    line_timestamps_path = acq["products"]["l1a"]["raw_line_timestamps"]["txt_path"]
-                    rdn_img_path = acq["products"]["l1b"]["rdn"]["img_path"]
-                except KeyError:
-                    wm.print(__name__, f"Could not find a radiance image path for {acq['acquisition_id']} in DB.")
-                    continue
-                file_pair = {
-                    "timestamps_file": line_timestamps_path,
-                    "radiance_file": rdn_img_path
-                }
-                input_files["timestamp_radiance_pairs"].append(file_pair)
+            try:
+                line_timestamps_path = acq["products"]["l1a"]["raw_line_timestamps"]["txt_path"]
+                rdn_img_path = acq["products"]["l1b"]["rdn"]["img_path"]
+            except KeyError:
+                wm.print(__name__, f"Could not find a radiance image path for {acq['acquisition_id']} in DB.")
+                continue
+            file_pair = {
+                "timestamps_file": line_timestamps_path,
+                "radiance_file": rdn_img_path
+            }
+            input_files["timestamp_radiance_pairs"].append(file_pair)
 
         # Build run command
         pge = wm.pges["emit-sds-l1b-geo"]
@@ -257,7 +257,6 @@ class L1BGeolocate(SlurmJobTask):
         cmd = [l1b_geo_pge_exe, tmp_output_dir, l1b_osp_dir, tmp_input_files_path]
         pge.run(cmd, tmp_dir=self.tmp_dir, use_conda_run=False)
 
-        # TODO: Copy back files and update DB
         # Get unique acquisitions_ids
         output_prods = [os.path.basename(path) for path in glob.glob(os.path.join(tmp_output_dir, "emit*"))]
         output_prods.sort()
