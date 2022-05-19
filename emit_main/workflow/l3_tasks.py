@@ -69,10 +69,10 @@ class L3Unmix(SlurmJobTask):
         env = os.environ.copy()
         env["PATH"] = "/beegfs/store/shared/julia-1.6.5/bin:${PATH}"
         env["JULIA_DEPOT_PATH"] = "/beegfs/store/shared/.julia_165_shared"
-        env["JULIA_PROJECT"] =  pge.repo_dir
+        env["JULIA_PROJECT"] = pge.repo_dir
 
         # Build command
-        cmd_unmix = ['julia', '-p', str(self.n_cores), unmix_exe, acq.rfl_img_path, wm.config["unmixing_library"], 
+        cmd_unmix = ['julia', '-p', str(self.n_cores), unmix_exe, acq.rfl_img_path, wm.config["unmixing_library"],
                      endmember_key, output_base, "--normalization", "brightness", "--mode", "sma-best",
                      "--n_mc", "50", "--reflectance_uncertainty_file", acq.uncert_img_path,
                      "--spectral_starting_column", "8", "--num_endmembers", "20", "--log_file", tmp_log_path]
