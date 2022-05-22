@@ -161,7 +161,7 @@ class Orbit:
         num_science = 0
         for id in acquisition_ids:
             acq = dm.find_acquisition_by_id(id)
-            if acq is not None and acq["submode"] == "science" and acq["is_empty"] is False:
+            if acq is not None and acq["submode"] == "science" and acq["has_min_proc_lines"] is True:
                 num_science += 1
                 try:
                     rdn_img_path = acq["products"]["l1b"]["rdn"]["img_path"]
