@@ -41,7 +41,7 @@ class PGE:
         # jenkins user requires deploy keys to access repos.  These must be unique for each repo and require hostname
         # mapping.  The jenkins hostnames are configured in /home/jenkins/.ssh/config.
         if environment == "jenkins":
-            self.repo_url = self.repo_url.replace("github.jpl.nasa.gov", "github.jpl.nasa.gov-" + self.repo_name)
+            self.repo_url = self.repo_url.replace("github.com", "github.com-" + self.repo_name)
 
     def _get_repo_account(self):
         if self.repo_url.startswith("https"):
