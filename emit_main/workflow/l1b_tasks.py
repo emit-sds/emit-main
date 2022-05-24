@@ -85,16 +85,16 @@ class L1BCalibrate(SlurmJobTask):
         if len(self.dark_path) > 0:
             dark_img_path = self.dark_path
         else:
-            # Find dark image - Get most recent dark image, but throw error if not within last 200 minutes
+            # Find dark image - Get most recent dark image, but throw error if not within last 400 minutes
             recent_darks = dm.find_acquisitions_touching_date_range(
                 "dark",
-                True,
                 "stop_time",
-                acq.start_time - datetime.timedelta(minutes=200),
+                acq.start_time - datetime.timedelta(minutes=400),
                 acq.start_time,
+                min_valid_lines=256,
                 sort=-1)
             if recent_darks is None or len(recent_darks) == 0:
-                raise RuntimeError(f"Unable to find any darks for acquisition {acq.acquisition_id} within last 200 "
+                raise RuntimeError(f"Unable to find any darks for acquisition {acq.acquisition_id} within last 400 "
                                    f"minutes.")
 
             dark_img_path = recent_darks[0]["products"]["l1a"]["raw"]["img_path"]
@@ -221,8 +221,8 @@ class L1BGeolocate(SlurmJobTask):
             raise RuntimeError(f"Unable to run {self.task_family} on {self.orbit_id} due to missing radiance files in "
                                f"orbit.")
 
-        # Get acquisitions in orbit (only science with min proc lines, not dark) - radiance and line timestamps
-        acquisitions_in_orbit = dm.find_acquisitions_by_orbit_id(orbit.orbit_id, "science", True)
+        # Get acquisitions in orbit (only science with at least 1 valid line, not dark) - radiance and line timestamps
+        acquisitions_in_orbit = dm.find_acquisitions_by_orbit_id(orbit.orbit_id, "science", min_valid_lines=1)
 
         # Build input_files dictionary
         input_files = {

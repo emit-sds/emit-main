@@ -33,21 +33,21 @@ class DatabaseManager:
         acquisitions_coll = self.db.acquisitions
         return acquisitions_coll.find_one({"acquisition_id": acquisition_id, "build_num": self.config["build_num"]})
 
-    def find_acquisitions_by_orbit_id(self, orbit_id, submode, has_min_proc_lines):
+    def find_acquisitions_by_orbit_id(self, orbit_id, submode, min_valid_lines=0):
         acquisitions_coll = self.db.acquisitions
         query = {
             "orbit": orbit_id,
             "submode": submode,
-            "has_min_proc_lines": has_min_proc_lines,
+            "num_valid_lines": {"$gte": min_valid_lines},
             "build_num": self.config["build_num"]
         }
         return list(acquisitions_coll.find(query).sort("acquisition_id", 1))
 
-    def find_acquisitions_touching_date_range(self, submode, has_min_proc_lines, field, start, stop, sort=1):
+    def find_acquisitions_touching_date_range(self, submode, field, start, stop, min_valid_lines=0, sort=1):
         acquisitions_coll = self.db.acquisitions
         query = {
             "submode": submode,
-            "has_min_proc_lines": has_min_proc_lines,
+            "num_valid_lines": {"$gte": min_valid_lines},
             field: {"$gte": start, "$lte": stop},
             "build_num": self.config["build_num"]
         }
@@ -55,11 +55,11 @@ class DatabaseManager:
 
     def find_acquisitions_for_calibration(self, start, stop):
         acquisitions_coll = self.db.acquisitions
-        # Query for "science" acquisitions with min processable lines and with complete l1a raw outputs but no l1b rdn
+        # Query for "science" acquisitions with non-zero valid lines and with complete l1a raw outputs but no l1b rdn
         # outputs in time range
         query = {
             "submode": "science",
-            "has_min_proc_lines": True,
+            "num_valid_lines": {"$gte": 1},
             "products.l1a.raw.img_path": {"$exists": 1},
             "products.l1b.rdn.img_path": {"$exists": 0},
             "last_modified": {"$gte": start, "$lte": stop},
@@ -70,10 +70,10 @@ class DatabaseManager:
         for acq in results:
             recent_darks = self.find_acquisitions_touching_date_range(
                 "dark",
-                True,
                 "stop_time",
-                acq["start_time"] - datetime.timedelta(minutes=200),
+                acq["start_time"] - datetime.timedelta(minutes=400),
                 acq["start_time"],
+                min_valid_lines=256,
                 sort=-1)
             if recent_darks is not None and len(recent_darks) > 0:
                 acqs_ready_for_cal.append(acq)
