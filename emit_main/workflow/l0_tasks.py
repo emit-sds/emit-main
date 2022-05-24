@@ -260,8 +260,10 @@ class L0IngestBAD(SlurmJobTask):
         stream = wm.stream
 
         # Find orbits that touch this stream file and update them
-        orbits = dm.find_orbits_touching_date_range("start_time", stream.start_time, stream.stop_time) + \
-            dm.find_orbits_touching_date_range("stop_time", stream.start_time, stream.stop_time) + \
+        orbits = dm.find_orbits_touching_date_range("start_time", stream.start_time,
+                                                    stream.stop_time + datetime.timedelta(seconds=10)) + \
+            dm.find_orbits_touching_date_range("stop_time", stream.start_time - datetime.timedelta(seconds=10),
+                                               stream.stop_time) + \
             dm.find_orbits_encompassing_date_range(stream.start_time, stream.stop_time)
         orbit_symlink_paths = []
         # orbit_l1a_dirs = []
