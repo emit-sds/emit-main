@@ -101,11 +101,11 @@ class Orbit:
             wm.print(__name__, f"No associated BAD STO files for orbit {self.orbit_id}")
             return False
 
-        # TODO: Might need to update start/stop times of sto files to use csv start/stop instead?
         # Check that associated BAD sto files encompass orbit date range
         bad_start_time = datetime.datetime.strptime(bad_sto_files[0].split("_")[3], "%Y%m%dT%H%M%S")
         bad_stop_time = datetime.datetime.strptime(bad_sto_files[-1].split("_")[4].replace(".sto", ""), "%Y%m%dT%H%M%S")
-        if bad_start_time > self.start_time or bad_stop_time < self.stop_time:
+        if bad_start_time > self.start_time - datetime.timedelta(seconds=10) \
+                or bad_stop_time < self.stop_time + datetime.timedelta(seconds=10):
             wm.print(__name__, f"Start and stop time for associated BAD STO files of orbit {self.orbit_id} do not "
                      f"encompass the orbit's entire time range.")
             return False
