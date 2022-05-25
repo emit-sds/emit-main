@@ -106,12 +106,16 @@ class L1BCalibrate(SlurmJobTask):
         utils_path = os.path.join(pge.repo_dir, "utils")
         env = os.environ.copy()
         env["PYTHONPATH"] = f"$PYTHONPATH:{utils_path}"
+        instrument_mode = "default"
+        if acq["instrument_mode"] == "cold_img_mid" or acq["instrument_mode"] == "cold_img_mid_vdda":
+            instrument_mode = "half"
         cmd = ["python", emitrdn_exe,
-               "--config_file", tmp_config_path,
-               "--dark_file", dark_img_path,
-               "--log_file", tmp_log_path,
+               "--mode", instrument_mode,
                "--level", self.level,
+               "--log_file", tmp_log_path,
                acq.raw_img_path,
+               dark_img_path,
+               tmp_config_path,
                tmp_rdn_img_path]
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
