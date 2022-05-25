@@ -43,10 +43,12 @@ class DatabaseManager:
         }
         return list(acquisitions_coll.find(query).sort("acquisition_id", 1))
 
-    def find_acquisitions_touching_date_range(self, submode, field, start, stop, min_valid_lines=0, sort=1):
+    def find_acquisitions_touching_date_range(self, submode, field, start, stop, instrument_mode="cold_img",
+                                              min_valid_lines=0, sort=1):
         acquisitions_coll = self.db.acquisitions
         query = {
             "submode": submode,
+            "instrument_mode": instrument_mode,
             "num_valid_lines": {"$gte": min_valid_lines},
             field: {"$gte": start, "$lte": stop},
             "build_num": self.config["build_num"]
@@ -73,6 +75,7 @@ class DatabaseManager:
                 "stop_time",
                 acq["start_time"] - datetime.timedelta(minutes=400),
                 acq["start_time"],
+                instrument_mode=acq["instrument_mode"],
                 min_valid_lines=256,
                 sort=-1)
             if recent_darks is not None and len(recent_darks) > 0:

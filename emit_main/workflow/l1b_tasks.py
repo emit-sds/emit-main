@@ -91,6 +91,7 @@ class L1BCalibrate(SlurmJobTask):
                 "stop_time",
                 acq.start_time - datetime.timedelta(minutes=400),
                 acq.start_time,
+                instrument_mode=acq["instrument_mode"],
                 min_valid_lines=256,
                 sort=-1)
             if recent_darks is None or len(recent_darks) == 0:

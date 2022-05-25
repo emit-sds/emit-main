@@ -416,6 +416,7 @@ class L1AReassembleRaw(SlurmJobTask):
             start_index = None
             stop_index = None
             num_valid_lines = None
+            instrument_mode = None
             with open(tmp_report_path, "r") as f:
                 for line in f.readlines():
                     if "Start time" in line:
@@ -430,6 +431,8 @@ class L1AReassembleRaw(SlurmJobTask):
                         stop_index = int(line.rstrip("\n").split(": ")[1])
                     if "Number of lines with valid data" in line:
                         num_valid_lines = int(line.rstrip("\n").split(": ")[1])
+                    if "Instrument mode:" in line:
+                        instrument_mode = line.rstrip("\n").split(": ")[1]
 
             # TODO: Check valid date?
             if start_time is None or stop_time is None:
@@ -457,6 +460,7 @@ class L1AReassembleRaw(SlurmJobTask):
                 "scene": scene,
                 "submode": submode.lower(),
                 "daynight": daynight,
+                "instrument_mode": instrument_mode,
                 "num_valid_lines": num_valid_lines,
                 "associated_dcid": self.dcid
             }
