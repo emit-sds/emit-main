@@ -68,6 +68,7 @@ class L2BAbundance(SlurmJobTask):
         env["SP_LOCAL"] = wm.config["specpr_path"]
         env["SP_BIN"] = "${SP_LOCAL}/bin"
         env["TETRA"] = wm.config["tetracorder_path"]
+        env["TETRA_CMDS"] = wm.config["tetracorder_cmds_path"]
         env["PATH"] = "${PATH}:${SP_LOCAL}/bin:${TETRA}/bin:/usr/bin"
 
         # This has to be a bit truncated because of character limitations
@@ -80,7 +81,7 @@ class L2BAbundance(SlurmJobTask):
         # This has to be a bit truncated because of character limitations
         tmp_tetra_output_path = os.path.join(self.local_tmp_dir, os.path.basename(acq.abun_img_path).split('_')[0] + '_tetra')
 
-        cmd_tetra_setup = [wm.config["tetracorder_setup_cmd_path"], tmp_tetra_output_path,
+        cmd_tetra_setup = [os.path.join(wm.config["tetracorder_cmds_path"], 'cmd-setup-tetrun'), tmp_tetra_output_path,
                            wm.config["tetracorder_library_cmdname"], "cube", tmp_rfl_path, "1", "-T", "-20", "80", "C",
                            "-P", ".5", "1.5", "bar"]
         pge.run(cmd_tetra_setup, tmp_dir=self.tmp_dir, env=env)

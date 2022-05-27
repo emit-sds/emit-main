@@ -105,6 +105,7 @@ class L1BCalibrate(SlurmJobTask):
         utils_path = os.path.join(pge.repo_dir, "utils")
         env = os.environ.copy()
         env["PYTHONPATH"] = f"$PYTHONPATH:{utils_path}"
+        env["RAY_worker_register_timeout_seconds"]="600"
         cmd = ["python", emitrdn_exe,
                "--config_file", tmp_config_path,
                "--dark_file", dark_img_path,

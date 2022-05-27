@@ -84,6 +84,8 @@ class L2AReflectance(SlurmJobTask):
         env = os.environ.copy()
         env["SIXS_DIR"] = wm.config["isofit_sixs_dir"]
         env["EMULATOR_DIR"] = emulator_base
+        env["PYTHONPATH"] = "/beegfs/store/emit/dev/repos/isofit/"
+        env["RAY_worker_register_timeout_seconds"]="600"
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
         # Copy output files to l2a dir and rename
@@ -224,9 +226,12 @@ class L2AMask(SlurmJobTask):
             "solar_irradiance_file": solar_irradiance_path
         }
 
+        env = os.environ.copy()
+        env["RAY_worker_register_timeout_seconds"]="600"
+
         cmd = ["python", make_masks_exe, acq.rdn_img_path, acq.loc_img_path, acq.lbl_img_path, acq.statesubs_img_path,
                solar_irradiance_path, tmp_mask_path, "--n_cores", str(self.n_cores)]
-        pge.run(cmd, tmp_dir=self.tmp_dir)
+        pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
         # Copy mask files to l2a dir
         wm.copy(tmp_mask_path, acq.mask_img_path)
