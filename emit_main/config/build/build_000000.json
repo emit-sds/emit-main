@@ -53,12 +53,12 @@
     {
       "url": "git@github.com:emit-sds/emit-sds-l2a.git",
       "tag": "develop",
-      "conda_env": "/beegfs/store/shared_new/anaconda3/envs/emit-isofit-dev"
+      "conda_env": "emit-isofit"
     },
     {
       "url": "git@github.com:emit-sds/isofit.git",
       "tag": "master",
-      "conda_env": "/beegfs/store/shared_new/anaconda3/envs/emit-isofit-dev"
+      "conda_env": "emit-isofit"
     },
     {
       "url": "git@github.com:emit-sds/emit-sds-l2b.git",
