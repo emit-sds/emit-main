@@ -85,16 +85,17 @@ class L1BCalibrate(SlurmJobTask):
         if len(self.dark_path) > 0:
             dark_img_path = self.dark_path
         else:
-            # Find dark image - Get most recent dark image, but throw error if not within last 200 minutes
+            # Find dark image - Get most recent dark image, but throw error if not within last 400 minutes
             recent_darks = dm.find_acquisitions_touching_date_range(
                 "dark",
-                False,
                 "stop_time",
-                acq.start_time - datetime.timedelta(minutes=200),
+                acq.start_time - datetime.timedelta(minutes=400),
                 acq.start_time,
+                instrument_mode=acq["instrument_mode"],
+                min_valid_lines=256,
                 sort=-1)
             if recent_darks is None or len(recent_darks) == 0:
-                raise RuntimeError(f"Unable to find any darks for acquisition {acq.acquisition_id} within last 200 "
+                raise RuntimeError(f"Unable to find any darks for acquisition {acq.acquisition_id} within last 400 "
                                    f"minutes.")
 
             dark_img_path = recent_darks[0]["products"]["l1a"]["raw"]["img_path"]
@@ -105,12 +106,16 @@ class L1BCalibrate(SlurmJobTask):
         utils_path = os.path.join(pge.repo_dir, "utils")
         env = os.environ.copy()
         env["PYTHONPATH"] = f"$PYTHONPATH:{utils_path}"
+        instrument_mode = "default"
+        if acq["instrument_mode"] == "cold_img_mid" or acq["instrument_mode"] == "cold_img_mid_vdda":
+            instrument_mode = "half"
         cmd = ["python", emitrdn_exe,
-               "--config_file", tmp_config_path,
-               "--dark_file", dark_img_path,
-               "--log_file", tmp_log_path,
+               "--mode", instrument_mode,
                "--level", self.level,
+               "--log_file", tmp_log_path,
                acq.raw_img_path,
+               dark_img_path,
+               tmp_config_path,
                tmp_rdn_img_path]
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
@@ -221,8 +226,8 @@ class L1BGeolocate(SlurmJobTask):
             raise RuntimeError(f"Unable to run {self.task_family} on {self.orbit_id} due to missing radiance files in "
                                f"orbit.")
 
-        # Get acquisitions in orbit (only non-empty science, not dark) - radiance and line timestamps
-        acquisitions_in_orbit = dm.find_acquisitions_by_orbit_id(orbit.orbit_id, "science", False)
+        # Get acquisitions in orbit (only science with at least 1 valid line, not dark) - radiance and line timestamps
+        acquisitions_in_orbit = dm.find_acquisitions_by_orbit_id(orbit.orbit_id, "science", min_valid_lines=1)
 
         # Build input_files dictionary
         input_files = {
@@ -570,27 +575,36 @@ class L1BRdnDeliver(SlurmJobTask):
         pge = wm.pges["emit-main"]
 
         # Get local SDS names
-        nc_path = acq.rdn_img_path.replace(".img", ".nc")
-        ummg_path = nc_path.replace(".nc", ".cmr.json")
+        ummg_path = acq.rdn_nc_path.replace(".nc", ".cmr.json")
 
         # Create local/tmp daac names and paths
-        daac_nc_name = f"{acq.rdn_granule_ur}.nc"
+        daac_rdn_nc_name = f"{acq.rdn_granule_ur}.nc"
+        daac_obs_nc_name = f"{acq.obs_granule_ur}.nc"
         daac_browse_name = f"{acq.rdn_granule_ur}.png"
         daac_ummg_name = f"{acq.rdn_granule_ur}.cmr.json"
-        daac_nc_path = os.path.join(self.tmp_dir, daac_nc_name)
+        daac_rdn_nc_path = os.path.join(self.tmp_dir, daac_rdn_nc_name)
+        daac_obs_nc_path = os.path.join(self.tmp_dir, daac_obs_nc_name)
         daac_browse_path = os.path.join(self.tmp_dir, daac_browse_name)
         daac_ummg_path = os.path.join(self.tmp_dir, daac_ummg_name)
 
         # Copy files to tmp dir and rename
-        wm.copy(nc_path, daac_nc_path)
+        wm.copy(acq.rdn_nc_path, daac_rdn_nc_path)
+        wm.copy(acq.obs_nc_path, daac_obs_nc_path)
         wm.copy(acq.rdn_png_path, daac_browse_path)
 
         # Create the UMM-G file
-        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(nc_path), tz=datetime.timezone.utc)
+        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rdn_nc_path), tz=datetime.timezone.utc)
         daynight = "Day" if acq.submode == "science" else "Night"
-        ummg = daac_converter.initialize_ummg(acq.rdn_granule_ur, nc_creation_time, "EMITL1BRAD")
-        ummg = daac_converter.add_data_file_ummg(ummg, daac_nc_path, daynight)
-        # TODO: Add browse image
+        l1b_pge = wm.pges["emit-sds-l1b"]
+        ummg = daac_converter.initialize_ummg(acq.rdn_granule_ur, nc_creation_time, "EMITL1BRAD",
+                                              acq.collection_version, wm.config["extended_build_num"],
+                                              l1b_pge.repo_name, l1b_pge.version_tag, cloud_fraction = acq.cloud_fraction)
+        ummg = daac_converter.add_data_files_ummg(
+            ummg,
+            [daac_rdn_nc_path, daac_obs_nc_path, daac_browse_path],
+            daynight,
+            ["NETCDF-4", "NETCDF-4", "PNG"])
+        ummg = daac_converter.add_related_url(ummg, l1b_pge.repo_url, "DOWNLOAD SOFTWARE")
         # TODO: replace w/ database read or read from L1B Geolocate PGE
         tmp_boundary_points_list = [[-118.53, 35.85], [-118.53, 35.659], [-118.397, 35.659], [-118.397, 35.85]]
         ummg = daac_converter.add_boundary_ummg(ummg, tmp_boundary_points_list)
@@ -611,7 +625,7 @@ class L1BRdnDeliver(SlurmJobTask):
                            group, f"{acq.daac_staging_dir};", "fi\""]
         pge.run(cmd_make_target, tmp_dir=self.tmp_dir)
 
-        for path in (daac_nc_path, daac_browse_path, daac_ummg_path):
+        for path in (daac_rdn_nc_path, daac_obs_nc_path, daac_browse_path, daac_ummg_path):
             cmd_rsync = ["rsync", "-azv", partial_dir_arg, log_file_arg, path, target]
             pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
 
@@ -620,7 +634,8 @@ class L1BRdnDeliver(SlurmJobTask):
         cnm_submission_id = f"{acq.rdn_granule_ur}_{utc_now.strftime('%Y%m%dt%H%M%S')}"
         cnm_submission_path = os.path.join(acq.l1b_data_dir, cnm_submission_id + "_cnm.json")
         target_src_map = {
-            daac_nc_name: os.path.basename(nc_path),
+            daac_rdn_nc_name: os.path.basename(acq.rdn_nc_path),
+            daac_obs_nc_name: os.path.basename(acq.obs_nc_path),
             daac_browse_name: os.path.basename(acq.rdn_png_path),
             daac_ummg_name: os.path.basename(ummg_path)
         }
@@ -634,12 +649,20 @@ class L1BRdnDeliver(SlurmJobTask):
                 "dataVersion": acq.collection_version,
                 "files": [
                     {
-                        "name": daac_nc_name,
-                        "uri": acq.daac_uri_base + daac_nc_name,
+                        "name": daac_rdn_nc_name,
+                        "uri": acq.daac_uri_base + daac_rdn_nc_name,
                         "type": "data",
-                        "size": os.path.getsize(daac_nc_name),
+                        "size": os.path.getsize(daac_rdn_nc_name),
                         "checksumType": "sha512",
-                        "checksum": daac_converter.calc_checksum(daac_nc_path, "sha512")
+                        "checksum": daac_converter.calc_checksum(daac_rdn_nc_path, "sha512")
+                    },
+                    {
+                        "name": daac_obs_nc_name,
+                        "uri": acq.daac_uri_base + daac_obs_nc_name,
+                        "type": "data",
+                        "size": os.path.getsize(daac_obs_nc_name),
+                        "checksumType": "sha512",
+                        "checksum": daac_converter.calc_checksum(daac_obs_nc_path, "sha512")
                     },
                     {
                         "name": daac_browse_name,
@@ -714,7 +737,8 @@ class L1BRdnDeliver(SlurmJobTask):
             "pge_name": pge.repo_url,
             "pge_version": pge.version_tag,
             "pge_input_files": {
-                "netcdf_path": nc_path,
+                "rdn_netcdf_path": acq.rdn_nc_path,
+                "obs_netcdf_path": acq.obs_nc_path,
                 "rdn_png_path": acq.rdn_png_path
             },
             "pge_run_command": " ".join(cmd_aws),
@@ -783,8 +807,12 @@ class L1BAttDeliver(SlurmJobTask):
 
         # Create the UMM-G file
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(nc_path), tz=datetime.timezone.utc)
-        ummg = daac_converter.initialize_ummg(granule_ur, nc_creation_time, "EMITL1BATT")
-        ummg = daac_converter.add_data_file_ummg(ummg, daac_nc_path, "Both")
+        l1bgeo_pge = wm.pges["emit-sds-l1b-geo"]
+        ummg = daac_converter.initialize_ummg(granule_ur, nc_creation_time, "EMITL1BATT", collection_version,
+                                              wm.config["extended_build_num"], l1bgeo_pge.repo_name,
+                                              l1bgeo_pge.version_tag)
+        ummg = daac_converter.add_data_files_ummg(ummg, [daac_nc_path], "Both", ["NETCDF-4"])
+        ummg = daac_converter.add_related_url(ummg, l1bgeo_pge.repo_url, "DOWNLOAD SOFTWARE")
         # TODO: Remove boundary for orbit?
         # TODO: replace w/ database read or read from L1B Geolocate PGE
         # tmp_boundary_points_list = [[-118.53, 35.85], [-118.53, 35.659], [-118.397, 35.659], [-118.397, 35.85]]
