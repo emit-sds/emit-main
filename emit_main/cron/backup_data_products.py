@@ -67,6 +67,7 @@ def main():
         dates.append(date)
 
     date_strs = [d.strftime("%Y%m%d") for d in dates]
+    ts_print(f"==================================")
     ts_print(f"Starting rclone backup using dates: {date_strs}")
     rclone_log = f"/store/shared/rclone/emit/logs/rclone_data_backups.log"
 
