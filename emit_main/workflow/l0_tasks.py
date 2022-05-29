@@ -430,11 +430,12 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                     if orbit_num > 0:
                         prev_orbit_id = str(orbit_num - 1).zfill(5)
                         prev_orbit = dm.find_orbit_by_id(prev_orbit_id)
-                        if prev_orbit is None:
-                            raise RuntimeError(f"Unable to find previous orbit stop time while trying to update orbit "
-                                               f"{orbit_id}")
-                        prev_orbit["stop_time"] = start_time
-                        dm.update_orbit_metadata(prev_orbit_id, prev_orbit)
+                        # if prev_orbit is None:
+                        #     raise RuntimeError(f"Unable to find previous orbit stop time while trying to update orbit "
+                        #                        f"{orbit_id}")
+                        if prev_orbit is not None:
+                            prev_orbit["stop_time"] = start_time
+                            dm.update_orbit_metadata(prev_orbit_id, prev_orbit)
 
                     # Keep track of orbit_ids for log entry
                     orbit_ids.append(orbit_id)
@@ -540,7 +541,7 @@ class L0Deliver(SlurmJobTask):
 
         # Create the UMM-G file
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(stream.ccsds_path), tz=datetime.timezone.utc)
-        l0_pge = wm.pges["emit-sds-l0-pge"]
+        l0_pge = wm.pges["emit-sds-l0"]
         ummg = daac_converter.initialize_ummg(granule_ur, creation_time, "EMITL0", collection_version,
                                               wm.config["extended_build_num"], l0_pge.repo_name, l0_pge.version_tag)
         ummg = daac_converter.add_data_files_ummg(ummg, [daac_ccsds_path], "Unspecified", ["CCSDS"])
