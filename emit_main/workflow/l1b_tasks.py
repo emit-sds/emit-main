@@ -85,16 +85,17 @@ class L1BCalibrate(SlurmJobTask):
         if len(self.dark_path) > 0:
             dark_img_path = self.dark_path
         else:
-            # Find dark image - Get most recent dark image, but throw error if not within last 200 minutes
+            # Find dark image - Get most recent dark image, but throw error if not within last 400 minutes
             recent_darks = dm.find_acquisitions_touching_date_range(
                 "dark",
-                False,
                 "stop_time",
-                acq.start_time - datetime.timedelta(minutes=200),
+                acq.start_time - datetime.timedelta(minutes=400),
                 acq.start_time,
+                instrument_mode=acq["instrument_mode"],
+                min_valid_lines=256,
                 sort=-1)
             if recent_darks is None or len(recent_darks) == 0:
-                raise RuntimeError(f"Unable to find any darks for acquisition {acq.acquisition_id} within last 200 "
+                raise RuntimeError(f"Unable to find any darks for acquisition {acq.acquisition_id} within last 400 "
                                    f"minutes.")
 
             dark_img_path = recent_darks[0]["products"]["l1a"]["raw"]["img_path"]
@@ -105,12 +106,16 @@ class L1BCalibrate(SlurmJobTask):
         utils_path = os.path.join(pge.repo_dir, "utils")
         env = os.environ.copy()
         env["PYTHONPATH"] = f"$PYTHONPATH:{utils_path}"
+        instrument_mode = "default"
+        if acq["instrument_mode"] == "cold_img_mid" or acq["instrument_mode"] == "cold_img_mid_vdda":
+            instrument_mode = "half"
         cmd = ["python", emitrdn_exe,
-               "--config_file", tmp_config_path,
-               "--dark_file", dark_img_path,
-               "--log_file", tmp_log_path,
+               "--mode", instrument_mode,
                "--level", self.level,
+               "--log_file", tmp_log_path,
                acq.raw_img_path,
+               dark_img_path,
+               tmp_config_path,
                tmp_rdn_img_path]
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
@@ -221,8 +226,8 @@ class L1BGeolocate(SlurmJobTask):
             raise RuntimeError(f"Unable to run {self.task_family} on {self.orbit_id} due to missing radiance files in "
                                f"orbit.")
 
-        # Get acquisitions in orbit (only non-empty science, not dark) - radiance and line timestamps
-        acquisitions_in_orbit = dm.find_acquisitions_by_orbit_id(orbit.orbit_id, "science", False)
+        # Get acquisitions in orbit (only science with at least 1 valid line, not dark) - radiance and line timestamps
+        acquisitions_in_orbit = dm.find_acquisitions_by_orbit_id(orbit.orbit_id, "science", min_valid_lines=1)
 
         # Build input_files dictionary
         input_files = {
