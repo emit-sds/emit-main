@@ -31,6 +31,11 @@
       "conda_env": "emit-main"
     },
     {
+      "url": "git@github.com:emit-sds/SpectralUnmixing.git",
+      "tag": "v0.1.0",
+      "conda_env": "emit-main"
+    },
+    {
       "url": "git@github.jpl.nasa.gov:flex-data-compression/EMIT_FLEX_codec.git",
       "tag": "master",
       "conda_env": "emit-main"

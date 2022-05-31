@@ -3,7 +3,7 @@
     "instrument": "emit",
     "environment": "dev",
     "processing_version": "0x",
-    "tetracorder_library_basename": "emita",
+    "tetracorder_library_basename": "06emita",
     "tetracorder_library_cmdname": "emit_a",
     "luigi_local_scheduler": false,
     "luigi_workers": 2
@@ -61,6 +61,7 @@
     "tetracorder_path": "/beegfs/store/shared/spectroscopy-tetracorder/tetracorder5.26",
     "tetracorder_cmds_path": "/beegfs/store/shared/spectroscopy-tetracorder/tetracorder.cmds/tetracorder5.26e.cmds",
     "tetracorder_library_dir": "/beegfs/store/tetracorder/official_libraries",
+    "unmixing_library": "/beegfs/store/shared/unmixing_libraries/combined_geofilter.csv",
     "versions": []
   }
 }

@@ -8,6 +8,7 @@ import datetime
 import json
 import logging
 import os
+import time
 
 import luigi
 import spectral.io.envi as envi
@@ -56,6 +57,7 @@ class L2BAbundance(SlurmJobTask):
 
     def work(self):
 
+        start_time = time.time()
         logger.debug(self.task_family + " run")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
@@ -138,7 +140,8 @@ class L2BAbundance(SlurmJobTask):
             os.path.getmtime(acq.abun_img_path), tz=datetime.timezone.utc)
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         hdr["emit data product version"] = wm.config["processing_version"]
-        hdr["emit acquisition daynight"] = acq.daynight
+        daynight = "Day" if acq.submode == "science" else "Night"
+        hdr["emit acquisition daynight"] = daynight
         envi.write_envi_header(acq.abun_hdr_path, hdr)
 
         # PGE writes metadata to db
@@ -155,6 +158,7 @@ class L2BAbundance(SlurmJobTask):
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2b.abun": product_dict})
 
+        total_time = time.time() - start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -163,6 +167,7 @@ class L2BAbundance(SlurmJobTask):
             "pge_run_command": " ".join(cmd),
             "documentation_version": doc_version,
             "product_creation_time": creation_time,
+            "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
