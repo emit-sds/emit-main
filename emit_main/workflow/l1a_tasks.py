@@ -415,7 +415,8 @@ class L1AReassembleRaw(SlurmJobTask):
             stop_time = None
             start_index = None
             stop_index = None
-            is_empty = None
+            num_valid_lines = None
+            instrument_mode = None
             with open(tmp_report_path, "r") as f:
                 for line in f.readlines():
                     if "Start time" in line:
@@ -428,8 +429,10 @@ class L1AReassembleRaw(SlurmJobTask):
                         start_index = int(line.rstrip("\n").split(": ")[1])
                     if "Last frame number in acquisition" in line:
                         stop_index = int(line.rstrip("\n").split(": ")[1])
-                    if "Acquisition is empty" in line:
-                        is_empty = bool(line.rstrip("\n").split(": ")[1])
+                    if "Number of lines with valid data" in line:
+                        num_valid_lines = int(line.rstrip("\n").split(": ")[1])
+                    if "Instrument mode:" in line:
+                        instrument_mode = line.rstrip("\n").split(": ")[1]
 
             # TODO: Check valid date?
             if start_time is None or stop_time is None:
@@ -457,7 +460,8 @@ class L1AReassembleRaw(SlurmJobTask):
                 "scene": scene,
                 "submode": submode.lower(),
                 "daynight": daynight,
-                "is_empty": is_empty,
+                "instrument_mode": instrument_mode,
+                "num_valid_lines": num_valid_lines,
                 "associated_dcid": self.dcid
             }
 
@@ -797,9 +801,17 @@ class L1ADeliver(SlurmJobTask):
 
         # First create the UMM-G file
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.raw_img_path), tz=datetime.timezone.utc)
-        ummg = daac_converter.initialize_ummg(acq.raw_granule_ur, creation_time, "EMITL1ARAW")
+        l1a_pge = wm.pges["emit-sds-l1a"]
+        ummg = daac_converter.initialize_ummg(acq.raw_granule_ur, creation_time, "EMITL1ARAW", acq.collection_version,
+                                              wm.config["extended_build_num"], l1a_pge.repo_name, l1a_pge.version_tag, 
+                                              cloud_fraction = acq.cloud_fraction)
         daynight = "Day" if acq.submode == "science" else "Night"
-        ummg = daac_converter.add_data_file_ummg(ummg, daac_raw_path, daynight)
+        ummg = daac_converter.add_data_files_ummg(
+            ummg,
+            [daac_raw_path, daac_raw_hdr_path, daac_browse_path],
+            daynight,
+            ["ENVI", "ASCII", "PNG"])
+        ummg = daac_converter.add_related_url(ummg, l1a_pge.repo_url, "DOWNLOAD SOFTWARE")
         # TODO: replace w/ database read or read from L1B Geolocate PGE
         tmp_boundary_points_list = [[-118.53, 35.85], [-118.53, 35.659], [-118.397, 35.659], [-118.397, 35.85]]
         ummg = daac_converter.add_boundary_ummg(ummg, tmp_boundary_points_list)
@@ -1126,8 +1138,8 @@ class L1AReformatBAD(SlurmJobTask):
         tmp_log_path = os.path.join(self.local_tmp_dir, "reformat_bad_pge.log")
         cmd = ["python", reformat_bad_exe, tmp_bad_sto_dir,
                "--work_dir", self.local_tmp_dir,
-               # "--start_time", orbit.start_time.strftime("%Y-%m-%dT%H:%M:%S"),
-               # "--stop_time", orbit.stop_time.strftime("%Y-%m-%dT%H:%M:%S"),
+               "--start_time", orbit.start_time.strftime("%Y-%m-%dT%H:%M:%S") - datetime.timedelta(seconds=10),
+               "--stop_time", orbit.stop_time.strftime("%Y-%m-%dT%H:%M:%S") + datetime.timedelta(seconds=10),
                "--level", self.level,
                "--log_path", tmp_log_path]
         env = os.environ.copy()

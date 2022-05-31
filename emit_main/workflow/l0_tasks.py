@@ -260,8 +260,10 @@ class L0IngestBAD(SlurmJobTask):
         stream = wm.stream
 
         # Find orbits that touch this stream file and update them
-        orbits = dm.find_orbits_touching_date_range("start_time", stream.start_time, stream.stop_time) + \
-            dm.find_orbits_touching_date_range("stop_time", stream.start_time, stream.stop_time) + \
+        orbits = dm.find_orbits_touching_date_range("start_time", stream.start_time,
+                                                    stream.stop_time + datetime.timedelta(seconds=10)) + \
+            dm.find_orbits_touching_date_range("stop_time", stream.start_time - datetime.timedelta(seconds=10),
+                                               stream.stop_time) + \
             dm.find_orbits_encompassing_date_range(stream.start_time, stream.stop_time)
         orbit_symlink_paths = []
         # orbit_l1a_dirs = []
@@ -428,11 +430,12 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                     if orbit_num > 0:
                         prev_orbit_id = str(orbit_num - 1).zfill(5)
                         prev_orbit = dm.find_orbit_by_id(prev_orbit_id)
-                        if prev_orbit is None:
-                            raise RuntimeError(f"Unable to find previous orbit stop time while trying to update orbit "
-                                               f"{orbit_id}")
-                        prev_orbit["stop_time"] = start_time
-                        dm.update_orbit_metadata(prev_orbit_id, prev_orbit)
+                        # if prev_orbit is None:
+                        #     raise RuntimeError(f"Unable to find previous orbit stop time while trying to update orbit "
+                        #                        f"{orbit_id}")
+                        if prev_orbit is not None:
+                            prev_orbit["stop_time"] = start_time
+                            dm.update_orbit_metadata(prev_orbit_id, prev_orbit)
 
                     # Keep track of orbit_ids for log entry
                     orbit_ids.append(orbit_id)
@@ -538,10 +541,11 @@ class L0Deliver(SlurmJobTask):
 
         # Create the UMM-G file
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(stream.ccsds_path), tz=datetime.timezone.utc)
-        ummg = daac_converter.initialize_ummg(granule_ur, creation_time, "EMITL0")
-        # TODO: There is no daynight flag on CCSDS files
-        ummg = daac_converter.add_data_file_ummg(ummg, daac_ccsds_path, "Unspecified")
-        # ummg = daac_converter.add_boundary_ummg(ummg, boundary_points_list)
+        l0_pge = wm.pges["emit-sds-l0"]
+        ummg = daac_converter.initialize_ummg(granule_ur, creation_time, "EMITL0", collection_version,
+                                              wm.config["extended_build_num"], l0_pge.repo_name, l0_pge.version_tag)
+        ummg = daac_converter.add_data_files_ummg(ummg, [daac_ccsds_path], "Unspecified", ["CCSDS"])
+        ummg = daac_converter.add_related_url(ummg, l0_pge.repo_url, "DOWNLOAD SOFTWARE")
         ummg_path = stream.ccsds_path.replace(".bin", ".cmr.json")
         daac_converter.dump_json(ummg, ummg_path)
         wm.change_group_ownership(ummg_path)
