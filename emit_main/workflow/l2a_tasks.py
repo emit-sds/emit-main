@@ -8,6 +8,7 @@ import datetime
 import json
 import logging
 import os
+import time
 
 import luigi
 import spectral.io.envi as envi
@@ -56,6 +57,7 @@ class L2AReflectance(SlurmJobTask):
 
     def work(self):
 
+        start_time = time.time()
         logger.debug(f"{self.task_family} run: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
@@ -84,6 +86,9 @@ class L2AReflectance(SlurmJobTask):
         env = os.environ.copy()
         env["SIXS_DIR"] = wm.config["isofit_sixs_dir"]
         env["EMULATOR_DIR"] = emulator_base
+        isofit_pge = wm.pges["isofit"]
+        env["PYTHONPATH"] = isofit_pge.repo_dir
+        env["RAY_worker_register_timeout_seconds"]="600"
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
         # Copy output files to l2a dir and rename
@@ -128,7 +133,8 @@ class L2AReflectance(SlurmJobTask):
                 os.path.getmtime(img_path), tz=datetime.timezone.utc)
             hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
             hdr["emit data product version"] = wm.config["processing_version"]
-            hdr["emit acquisition daynight"] = acq.daynight
+            daynight = "Day" if acq.submode == "science" else "Night"
+            hdr["emit acquisition daynight"] = daynight
             envi.write_envi_header(hdr_path, hdr)
 
             # Update product dictionary in DB
@@ -149,6 +155,7 @@ class L2AReflectance(SlurmJobTask):
                 dm.update_acquisition_metadata(
                     acq.acquisition_id, {"products.l2a.uncert": product_dict})
 
+        total_time = time.time() - start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -157,6 +164,7 @@ class L2AReflectance(SlurmJobTask):
             "pge_run_command": " ".join(cmd),
             "documentation_version": doc_version,
             "product_creation_time": creation_time,
+            "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
@@ -201,6 +209,7 @@ class L2AMask(SlurmJobTask):
 
     def work(self):
 
+        start_time = time.time()
         logger.debug(self.task_family + " run")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
@@ -224,9 +233,15 @@ class L2AMask(SlurmJobTask):
             "solar_irradiance_file": solar_irradiance_path
         }
 
+        env = os.environ.copy()
+        isofit_pge = wm.pges["isofit"]
+        env["PYTHONPATH"] = isofit_pge.repo_dir
+
+        env["RAY_worker_register_timeout_seconds"]="600"
+
         cmd = ["python", make_masks_exe, acq.rdn_img_path, acq.loc_img_path, acq.lbl_img_path, acq.statesubs_img_path,
                solar_irradiance_path, tmp_mask_path, "--n_cores", str(self.n_cores)]
-        pge.run(cmd, tmp_dir=self.tmp_dir)
+        pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
         cloud_fraction = check_cloudfraction(tmp_mask_path)
         dm.update_acquisition_metadata(acq.acquisition_id, {"cloud_fraction": cloud_fraction})
@@ -269,6 +284,7 @@ class L2AMask(SlurmJobTask):
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2a.mask": product_dict})
 
+        total_time = time.time() - start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -277,6 +293,7 @@ class L2AMask(SlurmJobTask):
             "pge_run_command": " ".join(cmd),
             "documentation_version": doc_version,
             "product_creation_time": creation_time,
+            "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
