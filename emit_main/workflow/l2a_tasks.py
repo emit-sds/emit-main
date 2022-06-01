@@ -86,7 +86,8 @@ class L2AReflectance(SlurmJobTask):
         env = os.environ.copy()
         env["SIXS_DIR"] = wm.config["isofit_sixs_dir"]
         env["EMULATOR_DIR"] = emulator_base
-        env["PYTHONPATH"] = "/beegfs/store/emit/dev/repos/isofit/"
+        isofit_pge = wm.pges["isofit"]
+        env["PYTHONPATH"] = isofit_pge.repo_dir
         env["RAY_worker_register_timeout_seconds"]="600"
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
@@ -233,7 +234,9 @@ class L2AMask(SlurmJobTask):
         }
 
         env = os.environ.copy()
-        env["PYTHONPATH"] = "/beegfs/store/emit/dev/repos/isofit/"
+        isofit_pge = wm.pges["isofit"]
+        env["PYTHONPATH"] = isofit_pge.repo_dir
+
         env["RAY_worker_register_timeout_seconds"]="600"
 
         cmd = ["python", make_masks_exe, acq.rdn_img_path, acq.loc_img_path, acq.lbl_img_path, acq.statesubs_img_path,
