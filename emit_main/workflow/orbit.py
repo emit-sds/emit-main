@@ -116,7 +116,7 @@ class Orbit:
             if prev_file is None:
                 prev_file = file
                 continue
-            prev_stop_time = datetime.datetime.strptime(prev_file.split("_")[4], "%Y%m%dT%H%M%S")
+            prev_stop_time = datetime.datetime.strptime(prev_file.split("_")[4].replace(".sto", ""), "%Y%m%dT%H%M%S")
             cur_start_time = datetime.datetime.strptime(file.split("_")[3], "%Y%m%dT%H%M%S")
             gap = cur_start_time - prev_stop_time
             # If the gap is bigger than 10 seconds return False
