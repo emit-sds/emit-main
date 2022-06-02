@@ -8,6 +8,7 @@ import datetime
 import json
 import logging
 import os
+import time
 
 import luigi
 import spectral.io.envi as envi
@@ -56,6 +57,7 @@ class L2BAbundance(SlurmJobTask):
 
     def work(self):
 
+        start_time = time.time()
         logger.debug(self.task_family + " run")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
@@ -68,6 +70,7 @@ class L2BAbundance(SlurmJobTask):
         env["SP_LOCAL"] = wm.config["specpr_path"]
         env["SP_BIN"] = "${SP_LOCAL}/bin"
         env["TETRA"] = wm.config["tetracorder_path"]
+        env["TETRA_CMDS"] = wm.config["tetracorder_cmds_path"]
         env["PATH"] = "${PATH}:${SP_LOCAL}/bin:${TETRA}/bin:/usr/bin"
 
         # This has to be a bit truncated because of character limitations
@@ -80,7 +83,7 @@ class L2BAbundance(SlurmJobTask):
         # This has to be a bit truncated because of character limitations
         tmp_tetra_output_path = os.path.join(self.local_tmp_dir, os.path.basename(acq.abun_img_path).split('_')[0] + '_tetra')
 
-        cmd_tetra_setup = [wm.config["tetracorder_setup_cmd_path"], tmp_tetra_output_path,
+        cmd_tetra_setup = [os.path.join(wm.config["tetracorder_cmds_path"], 'cmd-setup-tetrun'), tmp_tetra_output_path,
                            wm.config["tetracorder_library_cmdname"], "cube", tmp_rfl_path, "1", "-T", "-20", "80", "C",
                            "-P", ".5", "1.5", "bar"]
         pge.run(cmd_tetra_setup, tmp_dir=self.tmp_dir, env=env)
@@ -137,7 +140,8 @@ class L2BAbundance(SlurmJobTask):
             os.path.getmtime(acq.abun_img_path), tz=datetime.timezone.utc)
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         hdr["emit data product version"] = wm.config["processing_version"]
-        hdr["emit acquisition daynight"] = acq.daynight
+        daynight = "Day" if acq.submode == "science" else "Night"
+        hdr["emit acquisition daynight"] = daynight
         envi.write_envi_header(acq.abun_hdr_path, hdr)
 
         # PGE writes metadata to db
@@ -154,6 +158,7 @@ class L2BAbundance(SlurmJobTask):
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2b.abun": product_dict})
 
+        total_time = time.time() - start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -162,6 +167,7 @@ class L2BAbundance(SlurmJobTask):
             "pge_run_command": " ".join(cmd),
             "documentation_version": doc_version,
             "product_creation_time": creation_time,
+            "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
