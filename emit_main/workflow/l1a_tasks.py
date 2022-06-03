@@ -1138,8 +1138,8 @@ class L1AReformatBAD(SlurmJobTask):
         tmp_log_path = os.path.join(self.local_tmp_dir, "reformat_bad_pge.log")
         cmd = ["python", reformat_bad_exe, tmp_bad_sto_dir,
                "--work_dir", self.local_tmp_dir,
-               "--start_time", orbit.start_time.strftime("%Y-%m-%dT%H:%M:%S") - datetime.timedelta(seconds=10),
-               "--stop_time", orbit.stop_time.strftime("%Y-%m-%dT%H:%M:%S") + datetime.timedelta(seconds=10),
+               "--start_time", (orbit.start_time - datetime.timedelta(seconds=10)).strftime("%Y-%m-%dT%H:%M:%S"),
+               "--stop_time", (orbit.stop_time + datetime.timedelta(seconds=10)).strftime("%Y-%m-%dT%H:%M:%S"),
                "--level", self.level,
                "--log_path", tmp_log_path]
         env = os.environ.copy()

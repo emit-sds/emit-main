@@ -79,7 +79,7 @@ class L1BCalibrate(SlurmJobTask):
 
         # Also update the nested "modes"
         if "modes" in config:
-            for key, value in config["modes"]:
+            for key, value in config["modes"].items():
                 for k, v in value.items():
                     if "_file" in k:
                         if not v.startswith("/"):
