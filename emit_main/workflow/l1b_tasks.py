@@ -65,7 +65,8 @@ class L1BCalibrate(SlurmJobTask):
         tmp_rdn_img_path = os.path.join(tmp_output_dir, os.path.basename(acq.rdn_img_path))
         log_name = os.path.basename(acq.rdn_img_path.replace(".img", "_pge.log"))
         tmp_log_path = os.path.join(tmp_output_dir, log_name)
-        with open(wm.config["l1b_config_path"], "r") as f:
+        l1b_config_path = wm.config["l1b_config_path"]
+        with open(l1b_config_path, "r") as f:
             config = json.load(f)
 
         # Update config file values with absolute paths and store all input files for logging later
@@ -73,8 +74,17 @@ class L1BCalibrate(SlurmJobTask):
         for key, value in config.items():
             if "_file" in key:
                 if not value.startswith("/"):
-                    config[key] = os.path.abspath(os.path.join(pge.repo_dir, value))
+                    config[key] = os.path.abspath(os.path.join(os.path.dirname(l1b_config_path), value))
                 input_files[key] = config[key]
+
+        # Also update the nested "modes"
+        if "modes" in config:
+            for key, value in config["modes"]:
+                for k, v in value.items():
+                    if "_file" in k:
+                        if not v.startswith("/"):
+                            config["modes"][key][k] = os.path.abspath(os.path.join(os.path.dirname(l1b_config_path), v))
+                        input_files[k] = config["modes"][key][k]
 
         tmp_config_path = os.path.join(self.local_tmp_dir, "l1b_config.json")
         with open(tmp_config_path, "w") as outfile:
