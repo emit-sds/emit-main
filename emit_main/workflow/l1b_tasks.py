@@ -91,7 +91,7 @@ class L1BCalibrate(SlurmJobTask):
                 "stop_time",
                 acq.start_time - datetime.timedelta(minutes=400),
                 acq.start_time,
-                instrument_mode=acq["instrument_mode"],
+                instrument_mode=acq.instrument_mode,
                 min_valid_lines=256,
                 sort=-1)
             if recent_darks is None or len(recent_darks) == 0:
@@ -108,7 +108,7 @@ class L1BCalibrate(SlurmJobTask):
         env["PYTHONPATH"] = f"$PYTHONPATH:{utils_path}"
         env["RAY_worker_register_timeout_seconds"]="600"
         instrument_mode = "default"
-        if acq["instrument_mode"] == "cold_img_mid" or acq["instrument_mode"] == "cold_img_mid_vdda":
+        if acq.instrument_mode == "cold_img_mid" or acq.instrument_mode == "cold_img_mid_vdda":
             instrument_mode = "half"
         cmd = ["python", emitrdn_exe,
                "--mode", instrument_mode,
