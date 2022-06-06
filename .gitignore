@@ -1,6 +1,9 @@
 # Ignore PyCharm project files
 .idea
 
+# Ignore Mac .DS_Store
+.DS_Store
+
 # Ignore pytest-cov/coverage file
 .coverage
 

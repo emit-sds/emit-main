@@ -5,7 +5,7 @@
 
 echo "$(date +"%F %T,%3N"): Executing ingest_pcap_files.sh cron job with '$1' environment and '$2' conda environment."
 
-source /shared/anaconda3/etc/profile.d/conda.sh
+source /beegfs/store/shared/anaconda3/etc/profile.d/conda.sh
 conda activate $2
 
 TVAC_DIR=/store/emit/$1/tvac

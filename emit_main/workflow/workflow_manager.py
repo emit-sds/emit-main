@@ -108,7 +108,9 @@ class WorkflowManager:
         for repo in self.config["repositories"]:
             conda_env = None
             if "conda_env" in repo and len(repo["conda_env"]) > 0:
-                if self.config["environment"] in ("test", "ops"):
+                if repo["conda_env"].startswith("/"):
+                    conda_env = repo["conda_env"]
+                elif self.config["environment"] in ("test", "ops"):
                     conda_env = repo["conda_env"] + "-" + self.config["environment"]
                 else:
                     conda_env = repo["conda_env"] + "-dev"
@@ -159,7 +161,7 @@ class WorkflowManager:
 
         try:
             # Send the message via our own SMTP server
-            s = smtplib.SMTP(self.config["smtp_host"], self.config["smtp_port"], timeout=300)
+            s = smtplib.SMTP(self.config["smtp_host"], self.config["smtp_port"], timeout=15)
             s.starttls()
             s.login(self.config["email_user"], self.config["email_password"])
             s.sendmail(sender, recipient_list, msg.as_string())
@@ -185,8 +187,11 @@ class WorkflowManager:
     def makedirs(self, d):
         # Make directory if it doesn't exist
         if not os.path.exists(d):
-            os.makedirs(d)
-            self.change_group_ownership(d)
+            try:
+                os.makedirs(d)
+                self.change_group_ownership(d)
+            except Exception as e:
+                self.print(__name__, f"Unable to make directory {d}, but proceeding anyway...")
 
     def copy(self, src, dst):
         shutil.copy2(src, dst)

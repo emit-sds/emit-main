@@ -14,6 +14,7 @@ import os
 from emit_main.workflow.output_targets import StreamTarget
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_main.workflow.workflow_manager import WorkflowManager
+from emit_utils import daac_converter
 
 logger = logging.getLogger("emit-main")
 
@@ -30,15 +31,12 @@ class L0StripHOSC(SlurmJobTask):
     partition = luigi.Parameter()
     miss_pkt_thresh = luigi.FloatParameter(default=0.1)
 
+    memory = 90000
+
     task_namespace = "emit"
 
     def requires(self):
         logger.debug(f"{self.task_family} requires: {self.stream_path}")
-        wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
-        if wm.stream is None:
-            # Insert new stream in db
-            dm = wm.database_manager
-            dm.insert_hosc_stream(os.path.basename(self.stream_path))
         return None
 
     def output(self):
@@ -49,8 +47,7 @@ class L0StripHOSC(SlurmJobTask):
     def work(self):
         logger.debug(f"{self.task_family} work: {self.stream_path}")
 
-        wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
-        stream = wm.stream
+        wm = WorkflowManager(config_path=self.config_path)
         pge = wm.pges["emit-sds-l0"]
 
         # Build command and run
@@ -60,11 +57,14 @@ class L0StripHOSC(SlurmJobTask):
         # Create input dir and copy stream file into dir
         tmp_input_dir = os.path.join(self.local_tmp_dir, "input")
         wm.makedirs(tmp_input_dir)
-        tmp_input_path = os.path.join(tmp_input_dir, os.path.basename(self.stream_path))
+        hosc_name = os.path.basename(self.stream_path)
+        # TODO: Get apid based on new filename
+        apid = hosc_name.split("_")[1]
+        tmp_input_path = os.path.join(tmp_input_dir, hosc_name)
         wm.copy(self.stream_path, tmp_input_path)
         # Create output dir and log file name
         tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
-        l0_pge_log_name = stream.hosc_name.replace(".bin", "_l0_pge.log")
+        l0_pge_log_name = os.path.basename(tmp_input_path).replace(".bin", "_l0_pge.log")
         tmp_log = os.path.join(tmp_output_dir, l0_pge_log_name)
         # Set up command
         cmd = [sds_l0_exe, tmp_input_dir, tmp_output_dir, tmp_log, sds_packet_count_exe, ios_l0_proc]
@@ -74,9 +74,9 @@ class L0StripHOSC(SlurmJobTask):
         env["AIT_ISS_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "sim.yaml")
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
-        # Get tmp ccsds and log names
-        tmp_ccsds_path = glob.glob(os.path.join(tmp_output_dir, stream.apid + "*.bin"))[0]
-        tmp_report_path = glob.glob(os.path.join(tmp_output_dir, stream.apid + "*_report.txt"))[0]
+        # Get tmp ccsds and log name
+        tmp_ccsds_path = glob.glob(os.path.join(tmp_output_dir, apid + "*.bin"))[0]
+        tmp_report_path = glob.glob(os.path.join(tmp_output_dir, apid + "*_report.txt"))[0]
 
         # Check report file to see if missing PSCs exceed threshold
         packet_count = 0
@@ -85,29 +85,43 @@ class L0StripHOSC(SlurmJobTask):
             for line in f.readlines():
                 if "Packet Count" in line:
                     packet_count = int(line.rstrip("\n").split(" ")[-1])
-                if "Missing PSC Count" in line:
+                if "PSC Errors Encountered" in line:
                     missing_packets = int(line.rstrip("\n").split(" ")[-1])
         miss_pkt_percent = missing_packets / packet_count
         if missing_packets / packet_count >= self.miss_pkt_thresh:
-            raise RuntimeError(f"Missing {missing_packets} packets out of {packet_count} total is greater than the "
+            raise RuntimeError(f"{missing_packets} PSC errors out of {packet_count} total is greater than the "
                                f"missing packet threshold of {self.miss_pkt_thresh}")
 
-        # TODO: Add check for "File Size Match" in PGE
-        # TODO: Replace start/stop with CCSDS start and stop
         # Set up command to get CCSDS start/stop times
-        # get_start_stop_exe = os.path.join(pge.repo_dir, "get_ccsds_start_stop_times.py")
-        # start_stop_json = tmp_ccsds_path.replace(".bin", ".json")
-        # cmd_timing = ["python", get_start_stop_exe, tmp_ccsds_path, start_stop_json]
-        # pge.run(cmd_timing, tmp_dir=self.tmp_dir, env=env)
+        get_start_stop_exe = os.path.join(pge.repo_dir, "get_ccsds_start_stop_times.py")
+        start_stop_json = os.path.join(tmp_output_dir, os.path.basename(tmp_ccsds_path).replace(".bin", ".json"))
+        cmd_timing = ["python", get_start_stop_exe, tmp_ccsds_path, start_stop_json]
+        pge.run(cmd_timing, tmp_dir=self.tmp_dir, env=env)
+        with open(start_stop_json, "r") as f:
+            timing = json.load(f)
 
-        # Get CCSDS start time and file name and report name
-        tmp_ccsds_name = os.path.basename(tmp_ccsds_path)
-        ccsds_start_time_str = tmp_ccsds_name.split("_")[1]
-        ccsds_start_time = datetime.datetime.strptime(ccsds_start_time_str, "%Y-%m-%dT%H:%M:%S")
+        # Insert new stream in DB
+        dm = wm.database_manager
+        metadata = {
+            "apid": apid,
+            "start_time": datetime.datetime.strptime(timing["start_time"], "%Y-%m-%dT%H:%M:%S"),
+            "stop_time": datetime.datetime.strptime(timing["stop_time"], "%Y-%m-%dT%H:%M:%S"),
+            "build_num": wm.config["build_num"],
+            "processing_version": wm.config["processing_version"],
+            "hosc_name": hosc_name,
+            "processing_log": []
+        }
+        dm.insert_stream(hosc_name, metadata)
+
+        # Get the workflow manager again with the stream object
+        wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
+        stream = wm.stream
+
+        # Build the CCSDS file name and report name using the UTC start time derived from the data
         ccsds_name = "_".join([
             wm.config["instrument"],
             stream.apid,
-            ccsds_start_time.strftime("%Y%m%dt%H%M%S"),
+            stream.start_time.strftime("%Y%m%dt%H%M%S"),
             "l0",
             "ccsds",
             "b" + wm.config["build_num"],
@@ -131,7 +145,6 @@ class L0StripHOSC(SlurmJobTask):
         # Update DB
         metadata = {
             "ccsds_name": ccsds_name,
-            "ccsds_start_time": ccsds_start_time,
             "products": {
                 "raw": {
                     "hosc_path": stream.hosc_path,
@@ -144,7 +157,6 @@ class L0StripHOSC(SlurmJobTask):
                 }
             }
         }
-        dm = wm.database_manager
         dm.update_stream_metadata(stream.hosc_name, metadata)
 
         doc_version = "Space Packet Protocol, CCSDS 133.0-B-1 (with Issue 1, Cor. 1, Sept. 2010 and Issue 1, Cor. 2, " \
@@ -180,6 +192,8 @@ class L0IngestBAD(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
 
+    memory = 90000
+
     task_namespace = "emit"
 
     def requires(self):
@@ -195,15 +209,8 @@ class L0IngestBAD(SlurmJobTask):
     def work(self):
         logger.debug(f"{self.task_family} work: {self.stream_path}")
 
-        # Insert BAD stream into DB
+        # Get workflow manager
         wm = WorkflowManager(config_path=self.config_path)
-        dm = wm.database_manager
-        dm.insert_bad_stream(os.path.basename(self.stream_path))
-        logger.debug(f"Inserted BAD stream file into DB using path {self.stream_path}")
-
-        # Get workflow manager again, now with stream_path
-        wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
-        stream = wm.stream
         pge = wm.pges["emit-ios"]
 
         # Generate CSV version of file
@@ -217,9 +224,46 @@ class L0IngestBAD(SlurmJobTask):
         env["AIT_ISS_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "sim.yaml")
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
+        # Get tmp output path for CSV
+        tmp_csv_path = os.path.join(tmp_output_dir, "iss_bad_data_joined.csv")
+
+        # Set up command to get BAD start/stop times
+        pge_l0 = wm.pges["emit-sds-l0"]
+        get_start_stop_exe = os.path.join(pge_l0.repo_dir, "get_bad_start_stop_times.py")
+        start_stop_json = os.path.join(tmp_output_dir, os.path.basename(tmp_csv_path).replace(".csv", ".json"))
+        cmd_timing = ["python", get_start_stop_exe, tmp_csv_path, start_stop_json]
+        pge.run(cmd_timing, tmp_dir=self.tmp_dir, env=env)
+        with open(start_stop_json, "r") as f:
+            timing = json.load(f)
+
+        # Insert new stream in DB
+        dm = wm.database_manager
+        start_time = datetime.datetime.strptime(timing["start_time"], "%Y-%m-%dT%H:%M:%S")
+        stop_time = datetime.datetime.strptime(timing["stop_time"], "%Y-%m-%dT%H:%M:%S")
+        bad_name = os.path.basename(self.stream_path)
+        suffix = f"_{start_time.strftime('%Y%m%dT%H%M%S')}_{stop_time.strftime('%Y%m%dT%H%M%S')}.sto"
+        extended_bad_name = os.path.basename(self.stream_path).replace(".sto", suffix)
+        metadata = {
+            "apid": "bad",
+            "start_time": start_time,
+            "stop_time": stop_time,
+            "build_num": wm.config["build_num"],
+            "processing_version": wm.config["processing_version"],
+            "bad_name": bad_name,
+            "extended_bad_name": extended_bad_name,
+            "processing_log": []
+        }
+        dm.insert_stream(bad_name, metadata)
+
+        # Get workflow manager again with stream metadata
+        wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
+        stream = wm.stream
+
         # Find orbits that touch this stream file and update them
-        orbits = dm.find_orbits_touching_date_range("start_time", stream.start_time, stream.stop_time) + \
-            dm.find_orbits_touching_date_range("stop_time", stream.start_time, stream.stop_time) + \
+        orbits = dm.find_orbits_touching_date_range("start_time", stream.start_time,
+                                                    stream.stop_time + datetime.timedelta(seconds=10)) + \
+            dm.find_orbits_touching_date_range("stop_time", stream.start_time - datetime.timedelta(seconds=10),
+                                               stream.stop_time) + \
             dm.find_orbits_encompassing_date_range(stream.start_time, stream.stop_time)
         orbit_symlink_paths = []
         # orbit_l1a_dirs = []
@@ -242,29 +286,37 @@ class L0IngestBAD(SlurmJobTask):
                 wm_orbit = WorkflowManager(config_path=self.config_path, orbit_id=orbit_id)
                 orbit = wm_orbit.orbit
                 if "associated_bad_sto" in orbit.metadata and orbit.metadata["associated_bad_sto"] is not None:
-                    if stream.bad_path not in orbit.metadata["associated_bad_sto"]:
-                        orbit.metadata["associated_bad_sto"].append(stream.bad_path)
+                    if stream.extended_bad_path not in orbit.metadata["associated_bad_sto"]:
+                        orbit.metadata["associated_bad_sto"].append(stream.extended_bad_path)
                 else:
-                    orbit.metadata["associated_bad_sto"] = [stream.bad_path]
+                    orbit.metadata["associated_bad_sto"] = [stream.extended_bad_path]
                 dm.update_orbit_metadata(orbit_id, {"associated_bad_sto": orbit.metadata["associated_bad_sto"]})
 
-                # Save symlink paths to use after moving the file
-                orbit_symlink_paths.append(os.path.join(orbit.raw_dir, stream.bad_name))
-                # orbit_l1a_dirs.append(orbit.l1a_dir)
+                # Check if orbit has complete bad data
+                if orbit.has_complete_bad_data():
+                    dm.update_orbit_metadata(orbit_id, {"bad_status": "complete"})
+                else:
+                    dm.update_orbit_metadata(orbit_id, {"bad_status": "incomplete"})
 
-        # TODO: Get start/stop from CSV file (which column(s) to use?)
+                # Save symlink paths to use after moving the file
+                orbit_symlink_paths.append(os.path.join(orbit.raw_dir, stream.extended_bad_name))
+                # orbit_l1a_dirs.append(orbit.l1a_dir)
 
         # Move BAD file out of ingest folder
         if "ingest" in self.stream_path:
             wm.move(self.stream_path, stream.bad_path)
+
+        # Symlink extended bad path to bad path
+        wm.symlink(stream.bad_name, stream.extended_bad_path)
 
         # Symlink to this file from the orbits' raw dirs
         for symlink in orbit_symlink_paths:
             wm.symlink(stream.bad_path, symlink)
 
         # Copy CSV file to l0 dir
-        tmp_csv_path = os.path.join(tmp_output_dir, "iss_bad_data_joined.csv")
-        l0_bad_csv_path = os.path.join(stream.l0_dir, stream.bad_name.replace(".sto", ".csv"))
+        # l0_bad_csv_name = "_".join(["emit", start_time.strftime("%Y%m%dt%H%M%S"), "l0", "bad",
+        #                             "b" + wm.config["build_num"], "v" + wm.config["processing_version"]]) + ".csv"
+        l0_bad_csv_path = os.path.join(stream.l0_dir, extended_bad_name.replace(".sto", ".csv"))
         wm.copy(tmp_csv_path, l0_bad_csv_path)
 
         # Symlink from the BAD l1a folder to the orbits l1a folders
@@ -322,6 +374,8 @@ class L0ProcessPlanningProduct(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
 
+    memory = 90000
+
     task_namespace = "emit"
 
     def requires(self):
@@ -344,22 +398,17 @@ class L0ProcessPlanningProduct(SlurmJobTask):
         horizon_start_time = None
         with open(self.plan_prod_path, "r") as f:
             events = json.load(f)
-            orbit_num = None
             orbit_ids = []
             dcids = []
             for e in events:
                 # Check for starting orbit number
                 if e["name"].lower() == "planning horizon start":
-                    orbit_num = e["orbitId"]
                     horizon_start_time = e["datetime"]
 
                 # Check for orbit object
                 if e["name"].lower() == "start orbit":
-                    # Raise error if we don't have a starting orbit number
-                    if orbit_num is None:
-                        raise RuntimeError(f"Planning product {self.plan_prod_path} is missing starting orbit number")
-
                     # Construct orbit object
+                    orbit_num = int(e["orbitId"])
                     orbit_id = str(orbit_num).zfill(5)
                     start_time = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S")
                     orbit_meta = {
@@ -381,42 +430,31 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                     if orbit_num > 0:
                         prev_orbit_id = str(orbit_num - 1).zfill(5)
                         prev_orbit = dm.find_orbit_by_id(prev_orbit_id)
-                        if prev_orbit is None:
-                            raise RuntimeError(f"Unable to find previous orbit stop time while trying to update orbit "
-                                               f"{orbit_id}")
-                        prev_orbit["stop_time"] = start_time
-                        dm.update_orbit_metadata(prev_orbit_id, prev_orbit)
+                        # if prev_orbit is None:
+                        #     raise RuntimeError(f"Unable to find previous orbit stop time while trying to update orbit "
+                        #                        f"{orbit_id}")
+                        if prev_orbit is not None:
+                            prev_orbit["stop_time"] = start_time
+                            dm.update_orbit_metadata(prev_orbit_id, prev_orbit)
 
                     # Keep track of orbit_ids for log entry
                     orbit_ids.append(orbit_id)
 
-                    # Increment orbit_num to continue processing file
-                    orbit_num += 1
-
                 # Check for data collection (i.e. acquisition)
-                # TODO: Add "dark" in when its ready
                 if e["name"].lower() in ("science", "dark"):
-                    # Raise error if we don't have a starting orbit number
-                    if orbit_num is None:
-                        raise RuntimeError(f"Planning product {self.plan_prod_path} is missing starting orbit number")
-
                     # Construct data collection metadata
                     dcid = str(e["dcid"]).zfill(10)
+                    # Convert date strings to datetime objects to store in DB
+                    e["datetime"] = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S")
+                    e["endDatetime"] = datetime.datetime.strptime(e["endDatetime"], "%Y-%m-%dT%H:%M:%S")
                     dc_meta = {
                         "dcid": dcid,
                         "build_num": wm.config["build_num"],
                         "processing_version": wm.config["processing_version"],
-                        "planned_start_time": datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S"),
-                        "planned_stop_time": datetime.datetime.strptime(e["endDatetime"], "%Y-%m-%dT%H:%M:%S"),
                         "orbit": str(e["orbit number"]).zfill(5),
                         "scene": str(e["scene number"]).zfill(3),
                         "submode": e["name"].lower(),
-                        "betaangle": e["betaangle"],
-                        "comments": e["comments"],
-                        "latboresightstart": e["latboresightstart"],
-                        "lonboresightstart": e["lonboresightstart"],
-                        "parameters": e["parameters"],
-                        "sza": e["sza"],
+                        "planning_product": e,
                         "frames_status": ""
                     }
 
@@ -453,3 +491,186 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                 dm.insert_orbit_log_entry(orbit_id, log_entry)
             for dcid in dcids:
                 dm.insert_data_collection_log_entry(dcid, log_entry)
+
+
+class L0Deliver(SlurmJobTask):
+    """
+    Creates UMM-G JSON file for DAAC delivery, stages the files for delivery, and submits a notification to the DAAC
+    :returns: DAAC notification and staged CCSDS and UMM-G files
+    """
+
+    config_path = luigi.Parameter()
+    stream_path = luigi.Parameter()
+    level = luigi.Parameter()
+    partition = luigi.Parameter()
+    miss_pkt_thresh = luigi.FloatParameter(default=0.1)
+
+    memory = 90000
+
+    task_namespace = "emit"
+
+    def requires(self):
+        logger.debug(f"{self.task_family} requires: {self.stream_path}")
+        return L0StripHOSC(config_path=self.config_path, stream_path=self.stream_path, level=self.level,
+                           partition=self.partition, miss_pkt_thresh=self.miss_pkt_thresh)
+
+    def output(self):
+        logger.debug(f"{self.task_family} output: {self.stream_path}")
+        wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
+        return StreamTarget(stream=wm.stream, task_family=self.task_family)
+
+    def work(self):
+        logger.debug(f"{self.task_family} work: {self.acquisition_id}")
+
+        wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
+        stream = wm.stream
+        pge = wm.pges["emit-main"]
+
+        # Create GranuleUR and DAAC paths
+        # Delivery file format: EMIT_L0_<VVV>_<APID>_<YYYYMMDDTHHMMSS>.bin
+        collection_version = f"0{wm.config['processing_version']}"
+        start_time_str = stream.start_time.strftime("%Y%m%dT%H%M%S")
+        granule_ur = f"EMIT_L0_{collection_version}_{stream.apid}_{start_time_str}"
+        daac_ccsds_name = f"{granule_ur}.bin"
+        daac_ummg_name = f"{granule_ur}.cmr.json"
+        daac_ccsds_path = os.path.join(self.tmp_dir, daac_ccsds_name)
+        daac_ummg_path = os.path.join(self.tmp_dir, daac_ummg_name)
+
+        # Copy files to tmp dir and rename
+        wm.copy(stream.ccsds_path, daac_ccsds_path)
+
+        # Create the UMM-G file
+        creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(stream.ccsds_path), tz=datetime.timezone.utc)
+        l0_pge = wm.pges["emit-sds-l0"]
+        ummg = daac_converter.initialize_ummg(granule_ur, creation_time, "EMITL0", collection_version,
+                                              wm.config["extended_build_num"], l0_pge.repo_name, l0_pge.version_tag)
+        ummg = daac_converter.add_data_files_ummg(ummg, [daac_ccsds_path], "Unspecified", ["BINARY"])
+        ummg = daac_converter.add_related_url(ummg, l0_pge.repo_url, "DOWNLOAD SOFTWARE")
+        ummg_path = stream.ccsds_path.replace(".bin", ".cmr.json")
+        daac_converter.dump_json(ummg, ummg_path)
+        wm.change_group_ownership(ummg_path)
+
+        # Copy ummg file to tmp dir and rename
+        wm.copy(ummg_path, daac_ummg_path)
+
+        # Copy files to staging server
+        partial_dir_arg = f"--partial-dir={stream.daac_partial_dir}"
+        log_file_arg = f"--log-file={os.path.join(self.tmp_dir, 'rsync.log')}"
+        target = f"{wm.config['daac_server_internal']}:{stream.daac_staging_dir}/"
+        # First set up permissions if needed
+        group = f"emit-{wm.config['environment']}" if wm.config["environment"] in ("test", "ops") else "emit-dev"
+        # This command only makes the directory and changes ownership if the directory doesn't exist
+        cmd_make_target = ["ssh", wm.config["daac_server_internal"], "\"if", "[", "!", "-d",
+                           f"'{stream.daac_staging_dir}'", "];", "then", "mkdir", f"{stream.daac_staging_dir};",
+                           "chgrp", group, f"{stream.daac_staging_dir};", "fi\""]
+        pge.run(cmd_make_target, tmp_dir=self.tmp_dir)
+        # Rsync the files
+        for path in (daac_ccsds_path, daac_ummg_path):
+            cmd_rsync = ["rsync", "-azv", partial_dir_arg, log_file_arg, path, target]
+            pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
+
+        # Build notification dictionary
+        utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
+        cnm_submission_id = f"{granule_ur}_{utc_now.strftime('%Y%m%dt%H%M%S')}"
+        cnm_submission_path = os.path.join(stream.l0_dir, cnm_submission_id + "_cnm.json")
+        target_src_map = {
+            daac_ccsds_name: os.path.basename(stream.ccsds_path),
+            daac_ummg_name: os.path.basename(ummg_path)
+        }
+        notification = {
+            "collection": "EMITL0",
+            "provider": wm.config["daac_provider"],
+            "identifier": cnm_submission_id,
+            "version": wm.config["cnm_version"],
+            "product": {
+                "name": granule_ur,
+                "dataVersion": collection_version,
+                "files": [
+                    {
+                        "name": daac_ccsds_name,
+                        "uri": stream.daac_uri_base + daac_ccsds_name,
+                        "type": "data",
+                        "size": os.path.getsize(daac_ccsds_path),
+                        "checksumType": "sha512",
+                        "checksum": daac_converter.calc_checksum(daac_ccsds_path, "sha512")
+                    },
+                    {
+                        "name": daac_ummg_name,
+                        "uri": stream.daac_uri_base + daac_ummg_name,
+                        "type": "metadata",
+                        "size": os.path.getsize(daac_ummg_path),
+                        "checksumType": "sha512",
+                        "checksum": daac_converter.calc_checksum(daac_ummg_path, "sha512")
+                    }
+                ]
+            }
+        }
+
+        # Write notification submission to file
+        with open(cnm_submission_path, "w") as f:
+            f.write(json.dumps(notification, indent=4))
+        wm.change_group_ownership(cnm_submission_path)
+
+        # Submit notification via AWS SQS
+        cmd_aws = [wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", wm.config["daac_submission_url"],
+                   "--message-body",
+                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"]]
+        pge.run(cmd_aws, tmp_dir=self.tmp_dir)
+        cnm_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(cnm_submission_path),
+                                                            tz=datetime.timezone.utc)
+
+        # Record delivery details in DB for reconciliation report
+        dm = wm.database_manager
+        for file in notification["product"]["files"]:
+            delivery_report = {
+                "timestamp": utc_now,
+                "extended_build_num": wm.config["extended_build_num"],
+                "collection": notification["collection"],
+                "collection_version": notification["product"]["dataVersion"],
+                "sds_filename": target_src_map[file["name"]],
+                "daac_filename": file["name"],
+                "uri": file["uri"],
+                "type": file["type"],
+                "size": file["size"],
+                "checksum": file["checksum"],
+                "checksum_type": file["checksumType"],
+                "submission_id": cnm_submission_id,
+                "submission_status": "submitted"
+            }
+            dm.insert_granule_report(delivery_report)
+
+        # Update db with products and log entry
+        product_dict_ummg = {
+            "ummg_json_path": ummg_path,
+            "created": datetime.datetime.fromtimestamp(os.path.getmtime(ummg_path), tz=datetime.timezone.utc)
+        }
+        dm.update_stream_metadata(stream.ccsds_name, {"products.daac.ccsds_ummg": product_dict_ummg})
+
+        if "ccsds_daac_submissions" in stream.metadata["products"]["daac"] and \
+                stream.metadata["products"]["daac"]["ccsds_daac_submissions"] is not None:
+            stream.metadata["products"]["daac"]["ccsds_daac_submissions"].append(cnm_submission_path)
+        else:
+            stream.metadata["products"]["daac"]["ccsds_daac_submissions"] = [cnm_submission_path]
+        dm.update_stream_metadata(
+            stream.ccsds_name,
+            {"products.daac.ccsds_daac_submissions": stream.metadata["products"]["daac"]["ccsds_daac_submissions"]})
+
+        log_entry = {
+            "task": self.task_family,
+            "pge_name": pge.repo_url,
+            "pge_version": pge.version_tag,
+            "pge_input_files": {
+                "ccsds_path": stream.ccsds_path
+            },
+            "pge_run_command": " ".join(cmd_aws),
+            "documentation_version": "TBD",
+            "product_creation_time": cnm_creation_time,
+            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
+            "completion_status": "SUCCESS",
+            "output": {
+                "l0_ccsds_ummg_path": ummg_path,
+                "l0_ccsds_cnm_submission_path": cnm_submission_path
+            }
+        }
+
+        dm.insert_stream_log_entry(stream.ccsds_name, log_entry)

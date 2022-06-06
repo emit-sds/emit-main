@@ -7,6 +7,7 @@ Author: Philip G. Brodrick, philip.brodrick@jpl.nasa.gov
 import datetime
 import logging
 import os
+import time
 
 import luigi
 import spectral.io.envi as envi
@@ -52,35 +53,44 @@ class L3Unmix(SlurmJobTask):
 
     def work(self):
 
+        start_time = time.time()
         logger.debug(self.task_family + " run")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
-        pge = wm.pges["emit-sds-l3"]
+        pge = wm.pges["SpectralUnmixing"]
 
         # Build PGE commands for run_tetracorder_pge.sh
         unmix_exe = os.path.join(pge.repo_dir, "unmix.jl")
-        endmember_path = os.path.join(pge.repo_dir, "data", "endmember_library.csv")
-        endmember_key = "Class"
-        log_path = acq.cover_img_path.replace(".img", "_pge.log")
+        endmember_key = "level_1"
+        tmp_log_path = os.path.join(self.local_tmp_dir,
+                                    os.path.basename(acq.cover_img_path).replace(".img", "_pge.log"))
         output_base = os.path.join(self.local_tmp_dir, "unmixing_output")
 
-        cmd_unmix = ['julia', '-p', str(self.n_cores), unmix_exe, acq.rfl_img_path, endmember_path, endmember_key, output_base, "--normalization",
-                     "brightness", "--n_mc", "100", "--reflectance_uncertainty_file", acq.uncert_img_path,
-                     "--spectral_starting_column", "2", "--num_endmembers", "-1", "--log_file", log_path]
-
+        # Set up environment variables
         env = os.environ.copy()
-        pge.run(cmd_unmix, tmp_dir=self.tmp_dir, env=env)
+        env["PATH"] = "/beegfs/store/shared/julia-1.6.5/bin:${PATH}"
+        env["JULIA_DEPOT_PATH"] = "/beegfs/store/shared/.julia-1.6.5/"
+        env["JULIA_PROJECT"] = pge.repo_dir
+
+        # Build command
+        cmd_unmix = ['julia', '-p', str(self.n_cores), unmix_exe, acq.rfl_img_path, wm.config["unmixing_library"],
+                     endmember_key, output_base, "--normalization", "brightness", "--mode", "sma-best",
+                     "--n_mc", "50", "--reflectance_uncertainty_file", acq.rfluncert_img_path,
+                     "--spectral_starting_column", "8", "--num_endmembers", "20", "--log_file", tmp_log_path]
+
+        pge.run(cmd_unmix, tmp_dir=self.tmp_dir, env=env, use_conda_run=False)
 
         wm.copy(f'{output_base}_fractional_cover', acq.cover_img_path)
         wm.copy(f'{output_base}_fractional_cover.hdr', acq.cover_hdr_path)
         wm.copy(f'{output_base}_fractional_cover_uncertainty', acq.coveruncert_img_path)
         wm.copy(f'{output_base}_fractional_cover_uncertainty.hdr', acq.coveruncert_hdr_path)
+        wm.copy(tmp_log_path, acq.cover_img_path.replace(".img", "_pge.log"))
 
         input_files = {
             "reflectance_file": acq.rfl_img_path,
-            "reflectance_uncertainty_file": acq.uncert_img_path,
-            "endmember_path": endmember_path,
+            "reflectance_uncertainty_file": acq.rfluncert_img_path,
+            "endmember_path": wm.config["unmixing_library"],
         }
 
         # Update hdr files
@@ -100,11 +110,13 @@ class L3Unmix(SlurmJobTask):
                 os.path.getmtime(acq.cover_img_path), tz=datetime.timezone.utc)
             hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
             hdr["emit data product version"] = wm.config["processing_version"]
+            daynight = "Day" if acq.submode == "science" else "Night"
+            hdr["emit acquisition daynight"] = daynight
             envi.write_envi_header(header_to_update, hdr)
 
         # PGE writes metadata to db
         dm = wm.database_manager
-        product_dict = {
+        product_dict_cover = {
             "img_path": acq.cover_img_path,
             "hdr_path": acq.cover_hdr_path,
             "created": creation_time,
@@ -114,8 +126,21 @@ class L3Unmix(SlurmJobTask):
                 "bands": hdr["bands"]
             }
         }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l3.cover": product_dict})
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l3.cover": product_dict_cover})
 
+        product_dict_cover_uncert = {
+            "img_path": acq.coveruncert_img_path,
+            "hdr_path": acq.coveruncert_hdr_path,
+            "created": creation_time,
+            "dimensions": {
+                "lines": hdr["lines"],
+                "samples": hdr["samples"],
+                "bands": hdr["bands"]
+            }
+        }
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l3.coveruncert": product_dict_cover_uncert})
+
+        total_time = time.time() - start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -124,6 +149,7 @@ class L3Unmix(SlurmJobTask):
             "pge_run_command": " ".join(cmd_unmix),
             "documentation_version": doc_version,
             "product_creation_time": creation_time,
+            "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {

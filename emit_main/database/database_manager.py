@@ -33,18 +33,68 @@ class DatabaseManager:
         acquisitions_coll = self.db.acquisitions
         return acquisitions_coll.find_one({"acquisition_id": acquisition_id, "build_num": self.config["build_num"]})
 
-    def find_acquisition_by_dcid(self, dcid):
+    def find_acquisitions_by_orbit_id(self, orbit_id, submode, min_valid_lines=0):
         acquisitions_coll = self.db.acquisitions
-        return acquisitions_coll.find_one({"dcid": dcid, "build_num": self.config["build_num"]})
+        query = {
+            "orbit": orbit_id,
+            "submode": submode,
+            "num_valid_lines": {"$gte": min_valid_lines},
+            "build_num": self.config["build_num"]
+        }
+        return list(acquisitions_coll.find(query).sort("acquisition_id", 1))
 
-    def find_acquisitions_touching_date_range(self, submode, field, start, stop, sort=1):
+    def find_acquisitions_touching_date_range(self, submode, field, start, stop, instrument_mode="cold_img",
+                                              min_valid_lines=0, sort=1):
         acquisitions_coll = self.db.acquisitions
         query = {
             "submode": submode,
+            "instrument_mode": instrument_mode,
+            "num_valid_lines": {"$gte": min_valid_lines},
             field: {"$gte": start, "$lte": stop},
             "build_num": self.config["build_num"]
         }
         return list(acquisitions_coll.find(query).sort(field, sort))
+
+    def find_acquisitions_for_calibration(self, start, stop):
+        acquisitions_coll = self.db.acquisitions
+        # Query for "science" acquisitions with non-zero valid lines and with complete l1a raw outputs but no l1b rdn
+        # outputs in time range
+        query = {
+            "submode": "science",
+            "num_valid_lines": {"$gte": 1},
+            "products.l1a.raw.img_path": {"$exists": 1},
+            "products.l1b.rdn.img_path": {"$exists": 0},
+            "last_modified": {"$gte": start, "$lte": stop},
+            "build_num": self.config["build_num"]
+        }
+        results = list(acquisitions_coll.find(query))
+        acqs_ready_for_cal = []
+        for acq in results:
+            recent_darks = self.find_acquisitions_touching_date_range(
+                "dark",
+                "stop_time",
+                acq["start_time"] - datetime.timedelta(minutes=400),
+                acq["start_time"],
+                instrument_mode=acq["instrument_mode"],
+                min_valid_lines=256,
+                sort=-1)
+            if recent_darks is not None and len(recent_darks) > 0:
+                acqs_ready_for_cal.append(acq)
+        return acqs_ready_for_cal
+
+    def find_acquisitions_for_l2(self, start, stop):
+        acquisitions_coll = self.db.acquisitions
+        # Query for acquisitions with complete l1b outputs but no rfl outputs in time range
+        query = {
+            "products.l1b.rdn.img_path": {"$exists": 1},
+            "products.l1b.glt.img_path": {"$exists": 1},
+            "products.l1b.loc.img_path": {"$exists": 1},
+            "products.l1b.obs.img_path": {"$exists": 1},
+            "products.l2a.rfl.img_path": {"$exists": 0},
+            "last_modified": {"$gte": start, "$lte": stop},
+            "build_num": self.config["build_num"]
+        }
+        return list(acquisitions_coll.find(query))
 
     def insert_acquisition(self, metadata):
         if self.find_acquisition_by_id(metadata["acquisition_id"]) is None:
@@ -92,65 +142,25 @@ class DatabaseManager:
         }
         return list(streams_coll.find(query).sort(field, sort))
 
-    def find_streams_encompassing_date_range(self, apid, start_field, stop_field, query_start, query_stop, sort=1):
+    def find_streams_for_edp_reformatting(self, start, stop):
         streams_coll = self.db.streams
+        # Query for 1674 streams that have l0 ccsds products but no l1a products which were last modified between
+        # start and stop times (typically they need to be older than a certain amount of time to make sure the
+        # 1676 ancillary file exists
         query = {
-            "apid": apid,
-            start_field: {"$lt": query_start},
-            stop_field: {"$gt": query_stop},
+            "apid": "1674",
+            "last_modified": {"$gte": start, "$lte": stop},
+            "products.l0.ccsds_path": {"$exists": 1},
+            "products.l1a": {"$exists": 0},
             "build_num": self.config["build_num"]
         }
-        return list(streams_coll.find(query).sort(start_field, sort))
+        return list(streams_coll.find(query))
 
-    def insert_hosc_stream(self, hosc_name):
-        if self.find_stream_by_name(hosc_name) is None:
-            if "_hsc.bin" not in hosc_name:
-                raise RuntimeError(f"Attempting to insert HOSC stream file in DB with name {hosc_name}. Does not "
-                                   f"appear to be a HOSC file")
-            tokens = hosc_name.split("_")
-            apid = tokens[1]
-            # Need to add first two year digits
-            start_time_str = "20" + tokens[2]
-            stop_time_str = "20" + tokens[3]
-            # These dates are already in UTC and will be stored in the DB as UTC by default
-            start_time = datetime.datetime.strptime(start_time_str, "%Y%m%d%H%M%S")
-            stop_time = datetime.datetime.strptime(stop_time_str, "%Y%m%d%H%M%S")
+    def insert_stream(self, name, metadata):
+        if self.find_stream_by_name(name) is None:
             utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
-            metadata = {
-                "apid": apid,
-                "start_time": start_time,
-                "stop_time": stop_time,
-                "build_num": self.config["build_num"],
-                "processing_version": self.config["processing_version"],
-                "hosc_name": hosc_name,
-                "processing_log": [],
-                "created": utc_now,
-                "last_modified": utc_now
-            }
-            streams_coll = self.db.streams
-            streams_coll.insert_one(metadata)
-
-    def insert_bad_stream(self, bad_name):
-        if self.find_stream_by_name(bad_name) is None:
-            if ".sto" not in bad_name:
-                raise RuntimeError(f"Attempting to insert BAD stream file in DB with name {bad_name}. Does not "
-                                   f"appear to be a BAD STO file")
-            # TODO: This format is not defined yet (e.g. emit_<start_time>_<stop_time>_<production_time>_bad.sto)
-            tokens = bad_name.split(".")[0].split("_")
-            start_time = datetime.datetime.strptime(tokens[1], "%Y%m%dT%H%M%S")
-            stop_time = datetime.datetime.strptime(tokens[2], "%Y%m%dT%H%M%S")
-            utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
-            metadata = {
-                "apid": "bad",
-                "start_time": start_time,
-                "stop_time": stop_time,
-                "build_num": self.config["build_num"],
-                "processing_version": self.config["processing_version"],
-                "bad_name": bad_name,
-                "processing_log": [],
-                "created": utc_now,
-                "last_modified": utc_now
-            }
+            metadata["created"] = utc_now
+            metadata["last_modified"] = utc_now
             streams_coll = self.db.streams
             streams_coll.insert_one(metadata)
 
@@ -186,6 +196,10 @@ class DatabaseManager:
     def find_data_collection_by_id(self, dcid):
         data_collections_coll = self.db.data_collections
         return data_collections_coll.find_one({"dcid": dcid, "build_num": self.config["build_num"]})
+
+    def find_data_collections_by_orbit_id(self, orbit_id):
+        data_collections_coll = self.db.data_collections
+        return list(data_collections_coll.find({"orbit": orbit_id, "build_num": self.config["build_num"]}))
 
     def find_data_collections_for_reassembly(self, start, stop):
         data_collections_coll = self.db.data_collections
@@ -246,6 +260,31 @@ class DatabaseManager:
             "build_num": self.config["build_num"]
         }
         return list(orbits_coll.find(query).sort("start_time", sort))
+
+    def find_orbits_for_bad_reformatting(self, start, stop):
+        orbits_coll = self.db.orbits
+        # Query for orbits with complete set of bad data, last modified within start/stop range and
+        # that don't have an associated bad netcdf file
+        query = {
+            "bad_status": "complete",
+            "last_modified": {"$gte": start, "$lte": stop},
+            "associated_bad_netcdf": {"$exists": 0},
+            "build_num": self.config["build_num"]
+        }
+        return list(orbits_coll.find(query))
+
+    def find_orbits_for_geolocation(self, start, stop):
+        orbits_coll = self.db.orbits
+        # Query for orbits with complete set of radiance files, an associated BAD netcdf file, last modified within
+        # start/stop range, and no products.l1b.acquisitions
+        query = {
+            "radiance_status": "complete",
+            "last_modified": {"$gte": start, "$lte": stop},
+            "associated_bad_netcdf": {"$exists": 1},
+            "products.l1b.acquisitions": {"$exists": 0},
+            "build_num": self.config["build_num"]
+        }
+        return list(orbits_coll.find(query))
 
     def insert_orbit(self, metadata):
         if self.find_orbit_by_id(metadata["orbit_id"]) is None:

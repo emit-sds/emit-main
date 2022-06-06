@@ -17,7 +17,7 @@ class Stream:
 
     def __init__(self, config_path, stream_path):
         """
-        :param acquisition_id: The name of the acquisition with timestamp (eg. "emit20200519t140035")
+        :param stream_path: The path to the stream file
         """
 
         self.config_path = config_path
@@ -66,12 +66,21 @@ class Stream:
                 self.dirs.append(self.frames_dir)
         if self.bad_name:
             self.bad_path = os.path.join(self.raw_dir, self.bad_name)
+            self.extended_bad_path = os.path.join(self.raw_dir, self.extended_bad_name)
 
         # Make directories if they don't exist
         from emit_main.workflow.workflow_manager import WorkflowManager
         wm = WorkflowManager(config_path=config_path)
         for d in self.dirs:
             wm.makedirs(d)
+
+        # Build paths for DAAC delivery on staging server
+        self.daac_staging_dir = os.path.join(self.config["daac_base_dir"], wm.config['environment'], "products",
+                                             self.start_time.strftime("%Y%m%d"))
+        self.daac_uri_base = f"https://{self.config['daac_server_external']}/emit/lpdaac/{wm.config['environment']}/" \
+            f"products/{self.start_time.strftime('%Y%m%d')}/"
+        self.daac_partial_dir = os.path.join(self.config["daac_base_dir"], wm.config['environment'],
+                                             "partial_transfers")
 
     def _initialize_metadata(self):
         # Insert some placeholder fields so that we don't get missing keys on updates
@@ -85,3 +94,5 @@ class Stream:
             self.metadata["products"]["l0"] = {}
         if "l1a" not in self.metadata["products"]:
             self.metadata["products"]["l1a"] = {}
+        if "daac" not in self.metadata["products"]:
+            self.metadata["products"]["daac"] = {}
