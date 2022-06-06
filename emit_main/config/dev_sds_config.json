@@ -3,10 +3,10 @@
     "instrument": "emit",
     "environment": "dev",
     "processing_version": "01",
-    "tetracorder_library_basename": "06emita",
-    "tetracorder_library_cmdname": "emit_a",
     "luigi_local_scheduler": false,
-    "luigi_workers": 2
+    "luigi_workers": 2,
+    "tetracorder_library_basename": "06emita",
+    "tetracorder_library_cmdname": "emit_a"
   },
 
   "filesystem_config": {

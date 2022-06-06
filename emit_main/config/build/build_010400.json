@@ -1,78 +1,78 @@
 {
   "repositories": [
     {
-      "url": "git@github.jpl.nasa.gov:emit-sds/emit-main.git",
-      "tag": "v1.3.0",
-      "conda_env": "emit-main-20220318"
+      "url": "git@github.com:emit-sds/emit-main.git",
+      "tag": "v1.4.0",
+      "conda_env": "emit-main-20220606"
     },
     {
-      "url": "git@github.jpl.nasa.gov:emit-sds/emit-utils.git",
-      "tag": "v1.0.0",
-      "conda_env": "emit-main-20220318"
-    },
-    {
-      "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l0.git",
-      "tag": "v1.3.0",
-      "conda_env": "emit-main-20220318"
-    },
-    {
-      "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l1a.git",
-      "tag": "v1.2.0",
-      "conda_env": "emit-main-20220318"
-    },
-    {
-      "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l1b.git",
+      "url": "git@github.com:emit-sds/emit-utils.git",
       "tag": "v1.1.0",
-      "conda_env": "emit-main-20220318"
+      "conda_env": "emit-main-20220606"
     },
     {
-      "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l1b-geo.git",
-      "tag": "v1.0.0",
-      "conda_env": "emit-main-20220318"
+      "url": "git@github.com:emit-sds/emit-sds-l0.git",
+      "tag": "v1.3.1",
+      "conda_env": "emit-main-20220606"
     },
     {
-      "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l2a.git",
-      "tag": "v1.0.0",
-      "conda_env": "emit-main-20220318"
+      "url": "git@github.com:emit-sds/emit-sds-l1a.git",
+      "tag": "v1.3.0",
+      "conda_env": "emit-main-20220606"
     },
     {
-      "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l2b.git",
-      "tag": "v1.0.0",
-      "conda_env": "emit-main-20220318"
+      "url": "git@github.com:emit-sds/emit-sds-l1b.git",
+      "tag": "v1.2.0",
+      "conda_env": "emit-isofit"
     },
     {
-      "url": "git@github.jpl.nasa.gov:emit-sds/emit-sds-l3.git",
-      "tag": "v1.0.0",
-      "conda_env": "emit-main-20220318"
+      "url": "git@github.com:emit-sds/emit-sds-l1b-geo.git",
+      "tag": "v1.4.0_rc1",
+      "conda_env": "emit-main-20220606"
+    },
+    {
+      "url": "git@github.com:emit-sds/emit-sds-l2a.git",
+      "tag": "v1.1.0",
+      "conda_env": "emit-isofit"
+    },
+    {
+      "url": "git@github.com:emit-sds/emit-sds-l2b.git",
+      "tag": "v1.1.0",
+      "conda_env": "emit-main-20220606"
+    },
+    {
+      "url": "git@github.com:emit-sds/emit-sds-l3.git",
+      "tag": "v1.1.0",
+      "conda_env": "emit-main-20220606"
     },
     {
       "url": "git@github.com:emit-sds/SpectralUnmixing.git",
-      "tag": "v0.1.0",
-      "conda_env": "emit-main-20220318"
+      "tag": "v0.2.0",
+      "conda_env": "emit-main-20220606"
     },
     {
       "url": "https://github.com/isofit/isofit.git",
-      "tag": "v2.9.2",
-      "conda_env": "emit-main-20220318"
+      "tag": "v2.9.3",
+      "conda_env": "emit-isofit"
     },
     {
       "url": "git@github.jpl.nasa.gov:emit/emit-ios.git",
-      "tag": "0.5.22",
-      "conda_env": "emit-main-20220318"
+      "tag": "1.2.1",
+      "conda_env": "emit-main-20220606"
     },
     {
       "url": "git@github.jpl.nasa.gov:emit/emit-l0edp.git",
       "tag": "1.1.0",
-      "conda_env": "emit-main-20220318"
+      "conda_env": "emit-main-20220606"
     },
     {
       "url": "git@github.jpl.nasa.gov:flex-data-compression/EMIT_FLEX_codec.git",
       "tag": "EMIT_flexcodec_1_0",
-      "conda_env": "emit-main-20220318"
+      "conda_env": "emit-main-20220606"
     },
     {
       "url": "git@github.jpl.nasa.gov:aviris/NGIS_Check_Line_Frame.git",
-      "tag": "emit-sds-0.4.1",
+      "tag": "emit-sds-0.5.0",
       "conda_env": "emit-check-line-frame"
     }
   ]
