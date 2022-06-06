@@ -324,7 +324,7 @@ class L2BDeliver(SlurmJobTask):
         l2b_pge = wm.pges["emit-sds-l2b"]
         ummg = daac_converter.initialize_ummg(acq.abun_granule_ur, nc_creation_time, "EMITL2BMIN",
                                               acq.collection_version, wm.config["extended_build_num"],
-                                              l2b_pge.repo_name, l2b_pge.version_tag, cloud_fraction = acq.cloud_fraction)
+                                              l2b_pge.repo_name, l2b_pge.version_tag, cloud_fraction=acq.cloud_fraction)
         ummg = daac_converter.add_data_files_ummg(
             ummg,
             [daac_abun_nc_path, daac_abununcert_nc_path, daac_browse_path],

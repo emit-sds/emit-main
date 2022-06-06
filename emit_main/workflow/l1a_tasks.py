@@ -803,8 +803,8 @@ class L1ADeliver(SlurmJobTask):
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.raw_img_path), tz=datetime.timezone.utc)
         l1a_pge = wm.pges["emit-sds-l1a"]
         ummg = daac_converter.initialize_ummg(acq.raw_granule_ur, creation_time, "EMITL1ARAW", acq.collection_version,
-                                              wm.config["extended_build_num"], l1a_pge.repo_name, l1a_pge.version_tag, 
-                                              cloud_fraction = acq.cloud_fraction)
+                                              wm.config["extended_build_num"], l1a_pge.repo_name, l1a_pge.version_tag,
+                                              cloud_fraction=acq.cloud_fraction)
         daynight = "Day" if acq.submode == "science" else "Night"
         ummg = daac_converter.add_data_files_ummg(
             ummg,

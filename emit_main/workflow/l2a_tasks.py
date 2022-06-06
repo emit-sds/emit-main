@@ -88,7 +88,7 @@ class L2AReflectance(SlurmJobTask):
         env["EMULATOR_DIR"] = emulator_base
         isofit_pge = wm.pges["isofit"]
         env["PYTHONPATH"] = isofit_pge.repo_dir
-        env["RAY_worker_register_timeout_seconds"]="600"
+        env["RAY_worker_register_timeout_seconds"] = "600"
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
         # Copy output files to l2a dir and rename
@@ -237,7 +237,7 @@ class L2AMask(SlurmJobTask):
         isofit_pge = wm.pges["isofit"]
         env["PYTHONPATH"] = isofit_pge.repo_dir
 
-        env["RAY_worker_register_timeout_seconds"]="600"
+        env["RAY_worker_register_timeout_seconds"] = "600"
 
         cmd = ["python", make_masks_exe, acq.rdn_img_path, acq.loc_img_path, acq.lbl_img_path, acq.statesubs_img_path,
                solar_irradiance_path, tmp_mask_path, "--n_cores", str(self.n_cores)]
@@ -462,7 +462,7 @@ class L2ADeliver(SlurmJobTask):
         l2a_pge = wm.pges["emit-sds-l2a"]
         ummg = daac_converter.initialize_ummg(acq.rfl_granule_ur, nc_creation_time, "EMITL2ARFL",
                                               acq.collection_version, wm.config["extended_build_num"],
-                                              l2a_pge.repo_name, l2a_pge.version_tag, cloud_fraction = acq.cloud_fraction)
+                                              l2a_pge.repo_name, l2a_pge.version_tag, cloud_fraction=acq.cloud_fraction)
         ummg = daac_converter.add_data_files_ummg(
             ummg,
             [daac_rfl_nc_path, daac_rfluncert_nc_path, daac_mask_nc_path, daac_browse_path],
