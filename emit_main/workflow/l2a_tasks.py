@@ -244,7 +244,6 @@ class L2AMask(SlurmJobTask):
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
         cloud_fraction = check_cloudfraction(tmp_mask_path)
-        dm.update_acquisition_metadata(acq.acquisition_id, {"cloud_fraction": cloud_fraction})
 
         # Copy mask files to l2a dir
         wm.copy(tmp_mask_path, acq.mask_img_path)
@@ -267,7 +266,7 @@ class L2AMask(SlurmJobTask):
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         hdr["emit data product version"] = wm.config["processing_version"]
         hdr["emit acquisition daynight"] = acq.daynight
-        hdr["emit acquisition cloudfraction"] = acq.cloud_fraction
+        hdr["emit acquisition cloudfraction"] = cloud_fraction
         envi.write_envi_header(acq.mask_hdr_path, hdr)
 
         # PGE writes metadata to db
@@ -283,6 +282,7 @@ class L2AMask(SlurmJobTask):
             }
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2a.mask": product_dict})
+        dm.update_acquisition_metadata(acq.acquisition_id, {"cloud_fraction": cloud_fraction})
 
         total_time = time.time() - start_time
         log_entry = {
