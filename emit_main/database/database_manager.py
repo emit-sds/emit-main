@@ -29,6 +29,18 @@ class DatabaseManager:
 
         self.db = self.client[self.config["db_name"]]
 
+    def _remove_results_with_failed_tasks(self, results, tasks):
+        non_failed_results = []
+        for r in results:
+            failed = False
+            if "processing_log" in r:
+                for log in reversed(r["processing_log"]):
+                    if log["task"] in tasks and log["completion_status"] == "FAILURE":
+                        failed = True
+            if not failed:
+                non_failed_results.append(r)
+        return non_failed_results
+
     def find_acquisition_by_id(self, acquisition_id):
         acquisitions_coll = self.db.acquisitions
         return acquisitions_coll.find_one({"acquisition_id": acquisition_id, "build_num": self.config["build_num"]})
@@ -68,6 +80,7 @@ class DatabaseManager:
             "build_num": self.config["build_num"]
         }
         results = list(acquisitions_coll.find(query))
+        results = self._remove_results_with_failed_tasks(results, ["emit.L1BCalibrate"])
         acqs_ready_for_cal = []
         for acq in results:
             recent_darks = self.find_acquisitions_touching_date_range(
@@ -94,7 +107,9 @@ class DatabaseManager:
             "last_modified": {"$gte": start, "$lte": stop},
             "build_num": self.config["build_num"]
         }
-        return list(acquisitions_coll.find(query))
+        results = list(acquisitions_coll.find(query))
+        results = self._remove_results_with_failed_tasks(results, ["emit.L2BAbundance", "emit.L3Unmix"])
+        return results
 
     def insert_acquisition(self, metadata):
         if self.find_acquisition_by_id(metadata["acquisition_id"]) is None:
@@ -154,7 +169,9 @@ class DatabaseManager:
             "products.l1a": {"$exists": 0},
             "build_num": self.config["build_num"]
         }
-        return list(streams_coll.find(query))
+        results = list(streams_coll.find(query))
+        results = self._remove_results_with_failed_tasks(results, ["emit.L1AReformatEDP"])
+        return results
 
     def insert_stream(self, name, metadata):
         if self.find_stream_by_name(name) is None:
@@ -211,7 +228,9 @@ class DatabaseManager:
             "associated_acquisitions": {"$exists": 0},
             "build_num": self.config["build_num"]
         }
-        return list(data_collections_coll.find(query))
+        results = list(data_collections_coll.find(query))
+        results = self._remove_results_with_failed_tasks(results, ["emit.L1AReassembleRaw", "emit.L1AFrameReport"])
+        return results
 
     def insert_data_collection(self, metadata):
         if self.find_data_collection_by_id(metadata["dcid"]) is None:
@@ -271,7 +290,9 @@ class DatabaseManager:
             "associated_bad_netcdf": {"$exists": 0},
             "build_num": self.config["build_num"]
         }
-        return list(orbits_coll.find(query))
+        results = list(orbits_coll.find(query))
+        results = self._remove_results_with_failed_tasks(results, ["emit.L1AReformatBAD"])
+        return results
 
     def find_orbits_for_geolocation(self, start, stop):
         orbits_coll = self.db.orbits
@@ -284,7 +305,9 @@ class DatabaseManager:
             "products.l1b.acquisitions": {"$exists": 0},
             "build_num": self.config["build_num"]
         }
-        return list(orbits_coll.find(query))
+        results =  list(orbits_coll.find(query))
+        results = self._remove_results_with_failed_tasks(results, ["emit.L1BGeolocate"])
+        return results
 
     def insert_orbit(self, metadata):
         if self.find_orbit_by_id(metadata["orbit_id"]) is None:
