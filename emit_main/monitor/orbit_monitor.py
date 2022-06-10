@@ -29,15 +29,16 @@ class OrbitMonitor:
         # Get workflow manager
         self.wm = WorkflowManager(config_path=config_path)
 
-    def get_bad_reformatting_tasks(self, start_time, stop_time):
+    def get_bad_reformatting_tasks(self, start_time, stop_time, date_field="last_modified", retry_failed=False):
         tasks = []
         # Find orbits within time range
         dm = self.wm.database_manager
-        orbits = dm.find_orbits_for_bad_reformatting(start=start_time, stop=stop_time)
+        orbits = dm.find_orbits_for_bad_reformatting(start=start_time, stop=stop_time, date_field=date_field,
+                                                     retry_failed=retry_failed)
 
         # If no results, just return empty list
         if len(orbits) == 0:
-            logger.info(f"Did not find any orbits modified between {start_time} and {stop_time} needing BAD "
+            logger.info(f"Did not find any orbits with {date_field} between {start_time} and {stop_time} needing BAD "
                         f"reformatting tasks. Not executing any tasks.")
             return tasks
 
@@ -50,16 +51,17 @@ class OrbitMonitor:
 
         return tasks
 
-    def get_geolocation_tasks(self, start_time, stop_time):
+    def get_geolocation_tasks(self, start_time, stop_time, date_field="last_modified", retry_failed=False):
         tasks = []
         # Find orbits within time range
         dm = self.wm.database_manager
-        orbits = dm.find_orbits_for_geolocation(start=start_time, stop=stop_time)
+        orbits = dm.find_orbits_for_geolocation(start=start_time, stop=stop_time, date_field=date_field,
+                                                retry_failed=retry_failed)
 
         # If no results, just return empty list
         if len(orbits) == 0:
-            logger.info(f"Did not find any orbits modified between {start_time} and {stop_time} needing geolocation "
-                        f"tasks. Not executing any tasks.")
+            logger.info(f"Did not find any orbits with {date_field} between {start_time} and {stop_time} needing "
+                        f"geolocation tasks. Not executing any tasks.")
             return tasks
 
         for orbit in orbits:

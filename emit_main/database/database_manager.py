@@ -67,7 +67,7 @@ class DatabaseManager:
         }
         return list(acquisitions_coll.find(query).sort(field, sort))
 
-    def find_acquisitions_for_calibration(self, start, stop):
+    def find_acquisitions_for_calibration(self, start, stop, date_field="last_modified", retry_failed=False):
         acquisitions_coll = self.db.acquisitions
         # Query for "science" acquisitions with non-zero valid lines and with complete l1a raw outputs but no l1b rdn
         # outputs in time range
@@ -76,11 +76,12 @@ class DatabaseManager:
             "num_valid_lines": {"$gte": 1},
             "products.l1a.raw.img_path": {"$exists": 1},
             "products.l1b.rdn.img_path": {"$exists": 0},
-            "last_modified": {"$gte": start, "$lte": stop},
+            date_field: {"$gte": start, "$lte": stop},
             "build_num": self.config["build_num"]
         }
         results = list(acquisitions_coll.find(query))
-        results = self._remove_results_with_failed_tasks(results, ["emit.L1BCalibrate"])
+        if not retry_failed:
+            results = self._remove_results_with_failed_tasks(results, ["emit.L1BCalibrate"])
         acqs_ready_for_cal = []
         for acq in results:
             recent_darks = self.find_acquisitions_touching_date_range(
@@ -95,7 +96,7 @@ class DatabaseManager:
                 acqs_ready_for_cal.append(acq)
         return acqs_ready_for_cal
 
-    def find_acquisitions_for_l2(self, start, stop):
+    def find_acquisitions_for_l2(self, start, stop, date_field="last_modified", retry_failed=False):
         acquisitions_coll = self.db.acquisitions
         # Query for acquisitions with complete l1b outputs but no rfl outputs in time range
         query = {
@@ -104,11 +105,12 @@ class DatabaseManager:
             "products.l1b.loc.img_path": {"$exists": 1},
             "products.l1b.obs.img_path": {"$exists": 1},
             "products.l2a.rfl.img_path": {"$exists": 0},
-            "last_modified": {"$gte": start, "$lte": stop},
+            date_field: {"$gte": start, "$lte": stop},
             "build_num": self.config["build_num"]
         }
         results = list(acquisitions_coll.find(query))
-        results = self._remove_results_with_failed_tasks(results, ["emit.L2BAbundance", "emit.L3Unmix"])
+        if not retry_failed:
+            results = self._remove_results_with_failed_tasks(results, ["emit.L2BAbundance", "emit.L3Unmix"])
         return results
 
     def insert_acquisition(self, metadata):
@@ -157,20 +159,21 @@ class DatabaseManager:
         }
         return list(streams_coll.find(query).sort(field, sort))
 
-    def find_streams_for_edp_reformatting(self, start, stop):
+    def find_streams_for_edp_reformatting(self, start, stop, date_field="last_modified", retry_failed=False):
         streams_coll = self.db.streams
         # Query for 1674 streams that have l0 ccsds products but no l1a products which were last modified between
         # start and stop times (typically they need to be older than a certain amount of time to make sure the
         # 1676 ancillary file exists
         query = {
             "apid": "1674",
-            "last_modified": {"$gte": start, "$lte": stop},
+            date_field: {"$gte": start, "$lte": stop},
             "products.l0.ccsds_path": {"$exists": 1},
             "products.l1a": {"$exists": 0},
             "build_num": self.config["build_num"]
         }
         results = list(streams_coll.find(query))
-        results = self._remove_results_with_failed_tasks(results, ["emit.L1AReformatEDP"])
+        if not retry_failed:
+            results = self._remove_results_with_failed_tasks(results, ["emit.L1AReformatEDP"])
         return results
 
     def insert_stream(self, name, metadata):
@@ -218,18 +221,22 @@ class DatabaseManager:
         data_collections_coll = self.db.data_collections
         return list(data_collections_coll.find({"orbit": orbit_id, "build_num": self.config["build_num"]}))
 
-    def find_data_collections_for_reassembly(self, start, stop):
+    def find_data_collections_for_reassembly(self, start, stop, date_field="frames_last_modified", retry_failed=False):
         data_collections_coll = self.db.data_collections
+        # Use frames_last_modified for date field by default
+        if date_field == "last_modified":
+            date_field = "frames_last_modified"
         # Query for data collections with complete set of frames, last modified within start/stop range and
         # that don't have associated acquisitions
         query = {
             "frames_status": "complete",
-            "frames_last_modified": {"$gte": start, "$lte": stop},
+            date_field: {"$gte": start, "$lte": stop},
             "associated_acquisitions": {"$exists": 0},
             "build_num": self.config["build_num"]
         }
         results = list(data_collections_coll.find(query))
-        results = self._remove_results_with_failed_tasks(results, ["emit.L1AReassembleRaw", "emit.L1AFrameReport"])
+        if not retry_failed:
+            results = self._remove_results_with_failed_tasks(results, ["emit.L1AReassembleRaw", "emit.L1AFrameReport"])
         return results
 
     def insert_data_collection(self, metadata):
@@ -280,33 +287,35 @@ class DatabaseManager:
         }
         return list(orbits_coll.find(query).sort("start_time", sort))
 
-    def find_orbits_for_bad_reformatting(self, start, stop):
+    def find_orbits_for_bad_reformatting(self, start, stop, date_field="last_modified", retry_failed=False):
         orbits_coll = self.db.orbits
         # Query for orbits with complete set of bad data, last modified within start/stop range and
         # that don't have an associated bad netcdf file
         query = {
             "bad_status": "complete",
-            "last_modified": {"$gte": start, "$lte": stop},
+            date_field: {"$gte": start, "$lte": stop},
             "associated_bad_netcdf": {"$exists": 0},
             "build_num": self.config["build_num"]
         }
         results = list(orbits_coll.find(query))
-        results = self._remove_results_with_failed_tasks(results, ["emit.L1AReformatBAD"])
+        if not retry_failed:
+            results = self._remove_results_with_failed_tasks(results, ["emit.L1AReformatBAD"])
         return results
 
-    def find_orbits_for_geolocation(self, start, stop):
+    def find_orbits_for_geolocation(self, start, stop, date_field="last_modified", retry_failed=False):
         orbits_coll = self.db.orbits
         # Query for orbits with complete set of radiance files, an associated BAD netcdf file, last modified within
         # start/stop range, and no products.l1b.acquisitions
         query = {
             "radiance_status": "complete",
-            "last_modified": {"$gte": start, "$lte": stop},
+            date_field: {"$gte": start, "$lte": stop},
             "associated_bad_netcdf": {"$exists": 1},
             "products.l1b.acquisitions": {"$exists": 0},
             "build_num": self.config["build_num"]
         }
         results =  list(orbits_coll.find(query))
-        results = self._remove_results_with_failed_tasks(results, ["emit.L1BGeolocate"])
+        if not retry_failed:
+            results = self._remove_results_with_failed_tasks(results, ["emit.L1BGeolocate"])
         return results
 
     def insert_orbit(self, metadata):
