@@ -640,7 +640,7 @@ class L1AFrameReport(SlurmJobTask):
     acq_chunksize = luigi.IntParameter(default=1280)
     test_mode = luigi.BoolParameter(default=False)
 
-    memory = 30000
+    memory = 90000
     local_tmp_space = 125000
 
     task_namespace = "emit"

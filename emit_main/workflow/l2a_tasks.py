@@ -317,6 +317,8 @@ class L2AFormat(SlurmJobTask):
     partition = luigi.Parameter()
 
     task_namespace = "emit"
+    n_cores = 1
+    memory = 90000
 
     def requires(self):
 
@@ -412,7 +414,7 @@ class L2ADeliver(SlurmJobTask):
 
     task_namespace = "emit"
     n_cores = 1
-    memory = 30000
+    memory = 90000
 
     def requires(self):
 

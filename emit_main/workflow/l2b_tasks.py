@@ -36,7 +36,7 @@ class L2BAbundance(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
 
-    memory = 30000
+    memory = 180000
     local_tmp_space = 125000
 
     task_namespace = "emit"
@@ -193,6 +193,8 @@ class L2BFormat(SlurmJobTask):
     partition = luigi.Parameter()
 
     task_namespace = "emit"
+    n_cores = 1
+    memory = 90000
 
     def requires(self):
         logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
@@ -277,7 +279,7 @@ class L2BDeliver(SlurmJobTask):
 
     task_namespace = "emit"
     n_cores = 1
-    memory = 30000
+    memory = 90000
 
     def requires(self):
 

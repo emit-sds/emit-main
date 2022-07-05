@@ -475,6 +475,8 @@ class L1BRdnFormat(SlurmJobTask):
     partition = luigi.Parameter()
 
     task_namespace = "emit"
+    n_cores = 1
+    memory = 90000
 
     def requires(self):
 
@@ -563,7 +565,7 @@ class L1BRdnDeliver(SlurmJobTask):
 
     task_namespace = "emit"
     n_cores = 1
-    memory = 30000
+    memory = 90000
 
     def requires(self):
 
@@ -778,7 +780,7 @@ class L1BAttDeliver(SlurmJobTask):
 
     task_namespace = "emit"
     n_cores = 1
-    memory = 30000
+    memory = 90000
 
     def requires(self):
 
