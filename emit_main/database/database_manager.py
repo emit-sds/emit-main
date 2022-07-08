@@ -313,7 +313,7 @@ class DatabaseManager:
             "products.l1b.acquisitions": {"$exists": 0},
             "build_num": self.config["build_num"]
         }
-        results =  list(orbits_coll.find(query))
+        results = list(orbits_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L1BGeolocate"])
         return results
