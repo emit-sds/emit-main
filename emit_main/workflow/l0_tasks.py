@@ -31,7 +31,7 @@ class L0StripHOSC(SlurmJobTask):
     partition = luigi.Parameter()
     miss_pkt_thresh = luigi.FloatParameter(default=0.1)
 
-    memory = 90000
+    memory = 18000
 
     task_namespace = "emit"
 
@@ -192,7 +192,7 @@ class L0IngestBAD(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
 
-    memory = 90000
+    memory = 18000
 
     task_namespace = "emit"
 
@@ -374,7 +374,7 @@ class L0ProcessPlanningProduct(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
 
-    memory = 90000
+    memory = 18000
 
     task_namespace = "emit"
 
@@ -505,7 +505,7 @@ class L0Deliver(SlurmJobTask):
     partition = luigi.Parameter()
     miss_pkt_thresh = luigi.FloatParameter(default=0.1)
 
-    memory = 90000
+    memory = 18000
 
     task_namespace = "emit"
 

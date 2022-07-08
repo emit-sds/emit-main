@@ -75,6 +75,8 @@ def parse_args():
                         help="The date field for the monitors to query")
     parser.add_argument("--retry_failed", action="store_true",
                         help="A flag to tell the monitors to retry failed tasks.")
+    parser.add_argument("--pkt_format", default="1.3",
+                        help="Flight software version to use for CCSDS depacketization format")
     parser.add_argument("--miss_pkt_thresh", default="0.1",
                         help="The threshold of missing packets to total packets which will cause a task to fail")
     parser.add_argument("--ignore_missing_frames", action="store_true",
@@ -163,9 +165,10 @@ def get_tasks_from_product_args(args):
                               **kwargs),
         "l0daac": L0Deliver(stream_path=args.stream_path, miss_pkt_thresh=args.miss_pkt_thresh, **kwargs),
         "l0plan": L0ProcessPlanningProduct(plan_prod_path=args.plan_prod_path, **kwargs),
-        "l1aeng": L1AReformatEDP(stream_path=args.stream_path, miss_pkt_thresh=args.miss_pkt_thresh,
-                                 **kwargs),
+        "l1aeng": L1AReformatEDP(stream_path=args.stream_path, pkt_format=args.pkt_format,
+                                 miss_pkt_thresh=args.miss_pkt_thresh, **kwargs),
         "l1aframe": L1ADepacketizeScienceFrames(stream_path=args.stream_path,
+                                                pkt_format=args.pkt_format,
                                                 miss_pkt_thresh=args.miss_pkt_thresh,
                                                 override_output=args.override_output,
                                                 **kwargs),
@@ -327,7 +330,7 @@ def main():
     # Get tasks from ingest monitor
     if args.monitor and args.monitor == "ingest":
         im = IngestMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
-                           miss_pkt_thresh=args.miss_pkt_thresh, test_mode=args.test_mode)
+                           pkt_format=args.pkt_format, miss_pkt_thresh=args.miss_pkt_thresh, test_mode=args.test_mode)
         im_tasks = im.ingest_files()
         im_tasks_str = "\n".join([str(t) for t in im_tasks])
         logger.info(f"Ingest monitor tasks to run:\n{im_tasks_str}")
@@ -346,7 +349,7 @@ def main():
     # Get tasks from edp monitor
     if args.monitor and args.monitor == "edp":
         im = IngestMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
-                           miss_pkt_thresh=args.miss_pkt_thresh, test_mode=args.test_mode)
+                           pkt_format=args.pkt_format, miss_pkt_thresh=args.miss_pkt_thresh, test_mode=args.test_mode)
         im_edp_tasks = im.get_edp_reformatting_tasks(start_time=args.start_time, stop_time=args.stop_time,
                                                      date_field=args.date_field, retry_failed=args.retry_failed)
         im_edp_tasks_str = "\n".join([str(t) for t in im_edp_tasks])

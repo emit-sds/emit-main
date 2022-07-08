@@ -17,7 +17,8 @@ logger = logging.getLogger("emit-main")
 
 class IngestMonitor:
 
-    def __init__(self, config_path, level="INFO", partition="emit", miss_pkt_thresh=0.1, test_mode=False):
+    def __init__(self, config_path, level="INFO", partition="emit", pkt_format="1.3", miss_pkt_thresh=0.1,
+                 test_mode=False):
         """
         :param config_path: Path to config file containing environment settings
         """
@@ -25,6 +26,7 @@ class IngestMonitor:
         self.config_path = os.path.abspath(config_path)
         self.level = level
         self.partition = partition
+        self.pkt_format = pkt_format
         self.miss_pkt_thresh = miss_pkt_thresh
         self.test_mode = test_mode
 
@@ -77,6 +79,7 @@ class IngestMonitor:
                                         stream_path=stream_path,
                                         level=self.level,
                                         partition=self.partition,
+                                        pkt_format=self.pkt_format,
                                         miss_pkt_thresh=self.miss_pkt_thresh))
 
         return tasks
@@ -113,6 +116,7 @@ class IngestMonitor:
                                                              stream_path=p,
                                                              level=self.level,
                                                              partition=self.partition,
+                                                             pkt_format=self.pkt_format,
                                                              miss_pkt_thresh=self.miss_pkt_thresh,
                                                              test_mode=self.test_mode))
 

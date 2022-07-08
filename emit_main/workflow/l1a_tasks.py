@@ -33,12 +33,12 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
     stream_path = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
+    pkt_format = luigi.Parameter(default="1.3")
     miss_pkt_thresh = luigi.FloatParameter()
     test_mode = luigi.BoolParameter(default=False)
     override_output = luigi.BoolParameter(default=False)
 
-    memory = 90000
-    local_tmp_space = 125000
+    memory = 30000
 
     task_namespace = "emit"
 
@@ -74,6 +74,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
         tmp_report_path = tmp_log_path.replace(".log", "_report.txt")
         input_files = {"ccsds_path": stream.ccsds_path}
         cmd = ["python", sds_l1a_science_packet_exe, stream.ccsds_path,
+               "--pkt_format", self.pkt_format,
                "--work_dir", self.local_tmp_dir,
                "--level", self.level,
                "--log_path", tmp_log_path]
@@ -286,7 +287,6 @@ class L1AReassembleRaw(SlurmJobTask):
     test_mode = luigi.BoolParameter(default=False)
 
     memory = 90000
-    local_tmp_space = 125000
 
     task_namespace = "emit"
 
@@ -640,8 +640,7 @@ class L1AFrameReport(SlurmJobTask):
     acq_chunksize = luigi.IntParameter(default=1280)
     test_mode = luigi.BoolParameter(default=False)
 
-    memory = 30000
-    local_tmp_space = 125000
+    memory = 90000
 
     task_namespace = "emit"
 
@@ -757,9 +756,9 @@ class L1ADeliver(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
 
+    memory = 18000
+
     task_namespace = "emit"
-    n_cores = 1
-    memory = 90000
 
     def requires(self):
 
@@ -966,10 +965,10 @@ class L1AReformatEDP(SlurmJobTask):
     stream_path = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
+    pkt_format = luigi.Parameter(default="1.3")
     miss_pkt_thresh = luigi.FloatParameter()
 
-    memory = 90000
-    local_tmp_space = 125000
+    memory = 18000
 
     task_namespace = "emit"
 
@@ -1027,7 +1026,8 @@ class L1AReformatEDP(SlurmJobTask):
         cmd = ["python", l1_edp_exe,
                f"--input-dir={tmp_input_dir}",
                f"--output-dir={tmp_output_dir}",
-               f"--log-dir={tmp_log_dir}"]
+               f"--log-dir={tmp_log_dir}",
+               f"--pkt-format={self.pkt_format}"]
         env = os.environ.copy()
         env["AIT_ROOT"] = pge.repo_dir
         env["AIT_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "config.yaml")
@@ -1091,8 +1091,7 @@ class L1AReformatBAD(SlurmJobTask):
     partition = luigi.Parameter()
     ignore_missing_bad = luigi.BoolParameter(default=False)
 
-    memory = 90000
-    local_tmp_space = 125000
+    memory = 18000
 
     task_namespace = "emit"
 
