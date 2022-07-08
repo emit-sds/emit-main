@@ -30,15 +30,16 @@ class AcquisitionMonitor:
         # Get workflow manager
         self.wm = WorkflowManager(config_path=config_path)
 
-    def get_calibration_tasks(self, start_time, stop_time):
+    def get_calibration_tasks(self, start_time, stop_time, date_field="last_modified", retry_failed=False):
         tasks = []
         # Find acquisitions within time range
         dm = self.wm.database_manager
-        acquisitions = dm.find_acquisitions_for_calibration(start=start_time, stop=stop_time)
+        acquisitions = dm.find_acquisitions_for_calibration(start=start_time, stop=stop_time, date_field=date_field,
+                                                            retry_failed=retry_failed)
 
         # If no results, just return empty list
         if len(acquisitions) == 0:
-            logger.info(f"Did not find any acquisitions modified between {start_time} and {stop_time} needing "
+            logger.info(f"Did not find any acquisitions with {date_field} between {start_time} and {stop_time} needing "
                         f"calibration tasks. Not executing any tasks.")
             return tasks
 
@@ -51,16 +52,17 @@ class AcquisitionMonitor:
 
         return tasks
 
-    def get_l2_tasks(self, start_time, stop_time):
+    def get_l2_tasks(self, start_time, stop_time, date_field="last_modified", retry_failed=False):
         tasks = []
         # Find acquisitions within time range
         dm = self.wm.database_manager
-        acquisitions = dm.find_acquisitions_for_l2(start=start_time, stop=stop_time)
+        acquisitions = dm.find_acquisitions_for_l2(start=start_time, stop=stop_time, date_field=date_field,
+                                                   retry_failed=retry_failed)
 
         # If no results, just return empty list
         if len(acquisitions) == 0:
-            logger.info(f"Did not find any acquisitions modified between {start_time} and {stop_time} needing MESMA "
-                        f"tasks. Not executing any tasks.")
+            logger.info(f"Did not find any acquisitions with {date_field} between {start_time} and {stop_time} needing "
+                        f"MESMA tasks. Not executing any tasks.")
             return tasks
 
         for acq in acquisitions:

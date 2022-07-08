@@ -71,6 +71,10 @@ def parse_args():
                         help="The start time to use for any monitor calls (YYYY-MM-DDTHH:MM:SS)")
     parser.add_argument("--stop_time",
                         help="The stop time to use for any monitor calls (YYYY-MM-DDTHH:MM:SS)")
+    parser.add_argument("--date_field", default="last_modified",
+                        help="The date field for the monitors to query")
+    parser.add_argument("--retry_failed", action="store_true",
+                        help="A flag to tell the monitors to retry failed tasks.")
     parser.add_argument("--pkt_format", default="1.3",
                         help="Flight software version to use for CCSDS depacketization format")
     parser.add_argument("--miss_pkt_thresh", default="0.1",
@@ -336,7 +340,8 @@ def main():
     if args.monitor and args.monitor == "frames":
         fm = FramesMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
                            acq_chunksize=args.acq_chunksize, test_mode=args.test_mode)
-        fm_tasks = fm.get_reassembly_tasks(start_time=args.start_time, stop_time=args.stop_time)
+        fm_tasks = fm.get_reassembly_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                           date_field=args.date_field, retry_failed=args.retry_failed)
         fm_tasks_str = "\n".join([str(t) for t in fm_tasks])
         logger.info(f"Frames monitor tasks to run:\n{fm_tasks_str}")
         tasks += fm_tasks
@@ -345,7 +350,8 @@ def main():
     if args.monitor and args.monitor == "edp":
         im = IngestMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
                            pkt_format=args.pkt_format, miss_pkt_thresh=args.miss_pkt_thresh, test_mode=args.test_mode)
-        im_edp_tasks = im.get_edp_reformatting_tasks(start_time=args.start_time, stop_time=args.stop_time)
+        im_edp_tasks = im.get_edp_reformatting_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                                     date_field=args.date_field, retry_failed=args.retry_failed)
         im_edp_tasks_str = "\n".join([str(t) for t in im_edp_tasks])
         logger.info(f"Ingest monitor EDP tasks to run:\n{im_edp_tasks_str}")
         tasks += im_edp_tasks
@@ -353,7 +359,8 @@ def main():
     # Get tasks from orbit monitor for BAD tasks
     if args.monitor and args.monitor == "bad":
         om = OrbitMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
-        om_bad_tasks = om.get_bad_reformatting_tasks(start_time=args.start_time, stop_time=args.stop_time)
+        om_bad_tasks = om.get_bad_reformatting_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                                     date_field=args.date_field, retry_failed=args.retry_failed)
         om_bad_tasks_str = "\n".join([str(t) for t in om_bad_tasks])
         logger.info(f"Orbit monitor BAD tasks to run:\n{om_bad_tasks_str}")
         tasks += om_bad_tasks
@@ -361,7 +368,8 @@ def main():
     # Get tasks from orbit monitor for geolocation tasks
     if args.monitor and args.monitor == "geo":
         om = OrbitMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
-        om_geo_tasks = om.get_geolocation_tasks(start_time=args.start_time, stop_time=args.stop_time)
+        om_geo_tasks = om.get_geolocation_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                                date_field=args.date_field, retry_failed=args.retry_failed)
         om_geo_tasks_str = "\n".join([str(t) for t in om_geo_tasks])
         logger.info(f"Orbit monitor geolocation tasks to run:\n{om_geo_tasks_str}")
         tasks += om_geo_tasks
@@ -369,7 +377,8 @@ def main():
     # Get tasks from acquisition monitor for calibration tasks
     if args.monitor and args.monitor == "cal":
         am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
-        am_cal_tasks = am.get_calibration_tasks(start_time=args.start_time, stop_time=args.stop_time)
+        am_cal_tasks = am.get_calibration_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                                date_field=args.date_field, retry_failed=args.retry_failed)
         am_cal_tasks_str = "\n".join([str(t) for t in am_cal_tasks])
         logger.info(f"Acquisition monitor calibration tasks to run:\n{am_cal_tasks_str}")
         tasks += am_cal_tasks
@@ -377,7 +386,8 @@ def main():
     # Get tasks from acquisition monitor for L2+ tasks
     if args.monitor and args.monitor == "l2":
         am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
-        am_l2_tasks = am.get_l2_tasks(start_time=args.start_time, stop_time=args.stop_time)
+        am_l2_tasks = am.get_l2_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                      date_field=args.date_field, retry_failed=args.retry_failed)
         am_l2_tasks_str = "\n".join([str(t) for t in am_l2_tasks])
         logger.info(f"Acquisition monitor L2 tasks to run:\n{am_l2_tasks_str}")
         tasks += am_l2_tasks
