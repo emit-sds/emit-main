@@ -38,8 +38,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
     test_mode = luigi.BoolParameter(default=False)
     override_output = luigi.BoolParameter(default=False)
 
-    memory = 90000
-    local_tmp_space = 125000
+    memory = 30000
 
     task_namespace = "emit"
 
@@ -288,7 +287,6 @@ class L1AReassembleRaw(SlurmJobTask):
     test_mode = luigi.BoolParameter(default=False)
 
     memory = 90000
-    local_tmp_space = 125000
 
     task_namespace = "emit"
 
@@ -642,8 +640,7 @@ class L1AFrameReport(SlurmJobTask):
     acq_chunksize = luigi.IntParameter(default=1280)
     test_mode = luigi.BoolParameter(default=False)
 
-    memory = 30000
-    local_tmp_space = 125000
+    memory = 90000
 
     task_namespace = "emit"
 
@@ -759,9 +756,9 @@ class L1ADeliver(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
 
+    memory = 18000
+
     task_namespace = "emit"
-    n_cores = 1
-    memory = 90000
 
     def requires(self):
 
@@ -971,8 +968,7 @@ class L1AReformatEDP(SlurmJobTask):
     pkt_format = luigi.Parameter(default="1.3")
     miss_pkt_thresh = luigi.FloatParameter()
 
-    memory = 90000
-    local_tmp_space = 125000
+    memory = 18000
 
     task_namespace = "emit"
 
@@ -1095,8 +1091,7 @@ class L1AReformatBAD(SlurmJobTask):
     partition = luigi.Parameter()
     ignore_missing_bad = luigi.BoolParameter(default=False)
 
-    memory = 90000
-    local_tmp_space = 125000
+    memory = 18000
 
     task_namespace = "emit"
 
