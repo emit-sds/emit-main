@@ -17,7 +17,7 @@ logger = logging.getLogger("emit-main")
 
 class IngestMonitor:
 
-    def __init__(self, config_path, level="INFO", partition="emit", pkt_format="1.3", miss_pkt_thresh=0.1,
+    def __init__(self, config_path, level="INFO", partition="emit", pkt_format="1.3", miss_pkt_thresh=0.01,
                  test_mode=False):
         """
         :param config_path: Path to config file containing environment settings

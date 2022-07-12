@@ -77,7 +77,7 @@ def parse_args():
                         help="A flag to tell the monitors to retry failed tasks.")
     parser.add_argument("--pkt_format", default="1.3",
                         help="Flight software version to use for CCSDS depacketization format")
-    parser.add_argument("--miss_pkt_thresh", default="0.1",
+    parser.add_argument("--miss_pkt_thresh", default="0.01",
                         help="The threshold of missing packets to total packets which will cause a task to fail")
     parser.add_argument("--ignore_missing_frames", action="store_true",
                         help="Ignore missing frames when reasssembling raw cube")

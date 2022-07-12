@@ -29,7 +29,7 @@ class L0StripHOSC(SlurmJobTask):
     stream_path = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
-    miss_pkt_thresh = luigi.FloatParameter(default=0.1)
+    miss_pkt_thresh = luigi.FloatParameter(default=0.01)
 
     memory = 18000
 
@@ -85,11 +85,11 @@ class L0StripHOSC(SlurmJobTask):
             for line in f.readlines():
                 if "Packet Count" in line:
                     packet_count = int(line.rstrip("\n").split(" ")[-1])
-                if "PSC Errors Encountered" in line:
+                if "Missing PSC Count" in line:
                     missing_packets = int(line.rstrip("\n").split(" ")[-1])
         miss_pkt_percent = missing_packets / packet_count
         if missing_packets / packet_count >= self.miss_pkt_thresh:
-            raise RuntimeError(f"{missing_packets} PSC errors out of {packet_count} total is greater than the "
+            raise RuntimeError(f"{missing_packets} missing packets out of {packet_count} total is greater than the "
                                f"missing packet threshold of {self.miss_pkt_thresh}")
 
         # Set up command to get CCSDS start/stop times
@@ -503,7 +503,7 @@ class L0Deliver(SlurmJobTask):
     stream_path = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
-    miss_pkt_thresh = luigi.FloatParameter(default=0.1)
+    miss_pkt_thresh = luigi.FloatParameter(default=0.01)
 
     memory = 18000
 
