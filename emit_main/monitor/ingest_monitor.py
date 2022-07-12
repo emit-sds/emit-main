@@ -59,16 +59,17 @@ class IngestMonitor:
         logger.info(f"Found paths to ingest: {paths}")
         return self._ingest_file_list(paths)
 
-    def get_edp_reformatting_tasks(self, start_time, stop_time):
+    def get_edp_reformatting_tasks(self, start_time, stop_time, date_field="last_modified", retry_failed=False):
         tasks = []
         # Find 1674 files in time range that don't have engineering products yet
         dm = self.wm.database_manager
-        streams = dm.find_streams_for_edp_reformatting(start=start_time, stop=stop_time)
+        streams = dm.find_streams_for_edp_reformatting(start=start_time, stop=stop_time, date_field=date_field,
+                                                       retry_failed=retry_failed)
 
         # If no results, just return empty list
         if len(streams) == 0:
-            logger.info(f"Did not find any 1674 streams modified between {start_time} and {stop_time} needing EDP "
-                        f"reformatting tasks. Not executing any tasks.")
+            logger.info(f"Did not find any 1674 streams with {date_field} between {start_time} and {stop_time} needing "
+                        f"EDP reformatting tasks. Not executing any tasks.")
             return tasks
 
         for stream in streams:

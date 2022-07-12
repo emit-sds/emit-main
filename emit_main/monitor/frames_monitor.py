@@ -33,15 +33,16 @@ class FramesMonitor:
         # Get workflow manager
         self.wm = WorkflowManager(config_path=config_path)
 
-    def get_reassembly_tasks(self, start_time, stop_time):
+    def get_reassembly_tasks(self, start_time, stop_time, date_field="frames_last_modified", retry_failed=False):
         tasks = []
         dm = self.wm.database_manager
-        data_collections = dm.find_data_collections_for_reassembly(start=start_time, stop=stop_time)
+        data_collections = dm.find_data_collections_for_reassembly(start=start_time, stop=stop_time,
+                                                                   date_field=date_field, retry_failed=retry_failed)
 
         # If no results, just return empty list
         if len(data_collections) == 0:
-            logger.info(f"Did not find any data collections modified between {start_time} and {stop_time} needing "
-                        f"reassembly tasks. Not executing any tasks.")
+            logger.info(f"Did not find any data collections with {date_field} between {start_time} and {stop_time} "
+                        f"needing reassembly tasks. Not executing any tasks.")
             return tasks
 
         for dc in data_collections:
