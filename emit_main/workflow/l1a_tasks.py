@@ -343,7 +343,7 @@ class L1AReassembleRaw(SlurmJobTask):
                "--level", self.level,
                "--log_path", tmp_log_path,
                "--chunksize", str(self.acq_chunksize)]
-        if self.test_mode:
+        if True:  # self.test_mode:
             cmd.append("--test_mode")
         env = os.environ.copy()
         env["AIT_ROOT"] = wm.pges["emit-ios"].repo_dir
@@ -371,7 +371,7 @@ class L1AReassembleRaw(SlurmJobTask):
             wm.copy(path, os.path.join(dc.decomp_dir, os.path.basename(path)))
 
         # If in test_mode, also copy the decompressed frames with no header to /store
-        if self.test_mode:
+        if True:  # self.test_mode:
             for path in tmp_decomp_no_header_paths:
                 wm.copy(path, os.path.join(dc.decomp_dir, os.path.basename(path)))
 
