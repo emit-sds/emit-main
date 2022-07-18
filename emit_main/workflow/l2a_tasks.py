@@ -65,30 +65,49 @@ class L2AReflectance(SlurmJobTask):
         acq = wm.acquisition
         pge = wm.pges["emit-sds-l2a"]
 
-        # Build PGE cmd
-        apply_oe_exe = os.path.join(wm.pges["isofit"].repo_dir, "isofit", "utils", "apply_oe.py")
+        # Build PGE cmd for surface model
+        isofit_pge = wm.pges["isofit"]
+        # Note that the generic config below is not expected to change
+        generic_config_path = os.path.join(pge.repo_dir, "surface", "surface_20220714.json")
+        tmp_surface_path = os.path.join(self.local_tmp_dir, f"{acq.acquisition_id}_surface.mat")
+        # Get wavelength file from l1b config
+        l1b_config_path = wm.config["l1b_config_path"]
+        with open(l1b_config_path, "r") as f:
+            config = json.load(f)
+        wavelength_path = config["spectral_calibration_file"]
+        if not wavelength_path.startswith("/"):
+            wavelength_path = os.path.abspath(os.path.join(os.path.dirname(l1b_config_path), wavelength_path))
+        # Set environment
+        env = os.environ.copy()
+        env["PYTHONPATH"] = f"$PYTHONPATH:{isofit_pge.repo_dir}"
+        surf_cmd = ["python", "-c", "\"from isofit.utils import surface_model;",
+                    f"surface_model('{generic_config_path}', wavelength_path='{wavelength_path}', "
+                    f"output_path='{tmp_surface_path}')\""]
+        pge.run(surf_cmd, tmp_dir=self.tmp_dir, env=env)
+
+        # Build PGE cmd for apply_oe
+        apply_oe_exe = os.path.join(isofit_pge.repo_dir, "isofit", "utils", "apply_oe.py")
         tmp_log_path = os.path.join(self.local_tmp_dir, "isofit.log")
-        surface_path = wm.config["isofit_surface_path"]
+
         emulator_base = wm.config["isofit_emulator_base"]
         input_files = {
             "radiance_file": acq.rdn_img_path,
             "pixel_locations_file": acq.loc_img_path,
             "observation_parameters_file": acq.obs_img_path,
-            "surface_file": surface_path
+            "surface_model_generic_config": generic_config_path,
+            "surface_model_wavelength_file": wavelength_path,
+            "surface_file": tmp_surface_path
         }
         cmd = ["python", apply_oe_exe, acq.rdn_img_path, acq.loc_img_path, acq.obs_img_path, self.local_tmp_dir, "emit",
                "--presolve=1", "--empirical_line=1", "--emulator_base=" + emulator_base,
                "--n_cores", str(self.n_cores),
-               "--surface_path", surface_path,
+               "--surface_path", tmp_surface_path,
                "--ray_temp_dir", "/tmp/ray",
                "--log_file", tmp_log_path,
                "--logging_level", self.level]
 
-        env = os.environ.copy()
         env["SIXS_DIR"] = wm.config["isofit_sixs_dir"]
         env["EMULATOR_DIR"] = emulator_base
-        isofit_pge = wm.pges["isofit"]
-        env["PYTHONPATH"] = isofit_pge.repo_dir
         env["RAY_worker_register_timeout_seconds"] = "600"
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
@@ -152,9 +171,9 @@ class L2AReflectance(SlurmJobTask):
             if "_rfl_" in img_path:
                 dm.update_acquisition_metadata(
                     acq.acquisition_id, {"products.l2a.rfl": product_dict})
-            elif "_uncert_" in img_path:
+            elif "_rfluncert_" in img_path:
                 dm.update_acquisition_metadata(
-                    acq.acquisition_id, {"products.l2a.uncert": product_dict})
+                    acq.acquisition_id, {"products.l2a.rfluncert": product_dict})
 
         total_time = time.time() - start_time
         log_entry = {
@@ -237,7 +256,7 @@ class L2AMask(SlurmJobTask):
 
         env = os.environ.copy()
         isofit_pge = wm.pges["isofit"]
-        env["PYTHONPATH"] = isofit_pge.repo_dir
+        env["PYTHONPATH"] = f"$PYTHONPATH:{isofit_pge.repo_dir}"
 
         env["RAY_worker_register_timeout_seconds"] = "600"
 
@@ -383,7 +402,7 @@ class L2AFormat(SlurmJobTask):
             "pge_version": pge.version_tag,
             "pge_input_files": {
                 "rfl_img_path": acq.rfl_img_path,
-                "rfl_uncert_img_path": acq.rfluncert_img_path,
+                "rfluncert_img_path": acq.rfluncert_img_path,
                 "mask_img_path": acq.mask_img_path,
                 "loc_img_path": acq.loc_img_path,
                 "glt_img_path": acq.glt_img_path
