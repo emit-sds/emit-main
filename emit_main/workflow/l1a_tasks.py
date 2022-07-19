@@ -380,6 +380,23 @@ class L1AReassembleRaw(SlurmJobTask):
         wm.copy(tmp_dc_report_path, dc_report_path)
         wm.copy(tmp_log_path, dc_report_path.replace("report.txt", "pge.log"))
 
+        # Update the dcid reassembly report with depacketization stats
+        dc_report_file = open(dc_report_path, "w")
+        # Get depacketization report from associated CCSDS files
+        for path in dc.associated_ccsds:
+            depacket_report_path = path.replace("l0", "l1a").replace("ccsds", "frames").replace(".bin", "_report.txt")
+            if os.path.exists(depacket_report_path):
+                with open(depacket_report_path, "r") as f:
+                    dc_report_file.write("===========================\n")
+                    dc_report_file.write("DEPACKETIZATION REPORT FILE\n")
+                    dc_report_file.write("===========================\n")
+                    dc_report_file.write(f"{depacket_report_path}\n\n")
+                    dc_report_file.write(f.read() + "\n\n")
+            else:
+                wm.print(__name__, f"Unable to find depacketization report located at {depacket_report_path}")
+
+        dc_report_file.close()
+
         # Copy decompressed frames to /store
         tmp_decomp_frame_paths = glob.glob(os.path.join(tmp_image_dir, "*.decomp"))
         for path in tmp_decomp_frame_paths:
@@ -508,30 +525,30 @@ class L1AReassembleRaw(SlurmJobTask):
             # Create rawqa report file based on CCSDS depacketization report(s) and reassembly report
             rawqa_file = open(acq.rawqa_txt_path, "w")
 
+            # Get reassembly report
+            if os.path.exists(report_path):
+                with open(report_path, "r") as f:
+                    rawqa_file.write("======================\n")
+                    rawqa_file.write("REASSEMBLY REPORT FILE\n")
+                    rawqa_file.write("======================\n")
+                    rawqa_file.write(f"{report_path}\n\n")
+                    rawqa_file.write(f.read())
+            else:
+                wm.print(__name__, f"Unable to find reassembly report located at {report_path}")
+
             # Get depacketization report from associated CCSDS files
             for path in dc.associated_ccsds:
                 depacket_report_path = path.replace(
                     "l0", "l1a").replace("ccsds", "frames").replace(".bin", "_report.txt")
                 if os.path.exists(depacket_report_path):
                     with open(depacket_report_path, "r") as f:
-                        rawqa_file.write("===========\n")
-                        rawqa_file.write("SOURCE FILE\n")
-                        rawqa_file.write("===========\n")
+                        rawqa_file.write("===========================\n")
+                        rawqa_file.write("DEPACKETIZATION REPORT FILE\n")
+                        rawqa_file.write("===========================\n")
                         rawqa_file.write(f"{depacket_report_path}\n\n")
                         rawqa_file.write(f.read() + "\n\n")
                 else:
                     wm.print(__name__, f"Unable to find depacketization report located at {depacket_report_path}")
-
-            # Get reassembly report
-            if os.path.exists(report_path):
-                with open(tmp_report_path, "r") as f:
-                    rawqa_file.write("===========\n")
-                    rawqa_file.write("SOURCE FILE\n")
-                    rawqa_file.write("===========\n")
-                    rawqa_file.write(f"{report_path}\n\n")
-                    rawqa_file.write(f.read())
-            else:
-                wm.print(__name__, f"Unable to find reassembly report located at {report_path}")
 
             rawqa_file.close()
             wm.change_group_ownership(acq.rawqa_txt_path)
