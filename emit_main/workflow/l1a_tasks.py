@@ -321,6 +321,10 @@ class L1AReassembleRaw(SlurmJobTask):
             if "orbit" not in dc.metadata or "scene" not in dc.metadata or "submode" not in dc.metadata:
                 raise RuntimeError(f"Attempting to create acquisitions without orbit, scene, or submode! "
                                    f"It appears that there was no planning product for DCID {self.dcid}")
+        # If we made it this far, then initialize these values for the rest of the task
+        orbit = dc.metadata["orbit"] if "orbit" in dc.metadata else "00000"
+        scene = dc.metadata["scene"] if "scene" in dc.metadata else "000"
+        submode = dc.metadata["submode"] if "submode" in dc.metadata else "science"
 
         pge_reassemble = wm.pges["emit-sds-l1a"]
         reassemble_raw_pge = os.path.join(pge_reassemble.repo_dir, "reassemble_raw_cube.py")
@@ -342,9 +346,13 @@ class L1AReassembleRaw(SlurmJobTask):
                "--work_dir", self.local_tmp_dir,
                "--level", self.level,
                "--log_path", tmp_log_path,
-               "--chunksize", str(self.acq_chunksize)]
-        if True:  # self.test_mode:
+               "--chunksize", str(self.acq_chunksize),
+               "--orbit", orbit,
+               "--scene", scene,
+               "--submode", submode]
+        if self.test_mode:
             cmd.append("--test_mode")
+
         env = os.environ.copy()
         env["AIT_ROOT"] = wm.pges["emit-ios"].repo_dir
         env["AIT_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "config.yaml")
@@ -371,6 +379,7 @@ class L1AReassembleRaw(SlurmJobTask):
             wm.copy(path, os.path.join(dc.decomp_dir, os.path.basename(path)))
 
         # If in test_mode, also copy the decompressed frames with no header to /store
+        # TODO: For now, always copy these paths.  They can be manually deleted after
         if True:  # self.test_mode:
             for path in tmp_decomp_no_header_paths:
                 wm.copy(path, os.path.join(dc.decomp_dir, os.path.basename(path)))
@@ -405,10 +414,6 @@ class L1AReassembleRaw(SlurmJobTask):
         }
         acq_product_map = {}
         for acq_id in acq_ids:
-            orbit = dc.metadata["orbit"] if "orbit" in dc.metadata else "00000"
-            scene = dc.metadata["scene"] if "scene" in dc.metadata else"000"
-            submode = dc.metadata["submode"] if "submode" in dc.metadata else "science"
-
             # Get start/stop times from reassembly report
             tmp_report_path = os.path.join(tmp_image_dir, f"{acq_id}_report.txt")
             start_time = None
@@ -1113,8 +1118,6 @@ class L1AReformatBAD(SlurmJobTask):
         dm = wm.database_manager
         orbit = wm.orbit
         pge = wm.pges["emit-sds-l1a"]
-
-        # TODO: Use --test_mode to remove dependency on database.  Is this even possible since orbit must be defined?
 
         # Check for missing BAD data before proceeding. Override with --ignore_missing_bad arg
         if self.ignore_missing_bad is False and orbit.has_complete_bad_data() is False:
