@@ -373,6 +373,13 @@ class L1AReassembleRaw(SlurmJobTask):
         cmd = ["python", compute_line_stats_exe, tmp_no_header_list, ">", tmp_line_stats_path]
         pge_line_stats.run(cmd, tmp_dir=self.tmp_dir)
 
+        # Copy dcid reassembly report and log to decomp folder
+        dc_report_name = f"{dc.dcid}_reassembly_report.txt"
+        tmp_dc_report_path = os.path.join(self.local_tmp_dir, dc_report_name)
+        dc_report_path = os.path.join(dc.decomp_dir, dc_report_name)
+        wm.copy(tmp_dc_report_path, dc_report_path)
+        wm.copy(tmp_log_path, dc_report_path.replace("report.txt", "pge.log"))
+
         # Copy decompressed frames to /store
         tmp_decomp_frame_paths = glob.glob(os.path.join(tmp_image_dir, "*.decomp"))
         for path in tmp_decomp_frame_paths:
