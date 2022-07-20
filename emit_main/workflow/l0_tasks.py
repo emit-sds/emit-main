@@ -456,8 +456,7 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                         "orbit": str(e["orbit number"]).zfill(5),
                         "scene": str(e["scene number"]).zfill(3),
                         "submode": e["name"].lower(),
-                        "planning_product": e,
-                        "frames_status": ""
+                        "planning_product": e
                     }
 
                     # Insert or update data collection in DB
@@ -465,6 +464,7 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                         dm.update_data_collection_metadata(dcid, dc_meta)
                         logger.debug(f"Updated data collection in DB with {dc_meta}")
                     else:
+                        dc_meta["frames_status"] = ""
                         dm.insert_data_collection(dc_meta)
                         logger.debug(f"Inserted data collection in DB with {dc_meta}")
 
