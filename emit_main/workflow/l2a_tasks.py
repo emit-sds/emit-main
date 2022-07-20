@@ -113,6 +113,7 @@ class L2AReflectance(SlurmJobTask):
 
         # Copy output files to l2a dir and rename
         tmp_rfl_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_rfl")
+        tmp_rfl_png_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_rfl_rgb.png")
         tmp_rfl_hdr_path = envi_header(tmp_rfl_path)
         tmp_rfluncert_path = os.path.join(self.local_tmp_dir, "output",
                                           self.acquisition_id + "_uncert")
@@ -122,6 +123,11 @@ class L2AReflectance(SlurmJobTask):
         tmp_statesubs_path = os.path.join(
             self.local_tmp_dir, "output", self.acquisition_id + "_subs_state")
         tmp_statesubs_hdr_path = envi_header(tmp_statesubs_path)
+
+        cmd = ["gdal_translate", self.tmp_rfl_path, tmp_rfl_png_path, "-b", "32", "-b", "22", "-b", 
+               "13", "-ot", "Byte", "-scale", "-exponent", "0.6", "-of", "PNG", "-co", "ZLEVEL=9" ]
+        pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
+
         wm.copy(tmp_rfl_path, acq.rfl_img_path)
         wm.copy(tmp_rfl_hdr_path, acq.rfl_hdr_path)
         wm.copy(tmp_rfluncert_path, acq.rfluncert_img_path)
@@ -130,6 +136,7 @@ class L2AReflectance(SlurmJobTask):
         wm.copy(tmp_lbl_hdr_path, acq.lbl_hdr_path)
         wm.copy(tmp_statesubs_path, acq.statesubs_img_path)
         wm.copy(tmp_statesubs_hdr_path, acq.statesubs_hdr_path)
+        wm.copy(tmp_rfl_png_path, acq.rfl_png_path)
 
         # Copy log file and rename
         log_path = acq.rfl_img_path.replace(".img", "_pge.log")
@@ -190,6 +197,7 @@ class L2AReflectance(SlurmJobTask):
             "output": {
                 "l2a_rfl_img_path": acq.rfl_img_path,
                 "l2a_rfl_hdr_path:": acq.rfl_hdr_path,
+                "l2a_rfl_png_path:": acq.rfl_png_path,
                 "l2a_rfluncert_img_path": acq.rfluncert_img_path,
                 "l2a_rfluncert_hdr_path:": acq.rfluncert_hdr_path
             }
@@ -477,7 +485,7 @@ class L2ADeliver(SlurmJobTask):
         wm.copy(acq.rfl_nc_path, daac_rfl_nc_path)
         wm.copy(acq.rfluncert_nc_path, daac_rfluncert_nc_path)
         wm.copy(acq.mask_nc_path, daac_mask_nc_path)
-        wm.copy(acq.rdn_png_path, daac_browse_path)
+        wm.copy(acq.rfl_png_path, daac_browse_path)
 
         # Create the UMM-G file
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rfl_nc_path), tz=datetime.timezone.utc)
@@ -524,7 +532,7 @@ class L2ADeliver(SlurmJobTask):
             daac_rfl_nc_name: os.path.basename(acq.rfl_nc_path),
             daac_rfluncert_nc_name: os.path.basename(acq.rfluncert_nc_path),
             daac_mask_nc_name: os.path.basename(acq.mask_nc_path),
-            daac_browse_name: os.path.basename(acq.rdn_png_path),
+            daac_browse_name: os.path.basename(acq.rfl_png_path),
             daac_ummg_name: os.path.basename(ummg_path)
         }
         notification = {
@@ -636,7 +644,7 @@ class L2ADeliver(SlurmJobTask):
                 "rfl_netcdf_path": acq.rfl_nc_path,
                 "rfluncert_netcdf_path": acq.rfluncert_nc_path,
                 "mask_netcdf_path": acq.mask_nc_path,
-                "rdn_png_path": acq.rdn_png_path
+                "rfl_png_path": acq.rfl_png_path
             },
             "pge_run_command": " ".join(cmd_aws),
             "documentation_version": "TBD",
