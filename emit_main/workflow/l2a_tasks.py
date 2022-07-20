@@ -67,8 +67,7 @@ class L2AReflectance(SlurmJobTask):
 
         # Build PGE cmd for surface model
         isofit_pge = wm.pges["isofit"]
-        # Note that the generic config below is not expected to change
-        generic_config_path = os.path.join(pge.repo_dir, "surface", "surface_20220714.json")
+        surface_config_path = wm.config["isofit_surface_config"]
         tmp_surface_path = os.path.join(self.local_tmp_dir, f"{acq.acquisition_id}_surface.mat")
         # Get wavelength file from l1b config
         l1b_config_path = wm.config["l1b_config_path"]
@@ -81,7 +80,7 @@ class L2AReflectance(SlurmJobTask):
         env = os.environ.copy()
         env["PYTHONPATH"] = f"$PYTHONPATH:{isofit_pge.repo_dir}"
         surf_cmd = ["python", "-c", "\"from isofit.utils import surface_model;",
-                    f"surface_model('{generic_config_path}', wavelength_path='{wavelength_path}', "
+                    f"surface_model('{surface_config_path}', wavelength_path='{wavelength_path}', "
                     f"output_path='{tmp_surface_path}')\""]
         pge.run(surf_cmd, tmp_dir=self.tmp_dir, env=env)
 
@@ -94,7 +93,7 @@ class L2AReflectance(SlurmJobTask):
             "radiance_file": acq.rdn_img_path,
             "pixel_locations_file": acq.loc_img_path,
             "observation_parameters_file": acq.obs_img_path,
-            "surface_model_generic_config": generic_config_path,
+            "surface_model_config": surface_config_path,
             "surface_model_wavelength_file": wavelength_path,
             "surface_file": tmp_surface_path
         }
