@@ -50,7 +50,7 @@ echo "$(date +"%F %T,%3N"): Copy from /sftp/emitops/sds completed."
 
 for file in ${SFTP_DIR}/*; do
     fname=$(basename $file)
-    if [[ $fname == emit_167* || $fname == EMIT_167* ]]; then
+    if [[ $fname == 167* || $fname == emit_167* || $fname == EMIT_167* ]]; then
         if [[ -f "$file" && $file != *rpsm ]]; then
             if [[ -e ${file}.rpsm ]]; then
                 echo "$(date +"%F %T,%3N"): Found ${file} and corresponding ${file}.rpsm"

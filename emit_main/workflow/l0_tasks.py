@@ -58,8 +58,10 @@ class L0StripHOSC(SlurmJobTask):
         tmp_input_dir = os.path.join(self.local_tmp_dir, "input")
         wm.makedirs(tmp_input_dir)
         hosc_name = os.path.basename(self.stream_path)
-        # TODO: Get apid based on new filename
-        apid = hosc_name.split("_")[1]
+        if hosc_name.lower().startswith("emit"):
+            apid = hosc_name.split("_")[1]
+        else:
+            apid = hosc_name.split("_")[0]
         tmp_input_path = os.path.join(tmp_input_dir, hosc_name)
         wm.copy(self.stream_path, tmp_input_path)
         # Create output dir and log file name

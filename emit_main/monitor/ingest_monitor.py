@@ -100,7 +100,10 @@ class IngestMonitor:
         for p in paths:
             # Process HOSC files
             if p.endswith("hsc.bin"):
-                apid = os.path.basename(p).split("_")[1]
+                if os.path.basename(p).lower().startswith("emit"):
+                    apid = os.path.basename(p).split("_")[1]
+                else:
+                    apid = os.path.basename(p).split("_")[0]
                 # Run different tasks based on apid (engineering or science). 1674 is engineering. 1675 is science.
                 if apid in ("1674", "1676", "1482"):
                     logger.info(f"Creating L0StripHOSC task for path {p}")
