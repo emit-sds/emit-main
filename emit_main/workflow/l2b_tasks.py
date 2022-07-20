@@ -153,6 +153,7 @@ class L2BAbundance(SlurmJobTask):
         product_dict = {
             "img_path": acq.abun_img_path,
             "hdr_path": acq.abun_hdr_path,
+            "png_path": acq.abun_png_path,
             "created": creation_time,
             "dimensions": {
                 "lines": hdr["lines"],
@@ -177,6 +178,7 @@ class L2BAbundance(SlurmJobTask):
             "output": {
                 "l2b_abun_img_path": acq.abun_img_path,
                 "l2b_abun_hdr_path:": acq.abun_hdr_path,
+                "l2b_abun_png_path:": acq.abun_png_path,
                 "l2b_abununcert_img_path": acq.abununcert_img_path,
                 "l2b_abununcert_hdr_path:": acq.abununcert_hdr_path
             }
@@ -322,7 +324,7 @@ class L2BDeliver(SlurmJobTask):
         # Copy files to tmp dir and rename
         wm.copy(acq.abun_nc_path, daac_abun_nc_path)
         wm.copy(acq.abununcert_nc_path, daac_abununcert_nc_path)
-        wm.copy(acq.rdn_png_path, daac_browse_path)
+        wm.copy(acq.abun_png_path, daac_browse_path)
 
         # Create the UMM-G file
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.abun_nc_path), tz=datetime.timezone.utc)
