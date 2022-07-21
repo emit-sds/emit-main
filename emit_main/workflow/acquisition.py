@@ -115,7 +115,7 @@ class Acquisition:
                 "daac": ["nc", "json"]
             },
             "l2a": {
-                "rfl": ["img", "hdr", "nc"],
+                "rfl": ["img", "hdr", "nc", "png"],
                 "rfluncert": ["img", "hdr", "nc"],
                 "lbl": ["img", "hdr"],
                 "lblort": ["img", "hdr"],
@@ -124,7 +124,7 @@ class Acquisition:
             },
             "l2b": {
                 "tetra": ["dir"],
-                "abun": ["img", "hdr", "nc"],
+                "abun": ["img", "hdr", "nc", "png"],
                 "abununcert": ["img", "hdr", "nc"]
             },
             "l3": {
