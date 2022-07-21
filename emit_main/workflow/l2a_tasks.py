@@ -270,7 +270,8 @@ class L2AMask(SlurmJobTask):
 
         env = os.environ.copy()
         isofit_pge = wm.pges["isofit"]
-        env["PYTHONPATH"] = f"$PYTHONPATH:{isofit_pge.repo_dir}"
+        emit_utils_pge = wm.pges["emit-utils"]
+        env["PYTHONPATH"] = f"$PYTHONPATH:{isofit_pge.repo_dir}:{emit_utils_pge.repo_dir}"
 
         env["RAY_worker_register_timeout_seconds"] = "600"
 
