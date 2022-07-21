@@ -130,7 +130,7 @@ class L2AReflectance(SlurmJobTask):
             self.local_tmp_dir, "output", self.acquisition_id + "_subs_state")
         tmp_statesubs_hdr_path = envi_header(tmp_statesubs_path)
 
-        cmd = ["gdal_translate", self.tmp_rfl_path, tmp_rfl_png_path, "-b", "32", "-b", "22", "-b",
+        cmd = ["gdal_translate", tmp_rfl_path, tmp_rfl_png_path, "-b", "32", "-b", "22", "-b",
                "13", "-ot", "Byte", "-scale", "-exponent", "0.6", "-of", "PNG", "-co", "ZLEVEL=9"]
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
@@ -270,7 +270,8 @@ class L2AMask(SlurmJobTask):
 
         env = os.environ.copy()
         isofit_pge = wm.pges["isofit"]
-        env["PYTHONPATH"] = f"$PYTHONPATH:{isofit_pge.repo_dir}"
+        emit_utils_pge = wm.pges["emit-utils"]
+        env["PYTHONPATH"] = f"$PYTHONPATH:{isofit_pge.repo_dir}:{emit_utils_pge.repo_dir}"
 
         env["RAY_worker_register_timeout_seconds"] = "600"
 
