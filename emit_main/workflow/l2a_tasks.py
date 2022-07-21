@@ -9,6 +9,7 @@ import json
 import logging
 import os
 import time
+import numpy as np
 
 import luigi
 import spectral.io.envi as envi
@@ -76,11 +77,19 @@ class L2AReflectance(SlurmJobTask):
         wavelength_path = config["spectral_calibration_file"]
         if not wavelength_path.startswith("/"):
             wavelength_path = os.path.abspath(os.path.join(os.path.dirname(l1b_config_path), wavelength_path))
+
+        first_wavelength_ind = int(config["first_distributed_row"])
+        last_wavelength_ind = int(config["last_distributed_row"])
+        # Clip and Flip
+        wavelengths = np.genfromtxt(wavelength_path)[first_wavelength_ind:last_wavelength_ind,:][::-1,:]
+        tmp_clipped_wavelength_path = os.path.join(self.local_tmp_dir, f"{acq.acquisition_id}_wavelengths.txt")
+        np.savetxt(tmp_clipped_wavelength_path, wavelengths, fmt='%f')
+
         # Set environment
         env = os.environ.copy()
         env["PYTHONPATH"] = f"$PYTHONPATH:{isofit_pge.repo_dir}"
         surf_cmd = ["python", "-c", "\"from isofit.utils import surface_model;",
-                    f"surface_model('{surface_config_path}', wavelength_path='{wavelength_path}', "
+                    f"surface_model('{surface_config_path}', wavelength_path='{tmp_clipped_wavelength_path}', "
                     f"output_path='{tmp_surface_path}')\""]
         pge.run(surf_cmd, tmp_dir=self.tmp_dir, env=env)
 
@@ -93,9 +102,7 @@ class L2AReflectance(SlurmJobTask):
             "radiance_file": acq.rdn_img_path,
             "pixel_locations_file": acq.loc_img_path,
             "observation_parameters_file": acq.obs_img_path,
-            "surface_model_config": surface_config_path,
-            "surface_model_wavelength_file": wavelength_path,
-            "surface_file": tmp_surface_path
+            "surface_model_config": surface_config_path
         }
         cmd = ["python", apply_oe_exe, acq.rdn_img_path, acq.loc_img_path, acq.obs_img_path, self.local_tmp_dir, "emit",
                "--presolve=1", "--empirical_line=1", "--emulator_base=" + emulator_base,
