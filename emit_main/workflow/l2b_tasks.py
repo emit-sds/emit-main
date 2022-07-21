@@ -370,7 +370,7 @@ class L2BDeliver(SlurmJobTask):
         target_src_map = {
             daac_abun_nc_name: os.path.basename(acq.abun_nc_path),
             daac_abununcert_nc_name: os.path.basename(acq.abununcert_nc_path),
-            daac_browse_name: os.path.basename(acq.rdn_png_path),
+            daac_browse_name: os.path.basename(acq.abun_png_path),
             daac_ummg_name: os.path.basename(ummg_path)
         }
         notification = {
@@ -473,7 +473,7 @@ class L2BDeliver(SlurmJobTask):
             "pge_input_files": {
                 "abun_netcdf_path": acq.abun_nc_path,
                 "abununcert_netcdf_path": acq.abununcert_nc_path,
-                "rdn_png_path": acq.rdn_png_path
+                "abun_png_path": acq.abun_png_path
             },
             "pge_run_command": " ".join(cmd_aws),
             "documentation_version": "TBD",
