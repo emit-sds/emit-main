@@ -81,7 +81,7 @@ class L2AReflectance(SlurmJobTask):
         first_wavelength_ind = int(config["first_distributed_row"])
         last_wavelength_ind = int(config["last_distributed_row"])
         # Clip and Flip
-        wavelengths = np.genfromtxt(wavelength_path)[first_wavelength_ind:last_wavelength_ind,:][::-1,:]
+        wavelengths = np.genfromtxt(wavelength_path)[first_wavelength_ind:last_wavelength_ind, :][::-1, :]
         tmp_clipped_wavelength_path = os.path.join(self.local_tmp_dir, f"{acq.acquisition_id}_wavelengths.txt")
         np.savetxt(tmp_clipped_wavelength_path, wavelengths, fmt='%f')
 
