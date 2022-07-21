@@ -126,7 +126,7 @@ class L2BAbundance(SlurmJobTask):
         wm.copy(envi_header(tmp_abun_path), acq.abun_hdr_path)
         wm.copy(tmp_abun_path + '_uncert', acq.abununcert_img_path)
         wm.copy(envi_header(tmp_abun_path + '_uncert'), acq.abununcert_hdr_path)
-        wm.copy(tmp_quicklook_path, acq.abun_img_path)
+        wm.copy(tmp_quicklook_path, acq.abun_png_path)
 
         # Update hdr files
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
