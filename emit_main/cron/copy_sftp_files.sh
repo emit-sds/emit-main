@@ -46,39 +46,44 @@ echo "$(date +"%F %T,%3N"): Copy from /sftp/emitops/sds completed."
 # Copy data from remote /sftp/emitops/iss-bad folder to local sftp folder
 echo "$(date +"%F %T,%3N"): Attempting to copy data from sftp.jpl.nasa.gov from /sftp/emitops/iss-bad"
 python /store/emit/$1/repos/emit-ios/emit/bin/emit_sftp_copy.py ${SFTP_DIR} --sftp_path /sftp/emitops/iss-bad
-echo "$(date +"%F %T,%3N"): Copy from /sftp/emitops/sds completed."
+echo "$(date +"%F %T,%3N"): Copy from /sftp/emitops/iss-bad completed."
 
 for file in ${SFTP_DIR}/*; do
     fname=$(basename $file)
-    if [[ $fname == 167* || $fname == emit_167* || $fname == EMIT_167* ]]; then
-        if [[ -f "$file" && $file != *rpsm ]]; then
-            if [[ -e ${file}.rpsm ]]; then
-                echo "$(date +"%F %T,%3N"): Found ${file} and corresponding ${file}.rpsm"
-                chgrp $GROUP ${file} ${file}.rpsm
-                chmod ug+rw ${file} ${file}.rpsm
+    if [[ $fname == 167*gz || $fname == emit_167*gz || $fname == EMIT_167*gz ]]; then
+        fname_noext=$(basename $file .gz)
+        unzipped_path="${SFTP_DIR}/${fname_noext}"
+        rpsm_path="${unzipped_path}.rpsm"
+        if [[ -e ${rpsm_path} ]]; then
+            echo "$(date +"%F %T,%3N"): Found ${file} and corresponding ${rpsm_path}"
+            gzip -d $file
+            echo "$(date +"%F %T,%3N"): Unzipped ${file}"
 
-                # Add a date folder if it doesn't exist
-                if [[ ! -e ${DATE_DIR} ]]; then
-                    echo "$(date +"%F %T,%3N"): Adding folder ${DATE_DIR}"
-                    mkdir -p ${DATE_DIR}
-                    chgrp $GROUP ${DATE_DIR}
-                    chmod ug+rw ${DATE_DIR}
-                fi
+            chgrp $GROUP ${unzipped_path} ${rpsm_path}
+            chmod ug+rw ${unzipped_path} ${rpsm_path}
 
-                # Move rpsm file to archive
-                mv ${file}.rpsm ${DATE_DIR}/
-                echo "$(date +"%F %T,%3N"): Moved ${file}.rpsm to ${DATE_DIR}/"
-
-                # Add _hsc.bin suffix to HOSC files to play nice with existing ingest code and move to ingest folder
-                mv $file ${INGEST_DIR}/${fname}_hsc.bin
-                echo "$(date +"%F %T,%3N"): Moved ${file} to ${INGEST_DIR}/${fname}_hsc.bin"
-            else
-                echo "$(date +"%F %T,%3N"): Found ${file}, but no corresponding .rpsm file. Moving ${file} to ${ERROR_DIR}/"
-                chgrp $GROUP ${file}
-                chmod ug+rw ${file}
-                mv ${file} ${ERROR_DIR}/
+            # Add a date folder if it doesn't exist
+            if [[ ! -e ${DATE_DIR} ]]; then
+                echo "$(date +"%F %T,%3N"): Adding folder ${DATE_DIR}"
+                mkdir -p ${DATE_DIR}
+                chgrp $GROUP ${DATE_DIR}
+                chmod ug+rw ${DATE_DIR}
             fi
+
+            # Move rpsm file to archive
+            mv ${rpsm_path} ${DATE_DIR}/
+            echo "$(date +"%F %T,%3N"): Moved ${rpsm_path} to ${DATE_DIR}/"
+
+            # Add _hsc.bin suffix to HOSC files to play nice with existing ingest code and move to ingest folder
+            mv ${unzipped_path} ${INGEST_DIR}/${fname_noext}_hsc.bin
+            echo "$(date +"%F %T,%3N"): Moved ${unzipped_path} to ${INGEST_DIR}/${fname_noext}_hsc.bin"
+        else
+            echo "$(date +"%F %T,%3N"): Found ${file}, but no corresponding .rpsm file. Moving ${file} to ${ERROR_DIR}/"
+            chgrp $GROUP ${file}
+            chmod ug+rw ${file}
+            mv ${file} ${ERROR_DIR}/
         fi
+
     elif [[ $fname == bad*gz ]]; then
         gzip -d $file
         echo "$(date +"%F %T,%3N"): Unzipped ${file}"

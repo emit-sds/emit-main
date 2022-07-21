@@ -123,8 +123,8 @@ class L2AReflectance(SlurmJobTask):
             self.local_tmp_dir, "output", self.acquisition_id + "_subs_state")
         tmp_statesubs_hdr_path = envi_header(tmp_statesubs_path)
 
-        cmd = ["gdal_translate", self.tmp_rfl_path, tmp_rfl_png_path, "-b", "32", "-b", "22", "-b", 
-               "13", "-ot", "Byte", "-scale", "-exponent", "0.6", "-of", "PNG", "-co", "ZLEVEL=9" ]
+        cmd = ["gdal_translate", self.tmp_rfl_path, tmp_rfl_png_path, "-b", "32", "-b", "22", "-b",
+               "13", "-ot", "Byte", "-scale", "-exponent", "0.6", "-of", "PNG", "-co", "ZLEVEL=9"]
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
         wm.copy(tmp_rfl_path, acq.rfl_img_path)
