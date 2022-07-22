@@ -129,7 +129,8 @@ class IngestMonitor:
                 tasks.append(L0ProcessPlanningProduct(config_path=self.config_path,
                                                       plan_prod_path=p,
                                                       level=self.level,
-                                                      partition=self.partition))
+                                                      partition=self.partition,
+                                                      test_mode=self.test_mode))
 
             # Process BAD STO files
             if p.endswith(".sto"):

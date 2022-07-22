@@ -164,7 +164,7 @@ def get_tasks_from_product_args(args):
         "l0hosc": L0StripHOSC(stream_path=args.stream_path, miss_pkt_thresh=args.miss_pkt_thresh,
                               **kwargs),
         "l0daac": L0Deliver(stream_path=args.stream_path, miss_pkt_thresh=args.miss_pkt_thresh, **kwargs),
-        "l0plan": L0ProcessPlanningProduct(plan_prod_path=args.plan_prod_path, **kwargs),
+        "l0plan": L0ProcessPlanningProduct(plan_prod_path=args.plan_prod_path, test_mode=args.test_mode, **kwargs),
         "l1aeng": L1AReformatEDP(stream_path=args.stream_path, pkt_format=args.pkt_format,
                                  miss_pkt_thresh=args.miss_pkt_thresh, **kwargs),
         "l1aframe": L1ADepacketizeScienceFrames(stream_path=args.stream_path,

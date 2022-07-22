@@ -375,6 +375,7 @@ class L0ProcessPlanningProduct(SlurmJobTask):
     plan_prod_path = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
+    test_mode = luigi.BoolParameter(default=False)
 
     memory = 18000
 
@@ -403,9 +404,23 @@ class L0ProcessPlanningProduct(SlurmJobTask):
             orbit_ids = []
             dcids = []
             for e in events:
-                # Check for starting orbit number
+                # Check for horizon start
                 if e["name"].lower() == "planning horizon start":
-                    horizon_start_time = e["datetime"]
+                    horizon_start_time = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S")
+                    # Throw error if start time is before now since updating past orbits could be tricky
+                    if horizon_start_time < datetime.datetime.utcnow() and not self.test_mode:
+                        raise RuntimeError("Planning product horizon start time is before now. There can be problems "
+                                           "updating orbits or DCIDs in the past. Use --test_mode flag to bypass.")
+
+                # Get final orbit end time from horizon end
+                if e["name"].lower() == "planning horizon end":
+                    horizon_end_time = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S")
+                    orbit_num = int(e["orbitId"])
+                    prev_orbit_id = str(orbit_num - 1).zfill(5)
+                    prev_orbit = dm.find_orbit_by_id(prev_orbit_id)
+                    if prev_orbit is not None:
+                        prev_orbit["stop_time"] = horizon_end_time
+                        dm.update_orbit_metadata(prev_orbit_id, prev_orbit)
 
                 # Check for orbit object
                 if e["name"].lower() == "start orbit":
@@ -432,9 +447,6 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                     if orbit_num > 0:
                         prev_orbit_id = str(orbit_num - 1).zfill(5)
                         prev_orbit = dm.find_orbit_by_id(prev_orbit_id)
-                        # if prev_orbit is None:
-                        #     raise RuntimeError(f"Unable to find previous orbit stop time while trying to update orbit "
-                        #                        f"{orbit_id}")
                         if prev_orbit is not None:
                             prev_orbit["stop_time"] = start_time
                             dm.update_orbit_metadata(prev_orbit_id, prev_orbit)
