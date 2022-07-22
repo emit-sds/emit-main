@@ -69,6 +69,8 @@ def main():
     date_strs = [d.strftime("%Y%m%d") for d in dates]
     ts_print(f"==================================")
     ts_print(f"Starting rclone backup using dates: {date_strs}")
+    if args.dry_run:
+        ts_print("--dry_run flag is set. No files will be backed up.")
     rclone_log = f"/store/shared/rclone/emit/logs/rclone_data_backups.log"
 
     # Time to back up /store/emit/<env>/data.  The directories are:

@@ -17,7 +17,8 @@ logger = logging.getLogger("emit-main")
 
 class IngestMonitor:
 
-    def __init__(self, config_path, level="INFO", partition="emit", miss_pkt_thresh=0.1, test_mode=False):
+    def __init__(self, config_path, level="INFO", partition="emit", pkt_format="1.3", miss_pkt_thresh=0.01,
+                 test_mode=False):
         """
         :param config_path: Path to config file containing environment settings
         """
@@ -25,6 +26,7 @@ class IngestMonitor:
         self.config_path = os.path.abspath(config_path)
         self.level = level
         self.partition = partition
+        self.pkt_format = pkt_format
         self.miss_pkt_thresh = miss_pkt_thresh
         self.test_mode = test_mode
 
@@ -57,16 +59,17 @@ class IngestMonitor:
         logger.info(f"Found paths to ingest: {paths}")
         return self._ingest_file_list(paths)
 
-    def get_edp_reformatting_tasks(self, start_time, stop_time):
+    def get_edp_reformatting_tasks(self, start_time, stop_time, date_field="last_modified", retry_failed=False):
         tasks = []
         # Find 1674 files in time range that don't have engineering products yet
         dm = self.wm.database_manager
-        streams = dm.find_streams_for_edp_reformatting(start=start_time, stop=stop_time)
+        streams = dm.find_streams_for_edp_reformatting(start=start_time, stop=stop_time, date_field=date_field,
+                                                       retry_failed=retry_failed)
 
         # If no results, just return empty list
         if len(streams) == 0:
-            logger.info(f"Did not find any 1674 streams modified between {start_time} and {stop_time} needing EDP "
-                        f"reformatting tasks. Not executing any tasks.")
+            logger.info(f"Did not find any 1674 streams with {date_field} between {start_time} and {stop_time} needing "
+                        f"EDP reformatting tasks. Not executing any tasks.")
             return tasks
 
         for stream in streams:
@@ -76,6 +79,7 @@ class IngestMonitor:
                                         stream_path=stream_path,
                                         level=self.level,
                                         partition=self.partition,
+                                        pkt_format=self.pkt_format,
                                         miss_pkt_thresh=self.miss_pkt_thresh))
 
         return tasks
@@ -96,7 +100,10 @@ class IngestMonitor:
         for p in paths:
             # Process HOSC files
             if p.endswith("hsc.bin"):
-                apid = os.path.basename(p).split("_")[1]
+                if os.path.basename(p).lower().startswith("emit"):
+                    apid = os.path.basename(p).split("_")[1]
+                else:
+                    apid = os.path.basename(p).split("_")[0]
                 # Run different tasks based on apid (engineering or science). 1674 is engineering. 1675 is science.
                 if apid in ("1674", "1676", "1482"):
                     logger.info(f"Creating L0StripHOSC task for path {p}")
@@ -112,6 +119,7 @@ class IngestMonitor:
                                                              stream_path=p,
                                                              level=self.level,
                                                              partition=self.partition,
+                                                             pkt_format=self.pkt_format,
                                                              miss_pkt_thresh=self.miss_pkt_thresh,
                                                              test_mode=self.test_mode))
 
@@ -121,7 +129,8 @@ class IngestMonitor:
                 tasks.append(L0ProcessPlanningProduct(config_path=self.config_path,
                                                       plan_prod_path=p,
                                                       level=self.level,
-                                                      partition=self.partition))
+                                                      partition=self.partition,
+                                                      test_mode=self.test_mode))
 
             # Process BAD STO files
             if p.endswith(".sto"):

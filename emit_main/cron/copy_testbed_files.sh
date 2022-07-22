@@ -11,7 +11,7 @@
 echo "$(date +"%F %T,%3N"): Executing copy_testbed_files.sh cron job in '$1' environment from '$2' using '$3' minutes \
 for '-mmin' and concat flag set to '$4'."
 
-SOURCE_DIR=/proj/emit/dev/data/$2
+SOURCE_DIR=/proj/emit/ops/data/$2
 TARGET_DIR=/store/emit/$1/tvac/testbed/$2
 INGEST_DIR=/store/emit/$1/tvac/ingest
 GROUP=emit-${1}

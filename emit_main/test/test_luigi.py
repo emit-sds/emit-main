@@ -55,7 +55,7 @@ def test_luigi_build(config_path):
     luigi_logging_conf = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "workflow", "luigi",
                                                       "logging.conf"))
     success = luigi.build(
-        [ExampleTask(config_path=config_path, acquisition_id=acquisition_id, level="INFO", partition="emit")],
+        [ExampleTask(config_path=config_path, acquisition_id=acquisition_id, level="INFO", partition="cron")],
         workers=wm.config["luigi_workers"],
         local_scheduler=wm.config["luigi_local_scheduler"],
         logging_conf_file=luigi_logging_conf)

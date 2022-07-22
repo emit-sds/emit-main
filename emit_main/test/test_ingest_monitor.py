@@ -22,7 +22,7 @@ def test_ingest_files(config_path):
     if os.path.exists(test_data_ingest_dir):
         for file in glob.glob(os.path.join(test_data_ingest_dir, "*_hsc.bin")):
             shutil.copy2(file, wm.ingest_dir)
-        im = IngestMonitor(config_path=config_path)
+        im = IngestMonitor(config_path=config_path, pkt_format="1.2.1")
         tasks = im.ingest_files()
         for file in glob.glob(os.path.join(wm.ingest_dir, "*_hsc.bin")):
             os.remove(file)

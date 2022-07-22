@@ -38,6 +38,7 @@ class L1BCalibrate(SlurmJobTask):
 
     n_cores = 40
     memory = 180000
+
     task_namespace = "emit"
 
     def requires(self):
@@ -210,6 +211,7 @@ class L1BGeolocate(SlurmJobTask):
 
     n_cores = 40
     memory = 180000
+
     task_namespace = "emit"
 
     def requires(self):
@@ -474,6 +476,8 @@ class L1BRdnFormat(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
 
+    memory = 18000
+
     task_namespace = "emit"
 
     def requires(self):
@@ -561,9 +565,9 @@ class L1BRdnDeliver(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
 
+    memory = 18000
+
     task_namespace = "emit"
-    n_cores = 1
-    memory = 30000
 
     def requires(self):
 
@@ -776,9 +780,9 @@ class L1BAttDeliver(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
 
+    memory = 18000
+
     task_namespace = "emit"
-    n_cores = 1
-    memory = 30000
 
     def requires(self):
 

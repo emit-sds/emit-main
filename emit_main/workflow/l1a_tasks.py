@@ -33,12 +33,12 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
     stream_path = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
+    pkt_format = luigi.Parameter(default="1.3")
     miss_pkt_thresh = luigi.FloatParameter()
     test_mode = luigi.BoolParameter(default=False)
     override_output = luigi.BoolParameter(default=False)
 
-    memory = 90000
-    local_tmp_space = 125000
+    memory = 30000
 
     task_namespace = "emit"
 
@@ -74,6 +74,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
         tmp_report_path = tmp_log_path.replace(".log", "_report.txt")
         input_files = {"ccsds_path": stream.ccsds_path}
         cmd = ["python", sds_l1a_science_packet_exe, stream.ccsds_path,
+               "--pkt_format", self.pkt_format,
                "--work_dir", self.local_tmp_dir,
                "--level", self.level,
                "--log_path", tmp_log_path]
@@ -286,7 +287,6 @@ class L1AReassembleRaw(SlurmJobTask):
     test_mode = luigi.BoolParameter(default=False)
 
     memory = 90000
-    local_tmp_space = 125000
 
     task_namespace = "emit"
 
@@ -321,6 +321,10 @@ class L1AReassembleRaw(SlurmJobTask):
             if "orbit" not in dc.metadata or "scene" not in dc.metadata or "submode" not in dc.metadata:
                 raise RuntimeError(f"Attempting to create acquisitions without orbit, scene, or submode! "
                                    f"It appears that there was no planning product for DCID {self.dcid}")
+        # If we made it this far, then initialize these values for the rest of the task
+        orbit = dc.metadata["orbit"] if "orbit" in dc.metadata else "00000"
+        scene = dc.metadata["scene"] if "scene" in dc.metadata else "000"
+        submode = dc.metadata["submode"] if "submode" in dc.metadata else "science"
 
         pge_reassemble = wm.pges["emit-sds-l1a"]
         reassemble_raw_pge = os.path.join(pge_reassemble.repo_dir, "reassemble_raw_cube.py")
@@ -342,9 +346,13 @@ class L1AReassembleRaw(SlurmJobTask):
                "--work_dir", self.local_tmp_dir,
                "--level", self.level,
                "--log_path", tmp_log_path,
-               "--chunksize", str(self.acq_chunksize)]
+               "--chunksize", str(self.acq_chunksize),
+               "--orbit", orbit,
+               "--scene", scene,
+               "--submode", submode]
         if self.test_mode:
             cmd.append("--test_mode")
+
         env = os.environ.copy()
         env["AIT_ROOT"] = wm.pges["emit-ios"].repo_dir
         env["AIT_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "config.yaml")
@@ -365,13 +373,39 @@ class L1AReassembleRaw(SlurmJobTask):
         cmd = ["python", compute_line_stats_exe, tmp_no_header_list, ">", tmp_line_stats_path]
         pge_line_stats.run(cmd, tmp_dir=self.tmp_dir)
 
+        # Copy dcid reassembly report and log to decomp folder
+        dc_report_name = f"{dc.dcid}_reassembly_report.txt"
+        tmp_dc_report_path = os.path.join(self.local_tmp_dir, dc_report_name)
+        dc_report_path = os.path.join(dc.decomp_dir, dc_report_name)
+        wm.copy(tmp_dc_report_path, dc_report_path)
+        wm.copy(tmp_log_path, dc_report_path.replace("report.txt", "pge.log"))
+
+        # Update the dcid reassembly report with depacketization stats
+        dc_report_file = open(dc_report_path, "a")
+        # Get depacketization report from associated CCSDS files
+        for path in dc.associated_ccsds:
+            depacket_report_path = path.replace("l0", "l1a").replace("ccsds", "frames").replace(".bin", "_report.txt")
+            if os.path.exists(depacket_report_path):
+                with open(depacket_report_path, "r") as f:
+                    dc_report_file.write("\n")
+                    dc_report_file.write("====================================\n")
+                    dc_report_file.write("UPSTREAM DEPACKETIZATION REPORT FILE\n")
+                    dc_report_file.write("====================================\n")
+                    dc_report_file.write(f"{depacket_report_path}\n\n")
+                    dc_report_file.write(f.read())
+            else:
+                wm.print(__name__, f"Unable to find depacketization report located at {depacket_report_path}")
+
+        dc_report_file.close()
+
         # Copy decompressed frames to /store
         tmp_decomp_frame_paths = glob.glob(os.path.join(tmp_image_dir, "*.decomp"))
         for path in tmp_decomp_frame_paths:
             wm.copy(path, os.path.join(dc.decomp_dir, os.path.basename(path)))
 
         # If in test_mode, also copy the decompressed frames with no header to /store
-        if self.test_mode:
+        # TODO: For now, always copy these paths.  They can be manually deleted after
+        if True:  # self.test_mode:
             for path in tmp_decomp_no_header_paths:
                 wm.copy(path, os.path.join(dc.decomp_dir, os.path.basename(path)))
 
@@ -405,10 +439,6 @@ class L1AReassembleRaw(SlurmJobTask):
         }
         acq_product_map = {}
         for acq_id in acq_ids:
-            orbit = dc.metadata["orbit"] if "orbit" in dc.metadata else "00000"
-            scene = dc.metadata["scene"] if "scene" in dc.metadata else"000"
-            submode = dc.metadata["submode"] if "submode" in dc.metadata else "science"
-
             # Get start/stop times from reassembly report
             tmp_report_path = os.path.join(tmp_image_dir, f"{acq_id}_report.txt")
             start_time = None
@@ -496,30 +526,31 @@ class L1AReassembleRaw(SlurmJobTask):
             # Create rawqa report file based on CCSDS depacketization report(s) and reassembly report
             rawqa_file = open(acq.rawqa_txt_path, "w")
 
+            # Get reassembly report
+            if os.path.exists(report_path):
+                with open(report_path, "r") as f:
+                    rawqa_file.write("======================\n")
+                    rawqa_file.write("REASSEMBLY REPORT FILE\n")
+                    rawqa_file.write("======================\n")
+                    rawqa_file.write(f"{report_path}\n\n")
+                    rawqa_file.write(f.read())
+            else:
+                wm.print(__name__, f"Unable to find reassembly report located at {report_path}")
+
             # Get depacketization report from associated CCSDS files
             for path in dc.associated_ccsds:
                 depacket_report_path = path.replace(
                     "l0", "l1a").replace("ccsds", "frames").replace(".bin", "_report.txt")
                 if os.path.exists(depacket_report_path):
                     with open(depacket_report_path, "r") as f:
-                        rawqa_file.write("===========\n")
-                        rawqa_file.write("SOURCE FILE\n")
-                        rawqa_file.write("===========\n")
+                        rawqa_file.write("\n")
+                        rawqa_file.write("====================================\n")
+                        rawqa_file.write("UPSTREAM DEPACKETIZATION REPORT FILE\n")
+                        rawqa_file.write("====================================\n")
                         rawqa_file.write(f"{depacket_report_path}\n\n")
-                        rawqa_file.write(f.read() + "\n\n")
+                        rawqa_file.write(f.read())
                 else:
                     wm.print(__name__, f"Unable to find depacketization report located at {depacket_report_path}")
-
-            # Get reassembly report
-            if os.path.exists(report_path):
-                with open(tmp_report_path, "r") as f:
-                    rawqa_file.write("===========\n")
-                    rawqa_file.write("SOURCE FILE\n")
-                    rawqa_file.write("===========\n")
-                    rawqa_file.write(f"{report_path}\n\n")
-                    rawqa_file.write(f.read())
-            else:
-                wm.print(__name__, f"Unable to find reassembly report located at {report_path}")
 
             rawqa_file.close()
             wm.change_group_ownership(acq.rawqa_txt_path)
@@ -640,8 +671,7 @@ class L1AFrameReport(SlurmJobTask):
     acq_chunksize = luigi.IntParameter(default=1280)
     test_mode = luigi.BoolParameter(default=False)
 
-    memory = 30000
-    local_tmp_space = 125000
+    memory = 90000
 
     task_namespace = "emit"
 
@@ -757,9 +787,9 @@ class L1ADeliver(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
 
+    memory = 18000
+
     task_namespace = "emit"
-    n_cores = 1
-    memory = 90000
 
     def requires(self):
 
@@ -966,10 +996,10 @@ class L1AReformatEDP(SlurmJobTask):
     stream_path = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
+    pkt_format = luigi.Parameter(default="1.3")
     miss_pkt_thresh = luigi.FloatParameter()
 
-    memory = 90000
-    local_tmp_space = 125000
+    memory = 18000
 
     task_namespace = "emit"
 
@@ -1027,7 +1057,8 @@ class L1AReformatEDP(SlurmJobTask):
         cmd = ["python", l1_edp_exe,
                f"--input-dir={tmp_input_dir}",
                f"--output-dir={tmp_output_dir}",
-               f"--log-dir={tmp_log_dir}"]
+               f"--log-dir={tmp_log_dir}",
+               f"--pkt-format={self.pkt_format}"]
         env = os.environ.copy()
         env["AIT_ROOT"] = pge.repo_dir
         env["AIT_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "config.yaml")
@@ -1091,8 +1122,7 @@ class L1AReformatBAD(SlurmJobTask):
     partition = luigi.Parameter()
     ignore_missing_bad = luigi.BoolParameter(default=False)
 
-    memory = 90000
-    local_tmp_space = 125000
+    memory = 18000
 
     task_namespace = "emit"
 
@@ -1114,8 +1144,6 @@ class L1AReformatBAD(SlurmJobTask):
         dm = wm.database_manager
         orbit = wm.orbit
         pge = wm.pges["emit-sds-l1a"]
-
-        # TODO: Use --test_mode to remove dependency on database.  Is this even possible since orbit must be defined?
 
         # Check for missing BAD data before proceeding. Override with --ignore_missing_bad arg
         if self.ignore_missing_bad is False and orbit.has_complete_bad_data() is False:

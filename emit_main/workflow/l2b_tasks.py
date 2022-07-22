@@ -37,7 +37,6 @@ class L2BAbundance(SlurmJobTask):
     partition = luigi.Parameter()
 
     memory = 30000
-    local_tmp_space = 125000
 
     task_namespace = "emit"
 
@@ -99,6 +98,7 @@ class L2BAbundance(SlurmJobTask):
         tmp_output_dir = os.path.join(self.local_tmp_dir, "l2b_aggregation_output")
         wm.makedirs(tmp_output_dir)
         tmp_abun_path = os.path.join(tmp_output_dir, os.path.basename(acq.abun_img_path))
+        tmp_quicklook_path = os.path.join(tmp_output_dir, os.path.splitext(os.path.basename(acq.abun_img_path))[0] + '_quicklook.png')
         standard_library = os.path.join(
             wm.config['tetracorder_library_dir'], f's{wm.config["tetracorder_library_basename"]}_envi')
         research_library = os.path.join(
@@ -117,12 +117,16 @@ class L2BAbundance(SlurmJobTask):
                ]
         pge.run(cmd, cwd=pge.repo_dir, tmp_dir=self.tmp_dir)
 
+        cmd = ['python', os.path.join(pge.repo_dir, 'quicklook.py'), tmp_abun_path, tmp_quicklook_path]
+        pge.run(cmd, cwd=pge.repo_dir, tmp_dir=self.tmp_dir)
+
         # Copy mask files to l2a dir
         wm.copytree(tmp_tetra_output_path, acq.tetra_dir_path)
         wm.copy(tmp_abun_path, acq.abun_img_path)
         wm.copy(envi_header(tmp_abun_path), acq.abun_hdr_path)
         wm.copy(tmp_abun_path + '_uncert', acq.abununcert_img_path)
         wm.copy(envi_header(tmp_abun_path + '_uncert'), acq.abununcert_hdr_path)
+        wm.copy(tmp_quicklook_path, acq.abun_png_path)
 
         # Update hdr files
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
@@ -149,6 +153,7 @@ class L2BAbundance(SlurmJobTask):
         product_dict = {
             "img_path": acq.abun_img_path,
             "hdr_path": acq.abun_hdr_path,
+            "png_path": acq.abun_png_path,
             "created": creation_time,
             "dimensions": {
                 "lines": hdr["lines"],
@@ -173,6 +178,7 @@ class L2BAbundance(SlurmJobTask):
             "output": {
                 "l2b_abun_img_path": acq.abun_img_path,
                 "l2b_abun_hdr_path:": acq.abun_hdr_path,
+                "l2b_abun_png_path:": acq.abun_png_path,
                 "l2b_abununcert_img_path": acq.abununcert_img_path,
                 "l2b_abununcert_hdr_path:": acq.abununcert_hdr_path
             }
@@ -191,6 +197,8 @@ class L2BFormat(SlurmJobTask):
     acquisition_id = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
+
+    memory = 18000
 
     task_namespace = "emit"
 
@@ -275,9 +283,9 @@ class L2BDeliver(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
 
+    memory = 18000
+
     task_namespace = "emit"
-    n_cores = 1
-    memory = 30000
 
     def requires(self):
 
@@ -316,7 +324,7 @@ class L2BDeliver(SlurmJobTask):
         # Copy files to tmp dir and rename
         wm.copy(acq.abun_nc_path, daac_abun_nc_path)
         wm.copy(acq.abununcert_nc_path, daac_abununcert_nc_path)
-        wm.copy(acq.rdn_png_path, daac_browse_path)
+        wm.copy(acq.abun_png_path, daac_browse_path)
 
         # Create the UMM-G file
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.abun_nc_path), tz=datetime.timezone.utc)
@@ -362,7 +370,7 @@ class L2BDeliver(SlurmJobTask):
         target_src_map = {
             daac_abun_nc_name: os.path.basename(acq.abun_nc_path),
             daac_abununcert_nc_name: os.path.basename(acq.abununcert_nc_path),
-            daac_browse_name: os.path.basename(acq.rdn_png_path),
+            daac_browse_name: os.path.basename(acq.abun_png_path),
             daac_ummg_name: os.path.basename(ummg_path)
         }
         notification = {
@@ -465,7 +473,7 @@ class L2BDeliver(SlurmJobTask):
             "pge_input_files": {
                 "abun_netcdf_path": acq.abun_nc_path,
                 "abununcert_netcdf_path": acq.abununcert_nc_path,
-                "rdn_png_path": acq.rdn_png_path
+                "abun_png_path": acq.abun_png_path
             },
             "pge_run_command": " ".join(cmd_aws),
             "documentation_version": "TBD",

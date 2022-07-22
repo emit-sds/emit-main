@@ -29,9 +29,9 @@ class L0StripHOSC(SlurmJobTask):
     stream_path = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
-    miss_pkt_thresh = luigi.FloatParameter(default=0.1)
+    miss_pkt_thresh = luigi.FloatParameter(default=0.01)
 
-    memory = 90000
+    memory = 18000
 
     task_namespace = "emit"
 
@@ -58,8 +58,10 @@ class L0StripHOSC(SlurmJobTask):
         tmp_input_dir = os.path.join(self.local_tmp_dir, "input")
         wm.makedirs(tmp_input_dir)
         hosc_name = os.path.basename(self.stream_path)
-        # TODO: Get apid based on new filename
-        apid = hosc_name.split("_")[1]
+        if hosc_name.lower().startswith("emit"):
+            apid = hosc_name.split("_")[1]
+        else:
+            apid = hosc_name.split("_")[0]
         tmp_input_path = os.path.join(tmp_input_dir, hosc_name)
         wm.copy(self.stream_path, tmp_input_path)
         # Create output dir and log file name
@@ -85,11 +87,11 @@ class L0StripHOSC(SlurmJobTask):
             for line in f.readlines():
                 if "Packet Count" in line:
                     packet_count = int(line.rstrip("\n").split(" ")[-1])
-                if "PSC Errors Encountered" in line:
+                if "Missing PSC Count" in line:
                     missing_packets = int(line.rstrip("\n").split(" ")[-1])
         miss_pkt_percent = missing_packets / packet_count
         if missing_packets / packet_count >= self.miss_pkt_thresh:
-            raise RuntimeError(f"{missing_packets} PSC errors out of {packet_count} total is greater than the "
+            raise RuntimeError(f"{missing_packets} missing packets out of {packet_count} total is greater than the "
                                f"missing packet threshold of {self.miss_pkt_thresh}")
 
         # Set up command to get CCSDS start/stop times
@@ -192,7 +194,7 @@ class L0IngestBAD(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
 
-    memory = 90000
+    memory = 18000
 
     task_namespace = "emit"
 
@@ -373,8 +375,9 @@ class L0ProcessPlanningProduct(SlurmJobTask):
     plan_prod_path = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
+    test_mode = luigi.BoolParameter(default=False)
 
-    memory = 90000
+    memory = 18000
 
     task_namespace = "emit"
 
@@ -401,9 +404,23 @@ class L0ProcessPlanningProduct(SlurmJobTask):
             orbit_ids = []
             dcids = []
             for e in events:
-                # Check for starting orbit number
+                # Check for horizon start
                 if e["name"].lower() == "planning horizon start":
-                    horizon_start_time = e["datetime"]
+                    horizon_start_time = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S")
+                    # Throw error if start time is before now since updating past orbits could be tricky
+                    if horizon_start_time < datetime.datetime.utcnow() and not self.test_mode:
+                        raise RuntimeError("Planning product horizon start time is before now. There can be problems "
+                                           "updating orbits or DCIDs in the past. Use --test_mode flag to bypass.")
+
+                # Get final orbit end time from horizon end
+                if e["name"].lower() == "planning horizon end":
+                    horizon_end_time = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S")
+                    orbit_num = int(e["orbitId"])
+                    prev_orbit_id = str(orbit_num - 1).zfill(5)
+                    prev_orbit = dm.find_orbit_by_id(prev_orbit_id)
+                    if prev_orbit is not None:
+                        prev_orbit["stop_time"] = horizon_end_time
+                        dm.update_orbit_metadata(prev_orbit_id, prev_orbit)
 
                 # Check for orbit object
                 if e["name"].lower() == "start orbit":
@@ -430,9 +447,6 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                     if orbit_num > 0:
                         prev_orbit_id = str(orbit_num - 1).zfill(5)
                         prev_orbit = dm.find_orbit_by_id(prev_orbit_id)
-                        # if prev_orbit is None:
-                        #     raise RuntimeError(f"Unable to find previous orbit stop time while trying to update orbit "
-                        #                        f"{orbit_id}")
                         if prev_orbit is not None:
                             prev_orbit["stop_time"] = start_time
                             dm.update_orbit_metadata(prev_orbit_id, prev_orbit)
@@ -454,8 +468,7 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                         "orbit": str(e["orbit number"]).zfill(5),
                         "scene": str(e["scene number"]).zfill(3),
                         "submode": e["name"].lower(),
-                        "planning_product": e,
-                        "frames_status": ""
+                        "planning_product": e
                     }
 
                     # Insert or update data collection in DB
@@ -463,6 +476,7 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                         dm.update_data_collection_metadata(dcid, dc_meta)
                         logger.debug(f"Updated data collection in DB with {dc_meta}")
                     else:
+                        dc_meta["frames_status"] = ""
                         dm.insert_data_collection(dc_meta)
                         logger.debug(f"Inserted data collection in DB with {dc_meta}")
 
@@ -503,9 +517,9 @@ class L0Deliver(SlurmJobTask):
     stream_path = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
-    miss_pkt_thresh = luigi.FloatParameter(default=0.1)
+    miss_pkt_thresh = luigi.FloatParameter(default=0.01)
 
-    memory = 90000
+    memory = 18000
 
     task_namespace = "emit"
 
