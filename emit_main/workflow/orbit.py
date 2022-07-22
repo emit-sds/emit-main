@@ -102,8 +102,8 @@ class Orbit:
             return False
 
         # Check that associated BAD sto files encompass orbit date range
-        bad_start_time = datetime.datetime.strptime(bad_sto_files[0].split("_")[3], "%Y%m%dT%H%M%S")
-        bad_stop_time = datetime.datetime.strptime(bad_sto_files[-1].split("_")[4].replace(".sto", ""), "%Y%m%dT%H%M%S")
+        bad_start_time = datetime.datetime.strptime(bad_sto_files[0].split("_")[-2], "%Y%m%dT%H%M%S")
+        bad_stop_time = datetime.datetime.strptime(bad_sto_files[-1].split("_")[-1].replace(".sto", ""), "%Y%m%dT%H%M%S")
         if bad_start_time > self.start_time - datetime.timedelta(seconds=10) \
                 or bad_stop_time < self.stop_time + datetime.timedelta(seconds=10):
             wm.print(__name__, f"Start and stop time for associated BAD STO files of orbit {self.orbit_id} do not "
@@ -116,8 +116,8 @@ class Orbit:
             if prev_file is None:
                 prev_file = file
                 continue
-            prev_stop_time = datetime.datetime.strptime(prev_file.split("_")[4].replace(".sto", ""), "%Y%m%dT%H%M%S")
-            cur_start_time = datetime.datetime.strptime(file.split("_")[3], "%Y%m%dT%H%M%S")
+            prev_stop_time = datetime.datetime.strptime(prev_file.split("_")[-1].replace(".sto", ""), "%Y%m%dT%H%M%S")
+            cur_start_time = datetime.datetime.strptime(file.split("_")[-2], "%Y%m%dT%H%M%S")
             gap = cur_start_time - prev_stop_time
             # If the gap is bigger than 10 seconds return False
             if gap.total_seconds() > 10:
