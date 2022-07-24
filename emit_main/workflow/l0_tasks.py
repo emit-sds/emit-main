@@ -411,6 +411,9 @@ class L0ProcessPlanningProduct(SlurmJobTask):
             if e["name"].lower() == "planning horizon end":
                 horizon_end_time = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S")
 
+        wm.print(__name__, f"Processing planning product with horizon start and end of {horizon_start_time} and "
+                           f"{horizon_end_time}")
+
         # Throw error if in the past
         if horizon_start_time < datetime.datetime.utcnow() and not self.test_mode:
             raise RuntimeError("Planning product horizon start time is before now. There can be problems "
@@ -423,20 +426,38 @@ class L0ProcessPlanningProduct(SlurmJobTask):
             if "products" in o:
                 raise RuntimeError(f"Found an orbit overlapping the horizon start and end times that has some "
                                    f"products already defined. Check the planning product or adjust the DB as needed.")
-        overlapping_dcs = dm.find_data_collections_touching_date_range("start_time", horizon_start_time,
+
+        # Check both planned start and stop time dates and actual start and stop
+        overlapping_dcs = dm.find_data_collections_touching_date_range("planning_product.datetime", horizon_start_time,
                                                                        horizon_end_time)
-        overlapping_dcs += dm.find_data_collections_touching_date_range("stop_time", horizon_start_time,
-                                                                        horizon_end_time)
+        overlapping_dcs += dm.find_data_collections_touching_date_range("planning_product.endDatetime",
+                                                                        horizon_start_time, horizon_end_time)
+        overlapping_dcs += dm.find_data_collections_touching_date_range("start_time", horizon_start_time,
+                                                                       horizon_end_time)
+        overlapping_dcs += dm.find_data_collections_touching_date_range("stop_time",
+                                                                        horizon_start_time, horizon_end_time)
         for dc in overlapping_dcs:
             if "products" in dc:
                 raise RuntimeError(f"Found a data collection overlapping the horizon start and end times that has some "
                                    f"products already defined. Check the planning product or adjust the DB as needed.")
 
         # If we made it this far, delete all orbits and DCIDs in DB overlapping time range (delete folders?)
-        dm.delete_orbits_touching_date_range("start_time", horizon_start_time, horizon_end_time)
-        dm.delete_orbits_touching_date_range("stop_time", horizon_start_time, horizon_end_time)
-        dm.delete_data_collections_touching_date_range("start_time", horizon_start_time, horizon_end_time)
-        dm.delete_data_collections_touching_date_range("stop_time", horizon_start_time, horizon_end_time)
+        deleted = dm.delete_orbits_touching_date_range("start_time", horizon_start_time, horizon_end_time)
+        deleted += dm.delete_orbits_touching_date_range("stop_time", horizon_start_time, horizon_end_time)
+        if len(deleted) > 0:
+            wm.print(__name__, f"Found {len(deleted)} orbits overlapping planning product date range. Deleting...")
+            wm.print(__name__, f"Deleted {len(deleted)} orbits: {[d['orbit_id'] for d in deleted]}")
+        # Now data collections
+        deleted = dm.delete_data_collections_touching_date_range("planning_product.datetime", horizon_start_time,
+                                                                 horizon_end_time)
+        deleted += dm.delete_data_collections_touching_date_range("planning_product.endDatetime", horizon_start_time,
+                                                                  horizon_end_time)
+        deleted += dm.delete_data_collections_touching_date_range("start_time", horizon_start_time, horizon_end_time)
+        deleted += dm.delete_data_collections_touching_date_range("stop_time", horizon_start_time, horizon_end_time)
+        if len(deleted) > 0:
+            wm.print(__name__, f"Found {len(deleted)} data collections overlapping planning product date range. "
+                               f"Deleting...")
+            wm.print(__name__, f"Deleted {len(deleted)} data collections: {[d['dcid'] for d in deleted]}")
 
         # Loop through events again and insert new orbits and DCIDS
         orbit_ids = []
@@ -460,10 +481,10 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                 # Insert or update orbit in DB
                 if dm.find_orbit_by_id(orbit_id):
                     dm.update_orbit_metadata(orbit_id, orbit_meta)
-                    logger.debug(f"Updated orbit in DB with {orbit_meta}")
+                    wm.print(__name__, f"Updated orbit in DB with {orbit_meta}")
                 else:
                     dm.insert_orbit(orbit_meta)
-                    logger.debug(f"Inserted orbit in DB with {orbit_meta}")
+                    wm.print(__name__, f"Inserted orbit in DB with {orbit_meta}")
 
                 # Update the stop_time of the previous orbit in DB
                 if len(orbit_ids) > 0 and orbit_num > 0:
@@ -474,6 +495,7 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                                            f"in the planning product orbits.")
                     prev_orbit["stop_time"] = start_time
                     dm.update_orbit_metadata(prev_orbit_id, prev_orbit)
+                    wm.print(__name__, f"Updated orbit {prev_orbit_id} with stop time")
 
                 # Keep track of orbit_ids for log entry
                 orbit_ids.append(orbit_id)
@@ -489,6 +511,7 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                                        f"in the planning product orbits.")
                 prev_orbit["stop_time"] = horizon_end_time
                 dm.update_orbit_metadata(prev_orbit_id, prev_orbit)
+                wm.print(__name__, f"Updated orbit {prev_orbit_id} with stop time")
 
             # Check for data collection (i.e. acquisition)
             if e["name"].lower() in ("science", "dark"):
@@ -511,11 +534,11 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                 # Insert or update data collection in DB
                 if dm.find_data_collection_by_id(dcid):
                     dm.update_data_collection_metadata(dcid, dc_meta)
-                    logger.debug(f"Updated data collection in DB with {dc_meta}")
+                    wm.print(__name__, f"Updated data collection in DB with {dc_meta}")
                 else:
                     dc_meta["frames_status"] = ""
                     dm.insert_data_collection(dc_meta)
-                    logger.debug(f"Inserted data collection in DB with {dc_meta}")
+                    wm.print(__name__, f"Inserted data collection in DB with {dc_meta}")
 
                 # Keep track of dcid for log entry
                 dcids.append(dcid)
@@ -523,6 +546,11 @@ class L0ProcessPlanningProduct(SlurmJobTask):
         # Copy/move processed file to archive
         target_pp_path = os.path.join(wm.planning_products_dir, os.path.basename(self.plan_prod_path))
         wm.move(self.plan_prod_path, target_pp_path)
+
+        # Get slurm job.out file if it exists and copy to /store
+        tmp_log_path = os.path.join(self.tmp_dir, "job.out")
+        if os.path.exists(tmp_log_path):
+            wm.copy(tmp_log_path, target_pp_path.replace(".json", "_pge.log"))
 
         # Add processing log entry for orbits and data collections
         log_entry = {
