@@ -37,7 +37,7 @@ def test_acquisition_insert(config_path):
         "processing_version": dm.config["processing_version"],
         "start_time": datetime.datetime(2020, 1, 1, 0, 0, 0),
         "stop_time": datetime.datetime(2020, 1, 1, 0, 11, 26),
-        "orbit": "00000",
+        "orbit": "0000000",
         "scene": "000"
     }
     dm.insert_acquisition(metadata)

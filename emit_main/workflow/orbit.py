@@ -24,6 +24,7 @@ class Orbit:
 
         self.config_path = config_path
         self.orbit_id = orbit_id
+        self.short_oid = self.orbit_id[2:]
 
         # Read metadata from db
         dm = DatabaseManager(config_path)
@@ -40,16 +41,18 @@ class Orbit:
         self.environment_dir = os.path.join(self.instrument_dir, self.config["environment"])
         self.data_dir = os.path.join(self.environment_dir, "data")
         self.orbits_dir = os.path.join(self.data_dir, "orbits")
-        self.orbit_id_dir = os.path.join(self.orbits_dir, self.orbit_id)
+        self.date_str = self.start_time.strftime("%Y%m%d")
+        self.date_dir = os.path.join(self.orbits_dir, self.date_str)
+        self.orbit_id_dir = os.path.join(self.date_dir, self.orbit_id)
         self.raw_dir = os.path.join(self.orbit_id_dir, "raw")
         self.l1a_dir = os.path.join(self.orbit_id_dir, "l1a")
         self.l1b_dir = os.path.join(self.orbit_id_dir, "l1b")
         self.l1b_geo_work_dir = os.path.join(
             self.l1b_dir, f"o{orbit_id}_l1b_geo_b{self.config['build_num']}_v{self.config['processing_version']}_work")
-        self.dirs.extend([self.orbits_dir, self.orbit_id_dir, self.raw_dir, self.l1a_dir, self.l1b_dir])
+        self.dirs.extend([self.orbits_dir, self.date_dir, self.orbit_id_dir, self.raw_dir, self.l1a_dir, self.l1b_dir])
 
         # Create product names
-        uncorr_fname = "_".join([f"emit{self.start_time.strftime('%Y%m%dt%H%M%S')}", f"o{self.orbit_id}",
+        uncorr_fname = "_".join([f"emit{self.start_time.strftime('%Y%m%dt%H%M%S')}", f"o{self.short_oid}",
                                  "l1a", "att", f"b{self.config['build_num']}",
                                  f"v{self.config['processing_version']}.nc"])
         self.uncorr_att_eph_path = os.path.join(self.l1a_dir, uncorr_fname)
