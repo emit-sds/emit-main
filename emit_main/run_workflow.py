@@ -57,7 +57,7 @@ def parse_args():
     parser.add_argument("-s", "--stream_path", default="",
                         help="Path to HOSC or CCSDS stream file")
     parser.add_argument("-o", "--orbit_id", default="",
-                        help="Orbit number in the padded format XXXXX")
+                        help="Orbit number in the padded format XXXXXXX")
     parser.add_argument("--plan_prod_path", default="",
                         help="Path to planning product file")
     parser.add_argument("-p", "--products",
@@ -108,6 +108,11 @@ def parse_args():
         sys.exit(1)
 
     args.config_path = os.path.abspath(args.config_path)
+
+    # Add 2-digit year to orbit id if only 5 digits
+    if args.orbit_id and len(args.orbit_id) == 5:
+        year = datetime.datetime.now().strftime("%y")
+        args.orbit_id = year + args.orbit_id
 
     # Upper case the log level
     args.level = args.level.upper()
@@ -202,6 +207,15 @@ def get_tasks_from_product_args(args):
 @SlurmJobTask.event_handler(luigi.Event.SUCCESS)
 def task_success(task):
     logger.info("SUCCESS: %s" % task)
+    wm = WorkflowManager(config_path=task.config_path)
+
+    # If running L0ProcessPlanningProduct then copy the job.out file back to /store
+    if task.task_family == "emit.L0ProcessPlanningProduct":
+        tmp_log_path = os.path.join(task.tmp_dir, "job.out")
+        target_pge_log_path = os.path.join(wm.planning_products_dir,
+                                           os.path.basename(task.plan_prod_path).replace(".json", "_pge.log"))
+        if os.path.exists(tmp_log_path):
+            wm.copy(tmp_log_path, target_pge_log_path)
 
     # If not in DEBUG mode, clean up scratch tmp and local tmp dirs
     if task.level != "DEBUG":

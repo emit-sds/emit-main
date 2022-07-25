@@ -279,6 +279,7 @@ class L0IngestBAD(SlurmJobTask):
                 if "associated_orbit_ids" in stream.metadata and stream.metadata["associated_orbit_ids"] is not None:
                     if orbit_id not in stream.metadata["associated_orbit_ids"]:
                         stream.metadata["associated_orbit_ids"].append(orbit_id)
+                        stream.metadata["associated_orbit_ids"].sort()
                 else:
                     stream.metadata["associated_orbit_ids"] = [orbit_id]
                 dm.update_stream_metadata(stream.bad_name,
@@ -290,6 +291,7 @@ class L0IngestBAD(SlurmJobTask):
                 if "associated_bad_sto" in orbit.metadata and orbit.metadata["associated_bad_sto"] is not None:
                     if stream.extended_bad_path not in orbit.metadata["associated_bad_sto"]:
                         orbit.metadata["associated_bad_sto"].append(stream.extended_bad_path)
+                        orbit.metadata["associated_bad_sto"].sort()
                 else:
                     orbit.metadata["associated_bad_sto"] = [stream.extended_bad_path]
                 dm.update_orbit_metadata(orbit_id, {"associated_bad_sto": orbit.metadata["associated_bad_sto"]})
@@ -398,113 +400,173 @@ class L0ProcessPlanningProduct(SlurmJobTask):
         dm = wm.database_manager
         pge = wm.pges["emit-main"]
 
-        horizon_start_time = None
+        # Read in pp
         with open(self.plan_prod_path, "r") as f:
             events = json.load(f)
-            orbit_ids = []
-            dcids = []
-            for e in events:
-                # Check for horizon start
-                if e["name"].lower() == "planning horizon start":
-                    horizon_start_time = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S")
-                    # Throw error if start time is before now since updating past orbits could be tricky
-                    if horizon_start_time < datetime.datetime.utcnow() and not self.test_mode:
-                        raise RuntimeError("Planning product horizon start time is before now. There can be problems "
-                                           "updating orbits or DCIDs in the past. Use --test_mode flag to bypass.")
 
-                # Get final orbit end time from horizon end
-                if e["name"].lower() == "planning horizon end":
-                    horizon_end_time = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S")
-                    orbit_num = int(e["orbitId"])
-                    prev_orbit_id = str(orbit_num - 1).zfill(5)
-                    prev_orbit = dm.find_orbit_by_id(prev_orbit_id)
-                    if prev_orbit is not None:
-                        prev_orbit["stop_time"] = horizon_end_time
-                        dm.update_orbit_metadata(prev_orbit_id, prev_orbit)
+        # Get start/stop times
+        horizon_start_time = None
+        horizon_end_time = None
+        for e in events:
+            if e["name"].lower() == "planning horizon start":
+                horizon_start_time = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S")
+            if e["name"].lower() == "planning horizon end":
+                horizon_end_time = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S")
 
-                # Check for orbit object
-                if e["name"].lower() == "start orbit":
-                    # Construct orbit object
-                    orbit_num = int(e["orbitId"])
-                    orbit_id = str(orbit_num).zfill(5)
-                    start_time = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S")
-                    orbit_meta = {
-                        "orbit_id": orbit_id,
-                        "build_num": wm.config["build_num"],
-                        "processing_version": wm.config["processing_version"],
-                        "start_time": start_time
-                    }
+        wm.print(__name__, f"Processing planning product with horizon start and end of {horizon_start_time} and "
+                           f"{horizon_end_time}")
 
-                    # Insert or update orbit in DB
-                    if dm.find_orbit_by_id(orbit_id):
-                        dm.update_orbit_metadata(orbit_id, orbit_meta)
-                        logger.debug(f"Updated orbit in DB with {orbit_meta}")
-                    else:
-                        dm.insert_orbit(orbit_meta)
-                        logger.debug(f"Inserted orbit in DB with {orbit_meta}")
+        # Throw error if in the past
+        if horizon_start_time < datetime.datetime.utcnow() and not self.test_mode:
+            raise RuntimeError("Planning product horizon start time is before now. There can be problems "
+                               "updating orbits or DCIDs in the past. Use --test_mode flag to bypass.")
 
-                    # Update the stop_time of the previous orbit in DB
-                    if orbit_num > 0:
-                        prev_orbit_id = str(orbit_num - 1).zfill(5)
-                        prev_orbit = dm.find_orbit_by_id(prev_orbit_id)
-                        if prev_orbit is not None:
-                            prev_orbit["stop_time"] = start_time
-                            dm.update_orbit_metadata(prev_orbit_id, prev_orbit)
+        # Check all orbits and DCIDS overlapping and throw error if they have any products
+        overlapping_orbits = dm.find_orbits_touching_date_range("start_time", horizon_start_time, horizon_end_time) + \
+            dm.find_orbits_touching_date_range("stop_time", horizon_start_time, horizon_end_time)
+        for o in overlapping_orbits:
+            if "products" in o:
+                raise RuntimeError(f"Found an orbit overlapping the horizon start and end times that has some "
+                                   f"products already defined. Check the planning product or adjust the DB as needed.")
 
-                    # Keep track of orbit_ids for log entry
-                    orbit_ids.append(orbit_id)
+        # Check both planned start and stop time dates and actual start and stop
+        overlapping_dcs = dm.find_data_collections_touching_date_range("planning_product.datetime", horizon_start_time,
+                                                                       horizon_end_time)
+        overlapping_dcs += dm.find_data_collections_touching_date_range("planning_product.endDatetime",
+                                                                        horizon_start_time, horizon_end_time)
+        overlapping_dcs += dm.find_data_collections_touching_date_range("start_time", horizon_start_time,
+                                                                       horizon_end_time)
+        overlapping_dcs += dm.find_data_collections_touching_date_range("stop_time",
+                                                                        horizon_start_time, horizon_end_time)
+        for dc in overlapping_dcs:
+            if "products" in dc:
+                raise RuntimeError(f"Found a data collection overlapping the horizon start and end times that has some "
+                                   f"products already defined. Check the planning product or adjust the DB as needed.")
 
-                # Check for data collection (i.e. acquisition)
-                if e["name"].lower() in ("science", "dark"):
-                    # Construct data collection metadata
-                    dcid = str(e["dcid"]).zfill(10)
-                    # Convert date strings to datetime objects to store in DB
-                    e["datetime"] = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S")
-                    e["endDatetime"] = datetime.datetime.strptime(e["endDatetime"], "%Y-%m-%dT%H:%M:%S")
-                    dc_meta = {
-                        "dcid": dcid,
-                        "build_num": wm.config["build_num"],
-                        "processing_version": wm.config["processing_version"],
-                        "orbit": str(e["orbit number"]).zfill(5),
-                        "scene": str(e["scene number"]).zfill(3),
-                        "submode": e["name"].lower(),
-                        "planning_product": e
-                    }
+        # If we made it this far, delete all orbits and DCIDs in DB overlapping time range (delete folders?)
+        deleted = dm.delete_orbits_touching_date_range("start_time", horizon_start_time, horizon_end_time)
+        deleted += dm.delete_orbits_touching_date_range("stop_time", horizon_start_time, horizon_end_time)
+        if len(deleted) > 0:
+            wm.print(__name__, f"Found {len(deleted)} orbits overlapping planning product date range. Deleting...")
+            wm.print(__name__, f"Deleted {len(deleted)} orbits: {[d['orbit_id'] for d in deleted]}")
+        # Now data collections
+        deleted = dm.delete_data_collections_touching_date_range("planning_product.datetime", horizon_start_time,
+                                                                 horizon_end_time)
+        deleted += dm.delete_data_collections_touching_date_range("planning_product.endDatetime", horizon_start_time,
+                                                                  horizon_end_time)
+        deleted += dm.delete_data_collections_touching_date_range("start_time", horizon_start_time, horizon_end_time)
+        deleted += dm.delete_data_collections_touching_date_range("stop_time", horizon_start_time, horizon_end_time)
+        if len(deleted) > 0:
+            wm.print(__name__, f"Found {len(deleted)} data collections overlapping planning product date range. "
+                               f"Deleting...")
+            wm.print(__name__, f"Deleted {len(deleted)} data collections: {[d['dcid'] for d in deleted]}")
 
-                    # Insert or update data collection in DB
-                    if dm.find_data_collection_by_id(dcid):
-                        dm.update_data_collection_metadata(dcid, dc_meta)
-                        logger.debug(f"Updated data collection in DB with {dc_meta}")
-                    else:
-                        dc_meta["frames_status"] = ""
-                        dm.insert_data_collection(dc_meta)
-                        logger.debug(f"Inserted data collection in DB with {dc_meta}")
+        # Loop through events again and insert new orbits and DCIDS
+        orbit_ids = []
+        dcids = []
+        for e in events:
+            # Check for orbit object
+            if e["name"].lower() == "start orbit":
+                # Construct orbit object
+                start_time = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S")
+                year = start_time.strftime("%y")
+                orbit_num = int(e["orbitId"])
+                orbit_id = year + str(orbit_num).zfill(5)
 
-                    # Keep track of dcid for log entry
-                    dcids.append(dcid)
-
-            # Copy/move processed file to archive
-            target_pp_path = os.path.join(wm.planning_products_dir, os.path.basename(self.plan_prod_path))
-            wm.move(self.plan_prod_path, target_pp_path)
-
-            # Add processing log entry for orbits and data collections
-            log_entry = {
-                "task": self.task_family,
-                "pge_name": pge.repo_url,
-                "pge_version": pge.version_tag,
-                "pge_input_files": self.plan_prod_path,
-                "pge_run_command": "N/A - database updates only",
-                "documentation_version": "N/A",
-                "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
-                "completion_status": "SUCCESS",
-                "output": {
-                    "raw_planning_product_path": target_pp_path
+                orbit_meta = {
+                    "orbit_id": orbit_id,
+                    "build_num": wm.config["build_num"],
+                    "processing_version": wm.config["processing_version"],
+                    "start_time": start_time
                 }
+
+                # Insert or update orbit in DB
+                if dm.find_orbit_by_id(orbit_id):
+                    dm.update_orbit_metadata(orbit_id, orbit_meta)
+                    wm.print(__name__, f"Updated orbit in DB with {orbit_meta}")
+                else:
+                    dm.insert_orbit(orbit_meta)
+                    wm.print(__name__, f"Inserted orbit in DB with {orbit_meta}")
+
+                # Update the stop_time of the previous orbit in DB
+                if len(orbit_ids) > 0 and orbit_num > 0:
+                    prev_orbit_id = year + str(orbit_num - 1).zfill(5)
+                    prev_orbit = dm.find_orbit_by_id(prev_orbit_id)
+                    if prev_orbit is None:
+                        raise RuntimeError(f"Unable to find previous orbit with id {orbit_num}. There could be a gap "
+                                           f"in the planning product orbits.")
+                    prev_orbit["stop_time"] = start_time
+                    dm.update_orbit_metadata(prev_orbit_id, prev_orbit)
+                    wm.print(__name__, f"Updated orbit {prev_orbit_id} with stop time")
+
+                # Keep track of orbit_ids for log entry
+                orbit_ids.append(orbit_id)
+
+            # Get final orbit end time from horizon end
+            if e["name"].lower() == "planning horizon end":
+                year = horizon_end_time.strftime("%y")
+                orbit_num = int(e["orbitId"])
+                prev_orbit_id = year + str(orbit_num).zfill(5)
+                prev_orbit = dm.find_orbit_by_id(prev_orbit_id)
+                if prev_orbit is None:
+                    raise RuntimeError(f"Unable to find previous orbit with id {orbit_num}. There could be a gap "
+                                       f"in the planning product orbits.")
+                prev_orbit["stop_time"] = horizon_end_time
+                dm.update_orbit_metadata(prev_orbit_id, prev_orbit)
+                wm.print(__name__, f"Updated orbit {prev_orbit_id} with stop time")
+
+            # Check for data collection (i.e. acquisition)
+            if e["name"].lower() in ("science", "dark"):
+                # Construct data collection metadata
+                dcid = str(e["dcid"]).zfill(10)
+                # Convert date strings to datetime objects to store in DB
+                e["datetime"] = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S")
+                e["endDatetime"] = datetime.datetime.strptime(e["endDatetime"], "%Y-%m-%dT%H:%M:%S")
+                year = e["datetime"].strftime("%y")
+                dc_meta = {
+                    "dcid": dcid,
+                    "build_num": wm.config["build_num"],
+                    "processing_version": wm.config["processing_version"],
+                    "orbit": year + str(e["orbit number"]).zfill(5),
+                    "scene": str(e["scene number"]).zfill(3),
+                    "submode": e["name"].lower(),
+                    "planning_product": e
+                }
+
+                # Insert or update data collection in DB
+                if dm.find_data_collection_by_id(dcid):
+                    dm.update_data_collection_metadata(dcid, dc_meta)
+                    wm.print(__name__, f"Updated data collection in DB with {dc_meta}")
+                else:
+                    dc_meta["frames_status"] = ""
+                    dm.insert_data_collection(dc_meta)
+                    wm.print(__name__, f"Inserted data collection in DB with {dc_meta}")
+
+                # Keep track of dcid for log entry
+                dcids.append(dcid)
+
+        # Copy/move processed file to archive
+        target_pp_path = os.path.join(wm.planning_products_dir, os.path.basename(self.plan_prod_path))
+        wm.move(self.plan_prod_path, target_pp_path)
+
+        # Add processing log entry for orbits and data collections
+        log_entry = {
+            "task": self.task_family,
+            "pge_name": pge.repo_url,
+            "pge_version": pge.version_tag,
+            "pge_input_files": self.plan_prod_path,
+            "pge_run_command": "N/A - database updates only",
+            "documentation_version": "N/A",
+            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
+            "completion_status": "SUCCESS",
+            "output": {
+                "raw_planning_product_path": target_pp_path
             }
-            for orbit_id in orbit_ids:
-                dm.insert_orbit_log_entry(orbit_id, log_entry)
-            for dcid in dcids:
-                dm.insert_data_collection_log_entry(dcid, log_entry)
+        }
+        for orbit_id in orbit_ids:
+            dm.insert_orbit_log_entry(orbit_id, log_entry)
+        for dcid in dcids:
+            dm.insert_data_collection_log_entry(dcid, log_entry)
 
 
 class L0Deliver(SlurmJobTask):
