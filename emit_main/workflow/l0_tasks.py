@@ -547,11 +547,6 @@ class L0ProcessPlanningProduct(SlurmJobTask):
         target_pp_path = os.path.join(wm.planning_products_dir, os.path.basename(self.plan_prod_path))
         wm.move(self.plan_prod_path, target_pp_path)
 
-        # Get slurm job.out file if it exists and copy to /store
-        tmp_log_path = os.path.join(self.tmp_dir, "job.out")
-        if os.path.exists(tmp_log_path):
-            wm.copy(tmp_log_path, target_pp_path.replace(".json", "_pge.log"))
-
         # Add processing log entry for orbits and data collections
         log_entry = {
             "task": self.task_family,

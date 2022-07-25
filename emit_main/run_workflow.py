@@ -207,6 +207,15 @@ def get_tasks_from_product_args(args):
 @SlurmJobTask.event_handler(luigi.Event.SUCCESS)
 def task_success(task):
     logger.info("SUCCESS: %s" % task)
+    wm = WorkflowManager(config_path=task.config_path)
+
+    # If running L0ProcessPlanningProduct then copy the job.out file back to /store
+    if task.task_family == "emit.L0ProcessPlanningProduct":
+        tmp_log_path = os.path.join(task.tmp_dir, "job.out")
+        target_pge_log_path = os.path.join(wm.planning_products_dir,
+                                           os.path.basename(task.plan_prod_path).replace(".json", "_pge.log"))
+        if os.path.exists(tmp_log_path):
+            wm.copy(tmp_log_path, target_pge_log_path)
 
     # If not in DEBUG mode, clean up scratch tmp and local tmp dirs
     if task.level != "DEBUG":
