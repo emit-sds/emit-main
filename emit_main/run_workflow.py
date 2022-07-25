@@ -57,7 +57,7 @@ def parse_args():
     parser.add_argument("-s", "--stream_path", default="",
                         help="Path to HOSC or CCSDS stream file")
     parser.add_argument("-o", "--orbit_id", default="",
-                        help="Orbit number in the padded format XXXXX")
+                        help="Orbit number in the padded format XXXXXXX")
     parser.add_argument("--plan_prod_path", default="",
                         help="Path to planning product file")
     parser.add_argument("-p", "--products",
@@ -108,6 +108,11 @@ def parse_args():
         sys.exit(1)
 
     args.config_path = os.path.abspath(args.config_path)
+
+    # Add 2-digit year to orbit id if only 5 digits
+    if args.orbit_id and len(args.orbit_id) == 5:
+        year = datetime.datetime.now().strftime("%y")
+        args.orbit_id = year + args.orbit_id
 
     # Upper case the log level
     args.level = args.level.upper()

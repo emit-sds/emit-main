@@ -24,7 +24,7 @@ class Orbit:
 
         self.config_path = config_path
         self.orbit_id = orbit_id
-        self.short_oid = self.orbit_id[2:]
+        self.short_oid = self.orbit_id[2:] if len(self.orbit_id) == 7 else self.orbit_id
 
         # Read metadata from db
         dm = DatabaseManager(config_path)

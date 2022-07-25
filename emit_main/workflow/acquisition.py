@@ -40,7 +40,7 @@ class Acquisition:
         self.stop_time_with_tz = pytz.utc.localize(self.stop_time)
 
         # Define short orbit string
-        self.short_orb = self.orbit[2:]
+        self.short_orb = self.orbit[2:] if len(self.orbit) == 7 else self.orbit
 
         # Create base directories and add to list to create directories later
         self.dirs = []
