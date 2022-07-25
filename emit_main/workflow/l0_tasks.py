@@ -279,6 +279,7 @@ class L0IngestBAD(SlurmJobTask):
                 if "associated_orbit_ids" in stream.metadata and stream.metadata["associated_orbit_ids"] is not None:
                     if orbit_id not in stream.metadata["associated_orbit_ids"]:
                         stream.metadata["associated_orbit_ids"].append(orbit_id)
+                        stream.metadata["associated_orbit_ids"].sort()
                 else:
                     stream.metadata["associated_orbit_ids"] = [orbit_id]
                 dm.update_stream_metadata(stream.bad_name,
@@ -290,6 +291,7 @@ class L0IngestBAD(SlurmJobTask):
                 if "associated_bad_sto" in orbit.metadata and orbit.metadata["associated_bad_sto"] is not None:
                     if stream.extended_bad_path not in orbit.metadata["associated_bad_sto"]:
                         orbit.metadata["associated_bad_sto"].append(stream.extended_bad_path)
+                        orbit.metadata["associated_bad_sto"].sort()
                 else:
                     orbit.metadata["associated_bad_sto"] = [stream.extended_bad_path]
                 dm.update_orbit_metadata(orbit_id, {"associated_bad_sto": orbit.metadata["associated_bad_sto"]})
