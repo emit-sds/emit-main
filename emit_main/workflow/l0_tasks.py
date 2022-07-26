@@ -435,7 +435,7 @@ class L0ProcessPlanningProduct(SlurmJobTask):
         overlapping_dcs += dm.find_data_collections_touching_date_range("planning_product.endDatetime",
                                                                         horizon_start_time, horizon_end_time)
         overlapping_dcs += dm.find_data_collections_touching_date_range("start_time", horizon_start_time,
-                                                                       horizon_end_time)
+                                                                        horizon_end_time)
         overlapping_dcs += dm.find_data_collections_touching_date_range("stop_time",
                                                                         horizon_start_time, horizon_end_time)
         for dc in overlapping_dcs:
