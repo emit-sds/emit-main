@@ -489,12 +489,12 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                     wm.print(__name__, f"Inserted orbit in DB with {orbit_meta}")
 
                 # Update the stop_time of the previous orbit in DB
-                if len(orbit_ids) > 0 and orbit_num > 0:
-                    prev_orbit_id = year + str(orbit_num - 1).zfill(5)
+                if len(orbit_ids) > 0:
+                    prev_orbit_id = orbit_ids[-1]
                     prev_orbit = dm.find_orbit_by_id(prev_orbit_id)
                     if prev_orbit is None:
-                        raise RuntimeError(f"Unable to find previous orbit with id {orbit_num}. There could be a gap "
-                                           f"in the planning product orbits.")
+                        raise RuntimeError(f"Unable to find previous orbit with id {prev_orbit_id}. Not able to set "
+                                           f"stop time of previous orbit.")
                     prev_orbit["stop_time"] = start_time
                     dm.update_orbit_metadata(prev_orbit_id, prev_orbit)
                     wm.print(__name__, f"Updated orbit {prev_orbit_id} with stop time")
@@ -504,13 +504,11 @@ class L0ProcessPlanningProduct(SlurmJobTask):
 
             # Get final orbit end time from horizon end
             if e["name"].lower() == "planning horizon end":
-                year = horizon_end_time.strftime("%y")
-                orbit_num = int(e["orbitId"])
-                prev_orbit_id = year + str(orbit_num).zfill(5)
+                prev_orbit_id = orbit_ids[-1]
                 prev_orbit = dm.find_orbit_by_id(prev_orbit_id)
                 if prev_orbit is None:
-                    raise RuntimeError(f"Unable to find previous orbit with id {orbit_num}. There could be a gap "
-                                       f"in the planning product orbits.")
+                    raise RuntimeError(f"Unable to find previous orbit with id {prev_orbit_id}. Not able to set "
+                                       f"stop time of previous orbit.")
                 prev_orbit["stop_time"] = horizon_end_time
                 dm.update_orbit_metadata(prev_orbit_id, prev_orbit)
                 wm.print(__name__, f"Updated orbit {prev_orbit_id} with stop time")
