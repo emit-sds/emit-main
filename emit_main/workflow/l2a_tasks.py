@@ -135,7 +135,7 @@ class L2AReflectance(SlurmJobTask):
                "13", "-ot", "Byte", "-scale", "-exponent", "0.6", "-of", "PNG", "-co", "ZLEVEL=9"]
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
-        cmd = ["python", os.path.join(pge.repo_dir, "spectrum_quality.py"), tmp_rfl_path, tmp_quality_path] 
+        cmd = ["python", os.path.join(pge.repo_dir, "spectrum_quality.py"), tmp_rfl_path, tmp_quality_path]
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
         wm.copy(tmp_rfl_path, acq.rfl_img_path)
