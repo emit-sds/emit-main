@@ -543,6 +543,8 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                 # Keep track of dcid for log entry
                 dcids.append(dcid)
 
+        wm.print(__name__, f"Inserted a total of {len(orbit_ids)} orbits and {len(dcids)} data collections!")
+
         # Copy/move processed file to archive
         target_pp_path = os.path.join(wm.planning_products_dir, os.path.basename(self.plan_prod_path))
         wm.move(self.plan_prod_path, target_pp_path)
