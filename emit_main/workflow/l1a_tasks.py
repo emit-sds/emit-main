@@ -322,7 +322,7 @@ class L1AReassembleRaw(SlurmJobTask):
                 raise RuntimeError(f"Attempting to create acquisitions without orbit, scene, or submode! "
                                    f"It appears that there was no planning product for DCID {self.dcid}")
         # If we made it this far, then initialize these values for the rest of the task
-        orbit = dc.metadata["orbit"] if "orbit" in dc.metadata else "00000"
+        orbit = dc.metadata["orbit"] if "orbit" in dc.metadata else "0000000"
         scene = dc.metadata["scene"] if "scene" in dc.metadata else "000"
         submode = dc.metadata["submode"] if "submode" in dc.metadata else "science"
 

@@ -118,16 +118,18 @@ def main():
 
     # Orbits - For now, just do the entire folder
     ts_print("Backing up orbits...")
-    # Build command
-    orbit_filter = f"/store/shared/rclone/emit/filters/orbit_filter.txt"
-    local_dir = f"/store/emit/{args.env}/data/orbits"
-    remote_dir = f"aws-jpl-ngis:jpl-ngis/EMIT/SDS/backups/data_products/{args.env}/data/orbits"
-    cmd = ["/store/shared/rclone/bin/rclone", "sync", "-v", "--create-empty-src-dirs", "--filter-from", orbit_filter]
-    cmd += ["--log-file", rclone_log]
-    if args.dry_run:
-        cmd.append("--dry-run")
-    cmd += [local_dir, remote_dir]
-    rclone(cmd, local_dir)
+    for date in dates:
+        # Build command
+        orbit_filter = f"/store/shared/rclone/emit/filters/orbit_filter.txt"
+        date_str = date.strftime("%Y%m%d")
+        local_dir = f"/store/emit/{args.env}/data/orbits/{date_str}"
+        remote_dir = f"aws-jpl-ngis:jpl-ngis/EMIT/SDS/backups/data_products/{args.env}/data/orbits/{date_str}"
+        cmd = ["/store/shared/rclone/bin/rclone", "sync", "-v", "--create-empty-src-dirs", "--filter-from", orbit_filter]
+        cmd += ["--log-file", rclone_log]
+        if args.dry_run:
+            cmd.append("--dry-run")
+        cmd += [local_dir, remote_dir]
+        rclone(cmd, local_dir)
 
     # Planning Products - For now, just do the entire folder
     ts_print("Backing up planning products...")

@@ -217,6 +217,26 @@ class DatabaseManager:
         data_collections_coll = self.db.data_collections
         return data_collections_coll.find_one({"dcid": dcid, "build_num": self.config["build_num"]})
 
+    def find_data_collections_touching_date_range(self, field, start, stop, sort=1):
+        data_collections_coll = self.db.data_collections
+        query = {
+            field: {"$gte": start, "$lte": stop},
+            "build_num": self.config["build_num"]
+        }
+        return list(data_collections_coll.find(query).sort(field, sort))
+
+    def delete_data_collections_touching_date_range(self, field, start, stop, sort=1):
+        data_collections_coll = self.db.data_collections
+        query = {
+            field: {"$gte": start, "$lte": stop},
+            "build_num": self.config["build_num"]
+        }
+        # First, find the data_collections and then return them below
+        data_collections = list(data_collections_coll.find(query).sort(field, sort))
+        # Next, delete them from db
+        data_collections_coll.delete_many(query)
+        return data_collections
+
     def find_data_collections_by_orbit_id(self, orbit_id):
         data_collections_coll = self.db.data_collections
         return list(data_collections_coll.find({"orbit": orbit_id, "build_num": self.config["build_num"]}))
@@ -277,6 +297,18 @@ class DatabaseManager:
             "build_num": self.config["build_num"]
         }
         return list(orbits_coll.find(query).sort(field, sort))
+
+    def delete_orbits_touching_date_range(self, field, start, stop, sort=1):
+        orbits_coll = self.db.orbits
+        query = {
+            field: {"$gte": start, "$lte": stop},
+            "build_num": self.config["build_num"]
+        }
+        # First, find the orbits and return them below
+        orbits = list(orbits_coll.find(query).sort(field, sort))
+        # Next, delete them from db
+        orbits_coll.delete_many(query)
+        return orbits
 
     def find_orbits_encompassing_date_range(self, start, stop, sort=1):
         orbits_coll = self.db.orbits

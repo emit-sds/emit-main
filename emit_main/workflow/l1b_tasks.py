@@ -811,7 +811,7 @@ class L1BAttDeliver(SlurmJobTask):
         # Create local/tmp daac names and paths
         collection_version = f"0{wm.config['processing_version']}"
         start_time_str = orbit.start_time.strftime("%Y%m%dT%H%M%S")
-        granule_ur = f"EMIT_L1B_ATT_{collection_version}_{start_time_str}_{orbit.orbit_id}"
+        granule_ur = f"EMIT_L1B_ATT_{collection_version}_{start_time_str}_{orbit.short_oid}"
         daac_nc_name = f"{granule_ur}.nc"
         daac_ummg_name = f"{granule_ur}.cmr.json"
         daac_nc_path = os.path.join(self.tmp_dir, daac_nc_name)
