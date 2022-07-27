@@ -129,9 +129,13 @@ class L2AReflectance(SlurmJobTask):
         tmp_statesubs_path = os.path.join(
             self.local_tmp_dir, "output", self.acquisition_id + "_subs_state")
         tmp_statesubs_hdr_path = envi_header(tmp_statesubs_path)
+        tmp_quality_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_rfl_quality.txt")
 
         cmd = ["gdal_translate", tmp_rfl_path, tmp_rfl_png_path, "-b", "32", "-b", "22", "-b",
                "13", "-ot", "Byte", "-scale", "-exponent", "0.6", "-of", "PNG", "-co", "ZLEVEL=9"]
+        pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
+
+        cmd = ["python", os.path.join(pge.repo_dir, "spectrum_quality.py"), tmp_rfl_path, tmp_quality_path] 
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
         wm.copy(tmp_rfl_path, acq.rfl_img_path)
@@ -143,6 +147,7 @@ class L2AReflectance(SlurmJobTask):
         wm.copy(tmp_statesubs_path, acq.statesubs_img_path)
         wm.copy(tmp_statesubs_hdr_path, acq.statesubs_hdr_path)
         wm.copy(tmp_rfl_png_path, acq.rfl_png_path)
+        wm.copy(tmp_quality_path, acq.quality_txt_path)
 
         # Copy log file and rename
         log_path = acq.rfl_img_path.replace(".img", "_pge.log")
@@ -205,7 +210,8 @@ class L2AReflectance(SlurmJobTask):
                 "l2a_rfl_hdr_path:": acq.rfl_hdr_path,
                 "l2a_rfl_png_path:": acq.rfl_png_path,
                 "l2a_rfluncert_img_path": acq.rfluncert_img_path,
-                "l2a_rfluncert_hdr_path:": acq.rfluncert_hdr_path
+                "l2a_rfluncert_hdr_path:": acq.rfluncert_hdr_path,
+                "l2a_quality_txt_path:": acq.quality_txt_path
             }
         }
 

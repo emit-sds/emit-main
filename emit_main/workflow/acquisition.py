@@ -124,7 +124,8 @@ class Acquisition:
                 "lbl": ["img", "hdr"],
                 "lblort": ["img", "hdr"],
                 "statesubs": ["img", "hdr"],
-                "mask": ["img", "hdr", "nc"]
+                "mask": ["img", "hdr", "nc"],
+                "quality": ["txt"],
             },
             "l2b": {
                 "tetra": ["dir"],
