@@ -37,7 +37,9 @@ def main():
     report = OrderedDict()
     report = {
         "title": f"Daily Summary Report for {date}",
-        "time": dt.datetime.now(),
+        "time_utc": dt.datetime.utcnow(),
+        "time_local": dt.datetime.now(),
+        "stream_totals": OrderedDict(),
         "streams": []
     }
 
@@ -49,6 +51,9 @@ def main():
         report_paths = glob.glob(f"/store/emit/{env}/data/streams/{apid}/{date}/l0/*report.txt")
         files_with_gaps = []
         for p in report_paths:
+            packet_count = 0
+            missing_packets = 0
+            psc_gaps = 0
             with open(p, "r") as f:
                 for line in f.readlines():
                     if "Packet Count" in line:
@@ -61,6 +66,7 @@ def main():
                 file_with_gaps = OrderedDict()
                 file_with_gaps = {
                     "file": p,
+                    "total_packets": packet_count,
                     "missing_packets": missing_packets,
                     "psc_gaps": psc_gaps
                 }
@@ -77,7 +83,7 @@ def main():
             "psc_gaps": total_gaps
         }
         if len(files_with_gaps) > 0:
-            apid_report["files_with_gaps"] = files_with_gaps
+            apid_report["reports_showing_gaps"] = files_with_gaps
 
         report["streams"].append(apid_report)
 
@@ -95,6 +101,117 @@ def main():
         "psc_gaps": total_gaps
     }
     report["stream_totals"] = stream_totals
+
+    # Check depacketization
+    report_paths = glob.glob(f"/store/emit/{env}/data/streams/1675/{date}/l1a/*report.txt")
+    total_frames = 0
+    total_corrupt = 0
+    files_with_corrupt = []
+    for p in report_paths:
+        num_frames = 0
+        corrupt_frames = 0
+        with open(p, "r") as f:
+            for line in f.readlines():
+                if "Total Frames Read" in line:
+                    num_frames = int(line.rstrip("\n").split(" ")[-1])
+                if "Corrupt Frame Errors" in line:
+                    corrupt_frames = int(line.rstrip("\n").split(" ")[-1])
+
+        if corrupt_frames > 0:
+            file_with_corrupt = OrderedDict()
+            file_with_corrupt = {
+                "file": p,
+                "total_frames": num_frames,
+                "corrupt_frames": corrupt_frames
+            }
+            files_with_corrupt.append(file_with_corrupt)
+
+        total_frames += num_frames
+        total_corrupt += corrupt_frames
+
+    depacketization = OrderedDict()
+    depacketization = {
+        "total_frames": total_frames,
+        "corrupt_frames": total_corrupt
+    }
+    if len(files_with_corrupt) > 0:
+        depacketization["reports_showing_corrupt_frames"] = files_with_corrupt
+    report["frame_depacketization"] = depacketization
+
+    # Check reassembly
+    report_paths = glob.glob(f"/store/emit/{env}/data/data_collections/by_date/{date}/*/*decomp*/*allframesreport.txt")
+    total_checks_fail = 0
+    files_with_failures = []
+    for p in report_paths:
+        checks_fail = 0
+        with open(p, "r") as f:
+            for line in f.readlines():
+                if "Check: FAIL" in line:
+                    checks_fail += 1
+                    files_with_failures.append(p)
+
+        total_checks_fail += checks_fail
+
+    reassembly = OrderedDict()
+    reassembly = {
+        "total_reassembled_dcids": len(report_paths),
+        "all_frames_reports_with_failure": total_checks_fail
+    }
+    if len(files_with_failures) > 0:
+        reassembly["reports_showing_frame_check_failures"] = files_with_failures
+
+    report_paths = glob.glob(f"/store/emit/{env}/data/data_collections/by_date/{date}/*/*decomp*/*reassembly_report.txt")
+    total_expected_frames = 0
+    total_decompression_errors = 0
+    total_missing_frames = 0
+    total_corrupt_lines = 0
+    total_cloudy_frames = 0
+    files_with_errors = []
+    for p in report_paths:
+        expected_frames = 0
+        decompression_errors = 0
+        missing_frames = 0
+        corrupt_lines = 0
+        cloudy_frames = 0
+        with open(p, "r") as f:
+            for line in f.readlines():
+                if "Total number of expected frames" in line:
+                    expected_frames = int(line.rstrip("\n").split(" ")[-1])
+                if "Total decompression errors" in line:
+                    decompression_errors = int(line.rstrip("\n").split(" ")[-1])
+                if "Total missing frames" in line:
+                    missing_frames = int(line.rstrip("\n").split(" ")[-1])
+                if "Total corrupt lines" in line:
+                    corrupt_lines = int(line.rstrip("\n").split(" ")[-1])
+                if "Total cloudy frames" in line:
+                    cloudy_frames = int(line.rstrip("\n").split(" ")[-1])
+        if decompression_errors > 0 or missing_frames > 0 or corrupt_lines > 0:
+            file_with_errors = OrderedDict()
+            file_with_errors = {
+                "file": p,
+                "total_expected_frames": expected_frames,
+                "decompression_errors": decompression_errors,
+                "missing_frames": missing_frames,
+                "corrupt_lines": corrupt_lines
+            }
+            files_with_errors.append(file_with_errors)
+
+        total_expected_frames += expected_frames
+        total_decompression_errors += decompression_errors
+        total_missing_frames += missing_frames
+        total_corrupt_lines += corrupt_lines
+        total_cloudy_frames += cloudy_frames
+
+    reassembly["total_expected_frames"] = total_expected_frames
+    reassembly["decompression_errors"] = total_decompression_errors
+    reassembly["missing_frames"] = total_missing_frames
+    reassembly["corrupt_lines"] = total_corrupt_lines
+    reassembly["cloudy_frames"] = total_cloudy_frames
+
+    if len(files_with_errors) > 0:
+        reassembly["reports_showing_reassembly errors"] = files_with_errors
+
+    report["reassembly"] = reassembly
 
     with open(report_path, "w") as f:
         yaml.dump(report, f, sort_keys=False)
