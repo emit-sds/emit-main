@@ -9,6 +9,7 @@ source /beegfs/store/shared/anaconda3/etc/profile.d/conda.sh
 conda activate $2
 
 INGEST_DIR=/store/emit/$1/ingest
+INGEST_ERRORS_DIR=${INGEST_DIR}/errors
 SFTP_DIR=${INGEST_DIR}/sftp
 RPSM_DIR=${SFTP_DIR}/rpsm_archive
 DATE_DIR=${RPSM_DIR}/$(date "+%Y%m%d")
@@ -74,9 +75,15 @@ for file in ${SFTP_DIR}/*; do
             mv ${rpsm_path} ${DATE_DIR}/
             echo "$(date +"%F %T,%3N"): Moved ${rpsm_path} to ${DATE_DIR}/"
 
-            # Add _hsc.bin suffix to HOSC files to play nice with existing ingest code and move to ingest folder
-            mv ${unzipped_path} ${INGEST_DIR}/${fname_noext}_hsc.bin
-            echo "$(date +"%F %T,%3N"): Moved ${unzipped_path} to ${INGEST_DIR}/${fname_noext}_hsc.bin"
+            # If file is empty, move to ingest/errors folder, else move to ingest folder
+            if [[ ! -s ${unzipped_path} ]]; then
+                mv ${unzipped_path} ${INGEST_ERRORS_DIR}/${fname_noext}_hsc.bin
+                echo "$(date +"%F %T,%3N"): Moved zero byte ${unzipped_path} to ${INGEST_ERRORS_DIR}/${fname_noext}_hsc.bin"
+            else
+                # Add _hsc.bin suffix to HOSC files to play nice with existing ingest code and move to ingest folder
+                mv ${unzipped_path} ${INGEST_DIR}/${fname_noext}_hsc.bin
+                echo "$(date +"%F %T,%3N"): Moved ${unzipped_path} to ${INGEST_DIR}/${fname_noext}_hsc.bin"
+            fi
         else
             echo "$(date +"%F %T,%3N"): Found ${file}, but no corresponding .rpsm file. Moving ${file} to ${ERROR_DIR}/"
             chgrp $GROUP ${file}
