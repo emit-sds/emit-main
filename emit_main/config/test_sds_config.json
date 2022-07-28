@@ -5,8 +5,8 @@
     "processing_version": "01",
     "luigi_local_scheduler": false,
     "luigi_workers": 2,
-    "tetracorder_library_basename": "06emita",
-    "tetracorder_library_cmdname": "emit_a"
+    "tetracorder_library_basename": "06emitb",
+    "tetracorder_library_cmdname": "emit_b"
   },
 
   "filesystem_config": {
@@ -33,7 +33,7 @@
   },
 
   "build_config": {
-    "extended_build_num": "010501",
+    "extended_build_num": "010502",
     "conda_base_dir": "/beegfs/store/shared/anaconda3/"
   },
 
@@ -58,10 +58,10 @@
     "isofit_emulator_base": "/beegfs/store/shared/sRTMnet_v100",
     "isofit_sixs_dir": "/beegfs/store/shared/sixs",
     "specpr_path": "/beegfs/store/shared/specpr",
-    "tetracorder_path": "/beegfs/store/shared/spectroscopy-tetracorder/tetracorder5.26",
-    "tetracorder_cmds_path": "/beegfs/store/shared/spectroscopy-tetracorder/tetracorder.cmds/tetracorder5.26e.cmds",
-    "tetracorder_library_dir": "/beegfs/store/tetracorder/official_libraries",
-    "unmixing_library": "/beegfs/store/shared/unmixing_libraries/combined_geofilter.csv",
+    "tetracorder_path": "/beegfs/store/shared/spectroscopy-tetracorder/tetracorder5.27",
+    "tetracorder_cmds_path": "/beegfs/store/shared/spectroscopy-tetracorder/tetracorder.cmds/tetracorder5.27a.cmds",
+    "tetracorder_library_dir": "/beegfs/store/shared/tetracorder_libraries",
+    "unmixing_library": "/beegfs/store/shared/unmixing_libraries/pc-endmember_before-split_num-dims_3_num-samples_8_library.csv",
     "versions": []
   }
 }
