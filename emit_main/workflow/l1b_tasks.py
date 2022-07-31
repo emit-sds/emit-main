@@ -410,7 +410,7 @@ class L1BGeolocate(SlurmJobTask):
         # Finish updating orbit level properties
         # Copy back corrected att/eph
         tmp_corr_att_eph_path = glob.glob(os.path.join(tmp_output_dir, "*l1b_att*nc"))[0]
-        
+
         # Update attitude/ephemeris netcdf metadata before copy
 #        ae_nc = netCDF4.Dataset(tmp_corr_att_eph_path, 'r+')
 #        daac_converter.makeGlobalAttrBase(ae_nc)

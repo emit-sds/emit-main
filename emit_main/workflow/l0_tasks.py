@@ -413,6 +413,10 @@ class L0ProcessPlanningProduct(SlurmJobTask):
             if e["name"].lower() == "planning horizon end":
                 horizon_end_time = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S")
 
+        if (horizon_start_time is None or horizon_end_time is None) and not self.test_mode:
+            raise RuntimeError("Either the horizon start time or the horizon end time is not defined.  Aborting.  Use "
+                               "--test_mode to bypass this error.")
+
         wm.print(__name__, f"Processing planning product with horizon start and end of {horizon_start_time} and "
                            f"{horizon_end_time}")
 
