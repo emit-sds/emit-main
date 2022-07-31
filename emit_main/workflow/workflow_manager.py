@@ -194,10 +194,33 @@ class WorkflowManager:
                 self.print(__name__, f"Unable to make directory {d}, but proceeding anyway...")
 
     def copy(self, src, dst):
+        # First check if the dst path exists
+        if os.path.exists(dst):
+            # If the dst file is owned by a different user, then delete it first.
+            owner = pwd.getpwuid(os.stat(dst, follow_symlinks=False).st_uid).pw_name
+            current_user = pwd.getpwuid(os.getuid()).pw_name
+            if owner != current_user:
+                self.print(__name__, f"Attempting to overwrite file owned by another user ({dst}). Will delete the "
+                                     f"file first and then copy.")
+                if os.path.isfile(dst):
+                    os.remove(dst)
+        # Now copy
         shutil.copy2(src, dst)
         self.change_group_ownership(dst)
 
     def copytree(self, src, dst):
+        # First check if the dst dir exists. Right now this only impacts the tetracorder directory in l2b.
+        # This is kept purposely very specific so as not to call rmtree on some other directory by mistake.
+        if os.path.exists(dst) and "tetra" in os.path.basename(dst):
+            # If the dst file is owned by a different user, then delete it first.
+            owner = pwd.getpwuid(os.stat(dst, follow_symlinks=False).st_uid).pw_name
+            current_user = pwd.getpwuid(os.getuid()).pw_name
+            if owner != current_user:
+                self.print(__name__, f"Attempting to overwrite directory owned by another user ({dst}). Will delete "
+                                     f"the directory first and then copy.")
+                if os.path.isdir(dst):
+                    shutil.rmtree(dst)
+        # Now copy
         shutil.copytree(src, dst)
         self.change_group_ownership(dst)
 
@@ -206,9 +229,19 @@ class WorkflowManager:
         self.change_group_ownership(dst)
 
     def symlink(self, source, link_name):
-        if not os.path.exists(link_name):
-            os.symlink(source, link_name)
-            self.change_group_ownership(link_name)
+        # First check if the link exists
+        if os.path.exists(link_name):
+            # If the link is owned by a different user, then delete it first.
+            owner = pwd.getpwuid(os.stat(link_name, follow_symlinks=False).st_uid).pw_name
+            current_user = pwd.getpwuid(os.getuid()).pw_name
+            if owner != current_user:
+                self.print(__name__, f"Attempting to overwrite symlink owned by another user ({link_name}). Will delete "
+                                     f"the symlink first and then create a new one.")
+                if os.path.islink(link_name):
+                    os.remove(link_name)
+        # Now symlink
+        os.symlink(source, link_name)
+        self.change_group_ownership(link_name)
 
     # Use this print function inside of luigi work() functions in order to write to the slurm job.out file
     def print(self, module, msg, level="INFO"):
