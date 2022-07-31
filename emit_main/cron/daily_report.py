@@ -14,6 +14,7 @@ import yaml
 
 from collections import OrderedDict
 
+
 def main():
     # Set up args
     parser = argparse.ArgumentParser(description="Generate a daily report")
@@ -215,6 +216,7 @@ def main():
 
     with open(report_path, "w") as f:
         yaml.dump(report, f, sort_keys=False)
+
 
 if __name__ == '__main__':
     main()
