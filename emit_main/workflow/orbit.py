@@ -148,9 +148,13 @@ class Orbit:
         # Then find all the associated acquisitions
         acquisition_ids = []
         for dc in data_collections:
-            if "associated_acquisitions" in dc:
+            if "associated_acquisitions" in dc and len(dc["associated_acquisitions"]) > 0:
                 for id in dc["associated_acquisitions"]:
                     acquisition_ids.append(id)
+            else:
+                wm.print(__name__, f"Found data collections associated with orbit {self.orbit_id}, but at least one of "
+                                   f"them doesn't have any associated acquisitions yet.")
+                return False
 
         if len(acquisition_ids) == 0:
             wm.print(__name__, f"Did not find any acquisitions associated with orbit {self.orbit_id}")

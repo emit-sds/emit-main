@@ -410,23 +410,23 @@ class L1BGeolocate(SlurmJobTask):
         # Finish updating orbit level properties
         # Copy back corrected att/eph
         tmp_corr_att_eph_path = glob.glob(os.path.join(tmp_output_dir, "*l1b_att*nc"))[0]
-
+        
         # Update attitude/ephemeris netcdf metadata before copy
-        ae_nc = netCDF4.Dataset(tmp_corr_att_eph_path, 'r+')
-        daac_converter.makeGlobalAttrBase(ae_nc)
-        ae_nc.title = "EMIT L1B Corrected Spacecraft Attitude and Ephemeris V001"
-        ae_nc.summary = ae_nc.summary + \
-            f"\\n\\nThis collection contains L1B Corrected Spacecraft Attitude and Ephemeris (ATT).\
-            ATT contains the uncorrected Broadcast Ancillary Data (BAD) ephemeris and attitude quaternions \
-            from the ISS, and the data after correction by the geolocation process. \
-            This product is generated at the orbit level.\
-            "
-        ae_nc.product_version = wm.config["extended_build_num"]
-        ae_nc.time_coverage_start = orbit.start_time.strftime("%Y-%m-%dT%H:%M:%S%z")
-        ae_nc.time_coverage_end = orbit.stop_time.strftime("%Y-%m-%dT%H:%M:%S%z")
+#        ae_nc = netCDF4.Dataset(tmp_corr_att_eph_path, 'r+')
+#        daac_converter.makeGlobalAttrBase(ae_nc)
+#        ae_nc.title = "EMIT L1B Corrected Spacecraft Attitude and Ephemeris V001"
+#        ae_nc.summary = ae_nc.summary + \
+#            f"\\n\\nThis collection contains L1B Corrected Spacecraft Attitude and Ephemeris (ATT).\
+#            ATT contains the uncorrected Broadcast Ancillary Data (BAD) ephemeris and attitude quaternions \
+#            from the ISS, and the data after correction by the geolocation process. \
+#            This product is generated at the orbit level.\
+#            "
+#        ae_nc.product_version = wm.config["extended_build_num"]
+#        ae_nc.time_coverage_start = orbit.start_time.strftime("%Y-%m-%dT%H:%M:%S%z")
+#        ae_nc.time_coverage_end = orbit.stop_time.strftime("%Y-%m-%dT%H:%M:%S%z")
 
-        ae_nc.sync()
-        ae_nc.close()
+#        ae_nc.sync()
+#        ae_nc.close()
 
         wm.copy(tmp_corr_att_eph_path, orbit.corr_att_eph_path)
 

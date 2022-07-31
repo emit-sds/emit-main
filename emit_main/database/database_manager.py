@@ -237,9 +237,12 @@ class DatabaseManager:
         data_collections_coll.delete_many(query)
         return data_collections
 
-    def find_data_collections_by_orbit_id(self, orbit_id):
+    def find_data_collections_by_orbit_id(self, orbit_id, submode="science"):
         data_collections_coll = self.db.data_collections
-        return list(data_collections_coll.find({"orbit": orbit_id, "build_num": self.config["build_num"]}))
+        return list(data_collections_coll.find({
+            "orbit": orbit_id,
+            "submode": submode,
+            "build_num": self.config["build_num"]}))
 
     def find_data_collections_for_reassembly(self, start, stop, date_field="frames_last_modified", retry_failed=False):
         data_collections_coll = self.db.data_collections
