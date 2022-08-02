@@ -50,6 +50,7 @@ def main():
         total_missing = 0
         total_gaps = 0
         report_paths = glob.glob(f"/store/emit/{env}/data/streams/{apid}/{date}/l0/*report.txt")
+        report_paths.sort()
         files_with_gaps = []
         for p in report_paths:
             packet_count = 0
@@ -105,6 +106,7 @@ def main():
 
     # Check depacketization
     report_paths = glob.glob(f"/store/emit/{env}/data/streams/1675/{date}/l1a/*report.txt")
+    report_paths.sort()
     total_frames = 0
     total_corrupt = 0
     files_with_corrupt = []
@@ -141,6 +143,7 @@ def main():
 
     # Check reassembly
     report_paths = glob.glob(f"/store/emit/{env}/data/data_collections/by_date/{date}/*/*decomp*/*allframesreport.txt")
+    report_paths.sort()
     total_checks_fail = 0
     files_with_failures = []
     for p in report_paths:
@@ -162,6 +165,7 @@ def main():
         reassembly["reports_showing_frame_check_failures"] = files_with_failures
 
     report_paths = glob.glob(f"/store/emit/{env}/data/data_collections/by_date/{date}/*/*decomp*/*reassembly_report.txt")
+    report_paths.sort()
     total_expected_frames = 0
     total_decompression_errors = 0
     total_missing_frames = 0
