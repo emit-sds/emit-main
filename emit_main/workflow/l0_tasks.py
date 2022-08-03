@@ -89,10 +89,13 @@ class L0StripHOSC(SlurmJobTask):
                     packet_count = int(line.rstrip("\n").split(" ")[-1])
                 if "Missing PSC Count" in line:
                     missing_packets = int(line.rstrip("\n").split(" ")[-1])
-        miss_pkt_percent = missing_packets / packet_count
-        if missing_packets / packet_count >= self.miss_pkt_thresh:
-            raise RuntimeError(f"{missing_packets} missing packets out of {packet_count} total is greater than the "
-                               f"missing packet threshold of {self.miss_pkt_thresh}")
+        total_expected_packets = packet_count + missing_packets
+        miss_pkt_ratio = missing_packets / total_expected_packets
+        if miss_pkt_ratio >= self.miss_pkt_thresh:
+            raise RuntimeError(f"Packets read: {packet_count}, missing packets: {missing_packets}. Ratio of missing "
+                               f"packets ({missing_packets}) to total expected ({total_expected_packets}) is "
+                               f"{miss_pkt_ratio} which is greater than or equal to the missing packet threshold of "
+                               f"{self.miss_pkt_thresh}")
 
         # Set up command to get CCSDS start/stop times
         get_start_stop_exe = os.path.join(pge.repo_dir, "get_ccsds_start_stop_times.py")
