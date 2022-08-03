@@ -46,7 +46,7 @@ def main():
 
     # Check streams
     for apid in ("1674", "1675", "1676"):
-        total_packets = 0
+        total_packets_read = 0
         total_missing = 0
         total_gaps = 0
         report_paths = glob.glob(f"/store/emit/{env}/data/streams/{apid}/{date}/l0/*report.txt")
@@ -66,41 +66,62 @@ def main():
                         psc_gaps = int(line.rstrip("\n").split(" ")[-1])
             if psc_gaps > 0:
                 file_with_gaps = OrderedDict()
+                expected_total_packets = packet_count + missing_packets
+                if expected_total_packets > 0:
+                    percent_missing = (missing_packets / expected_total_packets) * 100
+                else:
+                    percent_missing = 0.0
                 file_with_gaps = {
                     "file": p,
-                    "total_packets": packet_count,
+                    "packets_read": packet_count,
                     "missing_packets": missing_packets,
-                    "psc_gaps": psc_gaps
+                    "psc_gaps": psc_gaps,
+                    "expected_total_packets": expected_total_packets,
+                    "percent_missing": f"{percent_missing:.2f}%"
                 }
                 files_with_gaps.append(file_with_gaps)
-            total_packets += packet_count
+            total_packets_read += packet_count
             total_missing += missing_packets
             total_gaps += psc_gaps
 
         apid_report = OrderedDict()
+        expected_total_packets = total_packets_read + total_missing
+        if expected_total_packets > 0:
+            percent_missing = (total_missing / expected_total_packets) * 100
+        else:
+            percent_missing = 0.0
         apid_report = {
             "apid": apid,
-            "total_packets": total_packets,
+            "packets_read": total_packets_read,
             "missing_packets": total_missing,
-            "psc_gaps": total_gaps
+            "psc_gaps": total_gaps,
+            "expected_total_packets": expected_total_packets,
+            "percent_missing": f"{percent_missing:.2f}%"
         }
         if len(files_with_gaps) > 0:
             apid_report["reports_showing_gaps"] = files_with_gaps
 
         report["streams"].append(apid_report)
 
-    total_packets = 0
+    total_packets_read = 0
     total_missing = 0
     total_gaps = 0
     for apid in report["streams"]:
-        total_packets += apid["total_packets"]
+        total_packets_read += apid["packets_read"]
         total_missing += apid["missing_packets"]
         total_gaps += apid["psc_gaps"]
 
+    expected_total_packets = total_packets_read + total_missing
+    if expected_total_packets > 0:
+        percent_missing = (total_missing / expected_total_packets) * 100
+    else:
+        percent_missing = 0.0
     stream_totals = {
-        "total_packets": total_packets,
+        "packets_read": total_packets_read,
         "missing_packets": total_missing,
-        "psc_gaps": total_gaps
+        "psc_gaps": total_gaps,
+        "expected_total_packets": expected_total_packets,
+        "percent_missing": f"{percent_missing:.2f}%"
     }
     report["stream_totals"] = stream_totals
 
