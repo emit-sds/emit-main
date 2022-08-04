@@ -147,6 +147,16 @@ class L0StripHOSC(SlurmJobTask):
             # Move HOSC file out of ingest folder
             wm.move(self.stream_path, stream.hosc_path)
 
+        # Symlink the start time and stop times onto the HOSC filename for convenience
+        hosc_symlink = "_".join([
+            stream.apid,
+            stream.start_time.strftime("%Y%m%dT%H%M%S"),
+            stream.stop_time.strftime("%Y%m%dT%H%M%S")
+        ])
+        hosc_symlink += stream.hosc_name.replace(stream.apid, "")
+        hosc_symlink = os.path.join(stream.raw_dir, hosc_symlink)
+        wm.symlink(stream.hosc_name, hosc_symlink)
+
         # Update DB
         metadata = {
             "ccsds_name": ccsds_name,
