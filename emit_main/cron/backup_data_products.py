@@ -116,7 +116,19 @@ def main():
             cmd += [local_dir, remote_dir]
             rclone(cmd, local_dir)
 
-    # Orbits - For now, just do the entire folder
+    # Manual Ops - For now, just do the entire folder
+    ts_print("Backing up manual ops...")
+    # Build command
+    local_dir = f"/store/emit/{args.env}/data/manual_ops"
+    remote_dir = f"aws-jpl-ngis:jpl-ngis/EMIT/SDS/backups/data_products/{args.env}/data/manual_ops"
+    cmd = ["/store/shared/rclone/bin/rclone", "sync", "-v", "--create-empty-src-dirs"]
+    cmd += ["--log-file", rclone_log]
+    if args.dry_run:
+        cmd.append("--dry-run")
+    cmd += [local_dir, remote_dir]
+    rclone(cmd, local_dir)
+
+    # Orbits
     ts_print("Backing up orbits...")
     for date in dates:
         # Build command
