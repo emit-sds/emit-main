@@ -123,14 +123,17 @@ class L1BCalibrate(SlurmJobTask):
             if recent_darks is not None and len(recent_darks) > 0:
                 dark_img_path = recent_darks[0]["products"]["l1a"]["raw"]["img_path"]
                 recent_dark_offset = abs((acq.start_time - recent_darks[0]["stop_time"]).total_seconds())
+                wm.print(__name__, f"Recent dark offset: {recent_dark_offset}")
 
             if future_darks is not None and len(future_darks) > 0:
                 dark_img_path = future_darks[0]["products"]["l1a"]["raw"]["img_path"]
                 future_dark_offset = abs((future_darks[0]["start_time"] - acq.stop_time).total_seconds())
+                wm.print(__name__, f"Future dark offset: {future_dark_offset}")
 
             # If we have both, then set the dark image path back to recent dark if the offset is smaller
             if recent_dark_offset and future_dark_offset and recent_dark_offset <= future_dark_offset:
                 dark_img_path = recent_darks[0]["products"]["l1a"]["raw"]["img_path"]
+                wm.print(__name__, "Recent dark offset is less than future dark offset")
 
 
         input_files["dark_file"] = dark_img_path
