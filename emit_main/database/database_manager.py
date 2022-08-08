@@ -92,7 +92,16 @@ class DatabaseManager:
                 instrument_mode=acq["instrument_mode"],
                 min_valid_lines=256,
                 sort=-1)
-            if recent_darks is not None and len(recent_darks) > 0:
+            future_darks = self.find_acquisitions_touching_date_range(
+                "dark",
+                "start_time",
+                acq["stop_time"],
+                acq["stop_time"] + datetime.timedelta(minutes=400),
+                instrument_mode=acq["instrument_mode"],
+                min_valid_lines=256,
+                sort=1)
+            if (recent_darks is not None and len(recent_darks) > 0) or \
+                    (future_darks is not None and len(future_darks) > 0):
                 acqs_ready_for_cal.append(acq)
         return acqs_ready_for_cal
 

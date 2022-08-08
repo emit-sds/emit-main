@@ -93,10 +93,11 @@ class L1BCalibrate(SlurmJobTask):
 
         dm = wm.database_manager
 
+        dark_img_path = ""
         if len(self.dark_path) > 0:
             dark_img_path = self.dark_path
         else:
-            # Find dark image - Get most recent dark image, but throw error if not within last 400 minutes
+            # Find dark image - Get most nearest dark image, but throw error if not within last 400 minutes
             recent_darks = dm.find_acquisitions_touching_date_range(
                 "dark",
                 "stop_time",
@@ -105,11 +106,32 @@ class L1BCalibrate(SlurmJobTask):
                 instrument_mode=acq.instrument_mode,
                 min_valid_lines=256,
                 sort=-1)
-            if recent_darks is None or len(recent_darks) == 0:
-                raise RuntimeError(f"Unable to find any darks for acquisition {acq.acquisition_id} within last 400 "
-                                   f"minutes.")
+            future_darks = self.find_acquisitions_touching_date_range(
+                "dark",
+                "start_time",
+                acq.stop_time,
+                acq.stop_time + datetime.timedelta(minutes=400),
+                instrument_mode=acq.instrument_mode,
+                min_valid_lines=256,
+                sort=1)
+            if (recent_darks is None or len(recent_darks) == 0) and (future_darks is None or len(future_darks) == 0):
+                raise RuntimeError(f"Unable to find any darks for acquisition {acq.acquisition_id} within 400 minutes.")
 
-            dark_img_path = recent_darks[0]["products"]["l1a"]["raw"]["img_path"]
+            # Set dark image path to recent or future depending on which is nearest
+            recent_dark_offset = None
+            future_dark_offset = None
+            if recent_darks is not None and len(recent_darks) > 0:
+                dark_img_path = recent_darks[0]["products"]["l1a"]["raw"]["img_path"]
+                recent_dark_offset = abs((acq.start_time - recent_darks[0]["stop_time"]).total_seconds())
+
+            if future_darks is not None and len(future_darks) > 0:
+                dark_img_path = future_darks[0]["products"]["l1a"]["raw"]["img_path"]
+                future_dark_offset = abs((future_darks[0]["start_time"] - acq.stop_time).total_seconds())
+
+            # If we have both, then set the dark image path back to recent dark if the offset is smaller
+            if recent_dark_offset and future_dark_offset and recent_dark_offset <= future_dark_offset:
+                dark_img_path = recent_darks[0]["products"]["l1a"]["raw"]["img_path"]
+
 
         input_files["dark_file"] = dark_img_path
 
