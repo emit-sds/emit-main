@@ -106,7 +106,7 @@ class L1BCalibrate(SlurmJobTask):
                 instrument_mode=acq.instrument_mode,
                 min_valid_lines=256,
                 sort=-1)
-            future_darks = self.find_acquisitions_touching_date_range(
+            future_darks = dm.find_acquisitions_touching_date_range(
                 "dark",
                 "start_time",
                 acq.stop_time,
