@@ -97,11 +97,11 @@ class L1BCalibrate(SlurmJobTask):
         if len(self.dark_path) > 0:
             dark_img_path = self.dark_path
         else:
-            # Find dark image - Get most nearest dark image, but throw error if not within last 400 minutes
+            # Find dark image - Get most nearest dark image, but throw error if not within last 800 minutes
             recent_darks = dm.find_acquisitions_touching_date_range(
                 "dark",
                 "stop_time",
-                acq.start_time - datetime.timedelta(minutes=400),
+                acq.start_time - datetime.timedelta(minutes=800),
                 acq.start_time,
                 instrument_mode=acq.instrument_mode,
                 min_valid_lines=256,
@@ -110,12 +110,12 @@ class L1BCalibrate(SlurmJobTask):
                 "dark",
                 "start_time",
                 acq.stop_time,
-                acq.stop_time + datetime.timedelta(minutes=400),
+                acq.stop_time + datetime.timedelta(minutes=800),
                 instrument_mode=acq.instrument_mode,
                 min_valid_lines=256,
                 sort=1)
             if (recent_darks is None or len(recent_darks) == 0) and (future_darks is None or len(future_darks) == 0):
-                raise RuntimeError(f"Unable to find any darks for acquisition {acq.acquisition_id} within 400 minutes.")
+                raise RuntimeError(f"Unable to find any darks for acquisition {acq.acquisition_id} within 800 minutes.")
 
             # Set dark image path to recent or future depending on which is nearest
             recent_dark_offset = None

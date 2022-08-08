@@ -87,7 +87,7 @@ class DatabaseManager:
             recent_darks = self.find_acquisitions_touching_date_range(
                 "dark",
                 "stop_time",
-                acq["start_time"] - datetime.timedelta(minutes=400),
+                acq["start_time"] - datetime.timedelta(minutes=800),
                 acq["start_time"],
                 instrument_mode=acq["instrument_mode"],
                 min_valid_lines=256,
@@ -96,7 +96,7 @@ class DatabaseManager:
                 "dark",
                 "start_time",
                 acq["stop_time"],
-                acq["stop_time"] + datetime.timedelta(minutes=400),
+                acq["stop_time"] + datetime.timedelta(minutes=800),
                 instrument_mode=acq["instrument_mode"],
                 min_valid_lines=256,
                 sort=1)
