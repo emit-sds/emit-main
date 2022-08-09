@@ -73,7 +73,7 @@ class DatabaseManager:
         # outputs in time range
         query = {
             "submode": "science",
-            "num_valid_lines": {"$gte": 1},
+            "num_valid_lines": {"$gte": 2},
             "products.l1a.raw.img_path": {"$exists": 1},
             "products.l1b.rdn.img_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop},
