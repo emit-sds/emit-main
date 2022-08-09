@@ -46,10 +46,12 @@ class L2AReflectance(SlurmJobTask):
         logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
-        return (L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
-                             partition=self.partition),
-                L1BGeolocate(config_path=self.config_path, orbit_id=acq.orbit, level=self.level,
-                             partition=self.partition))
+        return None
+        # Don't look up dependencies here since the monitor guarantees that these have already run
+        # return (L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+        #                      partition=self.partition),
+        #         L1BGeolocate(config_path=self.config_path, orbit_id=acq.orbit, level=self.level,
+        #                      partition=self.partition))
 
     def output(self):
 
@@ -237,10 +239,13 @@ class L2AMask(SlurmJobTask):
     def requires(self):
 
         logger.debug(self.task_family + " requires")
-        return (L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
-                             partition=self.partition),
-                L2AReflectance(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
-                               partition=self.partition))
+        return L2AReflectance(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+                              partition=self.partition)
+        # Only look include reflectance dependency for now.  The monitor guarantees that calibration has run
+        # return (L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+        #                      partition=self.partition),
+        #         L2AReflectance(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+        #                        partition=self.partition))
 
     def output(self):
 

@@ -135,7 +135,6 @@ class L1BCalibrate(SlurmJobTask):
                 dark_img_path = recent_darks[0]["products"]["l1a"]["raw"]["img_path"]
                 wm.print(__name__, "Recent dark offset is less than future dark offset")
 
-
         input_files["dark_file"] = dark_img_path
 
         emitrdn_exe = os.path.join(pge.repo_dir, "emitrdn.py")
