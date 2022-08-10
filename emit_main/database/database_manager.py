@@ -120,7 +120,7 @@ class DatabaseManager:
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L2AReflectance", "emit.L2AMask",
-                                                                       "emit.L2BAbundance", "emit.L3Unmix"])
+                                                                       "emit.L3Unmix"])
         return results
 
     def insert_acquisition(self, metadata):
