@@ -6,6 +6,7 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 
 import glob
 import logging
+import math
 import os
 
 from emit_main.database.database_manager import DatabaseManager
@@ -89,9 +90,9 @@ class DataCollection:
             wm.print(__name__, "Set of frames is not sequential!")
             return False
 
-        # Check that we have at least the expected number minus 4 and no more than the expected number
-        if found_num < expected_num - 4 or found_num > expected_num:
-            wm.print(__name__, f"Number of frames, {found_num}, is not within four frames of the expected number of "
+        # Check that we have at least the expected number minus math.ceil(expected/100) and no more than the expected number
+        if found_num < expected_num - math.ceil(expected_num / 100) or found_num > expected_num:
+            wm.print(__name__, f"Number of frames, {found_num}, is not within a few frames of the expected number of "
                                f"{expected_num}, or it is more than the expected number.")
             return False
 
