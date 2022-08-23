@@ -835,8 +835,9 @@ class L1ADeliver(SlurmJobTask):
         ummg = daac_converter.initialize_ummg(acq.raw_granule_ur, creation_time, "EMITL1ARAW", acq.collection_version,
                                               acq.start_time, acq.stop_time, wm.config["extended_build_num"],
                                               l1a_pge.repo_name, l1a_pge.version_tag, orbit=int(acq.orbit),
-                                              scene=int(acq.scene),
-                                              cloud_fraction=acq.cloud_fraction)
+                                              scene=int(acq.scene), solar_zenith=0.0, solar_azimuth=0.0,
+                                              water_vapor=0.0, aod=0.0, mean_fractional_cover=0.0,
+                                              mean_spectral_abundance=0.0, cloud_fraction=acq.cloud_fraction)
         daynight = "Day" if acq.submode == "science" else "Night"
         ummg = daac_converter.add_data_files_ummg(
             ummg,
