@@ -300,9 +300,10 @@ class L1BGeolocate(SlurmJobTask):
         pge.run(cmd, tmp_dir=self.tmp_dir, use_conda_run=False)
 
         # Get unique acquisitions_ids
-        output_prods = [os.path.basename(path) for path in glob.glob(os.path.join(tmp_output_dir, "emit*"))]
+        output_prods = [os.path.basename(path) for path in glob.glob(os.path.join(tmp_output_dir, "emit*img"))]
         output_prods.sort()
-        acquisition_ids = set([prod.split("_")[0] for prod in output_prods])
+        acquisition_ids = list(set([prod.split("_")[0] for prod in output_prods]))
+        acquisition_ids.sort()
         wm.print(__name__, f"Found acquisition ids: {acquisition_ids}")
         output_prods = {
             "l1b_glt_img_paths": [],
