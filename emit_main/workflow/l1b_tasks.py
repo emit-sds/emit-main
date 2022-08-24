@@ -104,7 +104,7 @@ class L1BCalibrate(SlurmJobTask):
                 acq.start_time - datetime.timedelta(minutes=800),
                 acq.start_time,
                 instrument_mode=acq.instrument_mode,
-                min_valid_lines=256,
+                min_valid_lines=512,
                 sort=-1)
             future_darks = dm.find_acquisitions_touching_date_range(
                 "dark",
@@ -112,7 +112,7 @@ class L1BCalibrate(SlurmJobTask):
                 acq.stop_time,
                 acq.stop_time + datetime.timedelta(minutes=800),
                 instrument_mode=acq.instrument_mode,
-                min_valid_lines=256,
+                min_valid_lines=512,
                 sort=1)
             if (recent_darks is None or len(recent_darks) == 0) and (future_darks is None or len(future_darks) == 0):
                 raise RuntimeError(f"Unable to find any darks for acquisition {acq.acquisition_id} within 800 minutes.")
