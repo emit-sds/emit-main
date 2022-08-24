@@ -67,10 +67,15 @@ class L1BCalibrate(SlurmJobTask):
         log_name = os.path.basename(acq.rdn_img_path.replace(".img", "_pge.log"))
         tmp_log_path = os.path.join(tmp_output_dir, log_name)
         l1b_config_path = wm.config["l1b_config_path"]
-        with open(l1b_config_path, "r") as f:
-            config = json.load(f)
+
+        # Set instrument mode
+        instrument_mode = "default"
+        if acq.instrument_mode == "cold_img_mid" or acq.instrument_mode == "cold_img_mid_vdda":
+            instrument_mode = "half"
 
         # Update config file values with absolute paths and store all input files for logging later
+        with open(l1b_config_path, "r") as f:
+            config = json.load(f)
         input_files = {}
         for key, value in config.items():
             if "_file" in key:
@@ -85,7 +90,8 @@ class L1BCalibrate(SlurmJobTask):
                     if "_file" in k:
                         if not v.startswith("/"):
                             config["modes"][key][k] = os.path.abspath(os.path.join(os.path.dirname(l1b_config_path), v))
-                        input_files[k] = config["modes"][key][k]
+                        if key == instrument_mode:
+                            input_files[k] = config["modes"][key][k]
 
         tmp_config_path = os.path.join(self.local_tmp_dir, "l1b_config.json")
         with open(tmp_config_path, "w") as outfile:
@@ -142,9 +148,6 @@ class L1BCalibrate(SlurmJobTask):
         env = os.environ.copy()
         env["PYTHONPATH"] = f"$PYTHONPATH:{utils_path}"
         env["RAY_worker_register_timeout_seconds"] = "600"
-        instrument_mode = "default"
-        if acq.instrument_mode == "cold_img_mid" or acq.instrument_mode == "cold_img_mid_vdda":
-            instrument_mode = "half"
         cmd = ["python", emitrdn_exe,
                "--mode", instrument_mode,
                "--level", self.level,
