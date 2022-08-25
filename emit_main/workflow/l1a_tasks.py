@@ -840,8 +840,10 @@ class L1ADeliver(SlurmJobTask):
         if is_science:
             ummg = daac_converter.initialize_ummg(acq.raw_granule_ur, creation_time, "EMITL1ARAW",
                                                   acq.collection_version, acq.start_time,
-                                                  acq.stop_time, wm.config["extended_build_num"], l1a_pge.repo_name,
-                                                  l1a_pge.version_tag, orbit=int(acq.orbit), scene=int(acq.scene),
+                                                  acq.stop_time, l1a_pge.repo_name, l1a_pge.version_tag,
+                                                  software_build_version=wm.config["extended_build_num"],
+                                                  doi=wm.config["dois"]["EMITL1ARAW"], orbit=int(acq.orbit),
+                                                  orbit_segment=int(acq.scene), scene=int(acq.scene),
                                                   solar_zenith=0.0, solar_azimuth=0.0, water_vapor=0.0, aod=0.0,
                                                   mean_fractional_cover=0.0, mean_spectral_abundance=0.0,
                                                   cloud_fraction=acq.cloud_fraction)
@@ -853,8 +855,10 @@ class L1ADeliver(SlurmJobTask):
         else:
             ummg = daac_converter.initialize_ummg(acq.raw_granule_ur, creation_time, "EMITL1ARAW",
                                                   acq.collection_version, acq.start_time,
-                                                  acq.stop_time, wm.config["extended_build_num"], l1a_pge.repo_name,
-                                                  l1a_pge.version_tag, orbit=int(acq.orbit), scene=int(acq.scene))
+                                                  acq.stop_time, l1a_pge.repo_name, l1a_pge.version_tag,
+                                                  software_build_version=wm.config["extended_build_num"],
+                                                  doi=wm.config["dois"]["EMITL1ARAW"], orbit=int(acq.orbit),
+                                                  orbit_segment=int(acq.scene), scene=int(acq.scene))
             ummg = daac_converter.add_data_files_ummg(ummg, [daac_raw_path, daac_raw_hdr_path], "Night",
                                                       ["BINARY", "ASCII"])
 
