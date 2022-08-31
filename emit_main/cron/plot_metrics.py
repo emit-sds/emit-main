@@ -22,7 +22,8 @@ def main():
     # Set up args
     parser = argparse.ArgumentParser(description="Generate a daily report")
     parser.add_argument("-i", "--input_dir", default="/store/emit/ops/reports", help="Where to get report files")
-    parser.add_argument("-p", "--plots", help="Comma separate choices: streams,1674,1675,1676,reassembly")
+    parser.add_argument("-p", "--plots", default="1675,reassembly",
+                        help="Comma separate choices: streams,1674,1675,1676,reassembly")
     parser.add_argument("-d", "--dates", help="Comma separated dates (YYYYMMDD,YYYYMMDD)")
     parser.add_argument("-o", "--output_dir", default="/store/emit/ops/reports/trending",
                         help="Output dir for plots and csvs")
