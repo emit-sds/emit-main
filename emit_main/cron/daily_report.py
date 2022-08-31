@@ -170,8 +170,9 @@ def main():
 
     report_paths = []
     for dcid in dcids:
-        report_paths.append(
-            glob.glob(f"/store/emit/{env}/data/data_collections/by_date/{date}/*_{dcid}/*decomp*/*allframesreport.txt")[0])
+        match = glob.glob(f"/store/emit/{env}/data/data_collections/by_date/{date}/*_{dcid}/*decomp*/*allframesreport.txt")
+        if len(match) > 0:
+            report_paths.append(match[0])
     report_paths.sort()
     total_checks_fail = 0
     files_with_failures = []
@@ -195,9 +196,10 @@ def main():
 
     report_paths = []
     for dcid in dcids:
-        report_paths.append(
-            glob.glob(
-                f"/store/emit/{env}/data/data_collections/by_date/{date}/*_{dcid}/*decomp*/*reassembly_report.txt")[0])
+        match = glob.glob(
+            f"/store/emit/{env}/data/data_collections/by_date/{date}/*_{dcid}/*decomp*/*reassembly_report.txt")
+        if len(match) > 0:
+            report_paths.append(match[0])
     report_paths.sort()
     total_expected_frames = 0
     total_decompression_errors = 0
