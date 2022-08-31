@@ -153,13 +153,36 @@ def main():
         total_frames += num_frames
         total_corrupt += corrupt_frames
 
+    # Get frame times from log files
+    log_paths = glob.glob(f"/store/emit/{env}/data/streams/1675/{date}/l1a/*pge.log")
+    log_paths.sort()
+    depack_frames = []
+    if len(log_paths) > 0:
+        with open(log_paths[0], "r") as f:
+            for line in f.readlines():
+                if " Writing frame to path" in line:
+                    depack_frames.append(os.path.basename(line.split(" ")[8]))
+        with open(log_paths[-1], "r") as f:
+            for line in f.readlines():
+                if " Writing frame to path" in line:
+                    depack_frames.append(os.path.basename(line.split(" ")[8]))
+
     depacketization = OrderedDict()
-    depacketization = {
-        "total_frames": total_frames,
-        "corrupt_frames": total_corrupt
-    }
+    if len(depack_frames) > 0:
+        depacketization = {
+            "first_frame": depack_frames[0],
+            "last_frame": depack_frames[-1],
+            "total_frames": total_frames,
+            "corrupt_frames": total_corrupt
+        }
+    else:
+        depacketization = {
+            "total_frames": total_frames,
+            "corrupt_frames": total_corrupt
+        }
     if len(files_with_corrupt) > 0:
         depacketization["reports_showing_corrupt_frames"] = files_with_corrupt
+
     report["frame_depacketization"] = depacketization
 
     # Check reassembly
