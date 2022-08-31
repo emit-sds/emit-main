@@ -7,15 +7,15 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 import argparse
 import datetime as dt
 import glob
-# import matplotlib.pyplot as plt
+import matplotlib
 import os
 import subprocess
 import sys
 import yaml
 
-import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
+
 
 def main():
     # Set up args
@@ -29,7 +29,7 @@ def main():
     option_choices = ("streams", "1674", "1675", "1676", "reassembly")
 
     # Plot daily reports
-    daily_reports  = glob.glob(os.path.join(args.reports_dir, "daily*yml"))
+    daily_reports = glob.glob(os.path.join(args.reports_dir, "daily*yml"))
     daily_reports.sort()
     dates = [dt.datetime.strptime(os.path.basename(p).split("_")[1].replace(".yml", ""), "%Y%m%d") for p in daily_reports]
     # dates = [os.path.basename(p).split("_").replace(".yml", "") for p in daily_reports]
