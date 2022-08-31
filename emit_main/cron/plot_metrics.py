@@ -146,7 +146,7 @@ def main():
         percent_cloudy.append(percent)
 
     if "reassembly" in args.options:
-        plt.rcParams['figure.figsize'] = [10, 10]
+        plt.rcParams['figure.figsize'] = [10, 14]
 
         plt.subplot(7, 1, 1)
         plt.bar(dates, dcids)
@@ -183,7 +183,7 @@ def main():
         plt.title("Corrupt Lines")
         plt.xticks(rotation=45)
 
-        plt.subplots_adjust(hspace=1)
+        plt.subplots_adjust(hspace=1.4)
         plt.suptitle("Reassembly", fontsize=12)
         plt.show()
 
