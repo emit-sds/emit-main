@@ -163,7 +163,15 @@ def main():
     report["frame_depacketization"] = depacketization
 
     # Check reassembly
-    report_paths = glob.glob(f"/store/emit/{env}/data/data_collections/by_date/{date}/*/*decomp*/*allframesreport.txt")
+    dcid_paths = glob.glob(f"/store/emit/{env}/data/data_collections/by_date/{date}/*")
+    dcids = [os.path.basename(d).split("_")[1] for d in dcid_paths]
+    dcids = list(set(dcids))
+    dcids.sort()
+
+    report_paths = []
+    for dcid in dcids:
+        report_paths.append(
+            glob.glob(f"/store/emit/{env}/data/data_collections/by_date/{date}/*_{dcid}/*decomp*/*allframesreport.txt")[0])
     report_paths.sort()
     total_checks_fail = 0
     files_with_failures = []
@@ -185,7 +193,11 @@ def main():
     if len(files_with_failures) > 0:
         reassembly["reports_showing_frame_check_failures"] = files_with_failures
 
-    report_paths = glob.glob(f"/store/emit/{env}/data/data_collections/by_date/{date}/*/*decomp*/*reassembly_report.txt")
+    report_paths = []
+    for dcid in dcids:
+        report_paths.append(
+            glob.glob(
+                f"/store/emit/{env}/data/data_collections/by_date/{date}/*_{dcid}/*decomp*/*reassembly_report.txt")[0])
     report_paths.sort()
     total_expected_frames = 0
     total_decompression_errors = 0
