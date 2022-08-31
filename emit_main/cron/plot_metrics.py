@@ -55,7 +55,7 @@ def main():
         plt.subplot(4, 1, 1)
         plt.bar(dates, packets)
         plt.title("Packets Read")
-        plt.xticks(rotation=45)
+        plt.xticks(rotation=45, fontsize=8)
 
         plt.subplot(4, 1, 2)
         plt.bar(dates, gaps)
@@ -63,17 +63,17 @@ def main():
         # for i in range(len(dates)):
         #     plt.annotate(gaps[i], xy=(dates[i], gaps[i]))
         plt.ylim([0, 30])
-        plt.xticks(rotation=45)
+        plt.xticks(rotation=45, fontsize=8)
 
         plt.subplot(4, 1, 3)
         plt.bar(dates, missing)
         plt.title("Missing Packets")
-        plt.xticks(rotation=45)
+        plt.xticks(rotation=45, fontsize=8)
 
         plt.subplot(4, 1, 4)
         plt.bar(dates, percents)
         plt.title("Percent Missing")
-        plt.xticks(rotation=45)
+        plt.xticks(rotation=45, fontsize=8)
 
         plt.subplots_adjust(hspace=1)
         plt.suptitle(f"All APIDs", fontsize=12)
@@ -94,7 +94,7 @@ def main():
             plt.subplot(rows, 1, 1)
             plt.bar(dates, packets)
             plt.title("Packets Read")
-            plt.xticks(rotation=45)
+            plt.xticks(rotation=45, fontsize=8)
 
             plt.subplot(rows, 1, 2)
             plt.bar(dates, gaps)
@@ -102,28 +102,28 @@ def main():
             # for i in range(len(dates)):
             #     plt.annotate(gaps[i], xy=(dates[i], gaps[i]))
             plt.ylim([0, 30])
-            plt.xticks(rotation=45)
+            plt.xticks(rotation=45, fontsize=8)
 
             plt.subplot(rows, 1, 3)
             plt.bar(dates, missing)
             plt.title("Missing Packets")
-            plt.xticks(rotation=45)
+            plt.xticks(rotation=45, fontsize=8)
 
             plt.subplot(rows, 1, 4)
             plt.bar(dates, percents)
             plt.title("Percent Missing")
-            plt.xticks(rotation=45)
+            plt.xticks(rotation=45, fontsize=8)
 
             if apid == "1675":
                 plt.subplot(6, 1, 5)
                 plt.bar(dates, frames)
                 plt.title("Depacketized Frames")
-                plt.xticks(rotation=45)
+                plt.xticks(rotation=45, fontsize=8)
 
                 plt.subplot(6, 1, 6)
                 plt.bar(dates, corrupt_frames)
                 plt.title("Corrupt Frames")
-                plt.xticks(rotation=45)
+                plt.xticks(rotation=45, fontsize=8)
 
             plt.subplots_adjust(hspace=1)
             plt.suptitle(f"APID {apid}", fontsize=12)
@@ -151,37 +151,37 @@ def main():
         plt.subplot(7, 1, 1)
         plt.bar(dates, dcids)
         plt.title("Reassembled DCIDs")
-        plt.xticks(rotation=45)
+        plt.xticks(rotation=45, fontsize=8)
 
         plt.subplot(7, 1, 2)
         plt.bar(dates, expected_frames)
         plt.title("Expected Frames")
-        plt.xticks(rotation=45)
+        plt.xticks(rotation=45, fontsize=8)
 
         plt.subplot(7, 1, 3)
         plt.bar(dates, missing_frames)
         plt.title("Missing Frames")
-        plt.xticks(rotation=45)
+        plt.xticks(rotation=45, fontsize=8)
 
         plt.subplot(7, 1, 4)
         plt.bar(dates, decompression_errors)
         plt.title("Decompression Errors")
-        plt.xticks(rotation=45)
+        plt.xticks(rotation=45, fontsize=8)
 
         plt.subplot(7, 1, 5)
         plt.bar(dates, cloudy)
         plt.title("Cloudy Frames")
-        plt.xticks(rotation=45)
+        plt.xticks(rotation=45, fontsize=8)
 
         plt.subplot(7, 1, 6)
         plt.bar(dates, percent_cloudy)
         plt.title("Percent Cloudy")
-        plt.xticks(rotation=45)
+        plt.xticks(rotation=45, fontsize=8)
 
         plt.subplot(7, 1, 7)
         plt.bar(dates, corrupt_lines)
         plt.title("Corrupt Lines")
-        plt.xticks(rotation=45)
+        plt.xticks(rotation=45, fontsize=8)
 
         plt.subplots_adjust(hspace=1.4)
         plt.suptitle("Reassembly", fontsize=12)
