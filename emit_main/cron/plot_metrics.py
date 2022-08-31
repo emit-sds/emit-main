@@ -71,6 +71,18 @@ def main():
     frames = [int(m["frame_depacketization"]["total_frames"]) for m in metrics]
     corrupt_frames = [int(m["frame_depacketization"]["corrupt_frames"]) for m in metrics]
 
+    first_timestamps = []
+    last_timestamps = []
+    for m in metrics:
+        if "first_frame" in m["frame_depacketization"]:
+            first_timestamps.append(dt.datetime.strptime(m["frame_depacketization"]["first_frame"].split("_")[1],
+                                                         "%Y%m%dt%H%M%s"))
+            last_timestamps.append(dt.datetime.strptime(m["frame_depacketization"]["last_frame"].split("_")[1],
+                                                        "%Y%m%dt%H%M%s"))
+        else:
+            first_timestamps.append(None)
+            last_timestamps.append(None)
+
     if "streams" in args.plots:
         # Create CSV too
         with open(os.path.join(args.output_dir, f"all_streams_{output_file_dates}.csv"), 'w') as csvfile:
@@ -125,15 +137,16 @@ def main():
                 csvwriter = csv.writer(csvfile)
                 if apid == "1675":
                     csvwriter.writerow(["dates", "packets_read", "psc_gaps", "missing_packets", "percent_missing",
-                                       "depacketized_frames", "corrupt_frames"])
+                                       "depacketized_frames", "corrupt_frames", "first_frame_time", "last_frame_time"])
                     for i in range(len(dates)):
                         csvwriter.writerow([dates[i].strftime("%Y-%m-%d"), packets[i], gaps[i], missing[i],
-                                             percents[i], frames[i], corrupt_frames[i]])
+                                            percents[i], frames[i], corrupt_frames[i], first_timestamps[i],
+                                            last_timestamps[i]])
                 else:
                     csvwriter.writerow(["dates", "packets_read", "psc_gaps", "missing_packets", "percent_missing"])
                     for i in range(len(dates)):
                         csvwriter.writerow([dates[i].strftime("%Y-%m-%d"), packets[i], gaps[i], missing[i],
-                                             percents[i]])
+                                            percents[i]])
 
             plt.rcParams['figure.figsize'] = [10, 10]
 
