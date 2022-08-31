@@ -161,11 +161,11 @@ def main():
         with open(log_paths[0], "r") as f:
             for line in f.readlines():
                 if " Writing frame to path" in line:
-                    depack_frames.append(os.path.basename(line.split(" ")[8]))
+                    depack_frames.append(os.path.basename(line.rstrip("\n").split(" ")[8]))
         with open(log_paths[-1], "r") as f:
             for line in f.readlines():
                 if " Writing frame to path" in line:
-                    depack_frames.append(os.path.basename(line.split(" ")[8]))
+                    depack_frames.append(os.path.basename(line.rstrip("\n").split(" ")[8]))
 
     depacketization = OrderedDict()
     if len(depack_frames) > 0:
