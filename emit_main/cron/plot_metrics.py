@@ -76,9 +76,9 @@ def main():
     for m in metrics:
         if "first_frame" in m["frame_depacketization"]:
             first_timestamps.append(dt.datetime.strptime(m["frame_depacketization"]["first_frame"].split("_")[1],
-                                                         "%Y%m%dt%H%M%s"))
+                                                         "%Y%m%dt%H%M%S").strftime("%Y-%m-%dT%H:%M:%S"))
             last_timestamps.append(dt.datetime.strptime(m["frame_depacketization"]["last_frame"].split("_")[1],
-                                                        "%Y%m%dt%H%M%s"))
+                                                        "%Y%m%dt%H%M%S").strftime("%Y-%m-%dT%H:%M:%S"))
         else:
             first_timestamps.append(None)
             last_timestamps.append(None)
