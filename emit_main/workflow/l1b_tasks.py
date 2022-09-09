@@ -171,9 +171,12 @@ class L1BCalibrate(SlurmJobTask):
         pge.run(cmd_ds, tmp_dir=self.tmp_dir, env=env)
 
         # Copy output files to l1b dir (all but pre-destripped radiance)
-        for fn in [tmp_rdn_destripe_img_path, tmp_rdn_destripe_dark_img_path, tmp_rdn_destripe_flatfield_img_path]:
-            wm.copy(fn, os.path.join(acq.l1b_data_dir, os.path.basename(fn)))
-            wm.copy(envi_header(fn), os.path.join(acq.l1b_data_dir, os.path.basename(envi_header(fn))))
+        wm.copy(tmp_rdn_destripe_img_path, acq.rdn_img_path)
+        wm.copy(envi_header(tmp_rdn_destripe_img_path), acq.rdn_hdr_path)
+        wm.copy(tmp_rdn_destripe_dark_img_path, os.path.join(acq.l1b_data_dir, os.path.basename(tmp_rdn_destripe_dark_img_path)))
+        wm.copy(envi_header(tmp_rdn_destripe_dark_img_path), os.path.join(acq.l1b_data_dir, os.path.basename(tmp_rdn_destripe_dark_img_path)))
+        wm.copy(tmp_rdn_destripe_flatfield_img_path, os.path.join(acq.l1b_data_dir, os.path.basename(tmp_rdn_destripe_flatfield_img_path)))
+        wm.copy(envi_header(tmp_rdn_destripe_flatfield_img_path), os.path.join(acq.l1b_data_dir, os.path.basename(envi_header(tmp_rdn_destripe_flatfield_img_path))))
         wm.copy(tmp_log_path, os.path.join(acq.l1b_data_dir, os.path.basename(tmp_log_path)) )
 
         # Update hdr files
