@@ -163,6 +163,7 @@ class L2AReflectance(SlurmJobTask):
         dm = wm.database_manager
         for img_path, hdr_path in [(acq.rfl_img_path, acq.rfl_hdr_path), (acq.rfluncert_img_path, acq.rfluncert_hdr_path)]:
             hdr = envi.read_envi_header(hdr_path)
+            hdr["description"] = "{{EMIT L2A surface reflectance (0-1)}}"
             hdr["emit acquisition start time"] = acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
             hdr["emit acquisition stop time"] = acq.stop_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
             hdr["emit pge name"] = pge.repo_url
