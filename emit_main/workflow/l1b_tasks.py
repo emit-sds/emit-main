@@ -20,6 +20,7 @@ from emit_main.workflow.output_targets import AcquisitionTarget, OrbitTarget
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_utils import daac_converter
+from emit_utils.file_checks import envi_header
 
 logger = logging.getLogger("emit-main")
 
@@ -64,6 +65,9 @@ class L1BCalibrate(SlurmJobTask):
         tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
         wm.makedirs(tmp_output_dir)
         tmp_rdn_img_path = os.path.join(tmp_output_dir, os.path.basename(acq.rdn_img_path))
+        tmp_rdn_destripe_img_path = tmp_rdn_img_path.replace("rdn","rdn_destripe")
+        tmp_rdn_destripe_dark_img_path = tmp_rdn_img_path.replace("rdn","rdn_destipe_dark")
+        tmp_rdn_destripe_flatfield_img_path = tmp_rdn_img_path.replace("rdn","rdn_destipe_dark_flatfield")
         log_name = os.path.basename(acq.rdn_img_path.replace(".img", "_pge.log"))
         tmp_log_path = os.path.join(tmp_output_dir, log_name)
         l1b_config_path = wm.config["l1b_config_path"]
@@ -144,6 +148,7 @@ class L1BCalibrate(SlurmJobTask):
         input_files["dark_file"] = dark_img_path
 
         emitrdn_exe = os.path.join(pge.repo_dir, "emitrdn.py")
+        destripe_exe = os.path.join(pge.repo_dir, "utils","fitflatfield.py")
         utils_path = os.path.join(pge.repo_dir, "utils")
         env = os.environ.copy()
         env["PYTHONPATH"] = f"$PYTHONPATH:{utils_path}"
@@ -158,12 +163,21 @@ class L1BCalibrate(SlurmJobTask):
                tmp_rdn_img_path]
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
-        # Copy output files to l1b dir
-        for file in glob.glob(os.path.join(tmp_output_dir, "*")):
-            if file.endswith(".hdr"):
-                wm.copy(file, acq.rdn_hdr_path)
-            else:
-                wm.copy(file, os.path.join(acq.l1b_data_dir, os.path.basename(file)))
+        cmd = ["python", destripe_exe,
+               tmp_rdn_img_path,
+               tmp_rdn_destripe_img_path,
+               tmp_rdn_destripe_dark_img_path,
+               tmp_rdn_destripe_flatfield_img_path]
+        pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
+
+        # Copy output files to l1b dir (all but pre-destripped radiance)
+        wm.copy(tmp_rdn_destripe_img_path, acq.rdn_img_path)
+        wm.copy(envi_header(tmp_rdn_destripe_img_path), acq.rdn_hdr_path)
+        wm.copy(tmp_rdn_destripe_dark_img_path, acq.l1b_data_dir)
+        wm.copy(envi_header(tmp_rdn_destripe_dark_img_path), acq.l1b_data_dir)
+        wm.copy(tmp_rdn_destripe_flatfield_img_path, acq.l1b_data_dir)
+        wm.copy(envi_header(tmp_rdn_destripe_flatfield_img_path), acq.l1b_data_dir)
+        wm.copy(tmp_log_path, acq.l1b_data_dir)
 
         # Update hdr files
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
