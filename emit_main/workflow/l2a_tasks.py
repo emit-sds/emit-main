@@ -135,8 +135,8 @@ class L2AReflectance(SlurmJobTask):
         tmp_statesubs_hdr_path = envi_header(tmp_statesubs_path)
         tmp_quality_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_rfl_quality.txt")
 
-        cmd = ["gdal_translate", tmp_rfl_path, tmp_rfl_png_path, "-b", "32", "-b", "22", "-b",
-               "13", "-ot", "Byte", "-scale", "-exponent", "0.6", "-of", "PNG", "-co", "ZLEVEL=9"]
+        cmd = ["gdal_translate", tmp_rfl_path, tmp_rfl_png_path, "-b", "35", "-b", "23", "-b",
+               "11", "-ot", "Byte", "-scale", "-exponent", "0.6", "-of", "PNG", "-co", "ZLEVEL=9"]
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
         cmd = ["python", os.path.join(pge.repo_dir, "spectrum_quality.py"), tmp_rfl_path, tmp_quality_path]

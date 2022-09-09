@@ -66,8 +66,8 @@ class L1BCalibrate(SlurmJobTask):
         wm.makedirs(tmp_output_dir)
         tmp_rdn_img_path = os.path.join(tmp_output_dir, os.path.basename(acq.rdn_img_path))
         tmp_rdn_destripe_img_path = tmp_rdn_img_path.replace("rdn","rdn_destripe")
-        tmp_rdn_destripe_dark_img_path = tmp_rdn_img_path.replace("rdn","rdn_destipe_dark")
-        tmp_rdn_destripe_flatfield_img_path = tmp_rdn_img_path.replace("rdn","rdn_destipe_dark_flatfield")
+        tmp_rdn_destripe_dark_img_path = os.path.join(tmp_output_dir, os.path.basename(acq.destripedark_img_path))
+        tmp_rdn_destripe_flatfield_img_path = os.path.join(tmp_output_dir, os.path.basename(acq.destripeff_img_path))
         log_name = os.path.basename(acq.rdn_img_path.replace(".img", "_pge.log"))
         tmp_log_path = os.path.join(tmp_output_dir, log_name)
         l1b_config_path = wm.config["l1b_config_path"]
@@ -163,12 +163,12 @@ class L1BCalibrate(SlurmJobTask):
                tmp_rdn_img_path]
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
-        cmd = ["python", destripe_exe,
+        cmd_ds = ["python", destripe_exe,
                tmp_rdn_img_path,
                tmp_rdn_destripe_img_path,
                tmp_rdn_destripe_dark_img_path,
                tmp_rdn_destripe_flatfield_img_path]
-        pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
+        pge.run(cmd_ds, tmp_dir=self.tmp_dir, env=env)
 
         # Copy output files to l1b dir (all but pre-destripped radiance)
         wm.copy(tmp_rdn_destripe_img_path, acq.rdn_img_path)
@@ -188,7 +188,7 @@ class L1BCalibrate(SlurmJobTask):
         hdr["emit pge name"] = pge.repo_url
         hdr["emit pge version"] = pge.version_tag
         hdr["emit pge input files"] = input_files_arr
-        hdr["emit pge run command"] = " ".join(cmd)
+        hdr["emit pge run command"] = " ".join(cmd) + ";" + " ".join(cmd_ds)
         hdr["emit software build version"] = wm.config["extended_build_num"]
         hdr["emit documentation version"] = doc_version
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rdn_img_path), tz=datetime.timezone.utc)
@@ -211,6 +211,20 @@ class L1BCalibrate(SlurmJobTask):
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn": product_dict})
 
+        product_dict_dd = {
+            "img_path": acq.destripedark_img_path,
+            "hdr_path": acq.destripedark_hdr_path,
+            "created": creation_time,
+        }
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.destripedark": product_dict_dd})
+
+        product_dict_df = {
+            "img_path": acq.destripeff_img_path,
+            "hdr_path": acq.destripeff_hdr_path,
+            "created": creation_time,
+        }
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.destripeff": product_dict_df})
+
         # Check if orbit now has complete set of radiance files and update orbit metadata
         wm_orbit = WorkflowManager(config_path=self.config_path, orbit_id=acq.orbit)
         orbit = wm_orbit.orbit
@@ -231,7 +245,11 @@ class L1BCalibrate(SlurmJobTask):
             "completion_status": "SUCCESS",
             "output": {
                 "l1b_rdn_img_path": acq.rdn_img_path,
-                "l1b_rdn_hdr_path:": acq.rdn_hdr_path
+                "l1b_rdn_hdr_path:": acq.rdn_hdr_path,
+                "l1b_destripedark_img_path:": acq.destripedark_img_path,
+                "l1b_destripedark_hdr_path:": acq.destripedark_hdr_path,
+                "l1b_destripeff_img_path:": acq.destripeff_img_path,
+                "l1b_destripeff_hdr_path:": acq.destripeff_hdr_path
             }
         }
 
