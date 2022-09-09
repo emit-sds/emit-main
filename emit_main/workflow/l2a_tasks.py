@@ -112,7 +112,9 @@ class L2AReflectance(SlurmJobTask):
                "--surface_path", tmp_surface_path,
                "--ray_temp_dir", "/tmp/ray",
                "--log_file", tmp_log_path,
-               "--logging_level", self.level]
+               "--logging_level", self.level,
+               "--num_neighbors=10",
+               "--pressure_elevation"]
 
         env["SIXS_DIR"] = wm.config["isofit_sixs_dir"]
         env["EMULATOR_DIR"] = emulator_base
