@@ -173,10 +173,10 @@ class L1BCalibrate(SlurmJobTask):
         # Copy output files to l1b dir (all but pre-destripped radiance)
         wm.copy(tmp_rdn_destripe_img_path, acq.rdn_img_path)
         wm.copy(envi_header(tmp_rdn_destripe_img_path), acq.rdn_hdr_path)
-        wm.copy(tmp_rdn_destripe_dark_img_path, os.path.join(acq.l1b_data_dir, os.path.basename(tmp_rdn_destripe_dark_img_path)))
-        wm.copy(envi_header(tmp_rdn_destripe_dark_img_path), os.path.join(acq.l1b_data_dir, os.path.basename(tmp_rdn_destripe_dark_img_path)))
-        wm.copy(tmp_rdn_destripe_flatfield_img_path, os.path.join(acq.l1b_data_dir, os.path.basename(tmp_rdn_destripe_flatfield_img_path)))
-        wm.copy(envi_header(tmp_rdn_destripe_flatfield_img_path), os.path.join(acq.l1b_data_dir, os.path.basename(envi_header(tmp_rdn_destripe_flatfield_img_path))))
+        wm.copy(tmp_rdn_destripe_dark_img_path, acq.destripedark_img_path)
+        wm.copy(envi_header(tmp_rdn_destripe_dark_img_path), acq.destripedark_hdr_path)
+        wm.copy(tmp_rdn_destripe_flatfield_img_path, acq.destripeff_img_path)
+        wm.copy(envi_header(tmp_rdn_destripe_flatfield_img_path), acq.destripeff_hdr_path)
         wm.copy(tmp_log_path, os.path.join(acq.l1b_data_dir, os.path.basename(tmp_log_path)) )
 
         # Update hdr files
