@@ -198,6 +198,14 @@ def main():
     cloudy = [int(m["reassembly"]["cloudy_frames"]) for m in metrics]
     corrupt_lines = [int(m["reassembly"]["corrupt_lines"]) for m in metrics]
 
+    percent_missing = []
+    for i in range(len(expected_frames)):
+        if expected_frames[i] > 0:
+            percent = ((missing_frames[i] + decompression_errors[i]) / expected_frames[i]) * 100
+        else:
+            percent = 0.0
+        percent_missing.append(percent)
+
     percent_cloudy = []
     for i in range(len(cloudy)):
         if expected_frames[i] - missing_frames[i] > 0:
@@ -211,44 +219,50 @@ def main():
         with open(os.path.join(args.output_dir, f"reassembly_{output_file_dates}.csv"), 'w') as csvfile:
             csvwriter = csv.writer(csvfile)
             csvwriter.writerow(["dates", "dcids", "expected_frames", "missing_frames", "decompression_errors",
-                                "cloudy_frames", "percent_cloudy", "corrupt_lines"])
+                                "percent_missing", "cloudy_frames", "percent_cloudy", "corrupt_lines"])
             for i in range(len(dates)):
                 csvwriter.writerow([dates[i].strftime("%Y-%m-%d"), dcids[i], expected_frames[i], missing_frames[i],
-                                    decompression_errors[i], cloudy[i], f"{percent_cloudy[i]:.2f}", corrupt_lines[i]])
+                                    decompression_errors[i], percent_missing[i], cloudy[i], f"{percent_cloudy[i]:.2f}",
+                                    corrupt_lines[i]])
 
         plt.rcParams['figure.figsize'] = [10, 14]
 
-        plt.subplot(7, 1, 1)
+        plt.subplot(8, 1, 1)
         plt.bar(dates_str, dcids)
         plt.title("Reassembled DCIDs")
         plt.xticks(rotation=45, fontsize=8)
 
-        plt.subplot(7, 1, 2)
+        plt.subplot(8, 1, 2)
         plt.bar(dates_str, expected_frames)
         plt.title("Expected Frames")
         plt.xticks(rotation=45, fontsize=8)
 
-        plt.subplot(7, 1, 3)
+        plt.subplot(8, 1, 3)
         plt.bar(dates_str, missing_frames)
         plt.title("Missing Frames")
         plt.xticks(rotation=45, fontsize=8)
 
-        plt.subplot(7, 1, 4)
+        plt.subplot(8, 1, 4)
         plt.bar(dates_str, decompression_errors)
         plt.title("Decompression Errors")
         plt.xticks(rotation=45, fontsize=8)
 
-        plt.subplot(7, 1, 5)
+        plt.subplot(8, 1, 5)
+        plt.bar(dates_str, percent_missing)
+        plt.title("Percent of Frames Missing or Failed Decompression")
+        plt.xticks(rotation=45, fontsize=8)
+
+        plt.subplot(8, 1, 6)
         plt.bar(dates_str, cloudy)
         plt.title("Cloudy Frames")
         plt.xticks(rotation=45, fontsize=8)
 
-        plt.subplot(7, 1, 6)
+        plt.subplot(8, 1, 7)
         plt.bar(dates_str, percent_cloudy)
         plt.title("Percent Cloudy")
         plt.xticks(rotation=45, fontsize=8)
 
-        plt.subplot(7, 1, 7)
+        plt.subplot(8, 1, 8)
         plt.bar(dates_str, corrupt_lines)
         plt.title("Corrupt Lines")
         plt.xticks(rotation=45, fontsize=8)
