@@ -59,7 +59,7 @@ class OrbitTarget(luigi.Target):
         return False
 
 
-class OrbitSceneNumbersTarget(luigi.Target):
+class DAACSceneNumbersTarget(luigi.Target):
     def __init__(self, acquisitions):
         self._acquisitions = acquisitions
 

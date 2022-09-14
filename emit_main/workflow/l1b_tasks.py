@@ -578,90 +578,6 @@ class L1BRdnFormat(SlurmJobTask):
         dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
 
 
-class L1BAssignDAACSceneNumber(SlurmJobTask):
-    """
-    Assigns DAAC scene numbers to all scenes in the orbit
-    """
-
-    config_path = luigi.Parameter()
-    orbit_id = luigi.Parameter()
-    level = luigi.Parameter()
-    partition = luigi.Parameter()
-
-    memory = 18000
-
-    task_namespace = "emit"
-
-    def requires(self):
-
-        logger.debug(f"{self.task_family} requires: {self.orbit_id}")
-        return None
-
-    def output(self):
-
-        logger.debug(f"{self.task_family} output: {self.orbit_id}")
-        wm = WorkflowManager(config_path=self.config_path, orbit_id=self.orbit_id)
-        orbit = wm.orbit
-        dm = wm.database_manager
-
-        # Get acquisitions in orbit
-        acquisitions = dm.find_acquisitions_by_orbit_id(orbit.orbit_id, "science", min_valid_lines=0)
-        acquisitions += dm.find_acquisitions_by_orbit_id(orbit.orbit_id, "dark", min_valid_lines=0)
-        return OrbitSceneNumbersTarget(acquisitions)
-
-    def work(self):
-
-        logger.debug(f"{self.task_family} work: {self.acquisition_id}")
-
-        wm = WorkflowManager(config_path=self.config_path, orbit_id=self.orbit_id)
-        orbit = wm.orbit
-        pge = wm.pges["emit-main"]
-        dm = wm.database_manager
-
-        # Get acquisitions in orbit
-        acquisitions = dm.find_acquisitions_by_orbit_id(orbit.orbit_id, "science", min_valid_lines=0)
-        acquisitions += dm.find_acquisitions_by_orbit_id(orbit.orbit_id, "dark", min_valid_lines=0)
-
-        # Throw error if some acquisitions have daac scene numbers but others don't
-        count = 0
-        acq_ids = []
-        for acq in acquisitions:
-            if "daac_scene" in acq:
-                count += 1
-            acq_ids.append(acq["acquisition_id"])
-
-        if 0 < count < len(acquisitions):
-            raise RuntimeError(f"While assigning scene numbers for DAAC, found some with scene numbers already. "
-                               f"Aborting...")
-
-        # Assign the scene numbers
-        acq_ids.sort()
-        daac_scene = 1
-        for acq_id in acq_ids:
-            dm.update_acquisition_metadata(acq_id, {"daac_scene": daac_scene})
-
-            log_entry = {
-                "task": self.task_family,
-                "pge_name": pge.repo_url,
-                "pge_version": pge.version_tag,
-                "pge_input_files": {
-                    "orbit_id": orbit.orbit_id
-                },
-                "pge_run_command": "N/A - DB updates only",
-                "documentation_version": "N/A",
-                "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
-                "completion_status": "SUCCESS",
-                "output": {
-                    "daac_scene_number": daac_scene
-                }
-            }
-
-            dm.insert_acquisition_log_entry(acq_id, log_entry)
-
-            # Increment scene number
-            daac_scene += 1
-
-
 class L1BRdnDeliver(SlurmJobTask):
     """
     Stages NetCDF and UMM-G files and submits notification to DAAC interface
@@ -681,14 +597,8 @@ class L1BRdnDeliver(SlurmJobTask):
 
         logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
         acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        if "daac_scene" in acq.metadata:
-            return L1BRdnFormat(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+        return L1BRdnFormat(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
                             partition=self.partition)
-        else:
-            return [L1BRdnFormat(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
-                            partition=self.partition),
-                    L1BAssignDAACSceneNumber(config_path=self.config_path, orbit_id=acq.orbit, level=self.level,
-                            partition=self.partition)]
 
     def output(self):
 
