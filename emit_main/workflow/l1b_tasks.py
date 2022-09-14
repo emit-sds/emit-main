@@ -20,6 +20,7 @@ from emit_main.workflow.output_targets import AcquisitionTarget, OrbitTarget
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_utils import daac_converter
+from emit_utils.file_checks import get_gring_boundary_points, get_band_mean
 
 logger = logging.getLogger("emit-main")
 
@@ -430,6 +431,17 @@ class L1BGeolocate(SlurmJobTask):
             dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.obs": acq_prod_map[id]["obs"]})
             dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn_kmz": acq_prod_map[id]["rdn_kmz"]})
             dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn_png": acq_prod_map[id]["rdn_png"]})
+
+            # Get additional attributes and add to DB
+            glt_gring = get_gring_boundary_points(acq.glt_hdr_path)
+            mean_solar_azimuth = get_band_mean(acq.obs_img_path, 1)
+            mean_solar_zenith = get_band_mean(acq.obs_img_path, 2)
+            meta = {
+                "gring": glt_gring,
+                "mean_solar_azimuth": mean_solar_azimuth,
+                "mean_solar_zenith": mean_solar_zenith
+            }
+            dm.update_acquisition_metadata(acq.acquisition_id, meta)
 
         # Finish updating orbit level properties
         # Copy back corrected att/eph

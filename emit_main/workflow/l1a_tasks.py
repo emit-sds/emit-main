@@ -14,6 +14,7 @@ import luigi
 import spectral.io.envi as envi
 
 
+from emit_main.workflow.daac_helper_tasks import AssignDAACSceneNumbers
 from emit_main.workflow.output_targets import StreamTarget, DataCollectionTarget, OrbitTarget, AcquisitionTarget, \
     DAACSceneNumbersTarget
 from emit_main.workflow.l0_tasks import L0StripHOSC
@@ -777,90 +778,6 @@ class L1AFrameReport(SlurmJobTask):
         dm.insert_data_collection_log_entry(dc.dcid, log_entry)
 
 
-class L1AAssignDAACSceneNumbers(SlurmJobTask):
-    """
-    Assigns DAAC scene numbers to all scenes in the orbit
-    """
-
-    config_path = luigi.Parameter()
-    orbit_id = luigi.Parameter()
-    level = luigi.Parameter()
-    partition = luigi.Parameter()
-
-    memory = 18000
-
-    task_namespace = "emit"
-
-    def requires(self):
-
-        logger.debug(f"{self.task_family} requires: {self.orbit_id}")
-        return None
-
-    def output(self):
-
-        logger.debug(f"{self.task_family} output: {self.orbit_id}")
-        wm = WorkflowManager(config_path=self.config_path, orbit_id=self.orbit_id)
-        orbit = wm.orbit
-        dm = wm.database_manager
-
-        # Get acquisitions in orbit
-        acquisitions = dm.find_acquisitions_by_orbit_id(orbit.orbit_id, "science", min_valid_lines=0)
-        acquisitions += dm.find_acquisitions_by_orbit_id(orbit.orbit_id, "dark", min_valid_lines=0)
-        return DAACSceneNumbersTarget(acquisitions)
-
-    def work(self):
-
-        logger.debug(f"{self.task_family} work: {self.acquisition_id}")
-
-        wm = WorkflowManager(config_path=self.config_path, orbit_id=self.orbit_id)
-        orbit = wm.orbit
-        pge = wm.pges["emit-main"]
-        dm = wm.database_manager
-
-        # Get acquisitions in orbit
-        acquisitions = dm.find_acquisitions_by_orbit_id(orbit.orbit_id, "science", min_valid_lines=0)
-        acquisitions += dm.find_acquisitions_by_orbit_id(orbit.orbit_id, "dark", min_valid_lines=0)
-
-        # Throw error if some acquisitions have daac scene numbers but others don't
-        count = 0
-        acq_ids = []
-        for acq in acquisitions:
-            if "daac_scene" in acq:
-                count += 1
-            acq_ids.append(acq["acquisition_id"])
-
-        if 0 < count < len(acquisitions):
-            raise RuntimeError(f"While assigning scene numbers for DAAC, found some with scene numbers already. "
-                               f"Aborting...")
-
-        # Assign the scene numbers
-        acq_ids.sort()
-        daac_scene = 1
-        for acq_id in acq_ids:
-            dm.update_acquisition_metadata(acq_id, {"daac_scene": daac_scene})
-
-            log_entry = {
-                "task": self.task_family,
-                "pge_name": pge.repo_url,
-                "pge_version": pge.version_tag,
-                "pge_input_files": {
-                    "orbit_id": orbit.orbit_id
-                },
-                "pge_run_command": "N/A - DB updates only",
-                "documentation_version": "N/A",
-                "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
-                "completion_status": "SUCCESS",
-                "output": {
-                    "daac_scene_number": daac_scene
-                }
-            }
-
-            dm.insert_acquisition_log_entry(acq_id, log_entry)
-
-            # Increment scene number
-            daac_scene += 1
-
-
 class L1ADeliver(SlurmJobTask):
     """
     Stages Raw and UMM-G files and submits notification to DAAC interface
@@ -884,8 +801,8 @@ class L1ADeliver(SlurmJobTask):
         if "daac_scene" in acq.metadata:
             return None
         else:
-            return L1AAssignDAACSceneNumbers(config_path=self.config_path, orbit_id=acq.orbit, level=self.level,
-                                             partition=self.partition)
+            return AssignDAACSceneNumbers(config_path=self.config_path, orbit_id=acq.orbit, level=self.level,
+                                          partition=self.partition)
 
     def output(self):
 
@@ -934,14 +851,14 @@ class L1ADeliver(SlurmJobTask):
                                                   software_build_version=wm.config["extended_build_num"],
                                                   doi=wm.config["dois"]["EMITL1ARAW"], orbit=int(acq.orbit),
                                                   orbit_segment=int(acq.scene), scene=int(acq.scene),
-                                                  solar_zenith=0.0, solar_azimuth=0.0, water_vapor=0.0, aod=0.0,
-                                                  mean_fractional_cover=0.0, mean_spectral_abundance=0.0,
+                                                  solar_zenith=acq.mean_solar_zenith,
+                                                  solar_azimuth=acq.mean_solar_azimuth,
                                                   cloud_fraction=acq.cloud_fraction)
             ummg = daac_converter.add_data_files_ummg(ummg, [daac_raw_path, daac_raw_hdr_path, daac_browse_path], "Day",
                                                       ["BINARY", "ASCII", "PNG"])
             # ummg = daac_converter.add_related_url(ummg, l1a_pge.repo_url, "DOWNLOAD SOFTWARE")
-            tmp_boundary_points_list = daac_converter.get_gring_boundary_points(acq.glt_hdr_path)
-            ummg = daac_converter.add_boundary_ummg(ummg, tmp_boundary_points_list)
+            # tmp_boundary_points_list = daac_converter.get_gring_boundary_points(acq.glt_hdr_path)
+            ummg = daac_converter.add_boundary_ummg(ummg, acq.gring)
         else:
             ummg = daac_converter.initialize_ummg(acq.raw_granule_ur, creation_time, "EMITL1ARAW",
                                                   acq.collection_version, acq.start_time,
