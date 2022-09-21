@@ -103,7 +103,7 @@ def main():
         plt.title("PSC Gaps")
         # for i in range(len(dates)):
         #     plt.annotate(gaps[i], xy=(dates[i], gaps[i]))
-        plt.ylim([0, 30])
+        # plt.ylim([0, 30])
         plt.xticks(rotation=45, fontsize=8)
 
         plt.subplot(4, 1, 3)
@@ -160,7 +160,7 @@ def main():
             plt.title("PSC Gaps")
             # for i in range(len(dates)):
             #     plt.annotate(gaps[i], xy=(dates[i], gaps[i]))
-            plt.ylim([0, 30])
+            # plt.ylim([0, 30])
             plt.xticks(rotation=45, fontsize=8)
 
             plt.subplot(rows, 1, 3)
@@ -244,12 +244,12 @@ def main():
 
         plt.subplot(8, 1, 4)
         plt.bar(dates_str, decompression_errors)
-        plt.title("Decompression Errors")
+        plt.title("Frames with Errors (Corrupt Frames or Decompression Errors)")
         plt.xticks(rotation=45, fontsize=8)
 
         plt.subplot(8, 1, 5)
         plt.bar(dates_str, percent_missing)
-        plt.title("Percent of Frames Missing or Failed Decompression")
+        plt.title("Percent of Frames Missing or Containing Errors")
         plt.xticks(rotation=45, fontsize=8)
 
         plt.subplot(8, 1, 6)
