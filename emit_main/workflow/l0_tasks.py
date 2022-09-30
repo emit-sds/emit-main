@@ -481,6 +481,8 @@ class L0ProcessPlanningProduct(SlurmJobTask):
         # Loop through events again and insert new orbits and DCIDS
         orbit_ids = []
         dcids = []
+        orbits_with_science = set()
+        orbits_with_dark = set()
         for e in events:
             # Check for orbit object
             if e["name"].lower() == "start orbit":
@@ -534,6 +536,7 @@ class L0ProcessPlanningProduct(SlurmJobTask):
             if e["name"].lower() in ("science", "dark"):
                 # Construct data collection metadata
                 dcid = str(e["dcid"]).zfill(10)
+                submode = e["name"].lower()
                 # Convert date strings to datetime objects to store in DB
                 e["datetime"] = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S")
                 e["endDatetime"] = datetime.datetime.strptime(e["endDatetime"], "%Y-%m-%dT%H:%M:%S")
@@ -544,7 +547,7 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                     "processing_version": wm.config["processing_version"],
                     "orbit": year + str(e["orbit number"]).zfill(5),
                     "scene": str(e["scene number"]).zfill(3),
-                    "submode": e["name"].lower(),
+                    "submode": submode,
                     "planning_product": e
                 }
 
@@ -559,6 +562,25 @@ class L0ProcessPlanningProduct(SlurmJobTask):
 
                 # Keep track of dcid for log entry
                 dcids.append(dcid)
+
+                # Keep track of orbits that have science and/or dark acquisitions
+                if submode == "science":
+                    orbits_with_science.add(dc_meta["orbit"])
+                if submode == "dark":
+                    orbits_with_dark.add(dc_meta["orbit"])
+
+        # Update orbits to include flags for has_science and has_dark
+        for orbit_id in orbit_ids:
+            orbit_meta = {
+                "has_science": False,
+                "has_dark": False
+            }
+            if orbit_id in orbits_with_science:
+                orbit_meta["has_science"] = True
+            if orbit_id in orbits_with_dark:
+                orbit_meta["has_dark"] = True
+            dm.update_orbit_metadata(orbit_id, orbit_meta)
+            wm.print(__name__, f"Updated orbit in DB with {orbit_meta}")
 
         wm.print(__name__, f"Inserted a total of {len(orbit_ids)} orbits and {len(dcids)} data collections!")
 
