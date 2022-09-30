@@ -1210,7 +1210,7 @@ class L1AReformatBAD(SlurmJobTask):
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
-                "l1a_ucorr_att_eph_path": orbit.uncorr_att_eph_path
+                "l1a_uncorr_att_eph_path": orbit.uncorr_att_eph_path
             }
         }
         dm.insert_orbit_log_entry(orbit.orbit_id, log_entry)
