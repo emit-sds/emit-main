@@ -185,8 +185,8 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
             for path in tmp_dcid_frame_paths:
                 dcid_frame_name = os.path.basename(path)
                 dcid_frame_path = os.path.join(dc.frames_dir, dcid_frame_name)
-                if not os.path.exists(dcid_frame_path):
-                    wm.copy(path, dcid_frame_path)
+                # if not os.path.exists(dcid_frame_path):
+                wm.copy(path, dcid_frame_path)
                 dcid_frame_paths.append(dcid_frame_path)
 
             # Create a symlink from the stream l1a dir to the dcid frames dir

@@ -46,10 +46,12 @@ class L2AReflectance(SlurmJobTask):
         logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
-        return (L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
-                             partition=self.partition),
-                L1BGeolocate(config_path=self.config_path, orbit_id=acq.orbit, level=self.level,
-                             partition=self.partition))
+        return None
+        # Don't look up dependencies here since the monitor guarantees that these have already run
+        # return (L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+        #                      partition=self.partition),
+        #         L1BGeolocate(config_path=self.config_path, orbit_id=acq.orbit, level=self.level,
+        #                      partition=self.partition))
 
     def output(self):
 
@@ -110,7 +112,9 @@ class L2AReflectance(SlurmJobTask):
                "--surface_path", tmp_surface_path,
                "--ray_temp_dir", "/tmp/ray",
                "--log_file", tmp_log_path,
-               "--logging_level", self.level]
+               "--logging_level", self.level,
+               "--num_neighbors=10",
+               "--pressure_elevation"]
 
         env["SIXS_DIR"] = wm.config["isofit_sixs_dir"]
         env["EMULATOR_DIR"] = emulator_base
@@ -131,8 +135,8 @@ class L2AReflectance(SlurmJobTask):
         tmp_statesubs_hdr_path = envi_header(tmp_statesubs_path)
         tmp_quality_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_rfl_quality.txt")
 
-        cmd = ["gdal_translate", tmp_rfl_path, tmp_rfl_png_path, "-b", "32", "-b", "22", "-b",
-               "13", "-ot", "Byte", "-scale", "-exponent", "0.6", "-of", "PNG", "-co", "ZLEVEL=9"]
+        cmd = ["gdal_translate", tmp_rfl_path, tmp_rfl_png_path, "-b", "35", "-b", "23", "-b",
+               "11", "-ot", "Byte", "-scale", "-exponent", "0.6", "-of", "PNG", "-co", "ZLEVEL=9"]
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
         cmd = ["python", os.path.join(pge.repo_dir, "spectrum_quality.py"), tmp_rfl_path, tmp_quality_path]
@@ -159,6 +163,7 @@ class L2AReflectance(SlurmJobTask):
         dm = wm.database_manager
         for img_path, hdr_path in [(acq.rfl_img_path, acq.rfl_hdr_path), (acq.rfluncert_img_path, acq.rfluncert_hdr_path)]:
             hdr = envi.read_envi_header(hdr_path)
+            hdr["description"] = "{{EMIT L2A surface reflectance (0-1)}}"
             hdr["emit acquisition start time"] = acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
             hdr["emit acquisition stop time"] = acq.stop_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
             hdr["emit pge name"] = pge.repo_url
@@ -237,10 +242,13 @@ class L2AMask(SlurmJobTask):
     def requires(self):
 
         logger.debug(self.task_family + " requires")
-        return (L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
-                             partition=self.partition),
-                L2AReflectance(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
-                               partition=self.partition))
+        return L2AReflectance(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+                              partition=self.partition)
+        # Only look include reflectance dependency for now.  The monitor guarantees that calibration has run
+        # return (L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+        #                      partition=self.partition),
+        #         L2AReflectance(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+        #                        partition=self.partition))
 
     def output(self):
 

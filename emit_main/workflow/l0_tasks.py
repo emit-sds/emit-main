@@ -89,10 +89,13 @@ class L0StripHOSC(SlurmJobTask):
                     packet_count = int(line.rstrip("\n").split(" ")[-1])
                 if "Missing PSC Count" in line:
                     missing_packets = int(line.rstrip("\n").split(" ")[-1])
-        miss_pkt_percent = missing_packets / packet_count
-        if missing_packets / packet_count >= self.miss_pkt_thresh:
-            raise RuntimeError(f"{missing_packets} missing packets out of {packet_count} total is greater than the "
-                               f"missing packet threshold of {self.miss_pkt_thresh}")
+        total_expected_packets = packet_count + missing_packets
+        miss_pkt_ratio = missing_packets / total_expected_packets
+        if miss_pkt_ratio >= self.miss_pkt_thresh:
+            raise RuntimeError(f"Packets read: {packet_count}, missing packets: {missing_packets}. Ratio of missing "
+                               f"packets ({missing_packets}) to total expected ({total_expected_packets}) is "
+                               f"{miss_pkt_ratio} which is greater than or equal to the missing packet threshold of "
+                               f"{self.miss_pkt_thresh}")
 
         # Set up command to get CCSDS start/stop times
         get_start_stop_exe = os.path.join(pge.repo_dir, "get_ccsds_start_stop_times.py")
@@ -143,6 +146,16 @@ class L0StripHOSC(SlurmJobTask):
         if "ingest" in self.stream_path:
             # Move HOSC file out of ingest folder
             wm.move(self.stream_path, stream.hosc_path)
+
+        # Symlink the start time and stop times onto the HOSC filename for convenience
+        hosc_symlink = "_".join([
+            stream.apid,
+            stream.start_time.strftime("%Y%m%dT%H%M%S"),
+            stream.stop_time.strftime("%Y%m%dT%H%M%S")
+        ])
+        hosc_symlink += stream.hosc_name.replace(stream.apid, "")
+        hosc_symlink = os.path.join(stream.raw_dir, hosc_symlink)
+        wm.symlink(stream.hosc_name, hosc_symlink)
 
         # Update DB
         metadata = {
@@ -412,6 +425,10 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                 horizon_start_time = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S")
             if e["name"].lower() == "planning horizon end":
                 horizon_end_time = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S")
+
+        if (horizon_start_time is None or horizon_end_time is None) and not self.test_mode:
+            raise RuntimeError("Either the horizon start time or the horizon end time is not defined.  Aborting.  Use "
+                               "--test_mode to bypass this error.")
 
         wm.print(__name__, f"Processing planning product with horizon start and end of {horizon_start_time} and "
                            f"{horizon_end_time}")

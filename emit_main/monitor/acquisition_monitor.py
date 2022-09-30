@@ -66,11 +66,12 @@ class AcquisitionMonitor:
             return tasks
 
         for acq in acquisitions:
-            logger.info(f"Creating L2BAbundance task for acquisition {acq['acquisition_id']}")
-            tasks.append(L2BAbundance(config_path=self.config_path,
-                                      acquisition_id=acq["acquisition_id"],
-                                      level=self.level,
-                                      partition=self.partition))
+            # Temporarily remove L2BAbundance while calibrations shift
+            # logger.info(f"Creating L2BAbundance task for acquisition {acq['acquisition_id']}")
+            # tasks.append(L2BAbundance(config_path=self.config_path,
+            #                           acquisition_id=acq["acquisition_id"],
+            #                           level=self.level,
+            #                           partition=self.partition))
             logger.info(f"Creating L3Unmix task for acquisition {acq['acquisition_id']}")
             tasks.append(L3Unmix(config_path=self.config_path,
                                  acquisition_id=acq["acquisition_id"],
