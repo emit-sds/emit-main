@@ -229,19 +229,9 @@ class WorkflowManager:
         self.change_group_ownership(dst)
 
     def symlink(self, source, link_name):
-        # First check if the link exists
-        if os.path.exists(link_name):
-            # If the link is owned by a different user, then delete it first.
-            owner = pwd.getpwuid(os.stat(link_name, follow_symlinks=False).st_uid).pw_name
-            current_user = pwd.getpwuid(os.getuid()).pw_name
-            if owner != current_user:
-                self.print(__name__, f"Attempting to overwrite symlink owned by another user ({link_name}). Will delete "
-                                     f"the symlink first and then create a new one.")
-                if os.path.islink(link_name):
-                    os.remove(link_name)
-        # Now symlink
-        os.symlink(source, link_name)
-        self.change_group_ownership(link_name)
+        if not os.path.exists(link_name):
+            os.symlink(source, link_name)
+            self.change_group_ownership(link_name)
 
     # Use this print function inside of luigi work() functions in order to write to the slurm job.out file
     def print(self, module, msg, level="INFO"):
