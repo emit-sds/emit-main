@@ -68,6 +68,7 @@ class L1BCalibrate(SlurmJobTask):
         tmp_rdn_destripe_img_path = tmp_rdn_img_path.replace("rdn","rdn_destripe")
         tmp_rdn_destripe_dark_img_path = os.path.join(tmp_output_dir, os.path.basename(acq.destripedark_img_path))
         tmp_rdn_destripe_flatfield_img_path = os.path.join(tmp_output_dir, os.path.basename(acq.destripeff_img_path))
+        tmp_rdn_bandmask_img_path = os.path.join(tmp_output_dir, os.path.basename(acq.bandmask_img_path))
         log_name = os.path.basename(acq.rdn_img_path.replace(".img", "_pge.log"))
         tmp_log_path = os.path.join(tmp_output_dir, log_name)
         l1b_config_path = wm.config["l1b_config_path"]
@@ -160,7 +161,8 @@ class L1BCalibrate(SlurmJobTask):
                acq.raw_img_path,
                dark_img_path,
                tmp_config_path,
-               tmp_rdn_img_path]
+               tmp_rdn_img_path,
+               tmp_rdn_bandmask_img_path]
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
         cmd_ds = ["python", destripe_exe,
@@ -177,7 +179,10 @@ class L1BCalibrate(SlurmJobTask):
         wm.copy(envi_header(tmp_rdn_destripe_dark_img_path), acq.destripedark_hdr_path)
         wm.copy(tmp_rdn_destripe_flatfield_img_path, acq.destripeff_img_path)
         wm.copy(envi_header(tmp_rdn_destripe_flatfield_img_path), acq.destripeff_hdr_path)
+        wm.copy(tmp_rdn_bandmask_img_path, acq.bandmask_img_path)
+        wm.copy(envi_header(tmp_rdn_bandmask_img_path), acq.bandmask_hdr_path)
         wm.copy(tmp_log_path, os.path.join(acq.l1b_data_dir, os.path.basename(tmp_log_path)) )
+
 
         # Update hdr files
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
@@ -225,6 +230,18 @@ class L1BCalibrate(SlurmJobTask):
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.destripeff": product_dict_df})
 
+        product_dict_bm = {
+            "img_path": acq.bandmask_img_path,
+            "hdr_path": acq.bandmask_hdr_path,
+            "created": creation_time,
+            "dimensions": {
+                "lines": hdr["lines"],
+                "samples": hdr["samples"],
+                "bands": hdr["bands"]
+            }
+        }
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.bandmask": product_dict_bm})
+
         # Check if orbit now has complete set of radiance files and update orbit metadata
         wm_orbit = WorkflowManager(config_path=self.config_path, orbit_id=acq.orbit)
         orbit = wm_orbit.orbit
@@ -249,7 +266,9 @@ class L1BCalibrate(SlurmJobTask):
                 "l1b_destripedark_img_path:": acq.destripedark_img_path,
                 "l1b_destripedark_hdr_path:": acq.destripedark_hdr_path,
                 "l1b_destripeff_img_path:": acq.destripeff_img_path,
-                "l1b_destripeff_hdr_path:": acq.destripeff_hdr_path
+                "l1b_destripeff_hdr_path:": acq.destripeff_hdr_path,
+                "l1b_bandmask_img_path:": acq.bandmask_img_path,
+                "l1b_bandmask_hdr_path:": acq.bandmask_hdr_path
             }
         }
 
