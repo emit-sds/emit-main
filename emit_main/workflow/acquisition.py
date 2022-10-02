@@ -149,6 +149,14 @@ class Acquisition:
             "l3": {
                 "cover": ["img", "hdr"],
                 "coveruncert": ["img", "hdr"]
+            },
+            "ghg": {
+                "ch4": ["img","hdr"],
+                "co2": ["img","hdr"],
+                "ortch4": ["tif","kmz"],
+                "ortco2": ["tif","kmz"],
+                "ortfiltch4": ["tif","kmz"],
+                "ortfiltco2": ["tif","kmz"]
             }
         }
         paths = {}
