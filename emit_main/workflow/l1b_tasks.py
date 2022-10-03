@@ -485,6 +485,7 @@ class L1BGeolocate(SlurmJobTask):
         ae_nc.product_version = wm.config["extended_build_num"]
         ae_nc.time_coverage_start = orbit.start_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         ae_nc.time_coverage_end = orbit.stop_time.strftime("%Y-%m-%dT%H:%M:%S%z")
+        ae_nc.history = "PGE Input files: " + ", ".join(input_files_arr)
 
         ae_nc.sync()
         ae_nc.close()
