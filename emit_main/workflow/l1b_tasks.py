@@ -11,9 +11,10 @@ import json
 import logging
 import os
 
+import h5netcdf.legacyapi as netCDF4
 import luigi
 import spectral.io.envi as envi
-import netCDF4
+# import netCDF4
 
 from emit_main.workflow.acquisition import Acquisition
 from emit_main.workflow.output_targets import AcquisitionTarget, OrbitTarget

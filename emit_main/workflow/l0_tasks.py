@@ -580,7 +580,7 @@ class L0ProcessPlanningProduct(SlurmJobTask):
             if orbit_id in orbits_with_dark:
                 orbit_meta["has_dark"] = True
             dm.update_orbit_metadata(orbit_id, orbit_meta)
-            wm.print(__name__, f"Updated orbit in DB with {orbit_meta}")
+            wm.print(__name__, f"Updated orbit {orbit_id} in DB with {orbit_meta}")
 
         wm.print(__name__, f"Inserted a total of {len(orbit_ids)} orbits and {len(dcids)} data collections!")
 
