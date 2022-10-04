@@ -97,14 +97,14 @@ class DataCollection:
             return False
 
         # Check that first frame has status 1 or 5
-        if frames[0].split("_")[4] not in ("1", "5"):
-            wm.print(__name__, "First frame in set does not begin with status 1 or 5!")
+        if frames[0].split("_")[4] not in ("1", "5", "9"):
+            wm.print(__name__, "First frame in set does not begin with status 1, 5, or 9!")
             return False
 
         # Check that all subsequent frames have status 0 or 4
         for frame in frames[1:]:
-            if frame.split("_")[4] not in ("0", "4"):
-                wm.print(__name__, "One of the frames in the set (after the first) does not have status 0 or 4!")
+            if frame.split("_")[4] not in ("0", "4", "9"):
+                wm.print(__name__, "One of the frames in the set (after the first) does not have status 0, 4, or 9!")
                 return False
 
         # If we made it this far, then return True
