@@ -66,7 +66,7 @@ class DAACSceneNumbersTarget(luigi.Target):
     def exists(self):
         for acq in self._acquisitions:
             if "daac_scene" not in acq:
-                logger.debug(f"Failed to find DAAC scene number for {acq.acquisition_id}")
+                logger.debug(f"Failed to find DAAC scene number for {acq['acquisition_id']}")
                 return False
         return True
 
