@@ -76,6 +76,7 @@ class AssignDAACSceneNumbers(SlurmJobTask):
                                f"Aborting...")
 
         # Assign the scene numbers
+        acq_ids = list(set(acq_ids))
         acq_ids.sort()
         daac_scene = 1
         for acq_id in acq_ids:
