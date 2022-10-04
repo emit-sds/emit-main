@@ -225,6 +225,7 @@ def main():
             report_paths.append(match[0])
     report_paths.sort()
     total_expected_frames = 0
+    total_corrupt_frames = 0
     total_decompression_errors = 0
     total_missing_frames = 0
     total_corrupt_lines = 0
@@ -232,6 +233,7 @@ def main():
     files_with_errors = []
     for p in report_paths:
         expected_frames = 0
+        corrupt_frames = 0
         decompression_errors = 0
         missing_frames = 0
         corrupt_lines = 0
@@ -240,6 +242,8 @@ def main():
             for line in f.readlines():
                 if "Total number of expected frames" in line:
                     expected_frames = int(line.rstrip("\n").split(" ")[-1])
+                if "Total corrupt frames" in line:
+                    corrupt_frames = int(line.rstrip("\n").split(" ")[-1])
                 if "Total decompression errors" in line:
                     decompression_errors = int(line.rstrip("\n").split(" ")[-1])
                 if "Total missing frames" in line:
@@ -248,11 +252,12 @@ def main():
                     corrupt_lines = int(line.rstrip("\n").split(" ")[-1])
                 if "Total cloudy frames" in line:
                     cloudy_frames = int(line.rstrip("\n").split(" ")[-1])
-        if decompression_errors > 0 or missing_frames > 0 or corrupt_lines > 0:
+        if corrupt_frames > 0 or decompression_errors > 0 or missing_frames > 0 or corrupt_lines > 0:
             file_with_errors = OrderedDict()
             file_with_errors = {
                 "file": p,
                 "total_expected_frames": expected_frames,
+                "corrupt_frames": corrupt_frames,
                 "decompression_errors": decompression_errors,
                 "missing_frames": missing_frames,
                 "corrupt_lines": corrupt_lines
@@ -260,12 +265,14 @@ def main():
             files_with_errors.append(file_with_errors)
 
         total_expected_frames += expected_frames
+        total_corrupt_frames += corrupt_frames
         total_decompression_errors += decompression_errors
         total_missing_frames += missing_frames
         total_corrupt_lines += corrupt_lines
         total_cloudy_frames += cloudy_frames
 
     reassembly["total_expected_frames"] = total_expected_frames
+    reassembly["corrupt_frames"] = total_corrupt_frames
     reassembly["decompression_errors"] = total_decompression_errors
     reassembly["missing_frames"] = total_missing_frames
     reassembly["corrupt_lines"] = total_corrupt_lines
