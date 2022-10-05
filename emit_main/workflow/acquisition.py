@@ -113,6 +113,8 @@ class Acquisition:
             },
             "l1b": {
                 "rdn": ["img", "hdr", "png", "kmz", "nc"],
+                "destripedark": ["img", "hdr"],
+                "destripeff": ["img", "hdr"],
                 "loc": ["img", "hdr"],
                 "obs": ["img", "hdr", "nc"],
                 "glt": ["img", "hdr"],
