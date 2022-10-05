@@ -405,7 +405,10 @@ class L2AFormat(SlurmJobTask):
                tmp_daac_mask_nc_path, acq.rfl_img_path, acq.rfluncert_img_path,
                acq.mask_img_path, acq.loc_img_path, acq.glt_img_path, "V0" + str(wm.config["processing_version"]),
                "--log_file", tmp_log_path]
-        pge.run(cmd, tmp_dir=self.tmp_dir)
+
+        # Run this inside the emit-main conda environment to include emit-utils and other requirements
+        main_pge = wm.pges["emit-main"]
+        main_pge.run(cmd, tmp_dir=self.tmp_dir)
 
         # Copy and rename output files back to /store
         log_path = acq.rfl_nc_path.replace(".nc", "_nc_pge.log")

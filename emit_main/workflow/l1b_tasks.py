@@ -589,7 +589,10 @@ class L1BRdnFormat(SlurmJobTask):
         tmp_log_path = os.path.join(self.local_tmp_dir, "output_conversion_pge.log")
         cmd = ["python", output_generator_exe, tmp_daac_rdn_nc_path, tmp_daac_obs_nc_path, acq.rdn_img_path, acq.obs_img_path, acq.loc_img_path,
                acq.glt_img_path, "V0" + str(wm.config["processing_version"]), "--log_file", tmp_log_path]
-        pge.run(cmd, tmp_dir=self.tmp_dir)
+
+        # Run this inside the emit-main conda environment to include emit-utils and other requirements
+        main_pge = wm.pges["emit-main"]
+        main_pge.run(cmd, tmp_dir=self.tmp_dir)
 
         # Copy and rename output files back to /store
         log_path = acq.rdn_nc_path.replace(".nc", "_nc_pge.log")
