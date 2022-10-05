@@ -28,6 +28,7 @@ class AssignDAACSceneNumbers(SlurmJobTask):
     orbit_id = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
+    override_output = luigi.BoolParameter(default=False)
 
     memory = 18000
 
@@ -41,6 +42,10 @@ class AssignDAACSceneNumbers(SlurmJobTask):
     def output(self):
 
         logger.debug(f"{self.task_family} output: {self.orbit_id}")
+
+        if self.override_output:
+            return None
+
         wm = WorkflowManager(config_path=self.config_path, orbit_id=self.orbit_id)
         orbit = wm.orbit
         dm = wm.database_manager
@@ -71,7 +76,7 @@ class AssignDAACSceneNumbers(SlurmJobTask):
                 count += 1
             acq_ids.append(acq["acquisition_id"])
 
-        if 0 < count < len(acquisitions):
+        if not self.override_output and 0 < count < len(acquisitions):
             raise RuntimeError(f"While assigning scene numbers for DAAC, found some with scene numbers already. "
                                f"Aborting...")
 

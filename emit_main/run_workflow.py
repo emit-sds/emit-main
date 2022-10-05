@@ -198,7 +198,7 @@ def get_tasks_from_product_args(args):
         "l2bdaac": L2BDeliver(acquisition_id=args.acquisition_id, **kwargs),
         "l3unmix": L3Unmix(acquisition_id=args.acquisition_id, **kwargs),
         # "l3unmixformat": L3UnmixFormat(acquisition_id=args.acquisition_id, **kwargs)
-        "daacscenes": AssignDAACSceneNumbers(orbit_id=args.orbit_id, **kwargs),
+        "daacscenes": AssignDAACSceneNumbers(orbit_id=args.orbit_id, override_output=args.override_output, **kwargs),
         "daacaddl": GetAdditionalMetadata(acquisition_id=args.acquisition_id, **kwargs)
     }
     tasks = []
