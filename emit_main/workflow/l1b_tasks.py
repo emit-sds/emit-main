@@ -11,9 +11,10 @@ import json
 import logging
 import os
 
+import h5netcdf.legacyapi as netCDF4
 import luigi
 import spectral.io.envi as envi
-import netCDF4
+# import netCDF4
 
 from emit_main.workflow.acquisition import Acquisition
 from emit_main.workflow.output_targets import AcquisitionTarget, OrbitTarget
@@ -472,29 +473,34 @@ class L1BGeolocate(SlurmJobTask):
         tmp_corr_att_eph_path = glob.glob(os.path.join(tmp_output_dir, "*l1b_att*nc"))[0]
 
         # Update attitude/ephemeris netcdf metadata before copy
-#        ae_nc = netCDF4.Dataset(tmp_corr_att_eph_path, 'r+')
-#        daac_converter.makeGlobalAttrBase(ae_nc)
-#        ae_nc.title = "EMIT L1B Corrected Spacecraft Attitude and Ephemeris V001"
-#        ae_nc.summary = ae_nc.summary + \
-#            f"\\n\\nThis collection contains L1B Corrected Spacecraft Attitude and Ephemeris (ATT).\
-#            ATT contains the uncorrected Broadcast Ancillary Data (BAD) ephemeris and attitude quaternions \
-#            from the ISS, and the data after correction by the geolocation process. \
-#            This product is generated at the orbit level.\
-#            "
-#        ae_nc.product_version = wm.config["extended_build_num"]
-#        ae_nc.time_coverage_start = orbit.start_time.strftime("%Y-%m-%dT%H:%M:%S%z")
-#        ae_nc.time_coverage_end = orbit.stop_time.strftime("%Y-%m-%dT%H:%M:%S%z")
+        ae_nc = netCDF4.Dataset(tmp_corr_att_eph_path, 'r+')
+        daac_converter.makeGlobalAttrBase(ae_nc)
+        ae_nc.title = "EMIT L1B Corrected Spacecraft Attitude and Ephemeris V001"
+        ae_nc.summary = ae_nc.summary + \
+            f"\\n\\nThis collection contains L1B Corrected Spacecraft Attitude and Ephemeris (ATT). \
+ATT contains the uncorrected Broadcast Ancillary Data (BAD) ephemeris and attitude quaternions \
+from the ISS, and the data after correction by the geolocation process. \
+This product is generated at the orbit level."
+        ae_nc.product_version = wm.config["extended_build_num"]
+        ae_nc.time_coverage_start = orbit.start_time.strftime("%Y-%m-%dT%H:%M:%S%z")
+        ae_nc.time_coverage_end = orbit.stop_time.strftime("%Y-%m-%dT%H:%M:%S%z")
+        ae_nc.history = f"PGE Input files: {orbit.uncorr_att_eph_path}"
 
-#        ae_nc.sync()
-#        ae_nc.close()
+        ae_nc.sync()
+        ae_nc.close()
 
         wm.copy(tmp_corr_att_eph_path, orbit.corr_att_eph_path)
+        output_prods["l1b_corr_att_eph_path"] = orbit.corr_att_eph_path
+
+        # Copy back geoqa path but use corr att/eph naming as basis
+        tmp_geoqa_path = glob.glob(os.path.join(tmp_output_dir, "*_geoqa_*"))[0]
+        geoqa_name = os.path.basename(orbit.corr_att_eph_path).replace("_att_", "_geoqa_")
+        wm.copy(tmp_geoqa_path, os.path.join(orbit.l1b_geo_work_dir, geoqa_name))
 
         # Copy back remainder of work directory
         wm.makedirs(orbit.l1b_geo_work_dir)
         ancillary_workdir_paths = glob.glob(os.path.join(tmp_output_dir, "l1b_geo*"))
         ancillary_workdir_paths += glob.glob(os.path.join(tmp_output_dir, "map*"))
-        ancillary_workdir_paths += glob.glob(os.path.join(tmp_output_dir, "*_geoqa_*"))
         ancillary_workdir_paths += glob.glob(os.path.join(tmp_output_dir, "extra*"))
         for path in ancillary_workdir_paths:
             wm.copy(path, os.path.join(orbit.l1b_geo_work_dir, os.path.basename(path)))
