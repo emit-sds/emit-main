@@ -21,7 +21,7 @@ from emit_main.workflow.output_targets import AcquisitionTarget, OrbitTarget
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_utils import daac_converter
-from emit_utils.file_checks import envi_header
+from emit_utils.file_checks import envi_header, get_gring_boundary_points, get_band_mean
 
 logger = logging.getLogger("emit-main")
 
@@ -468,6 +468,17 @@ class L1BGeolocate(SlurmJobTask):
             dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn_kmz": acq_prod_map[id]["rdn_kmz"]})
             dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn_png": acq_prod_map[id]["rdn_png"]})
 
+            # Get additional attributes and add to DB
+            glt_gring = get_gring_boundary_points(acq.glt_hdr_path)
+            mean_solar_azimuth = get_band_mean(acq.obs_img_path, 1)
+            mean_solar_zenith = get_band_mean(acq.obs_img_path, 2)
+            meta = {
+                "gring": glt_gring,
+                "mean_solar_azimuth": mean_solar_azimuth,
+                "mean_solar_zenith": mean_solar_zenith
+            }
+            dm.update_acquisition_metadata(acq.acquisition_id, meta)
+
         # Finish updating orbit level properties
         # Copy back corrected att/eph
         tmp_corr_att_eph_path = glob.glob(os.path.join(tmp_output_dir, "*l1b_att*nc"))[0]
@@ -638,6 +649,7 @@ class L1BRdnDeliver(SlurmJobTask):
     def requires(self):
 
         logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
+        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
         return L1BRdnFormat(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
                             partition=self.partition)
 
@@ -877,7 +889,7 @@ class L1BAttDeliver(SlurmJobTask):
         # Create local/tmp daac names and paths
         collection_version = f"0{wm.config['processing_version']}"
         start_time_str = orbit.start_time.strftime("%Y%m%dT%H%M%S")
-        granule_ur = f"EMIT_L1B_ATT_{collection_version}_{start_time_str}_{orbit.short_oid}"
+        granule_ur = f"EMIT_L1B_ATT_{collection_version}_{start_time_str}_{orbit.orbit_id}"
         daac_nc_name = f"{granule_ur}.nc"
         daac_ummg_name = f"{granule_ur}.cmr.json"
         daac_nc_path = os.path.join(self.tmp_dir, daac_nc_name)

@@ -59,6 +59,18 @@ class OrbitTarget(luigi.Target):
         return False
 
 
+class DAACSceneNumbersTarget(luigi.Target):
+    def __init__(self, acquisitions):
+        self._acquisitions = acquisitions
+
+    def exists(self):
+        for acq in self._acquisitions:
+            if "daac_scene" not in acq:
+                logger.debug(f"Failed to find DAAC scene number for {acq['acquisition_id']}")
+                return False
+        return True
+
+
 class AcquisitionTarget(luigi.Target):
     """This class specifies success criteria to determine if an envi file was processed correctly"""
     def __init__(self, acquisition, task_family):
