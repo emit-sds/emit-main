@@ -172,6 +172,7 @@ class GetAdditionalMetadata(SlurmJobTask):
         }
         dm.update_acquisition_metadata(acq.acquisition_id, meta)
 
+        del meta["last_modified"]
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
