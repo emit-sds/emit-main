@@ -858,7 +858,8 @@ class L1ADeliver(SlurmJobTask):
             ummg = daac_converter.add_data_files_ummg(ummg, [daac_raw_path, daac_raw_hdr_path, daac_browse_path], "Day",
                                                       ["BINARY", "ASCII", "PNG"])
             # ummg = daac_converter.add_related_url(ummg, l1a_pge.repo_url, "DOWNLOAD SOFTWARE")
-            ummg = daac_converter.add_boundary_ummg(ummg, acq.gring)
+            # Since darks don't have spatial coordinates, we must remove the spatial extent for science scenes too
+            # ummg = daac_converter.add_boundary_ummg(ummg, acq.gring)
         else:
             ummg = daac_converter.initialize_ummg(acq.raw_granule_ur, creation_time, "EMITL1ARAW",
                                                   acq.collection_version, acq.start_time,
