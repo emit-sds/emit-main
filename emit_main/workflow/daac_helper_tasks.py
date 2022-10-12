@@ -28,6 +28,7 @@ class AssignDAACSceneNumbers(SlurmJobTask):
     orbit_id = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
+    override_output = luigi.BoolParameter(default=False)
 
     memory = 18000
 
@@ -41,6 +42,10 @@ class AssignDAACSceneNumbers(SlurmJobTask):
     def output(self):
 
         logger.debug(f"{self.task_family} output: {self.orbit_id}")
+
+        if self.override_output:
+            return None
+
         wm = WorkflowManager(config_path=self.config_path, orbit_id=self.orbit_id)
         orbit = wm.orbit
         dm = wm.database_manager
@@ -71,7 +76,7 @@ class AssignDAACSceneNumbers(SlurmJobTask):
                 count += 1
             acq_ids.append(acq["acquisition_id"])
 
-        if 0 < count < len(acquisitions):
+        if not self.override_output and 0 < count < len(acquisitions):
             raise RuntimeError(f"While assigning scene numbers for DAAC, found some with scene numbers already. "
                                f"Aborting...")
 
@@ -80,7 +85,7 @@ class AssignDAACSceneNumbers(SlurmJobTask):
         acq_ids.sort()
         daac_scene = 1
         for acq_id in acq_ids:
-            dm.update_acquisition_metadata(acq_id, {"daac_scene": daac_scene})
+            dm.update_acquisition_metadata(acq_id, {"daac_scene": str(daac_scene).zfill(3)})
 
             log_entry = {
                 "task": self.task_family,
@@ -94,7 +99,7 @@ class AssignDAACSceneNumbers(SlurmJobTask):
                 "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
                 "completion_status": "SUCCESS",
                 "output": {
-                    "daac_scene_number": daac_scene
+                    "daac_scene_number": str(daac_scene).zfill(3)
                 }
             }
 
@@ -102,6 +107,25 @@ class AssignDAACSceneNumbers(SlurmJobTask):
 
             # Increment scene number
             daac_scene += 1
+
+        # Update orbit processing log too
+        log_entry = {
+            "task": self.task_family,
+            "pge_name": pge.repo_url,
+            "pge_version": pge.version_tag,
+            "pge_input_files": {
+                "orbit_id": orbit.orbit_id
+            },
+            "pge_run_command": "N/A - DB updates only",
+            "documentation_version": "N/A",
+            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
+            "completion_status": "SUCCESS",
+            "output": {
+                "number_of_scenes": daac_scene - 1
+            }
+        }
+
+        dm.insert_orbit_log_entry(self.orbit_id, log_entry)
 
 
 class GetAdditionalMetadata(SlurmJobTask):
@@ -147,3 +171,21 @@ class GetAdditionalMetadata(SlurmJobTask):
             "mean_solar_zenith": mean_solar_zenith
         }
         dm.update_acquisition_metadata(acq.acquisition_id, meta)
+
+        del meta["last_modified"]
+        log_entry = {
+            "task": self.task_family,
+            "pge_name": pge.repo_url,
+            "pge_version": pge.version_tag,
+            "pge_input_files": {
+                "l1b_glt_hdr_path": acq.glt_hdr_path,
+                "l1b_obs_img_path": acq.obs_img_path
+            },
+            "pge_run_command": "N/A - DB updates only",
+            "documentation_version": "N/A",
+            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
+            "completion_status": "SUCCESS",
+            "output": meta
+        }
+
+        dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
