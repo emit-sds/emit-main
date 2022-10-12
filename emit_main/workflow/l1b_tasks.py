@@ -66,7 +66,7 @@ class L1BCalibrate(SlurmJobTask):
         tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
         wm.makedirs(tmp_output_dir)
         tmp_rdn_img_path = os.path.join(tmp_output_dir, os.path.basename(acq.rdn_img_path))
-        tmp_rdn_destripe_img_path = tmp_rdn_img_path.replace("rdn","rdn_destripe")
+        tmp_rdn_destripe_img_path = tmp_rdn_img_path.replace("rdn", "rdn_destripe")
         tmp_rdn_destripe_dark_img_path = os.path.join(tmp_output_dir, os.path.basename(acq.destripedark_img_path))
         tmp_rdn_destripe_flatfield_img_path = os.path.join(tmp_output_dir, os.path.basename(acq.destripeff_img_path))
         log_name = os.path.basename(acq.rdn_img_path.replace(".img", "_pge.log"))
@@ -149,7 +149,7 @@ class L1BCalibrate(SlurmJobTask):
         input_files["dark_file"] = dark_img_path
 
         emitrdn_exe = os.path.join(pge.repo_dir, "emitrdn.py")
-        destripe_exe = os.path.join(pge.repo_dir, "utils","fitflatfield.py")
+        destripe_exe = os.path.join(pge.repo_dir, "utils", "fitflatfield.py")
         utils_path = os.path.join(pge.repo_dir, "utils")
         env = os.environ.copy()
         env["PYTHONPATH"] = f"$PYTHONPATH:{utils_path}"
@@ -165,10 +165,10 @@ class L1BCalibrate(SlurmJobTask):
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
         cmd_ds = ["python", destripe_exe,
-               tmp_rdn_img_path,
-               tmp_rdn_destripe_img_path,
-               tmp_rdn_destripe_dark_img_path,
-               tmp_rdn_destripe_flatfield_img_path]
+                  tmp_rdn_img_path,
+                  tmp_rdn_destripe_img_path,
+                  tmp_rdn_destripe_dark_img_path,
+                  tmp_rdn_destripe_flatfield_img_path]
         pge.run(cmd_ds, tmp_dir=self.tmp_dir, env=env)
 
         # Copy output files to l1b dir (all but pre-destripped radiance)
@@ -178,7 +178,7 @@ class L1BCalibrate(SlurmJobTask):
         wm.copy(envi_header(tmp_rdn_destripe_dark_img_path), acq.destripedark_hdr_path)
         wm.copy(tmp_rdn_destripe_flatfield_img_path, acq.destripeff_img_path)
         wm.copy(envi_header(tmp_rdn_destripe_flatfield_img_path), acq.destripeff_hdr_path)
-        wm.copy(tmp_log_path, os.path.join(acq.l1b_data_dir, os.path.basename(tmp_log_path)) )
+        wm.copy(tmp_log_path, os.path.join(acq.l1b_data_dir, os.path.basename(tmp_log_path)))
 
         # Update hdr files
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
