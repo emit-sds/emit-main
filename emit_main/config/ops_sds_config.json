@@ -45,7 +45,15 @@
     "daac_provider": "JPL_EMIT_SDS",
     "daac_server_internal": "ngis-data.jpl.nasa.gov",
     "daac_server_external": "popo.jpl.nasa.gov",
-    "daac_base_dir": "/data/emit/lp_daac"
+    "daac_base_dir": "/data/emit/lp_daac",
+    "dois": {
+      "EMITL1ARAW": "10.5067/EMIT/EMITL1ARAW.001",
+      "EMITL1BATT": "10.5067/EMIT/EMITL1BATT.001",
+      "EMITL1BRAD": "10.5067/EMIT/EMITL1BRAD.001",
+      "EMITL2ARFL": "10.5067/EMIT/EMITL2ARFL.001",
+      "EMITL2BMIN": "10.5067/EMIT/EMITL2BMIN.001",
+      "EMITL3ASA": "10.5067/EMIT/EMITL3ASA.001"
+    }
   },
 
   "ancillary_paths": {

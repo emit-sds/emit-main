@@ -481,6 +481,8 @@ class L0ProcessPlanningProduct(SlurmJobTask):
         # Loop through events again and insert new orbits and DCIDS
         orbit_ids = []
         dcids = []
+        orbits_with_science = set()
+        orbits_with_dark = set()
         for e in events:
             # Check for orbit object
             if e["name"].lower() == "start orbit":
@@ -534,6 +536,7 @@ class L0ProcessPlanningProduct(SlurmJobTask):
             if e["name"].lower() in ("science", "dark"):
                 # Construct data collection metadata
                 dcid = str(e["dcid"]).zfill(10)
+                submode = e["name"].lower()
                 # Convert date strings to datetime objects to store in DB
                 e["datetime"] = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S")
                 e["endDatetime"] = datetime.datetime.strptime(e["endDatetime"], "%Y-%m-%dT%H:%M:%S")
@@ -544,7 +547,7 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                     "processing_version": wm.config["processing_version"],
                     "orbit": year + str(e["orbit number"]).zfill(5),
                     "scene": str(e["scene number"]).zfill(3),
-                    "submode": e["name"].lower(),
+                    "submode": submode,
                     "planning_product": e
                 }
 
@@ -559,6 +562,25 @@ class L0ProcessPlanningProduct(SlurmJobTask):
 
                 # Keep track of dcid for log entry
                 dcids.append(dcid)
+
+                # Keep track of orbits that have science and/or dark acquisitions
+                if submode == "science":
+                    orbits_with_science.add(dc_meta["orbit"])
+                if submode == "dark":
+                    orbits_with_dark.add(dc_meta["orbit"])
+
+        # Update orbits to include flags for has_science and has_dark
+        for orbit_id in orbit_ids:
+            orbit_meta = {
+                "has_science": False,
+                "has_dark": False
+            }
+            if orbit_id in orbits_with_science:
+                orbit_meta["has_science"] = True
+            if orbit_id in orbits_with_dark:
+                orbit_meta["has_dark"] = True
+            dm.update_orbit_metadata(orbit_id, orbit_meta)
+            wm.print(__name__, f"Updated orbit {orbit_id} in DB with {orbit_meta}")
 
         wm.print(__name__, f"Inserted a total of {len(orbit_ids)} orbits and {len(dcids)} data collections!")
 
@@ -636,9 +658,10 @@ class L0Deliver(SlurmJobTask):
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(stream.ccsds_path), tz=datetime.timezone.utc)
         l0_pge = wm.pges["emit-sds-l0"]
         ummg = daac_converter.initialize_ummg(granule_ur, creation_time, "EMITL0", collection_version,
-                                              wm.config["extended_build_num"], l0_pge.repo_name, l0_pge.version_tag)
+                                              stream.start_time, stream.stop_time, l0_pge.repo_name, l0_pge.version_tag,
+                                              software_build_version=wm.config["extended_build_num"])
         ummg = daac_converter.add_data_files_ummg(ummg, [daac_ccsds_path], "Unspecified", ["BINARY"])
-        ummg = daac_converter.add_related_url(ummg, l0_pge.repo_url, "DOWNLOAD SOFTWARE")
+        # ummg = daac_converter.add_related_url(ummg, l0_pge.repo_url, "DOWNLOAD SOFTWARE")
         ummg_path = stream.ccsds_path.replace(".bin", ".cmr.json")
         daac_converter.dump_json(ummg, ummg_path)
         wm.change_group_ownership(ummg_path)
@@ -720,6 +743,7 @@ class L0Deliver(SlurmJobTask):
                 "extended_build_num": wm.config["extended_build_num"],
                 "collection": notification["collection"],
                 "collection_version": notification["product"]["dataVersion"],
+                "granule_ur": granule_ur,
                 "sds_filename": target_src_map[file["name"]],
                 "daac_filename": file["name"],
                 "uri": file["uri"],
