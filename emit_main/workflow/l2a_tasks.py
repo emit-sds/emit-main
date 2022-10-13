@@ -132,7 +132,12 @@ class L2AReflectance(SlurmJobTask):
         tmp_lbl_hdr_path = envi_header(tmp_lbl_path)
         tmp_statesubs_path = os.path.join(
             self.local_tmp_dir, "output", self.acquisition_id + "_subs_state")
-        tmp_statesubs_hdr_path = envi_header(tmp_statesubs_path)
+        tmp_statesubsuncert_path = os.path.join(
+            self.local_tmp_dir, "output", self.acquisition_id + "_subs_uncert")
+        tmp_obssubs_path = os.path.join(
+            self.local_tmp_dir, "input", self.acquisition_id + "_subs_obs")
+        tmp_locsubs_path = os.path.join(
+            self.local_tmp_dir, "input", self.acquisition_id + "_subs_loc")
         tmp_quality_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_rfl_quality.txt")
 
         cmd = ["gdal_translate", tmp_rfl_path, tmp_rfl_png_path, "-b", "35", "-b", "23", "-b",
@@ -149,7 +154,13 @@ class L2AReflectance(SlurmJobTask):
         wm.copy(tmp_lbl_path, acq.lbl_img_path)
         wm.copy(tmp_lbl_hdr_path, acq.lbl_hdr_path)
         wm.copy(tmp_statesubs_path, acq.statesubs_img_path)
-        wm.copy(tmp_statesubs_hdr_path, acq.statesubs_hdr_path)
+        wm.copy(envi_header(tmp_statesubs_path), acq.statesubs_hdr_path)
+        wm.copy(tmp_statesubsuncert_path, acq.statesubsuncert_img_path)
+        wm.copy(envi_header(tmp_statesubsuncert_path), acq.statesubsuncert_hdr_path)
+        wm.copy(tmp_obssubs_path, acq.obssubs_img_path)
+        wm.copy(envi_header(tmp_obssubs_path), acq.obssubs_hdr_path)
+        wm.copy(tmp_locsubs_path, acq.locsubs_img_path)
+        wm.copy(envi_header(tmp_locsubs_path), acq.locsubs_hdr_path)
         wm.copy(tmp_rfl_png_path, acq.rfl_png_path)
         wm.copy(tmp_quality_path, acq.quality_txt_path)
 
@@ -403,8 +414,8 @@ class L2AFormat(SlurmJobTask):
 
         cmd = ["python", output_generator_exe, tmp_daac_rfl_nc_path, tmp_daac_rfl_unc_nc_path,
                tmp_daac_mask_nc_path, acq.rfl_img_path, acq.rfluncert_img_path,
-               acq.mask_img_path, acq.loc_img_path, acq.glt_img_path, "V0" + str(wm.config["processing_version"]),
-               "--log_file", tmp_log_path]
+               acq.mask_img_path, acq.bandmask_img_path, acq.loc_img_path, acq.glt_img_path, 
+               "V0" + str(wm.config["processing_version"]), "--log_file", tmp_log_path]
 
         # Run this inside the emit-main conda environment to include emit-utils and other requirements
         main_pge = wm.pges["emit-main"]
