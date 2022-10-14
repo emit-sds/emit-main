@@ -521,13 +521,13 @@ This product is generated at the orbit level."
         wm.copy(tmp_corr_att_eph_path, orbit.corr_att_eph_path)
         output_prods["l1b_corr_att_eph_path"] = orbit.corr_att_eph_path
 
+        # Make work directory
+        wm.makedirs(orbit.l1b_geo_work_dir)
         # Copy back geoqa path but use corr att/eph naming as basis
         tmp_geoqa_path = glob.glob(os.path.join(tmp_output_dir, "*_geoqa_*"))[0]
         geoqa_name = os.path.basename(orbit.corr_att_eph_path).replace("_att_", "_geoqa_")
         wm.copy(tmp_geoqa_path, os.path.join(orbit.l1b_geo_work_dir, geoqa_name))
-
         # Copy back remainder of work directory
-        wm.makedirs(orbit.l1b_geo_work_dir)
         ancillary_workdir_paths = glob.glob(os.path.join(tmp_output_dir, "l1b_geo*"))
         ancillary_workdir_paths += glob.glob(os.path.join(tmp_output_dir, "map*"))
         ancillary_workdir_paths += glob.glob(os.path.join(tmp_output_dir, "extra*"))
