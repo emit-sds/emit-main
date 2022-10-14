@@ -85,7 +85,7 @@ class L0StripHOSC(SlurmJobTask):
         missing_packets = 0
         with open(tmp_report_path, "r") as f:
             for line in f.readlines():
-                if "Packet Count" in line:
+                if "Packet Count" in line and "Duplicate" not in line:
                     packet_count = int(line.rstrip("\n").split(" ")[-1])
                 if "Missing PSC Count" in line:
                     missing_packets = int(line.rstrip("\n").split(" ")[-1])
