@@ -67,6 +67,7 @@ def main():
     gaps = [int(m["stream_totals"]["psc_gaps"]) for m in metrics]
     missing = [int(m["stream_totals"]["missing_packets"]) for m in metrics]
     percents = [float(m["stream_totals"]["percent_missing"].replace("%", "")) for m in metrics]
+    duplicates = [int(m["stream_totals"]["duplicate_packets"]) for m in metrics]
 
     frames = [int(m["frame_depacketization"]["total_frames"]) for m in metrics]
     corrupt_frames = [int(m["frame_depacketization"]["corrupt_frames"]) for m in metrics]
@@ -87,18 +88,25 @@ def main():
         # Create CSV too
         with open(os.path.join(args.output_dir, f"all_streams_{output_file_dates}.csv"), 'w') as csvfile:
             csvwriter = csv.writer(csvfile)
-            csvwriter.writerow(["dates", "packets_read", "psc_gaps", "missing_packets", "percent_missing"])
+            csvwriter.writerow(["dates", "packets_read", "duplicate_packets", "psc_gaps", "missing_packets",
+                                "percent_missing"])
             for i in range(len(dates)):
-                csvwriter.writerow([dates[i].strftime("%Y-%m-%d"), packets[i], gaps[i], missing[i], percents[i]])
+                csvwriter.writerow([dates[i].strftime("%Y-%m-%d"), packets[i], duplicates[i], gaps[i], missing[i],
+                                    percents[i]])
 
         plt.rcParams['figure.figsize'] = [10, 10]
 
-        plt.subplot(4, 1, 1)
+        plt.subplot(5, 1, 1)
         plt.bar(dates_str, packets)
         plt.title("Packets Read")
         plt.xticks(rotation=45, fontsize=8)
 
-        plt.subplot(4, 1, 2)
+        plt.subplot(5, 1, 2)
+        plt.bar(dates_str, duplicates)
+        plt.title("Duplicate Packets")
+        plt.xticks(rotation=45, fontsize=8)
+
+        plt.subplot(5, 1, 3)
         plt.bar(dates_str, gaps)
         plt.title("PSC Gaps")
         # for i in range(len(dates)):
@@ -106,12 +114,12 @@ def main():
         # plt.ylim([0, 30])
         plt.xticks(rotation=45, fontsize=8)
 
-        plt.subplot(4, 1, 3)
+        plt.subplot(5, 1, 4)
         plt.bar(dates_str, missing)
         plt.title("Missing Packets")
         plt.xticks(rotation=45, fontsize=8)
 
-        plt.subplot(4, 1, 4)
+        plt.subplot(5, 1, 5)
         plt.bar(dates_str, percents)
         plt.title("Percent Missing")
         plt.xticks(rotation=45, fontsize=8)
@@ -128,25 +136,28 @@ def main():
         gaps = [int(m["streams"][i]["psc_gaps"]) for m in metrics]
         missing = [int(m["streams"][i]["missing_packets"]) for m in metrics]
         percents = [float(m["streams"][i]["percent_missing"].replace("%", "")) for m in metrics]
+        duplicates = [int(m["streams"][i]["duplicate_packets"]) for m in metrics]
 
-        rows = 6 if apid == "1675" else 4
+        rows = 7 if apid == "1675" else 5
 
         if apid in args.plots:
             # Create CSV too
             with open(os.path.join(args.output_dir, f"{apid}_{output_file_dates}.csv"), 'w') as csvfile:
                 csvwriter = csv.writer(csvfile)
                 if apid == "1675":
-                    csvwriter.writerow(["dates", "packets_read", "psc_gaps", "missing_packets", "percent_missing",
-                                       "depacketized_frames", "corrupt_frames", "first_frame_time", "last_frame_time"])
+                    csvwriter.writerow(["dates", "packets_read", "duplicate_packets", "psc_gaps", "missing_packets",
+                                        "percent_missing", "depacketized_frames", "corrupt_frames", "first_frame_time",
+                                        "last_frame_time"])
                     for i in range(len(dates)):
-                        csvwriter.writerow([dates[i].strftime("%Y-%m-%d"), packets[i], gaps[i], missing[i],
-                                            percents[i], frames[i], corrupt_frames[i], first_timestamps[i],
+                        csvwriter.writerow([dates[i].strftime("%Y-%m-%d"), packets[i], duplicates[i], gaps[i],
+                                            missing[i], percents[i], frames[i], corrupt_frames[i], first_timestamps[i],
                                             last_timestamps[i]])
                 else:
-                    csvwriter.writerow(["dates", "packets_read", "psc_gaps", "missing_packets", "percent_missing"])
+                    csvwriter.writerow(["dates", "packets_read", "duplicate_packets", "psc_gaps", "missing_packets",
+                                        "percent_missing"])
                     for i in range(len(dates)):
-                        csvwriter.writerow([dates[i].strftime("%Y-%m-%d"), packets[i], gaps[i], missing[i],
-                                            percents[i]])
+                        csvwriter.writerow([dates[i].strftime("%Y-%m-%d"), packets[i], duplicates[i], gaps[i],
+                                            missing[i], percents[i]])
 
             plt.rcParams['figure.figsize'] = [10, 10]
 
@@ -156,6 +167,11 @@ def main():
             plt.xticks(rotation=45, fontsize=8)
 
             plt.subplot(rows, 1, 2)
+            plt.bar(dates_str, duplicates)
+            plt.title("Duplicate Packets")
+            plt.xticks(rotation=45, fontsize=8)
+
+            plt.subplot(rows, 1, 3)
             plt.bar(dates_str, gaps)
             plt.title("PSC Gaps")
             # for i in range(len(dates)):
@@ -163,23 +179,23 @@ def main():
             # plt.ylim([0, 30])
             plt.xticks(rotation=45, fontsize=8)
 
-            plt.subplot(rows, 1, 3)
+            plt.subplot(rows, 1, 4)
             plt.bar(dates_str, missing)
             plt.title("Missing Packets")
             plt.xticks(rotation=45, fontsize=8)
 
-            plt.subplot(rows, 1, 4)
+            plt.subplot(rows, 1, 5)
             plt.bar(dates_str, percents)
             plt.title("Percent Missing")
             plt.xticks(rotation=45, fontsize=8)
 
             if apid == "1675":
-                plt.subplot(6, 1, 5)
+                plt.subplot(6, 1, 6)
                 plt.bar(dates_str, frames)
                 plt.title("Depacketized Frames")
                 plt.xticks(rotation=45, fontsize=8)
 
-                plt.subplot(6, 1, 6)
+                plt.subplot(6, 1, 7)
                 plt.bar(dates_str, corrupt_frames)
                 plt.title("Corrupt Frames")
                 plt.xticks(rotation=45, fontsize=8)
