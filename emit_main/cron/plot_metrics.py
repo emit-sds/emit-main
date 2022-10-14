@@ -14,7 +14,7 @@ import subprocess
 import sys
 import yaml
 
-matplotlib.use('TkAgg')
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 
@@ -190,12 +190,12 @@ def main():
             plt.xticks(rotation=45, fontsize=8)
 
             if apid == "1675":
-                plt.subplot(6, 1, 6)
+                plt.subplot(rows, 1, 6)
                 plt.bar(dates_str, frames)
                 plt.title("Depacketized Frames")
                 plt.xticks(rotation=45, fontsize=8)
 
-                plt.subplot(6, 1, 7)
+                plt.subplot(rows, 1, 7)
                 plt.bar(dates_str, corrupt_frames)
                 plt.title("Corrupt Frames")
                 plt.xticks(rotation=45, fontsize=8)
