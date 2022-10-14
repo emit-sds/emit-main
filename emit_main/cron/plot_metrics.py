@@ -235,12 +235,13 @@ def main():
         # Create CSV too
         with open(os.path.join(args.output_dir, f"reassembly_{output_file_dates}.csv"), 'w') as csvfile:
             csvwriter = csv.writer(csvfile)
-            csvwriter.writerow(["dates", "dcids", "expected_frames", "missing_frames", "decompression_errors",
-                                "percent_missing", "cloudy_frames", "percent_cloudy", "corrupt_lines"])
+            csvwriter.writerow(["dates", "dcids", "expected_frames", "missing_frames", "corrupt_frames",
+                                "decompression_errors", "percent_missing", "cloudy_frames", "percent_cloudy",
+                                "corrupt_lines"])
             for i in range(len(dates)):
                 csvwriter.writerow([dates[i].strftime("%Y-%m-%d"), dcids[i], expected_frames[i], missing_frames[i],
-                                    decompression_errors[i], percent_missing[i], cloudy[i], f"{percent_cloudy[i]:.2f}",
-                                    corrupt_lines[i]])
+                                    corrupt_frames[i], decompression_errors[i], percent_missing[i], cloudy[i],
+                                    f"{percent_cloudy[i]:.2f}", corrupt_lines[i]])
 
         plt.rcParams['figure.figsize'] = [10, 14]
 
