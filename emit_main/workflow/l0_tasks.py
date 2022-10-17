@@ -85,14 +85,17 @@ class L0StripHOSC(SlurmJobTask):
         missing_packets = 0
         with open(tmp_report_path, "r") as f:
             for line in f.readlines():
-                if "Packet Count" in line:
+                if "Packet Count" in line and "Duplicate" not in line:
                     packet_count = int(line.rstrip("\n").split(" ")[-1])
                 if "Missing PSC Count" in line:
                     missing_packets = int(line.rstrip("\n").split(" ")[-1])
-        miss_pkt_percent = missing_packets / packet_count
-        if missing_packets / packet_count >= self.miss_pkt_thresh:
-            raise RuntimeError(f"{missing_packets} missing packets out of {packet_count} total is greater than the "
-                               f"missing packet threshold of {self.miss_pkt_thresh}")
+        total_expected_packets = packet_count + missing_packets
+        miss_pkt_ratio = missing_packets / total_expected_packets
+        if miss_pkt_ratio >= self.miss_pkt_thresh:
+            raise RuntimeError(f"Packets read: {packet_count}, missing packets: {missing_packets}. Ratio of missing "
+                               f"packets ({missing_packets}) to total expected ({total_expected_packets}) is "
+                               f"{miss_pkt_ratio} which is greater than or equal to the missing packet threshold of "
+                               f"{self.miss_pkt_thresh}")
 
         # Set up command to get CCSDS start/stop times
         get_start_stop_exe = os.path.join(pge.repo_dir, "get_ccsds_start_stop_times.py")
@@ -143,6 +146,16 @@ class L0StripHOSC(SlurmJobTask):
         if "ingest" in self.stream_path:
             # Move HOSC file out of ingest folder
             wm.move(self.stream_path, stream.hosc_path)
+
+        # Symlink the start time and stop times onto the HOSC filename for convenience
+        hosc_symlink = "_".join([
+            stream.apid,
+            stream.start_time.strftime("%Y%m%dT%H%M%S"),
+            stream.stop_time.strftime("%Y%m%dT%H%M%S")
+        ])
+        hosc_symlink += stream.hosc_name.replace(stream.apid, "")
+        hosc_symlink = os.path.join(stream.raw_dir, hosc_symlink)
+        wm.symlink(stream.hosc_name, hosc_symlink)
 
         # Update DB
         metadata = {
@@ -413,6 +426,10 @@ class L0ProcessPlanningProduct(SlurmJobTask):
             if e["name"].lower() == "planning horizon end":
                 horizon_end_time = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S")
 
+        if (horizon_start_time is None or horizon_end_time is None) and not self.test_mode:
+            raise RuntimeError("Either the horizon start time or the horizon end time is not defined.  Aborting.  Use "
+                               "--test_mode to bypass this error.")
+
         wm.print(__name__, f"Processing planning product with horizon start and end of {horizon_start_time} and "
                            f"{horizon_end_time}")
 
@@ -464,6 +481,8 @@ class L0ProcessPlanningProduct(SlurmJobTask):
         # Loop through events again and insert new orbits and DCIDS
         orbit_ids = []
         dcids = []
+        orbits_with_science = set()
+        orbits_with_dark = set()
         for e in events:
             # Check for orbit object
             if e["name"].lower() == "start orbit":
@@ -517,6 +536,7 @@ class L0ProcessPlanningProduct(SlurmJobTask):
             if e["name"].lower() in ("science", "dark"):
                 # Construct data collection metadata
                 dcid = str(e["dcid"]).zfill(10)
+                submode = e["name"].lower()
                 # Convert date strings to datetime objects to store in DB
                 e["datetime"] = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S")
                 e["endDatetime"] = datetime.datetime.strptime(e["endDatetime"], "%Y-%m-%dT%H:%M:%S")
@@ -527,7 +547,7 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                     "processing_version": wm.config["processing_version"],
                     "orbit": year + str(e["orbit number"]).zfill(5),
                     "scene": str(e["scene number"]).zfill(3),
-                    "submode": e["name"].lower(),
+                    "submode": submode,
                     "planning_product": e
                 }
 
@@ -542,6 +562,25 @@ class L0ProcessPlanningProduct(SlurmJobTask):
 
                 # Keep track of dcid for log entry
                 dcids.append(dcid)
+
+                # Keep track of orbits that have science and/or dark acquisitions
+                if submode == "science":
+                    orbits_with_science.add(dc_meta["orbit"])
+                if submode == "dark":
+                    orbits_with_dark.add(dc_meta["orbit"])
+
+        # Update orbits to include flags for has_science and has_dark
+        for orbit_id in orbit_ids:
+            orbit_meta = {
+                "has_science": False,
+                "has_dark": False
+            }
+            if orbit_id in orbits_with_science:
+                orbit_meta["has_science"] = True
+            if orbit_id in orbits_with_dark:
+                orbit_meta["has_dark"] = True
+            dm.update_orbit_metadata(orbit_id, orbit_meta)
+            wm.print(__name__, f"Updated orbit {orbit_id} in DB with {orbit_meta}")
 
         wm.print(__name__, f"Inserted a total of {len(orbit_ids)} orbits and {len(dcids)} data collections!")
 
@@ -619,9 +658,10 @@ class L0Deliver(SlurmJobTask):
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(stream.ccsds_path), tz=datetime.timezone.utc)
         l0_pge = wm.pges["emit-sds-l0"]
         ummg = daac_converter.initialize_ummg(granule_ur, creation_time, "EMITL0", collection_version,
-                                              wm.config["extended_build_num"], l0_pge.repo_name, l0_pge.version_tag)
+                                              stream.start_time, stream.stop_time, l0_pge.repo_name, l0_pge.version_tag,
+                                              software_build_version=wm.config["extended_build_num"])
         ummg = daac_converter.add_data_files_ummg(ummg, [daac_ccsds_path], "Unspecified", ["BINARY"])
-        ummg = daac_converter.add_related_url(ummg, l0_pge.repo_url, "DOWNLOAD SOFTWARE")
+        # ummg = daac_converter.add_related_url(ummg, l0_pge.repo_url, "DOWNLOAD SOFTWARE")
         ummg_path = stream.ccsds_path.replace(".bin", ".cmr.json")
         daac_converter.dump_json(ummg, ummg_path)
         wm.change_group_ownership(ummg_path)
@@ -703,6 +743,7 @@ class L0Deliver(SlurmJobTask):
                 "extended_build_num": wm.config["extended_build_num"],
                 "collection": notification["collection"],
                 "collection_version": notification["product"]["dataVersion"],
+                "granule_ur": granule_ur,
                 "sds_filename": target_src_map[file["name"]],
                 "daac_filename": file["name"],
                 "uri": file["uri"],

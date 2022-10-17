@@ -5,8 +5,8 @@
     "processing_version": "01",
     "luigi_local_scheduler": false,
     "luigi_workers": 2,
-    "tetracorder_library_basename": "06emitb",
-    "tetracorder_library_cmdname": "emit_b"
+    "tetracorder_library_basename": "06emitc",
+    "tetracorder_library_cmdname": "emit_c"
   },
 
   "filesystem_config": {
@@ -33,7 +33,7 @@
   },
 
   "build_config": {
-    "extended_build_num": "010502",
+    "extended_build_num": "010600",
     "conda_base_dir": "/beegfs/store/shared/anaconda3/"
   },
 
@@ -45,17 +45,25 @@
     "daac_provider": "JPL_EMIT_SDS",
     "daac_server_internal": "ngis-data.jpl.nasa.gov",
     "daac_server_external": "popo.jpl.nasa.gov",
-    "daac_base_dir": "/data/emit/lp_daac"
+    "daac_base_dir": "/data/emit/lp_daac",
+    "dois": {
+      "EMITL1ARAW": "10.5067/EMIT/EMITL1ARAW.001",
+      "EMITL1BATT": "10.5067/EMIT/EMITL1BATT.001",
+      "EMITL1BRAD": "10.5067/EMIT/EMITL1BRAD.001",
+      "EMITL2ARFL": "10.5067/EMIT/EMITL2ARFL.001",
+      "EMITL2BMIN": "10.5067/EMIT/EMITL2BMIN.001",
+      "EMITL3ASA": "10.5067/EMIT/EMITL3ASA.001"
+    }
   },
 
   "ancillary_paths": {
     "decompression_constants_path": "repos/emit-sds-l1a/decompression/constants.txt",
     "decompression_init_data_path": "repos/emit-sds-l1a/decompression/FPGA_Data_Initialization_File_CREATE_COMPRESSION_INIT_DATA_328_e0.bin",
-    "l1b_config_path": "repos/emit-sds-l1b/config/EMIT_20220504.json",
-    "l1b_geo_install_dir": "/store/emit/ops/repos/emit_l1b_geo_installs/1.5.0",
-    "l1b_geo_osp_dir": "/store/emit/ops/repos/emit_l1b_osp_installs/1.5.0",
-    "isofit_surface_config": "repos/emit-sds-l2a/surface/surface_20220714.json",
-    "isofit_emulator_base": "/beegfs/store/shared/sRTMnet_v100",
+    "l1b_config_path": "repos/emit-sds-l1b/config/EMIT_20220928.json",
+    "l1b_geo_install_dir": "/store/emit/ops/repos/emit_l1b_geo_installs/1.6.0",
+    "l1b_geo_osp_dir": "/store/emit/ops/repos/emit_l1b_osp_installs/1.6.0",
+    "isofit_surface_config": "repos/emit-sds-l2a/surface/surface_20221001.json",
+    "isofit_emulator_base": "/beegfs/store/shared/sRTMnet_v120.h5",
     "isofit_sixs_dir": "/beegfs/store/shared/sixs",
     "specpr_path": "/beegfs/store/shared/specpr",
     "tetracorder_path": "/beegfs/store/shared/spectroscopy-tetracorder/tetracorder5.27",

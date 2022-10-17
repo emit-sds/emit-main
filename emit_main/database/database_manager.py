@@ -73,7 +73,7 @@ class DatabaseManager:
         # outputs in time range
         query = {
             "submode": "science",
-            "num_valid_lines": {"$gte": 1},
+            "num_valid_lines": {"$gte": 2},
             "products.l1a.raw.img_path": {"$exists": 1},
             "products.l1b.rdn.img_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop},
@@ -87,12 +87,21 @@ class DatabaseManager:
             recent_darks = self.find_acquisitions_touching_date_range(
                 "dark",
                 "stop_time",
-                acq["start_time"] - datetime.timedelta(minutes=400),
+                acq["start_time"] - datetime.timedelta(minutes=800),
                 acq["start_time"],
                 instrument_mode=acq["instrument_mode"],
-                min_valid_lines=256,
+                min_valid_lines=512,
                 sort=-1)
-            if recent_darks is not None and len(recent_darks) > 0:
+            future_darks = self.find_acquisitions_touching_date_range(
+                "dark",
+                "start_time",
+                acq["stop_time"],
+                acq["stop_time"] + datetime.timedelta(minutes=800),
+                instrument_mode=acq["instrument_mode"],
+                min_valid_lines=512,
+                sort=1)
+            if (recent_darks is not None and len(recent_darks) > 0) or \
+                    (future_darks is not None and len(future_darks) > 0):
                 acqs_ready_for_cal.append(acq)
         return acqs_ready_for_cal
 
@@ -110,7 +119,8 @@ class DatabaseManager:
         }
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
-            results = self._remove_results_with_failed_tasks(results, ["emit.L2BAbundance", "emit.L3Unmix"])
+            results = self._remove_results_with_failed_tasks(results, ["emit.L2AReflectance", "emit.L2AMask",
+                                                                       "emit.L3Unmix"])
         return results
 
     def insert_acquisition(self, metadata):
@@ -237,9 +247,12 @@ class DatabaseManager:
         data_collections_coll.delete_many(query)
         return data_collections
 
-    def find_data_collections_by_orbit_id(self, orbit_id):
+    def find_data_collections_by_orbit_id(self, orbit_id, submode="science"):
         data_collections_coll = self.db.data_collections
-        return list(data_collections_coll.find({"orbit": orbit_id, "build_num": self.config["build_num"]}))
+        return list(data_collections_coll.find({
+            "orbit": orbit_id,
+            "submode": submode,
+            "build_num": self.config["build_num"]}))
 
     def find_data_collections_for_reassembly(self, start, stop, date_field="frames_last_modified", retry_failed=False):
         data_collections_coll = self.db.data_collections

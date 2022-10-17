@@ -6,6 +6,7 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 
 import glob
 import logging
+import math
 import os
 
 from emit_main.database.database_manager import DatabaseManager
@@ -79,23 +80,32 @@ class DataCollection:
         if len(frames) == 0:
             wm.print(__name__, f"No frames found in {self.frames_dir}")
             return False
-        # Check that we have the expected number of frames
+
         expected_num = int(frames[0].split("_")[3])
-        if len(frames) != expected_num:
-            wm.print(__name__, f"Number of frames, {len(frames)}, does not match expected number, {expected_num}")
-            return False
+        found_num = int(frames[-1].split("_")[2]) + 1
+
         # Check incrementing frame num
         frame_nums = [int(frame.split("_")[2]) for frame in frames]
-        if frame_nums != list(range(0, expected_num)):
+        if frame_nums != list(range(0, found_num)):
             wm.print(__name__, "Set of frames is not sequential!")
             return False
-        # Check that first frame has status 1 or 5
-        if frames[0].split("_")[4] not in ("1", "5"):
-            wm.print(__name__, "First frame in set does not begin with status 1 or 5!")
+
+        # Check that we have at least the expected number minus math.ceil(expected/100) and no more than the expected number
+        if found_num < expected_num - math.ceil(expected_num / 100) or found_num > expected_num:
+            wm.print(__name__, f"Number of frames, {found_num}, is not within a few frames of the expected number of "
+                               f"{expected_num}, or it is more than the expected number.")
             return False
+
+        # Check that first frame has status 1 or 5
+        if frames[0].split("_")[4] not in ("1", "5", "9"):
+            wm.print(__name__, "First frame in set does not begin with status 1, 5, or 9!")
+            return False
+
         # Check that all subsequent frames have status 0 or 4
         for frame in frames[1:]:
-            if frame.split("_")[4] not in ("0", "4"):
-                wm.print(__name__, "One of the frames in the set (after the first) does not have status 0 or 4!")
+            if frame.split("_")[4] not in ("0", "4", "9"):
+                wm.print(__name__, "One of the frames in the set (after the first) does not have status 0, 4, or 9!")
                 return False
+
+        # If we made it this far, then return True
         return True

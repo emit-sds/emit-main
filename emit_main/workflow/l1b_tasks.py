@@ -11,15 +11,17 @@ import json
 import logging
 import os
 
+import h5netcdf.legacyapi as netCDF4
 import luigi
 import spectral.io.envi as envi
-import netCDF4
+# import netCDF4
 
 from emit_main.workflow.acquisition import Acquisition
 from emit_main.workflow.output_targets import AcquisitionTarget, OrbitTarget
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_utils import daac_converter
+from emit_utils.file_checks import envi_header, get_gring_boundary_points, get_band_mean
 
 logger = logging.getLogger("emit-main")
 
@@ -64,13 +66,22 @@ class L1BCalibrate(SlurmJobTask):
         tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
         wm.makedirs(tmp_output_dir)
         tmp_rdn_img_path = os.path.join(tmp_output_dir, os.path.basename(acq.rdn_img_path))
+        tmp_rdn_destripe_img_path = tmp_rdn_img_path.replace("rdn", "rdn_destripe")
+        tmp_rdn_destripe_dark_img_path = os.path.join(tmp_output_dir, os.path.basename(acq.destripedark_img_path))
+        tmp_rdn_destripe_flatfield_img_path = os.path.join(tmp_output_dir, os.path.basename(acq.destripeff_img_path))
+        tmp_rdn_bandmask_img_path = os.path.join(tmp_output_dir, os.path.basename(acq.bandmask_img_path))
         log_name = os.path.basename(acq.rdn_img_path.replace(".img", "_pge.log"))
         tmp_log_path = os.path.join(tmp_output_dir, log_name)
         l1b_config_path = wm.config["l1b_config_path"]
-        with open(l1b_config_path, "r") as f:
-            config = json.load(f)
+
+        # Set instrument mode
+        instrument_mode = "default"
+        if acq.instrument_mode == "cold_img_mid" or acq.instrument_mode == "cold_img_mid_vdda":
+            instrument_mode = "half"
 
         # Update config file values with absolute paths and store all input files for logging later
+        with open(l1b_config_path, "r") as f:
+            config = json.load(f)
         input_files = {}
         for key, value in config.items():
             if "_file" in key:
@@ -85,7 +96,8 @@ class L1BCalibrate(SlurmJobTask):
                     if "_file" in k:
                         if not v.startswith("/"):
                             config["modes"][key][k] = os.path.abspath(os.path.join(os.path.dirname(l1b_config_path), v))
-                        input_files[k] = config["modes"][key][k]
+                        if key == instrument_mode:
+                            input_files[k] = config["modes"][key][k]
 
         tmp_config_path = os.path.join(self.local_tmp_dir, "l1b_config.json")
         with open(tmp_config_path, "w") as outfile:
@@ -93,34 +105,56 @@ class L1BCalibrate(SlurmJobTask):
 
         dm = wm.database_manager
 
+        dark_img_path = ""
         if len(self.dark_path) > 0:
             dark_img_path = self.dark_path
         else:
-            # Find dark image - Get most recent dark image, but throw error if not within last 400 minutes
+            # Find dark image - Get most nearest dark image, but throw error if not within last 800 minutes
             recent_darks = dm.find_acquisitions_touching_date_range(
                 "dark",
                 "stop_time",
-                acq.start_time - datetime.timedelta(minutes=400),
+                acq.start_time - datetime.timedelta(minutes=800),
                 acq.start_time,
                 instrument_mode=acq.instrument_mode,
-                min_valid_lines=256,
+                min_valid_lines=512,
                 sort=-1)
-            if recent_darks is None or len(recent_darks) == 0:
-                raise RuntimeError(f"Unable to find any darks for acquisition {acq.acquisition_id} within last 400 "
-                                   f"minutes.")
+            future_darks = dm.find_acquisitions_touching_date_range(
+                "dark",
+                "start_time",
+                acq.stop_time,
+                acq.stop_time + datetime.timedelta(minutes=800),
+                instrument_mode=acq.instrument_mode,
+                min_valid_lines=512,
+                sort=1)
+            if (recent_darks is None or len(recent_darks) == 0) and (future_darks is None or len(future_darks) == 0):
+                raise RuntimeError(f"Unable to find any darks for acquisition {acq.acquisition_id} within 800 minutes.")
 
-            dark_img_path = recent_darks[0]["products"]["l1a"]["raw"]["img_path"]
+            # Set dark image path to recent or future depending on which is nearest
+            recent_dark_offset = None
+            future_dark_offset = None
+            if recent_darks is not None and len(recent_darks) > 0:
+                dark_img_path = recent_darks[0]["products"]["l1a"]["raw"]["img_path"]
+                recent_dark_offset = abs((acq.start_time - recent_darks[0]["stop_time"]).total_seconds())
+                wm.print(__name__, f"Recent dark offset: {recent_dark_offset}")
+
+            if future_darks is not None and len(future_darks) > 0:
+                dark_img_path = future_darks[0]["products"]["l1a"]["raw"]["img_path"]
+                future_dark_offset = abs((future_darks[0]["start_time"] - acq.stop_time).total_seconds())
+                wm.print(__name__, f"Future dark offset: {future_dark_offset}")
+
+            # If we have both, then set the dark image path back to recent dark if the offset is smaller
+            if recent_dark_offset and future_dark_offset and recent_dark_offset <= future_dark_offset:
+                dark_img_path = recent_darks[0]["products"]["l1a"]["raw"]["img_path"]
+                wm.print(__name__, "Recent dark offset is less than future dark offset")
 
         input_files["dark_file"] = dark_img_path
 
         emitrdn_exe = os.path.join(pge.repo_dir, "emitrdn.py")
+        destripe_exe = os.path.join(pge.repo_dir, "utils", "fitflatfield.py")
         utils_path = os.path.join(pge.repo_dir, "utils")
         env = os.environ.copy()
         env["PYTHONPATH"] = f"$PYTHONPATH:{utils_path}"
         env["RAY_worker_register_timeout_seconds"] = "600"
-        instrument_mode = "default"
-        if acq.instrument_mode == "cold_img_mid" or acq.instrument_mode == "cold_img_mid_vdda":
-            instrument_mode = "half"
         cmd = ["python", emitrdn_exe,
                "--mode", instrument_mode,
                "--level", self.level,
@@ -128,15 +162,27 @@ class L1BCalibrate(SlurmJobTask):
                acq.raw_img_path,
                dark_img_path,
                tmp_config_path,
-               tmp_rdn_img_path]
+               tmp_rdn_img_path,
+               tmp_rdn_bandmask_img_path]
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
-        # Copy output files to l1b dir
-        for file in glob.glob(os.path.join(tmp_output_dir, "*")):
-            if file.endswith(".hdr"):
-                wm.copy(file, acq.rdn_hdr_path)
-            else:
-                wm.copy(file, os.path.join(acq.l1b_data_dir, os.path.basename(file)))
+        cmd_ds = ["python", destripe_exe,
+                  tmp_rdn_img_path,
+                  tmp_rdn_destripe_img_path,
+                  tmp_rdn_destripe_dark_img_path,
+                  tmp_rdn_destripe_flatfield_img_path]
+        pge.run(cmd_ds, tmp_dir=self.tmp_dir, env=env)
+
+        # Copy output files to l1b dir (all but pre-destripped radiance)
+        wm.copy(tmp_rdn_destripe_img_path, acq.rdn_img_path)
+        wm.copy(envi_header(tmp_rdn_destripe_img_path), acq.rdn_hdr_path)
+        wm.copy(tmp_rdn_destripe_dark_img_path, acq.destripedark_img_path)
+        wm.copy(envi_header(tmp_rdn_destripe_dark_img_path), acq.destripedark_hdr_path)
+        wm.copy(tmp_rdn_destripe_flatfield_img_path, acq.destripeff_img_path)
+        wm.copy(envi_header(tmp_rdn_destripe_flatfield_img_path), acq.destripeff_hdr_path)
+        wm.copy(tmp_rdn_bandmask_img_path, acq.bandmask_img_path)
+        wm.copy(envi_header(tmp_rdn_bandmask_img_path), acq.bandmask_hdr_path)
+        wm.copy(tmp_log_path, os.path.join(acq.l1b_data_dir, os.path.basename(tmp_log_path)))
 
         # Update hdr files
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
@@ -147,7 +193,7 @@ class L1BCalibrate(SlurmJobTask):
         hdr["emit pge name"] = pge.repo_url
         hdr["emit pge version"] = pge.version_tag
         hdr["emit pge input files"] = input_files_arr
-        hdr["emit pge run command"] = " ".join(cmd)
+        hdr["emit pge run command"] = " ".join(cmd) + ";" + " ".join(cmd_ds)
         hdr["emit software build version"] = wm.config["extended_build_num"]
         hdr["emit documentation version"] = doc_version
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rdn_img_path), tz=datetime.timezone.utc)
@@ -170,6 +216,32 @@ class L1BCalibrate(SlurmJobTask):
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn": product_dict})
 
+        product_dict_dd = {
+            "img_path": acq.destripedark_img_path,
+            "hdr_path": acq.destripedark_hdr_path,
+            "created": creation_time,
+        }
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.destripedark": product_dict_dd})
+
+        product_dict_df = {
+            "img_path": acq.destripeff_img_path,
+            "hdr_path": acq.destripeff_hdr_path,
+            "created": creation_time,
+        }
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.destripeff": product_dict_df})
+
+        product_dict_bm = {
+            "img_path": acq.bandmask_img_path,
+            "hdr_path": acq.bandmask_hdr_path,
+            "created": creation_time,
+            "dimensions": {
+                "lines": hdr["lines"],
+                "samples": hdr["samples"],
+                "bands": hdr["bands"]
+            }
+        }
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.bandmask": product_dict_bm})
+
         # Check if orbit now has complete set of radiance files and update orbit metadata
         wm_orbit = WorkflowManager(config_path=self.config_path, orbit_id=acq.orbit)
         orbit = wm_orbit.orbit
@@ -190,7 +262,13 @@ class L1BCalibrate(SlurmJobTask):
             "completion_status": "SUCCESS",
             "output": {
                 "l1b_rdn_img_path": acq.rdn_img_path,
-                "l1b_rdn_hdr_path:": acq.rdn_hdr_path
+                "l1b_rdn_hdr_path:": acq.rdn_hdr_path,
+                "l1b_destripedark_img_path:": acq.destripedark_img_path,
+                "l1b_destripedark_hdr_path:": acq.destripedark_hdr_path,
+                "l1b_destripeff_img_path:": acq.destripeff_img_path,
+                "l1b_destripeff_hdr_path:": acq.destripeff_hdr_path,
+                "l1b_bandmask_img_path:": acq.bandmask_img_path,
+                "l1b_bandmask_hdr_path:": acq.bandmask_hdr_path
             }
         }
 
@@ -240,7 +318,7 @@ class L1BGeolocate(SlurmJobTask):
                                f"orbit.")
 
         # Get acquisitions in orbit (only science with at least 1 valid line, not dark) - radiance and line timestamps
-        acquisitions_in_orbit = dm.find_acquisitions_by_orbit_id(orbit.orbit_id, "science", min_valid_lines=1)
+        acquisitions_in_orbit = dm.find_acquisitions_by_orbit_id(orbit.orbit_id, "science", min_valid_lines=2)
 
         # Build input_files dictionary
         input_files = {
@@ -276,9 +354,10 @@ class L1BGeolocate(SlurmJobTask):
         pge.run(cmd, tmp_dir=self.tmp_dir, use_conda_run=False)
 
         # Get unique acquisitions_ids
-        output_prods = [os.path.basename(path) for path in glob.glob(os.path.join(tmp_output_dir, "emit*"))]
+        output_prods = [os.path.basename(path) for path in glob.glob(os.path.join(tmp_output_dir, "emit*img"))]
         output_prods.sort()
-        acquisition_ids = set([prod.split("_")[0] for prod in output_prods])
+        acquisition_ids = list(set([prod.split("_")[0] for prod in output_prods]))
+        acquisition_ids.sort()
         wm.print(__name__, f"Found acquisition ids: {acquisition_ids}")
         output_prods = {
             "l1b_glt_img_paths": [],
@@ -407,6 +486,17 @@ class L1BGeolocate(SlurmJobTask):
             dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn_kmz": acq_prod_map[id]["rdn_kmz"]})
             dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn_png": acq_prod_map[id]["rdn_png"]})
 
+            # Get additional attributes and add to DB
+            glt_gring = get_gring_boundary_points(acq.glt_hdr_path)
+            mean_solar_azimuth = get_band_mean(acq.obs_img_path, 1)
+            mean_solar_zenith = get_band_mean(acq.obs_img_path, 2)
+            meta = {
+                "gring": glt_gring,
+                "mean_solar_azimuth": mean_solar_azimuth,
+                "mean_solar_zenith": mean_solar_zenith
+            }
+            dm.update_acquisition_metadata(acq.acquisition_id, meta)
+
         # Finish updating orbit level properties
         # Copy back corrected att/eph
         tmp_corr_att_eph_path = glob.glob(os.path.join(tmp_output_dir, "*l1b_att*nc"))[0]
@@ -416,25 +506,30 @@ class L1BGeolocate(SlurmJobTask):
         daac_converter.makeGlobalAttrBase(ae_nc)
         ae_nc.title = "EMIT L1B Corrected Spacecraft Attitude and Ephemeris V001"
         ae_nc.summary = ae_nc.summary + \
-            f"\\n\\nThis collection contains L1B Corrected Spacecraft Attitude and Ephemeris (ATT).\
-            ATT contains the uncorrected Broadcast Ancillary Data (BAD) ephemeris and attitude quaternions \
-            from the ISS, and the data after correction by the geolocation process. \
-            This product is generated at the orbit level.\
-            "
+            f"\\n\\nThis collection contains L1B Corrected Spacecraft Attitude and Ephemeris (ATT). \
+ATT contains the uncorrected Broadcast Ancillary Data (BAD) ephemeris and attitude quaternions \
+from the ISS, and the data after correction by the geolocation process. \
+This product is generated at the orbit level."
         ae_nc.product_version = wm.config["extended_build_num"]
         ae_nc.time_coverage_start = orbit.start_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         ae_nc.time_coverage_end = orbit.stop_time.strftime("%Y-%m-%dT%H:%M:%S%z")
+        ae_nc.history = f"PGE Input files: {orbit.uncorr_att_eph_path}"
 
         ae_nc.sync()
         ae_nc.close()
 
         wm.copy(tmp_corr_att_eph_path, orbit.corr_att_eph_path)
+        output_prods["l1b_corr_att_eph_path"] = orbit.corr_att_eph_path
 
-        # Copy back remainder of work directory
+        # Make work directory
         wm.makedirs(orbit.l1b_geo_work_dir)
+        # Copy back geoqa path but use corr att/eph naming as basis
+        tmp_geoqa_path = glob.glob(os.path.join(tmp_output_dir, "*_geoqa_*"))[0]
+        geoqa_name = os.path.basename(orbit.corr_att_eph_path).replace("_att_", "_geoqa_")
+        wm.copy(tmp_geoqa_path, os.path.join(orbit.l1b_geo_work_dir, geoqa_name))
+        # Copy back remainder of work directory
         ancillary_workdir_paths = glob.glob(os.path.join(tmp_output_dir, "l1b_geo*"))
         ancillary_workdir_paths += glob.glob(os.path.join(tmp_output_dir, "map*"))
-        ancillary_workdir_paths += glob.glob(os.path.join(tmp_output_dir, "*_geoqa_*"))
         ancillary_workdir_paths += glob.glob(os.path.join(tmp_output_dir, "extra*"))
         for path in ancillary_workdir_paths:
             wm.copy(path, os.path.join(orbit.l1b_geo_work_dir, os.path.basename(path)))
@@ -512,7 +607,10 @@ class L1BRdnFormat(SlurmJobTask):
         tmp_log_path = os.path.join(self.local_tmp_dir, "output_conversion_pge.log")
         cmd = ["python", output_generator_exe, tmp_daac_rdn_nc_path, tmp_daac_obs_nc_path, acq.rdn_img_path, acq.obs_img_path, acq.loc_img_path,
                acq.glt_img_path, "V0" + str(wm.config["processing_version"]), "--log_file", tmp_log_path]
-        pge.run(cmd, tmp_dir=self.tmp_dir)
+
+        # Run this inside the emit-main conda environment to include emit-utils and other requirements
+        main_pge = wm.pges["emit-main"]
+        main_pge.run(cmd, tmp_dir=self.tmp_dir)
 
         # Copy and rename output files back to /store
         log_path = acq.rdn_nc_path.replace(".nc", "_nc_pge.log")
@@ -572,6 +670,7 @@ class L1BRdnDeliver(SlurmJobTask):
     def requires(self):
 
         logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
+        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
         return L1BRdnFormat(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
                             partition=self.partition)
 
@@ -612,17 +711,19 @@ class L1BRdnDeliver(SlurmJobTask):
         daynight = "Day" if acq.submode == "science" else "Night"
         l1b_pge = wm.pges["emit-sds-l1b"]
         ummg = daac_converter.initialize_ummg(acq.rdn_granule_ur, nc_creation_time, "EMITL1BRAD",
-                                              acq.collection_version, wm.config["extended_build_num"],
-                                              l1b_pge.repo_name, l1b_pge.version_tag, cloud_fraction=acq.cloud_fraction)
-        ummg = daac_converter.add_data_files_ummg(
-            ummg,
-            [daac_rdn_nc_path, daac_obs_nc_path, daac_browse_path],
-            daynight,
-            ["NETCDF-4", "NETCDF-4", "PNG"])
-        ummg = daac_converter.add_related_url(ummg, l1b_pge.repo_url, "DOWNLOAD SOFTWARE")
-        # TODO: replace w/ database read or read from L1B Geolocate PGE
-        tmp_boundary_points_list = [[-118.53, 35.85], [-118.53, 35.659], [-118.397, 35.659], [-118.397, 35.85]]
-        ummg = daac_converter.add_boundary_ummg(ummg, tmp_boundary_points_list)
+                                              acq.collection_version, acq.start_time,
+                                              acq.stop_time, l1b_pge.repo_name, l1b_pge.version_tag,
+                                              software_build_version=wm.config["extended_build_num"],
+                                              doi=wm.config["dois"]["EMITL1BRAD"], orbit=int(acq.orbit),
+                                              orbit_segment=int(acq.scene), scene=int(acq.daac_scene),
+                                              solar_zenith=acq.mean_solar_zenith,
+                                              solar_azimuth=acq.mean_solar_azimuth,
+                                              cloud_fraction=acq.cloud_fraction)
+
+        ummg = daac_converter.add_data_files_ummg(ummg, [daac_rdn_nc_path, daac_obs_nc_path, daac_browse_path],
+                                                  daynight, ["NETCDF-4", "NETCDF-4", "PNG"])
+        # ummg = daac_converter.add_related_url(ummg, l1b_pge.repo_url, "DOWNLOAD SOFTWARE")
+        ummg = daac_converter.add_boundary_ummg(ummg, acq.gring)
         daac_converter.dump_json(ummg, ummg_path)
         wm.change_group_ownership(ummg_path)
 
@@ -719,6 +820,7 @@ class L1BRdnDeliver(SlurmJobTask):
                 "extended_build_num": wm.config["extended_build_num"],
                 "collection": notification["collection"],
                 "collection_version": notification["product"]["dataVersion"],
+                "granule_ur": acq.rdn_granule_ur,
                 "sds_filename": target_src_map[file["name"]],
                 "daac_filename": file["name"],
                 "uri": file["uri"],
@@ -811,7 +913,7 @@ class L1BAttDeliver(SlurmJobTask):
         # Create local/tmp daac names and paths
         collection_version = f"0{wm.config['processing_version']}"
         start_time_str = orbit.start_time.strftime("%Y%m%dT%H%M%S")
-        granule_ur = f"EMIT_L1B_ATT_{collection_version}_{start_time_str}_{orbit.short_oid}"
+        granule_ur = f"EMIT_L1B_ATT_{collection_version}_{start_time_str}_{orbit.orbit_id}"
         daac_nc_name = f"{granule_ur}.nc"
         daac_ummg_name = f"{granule_ur}.cmr.json"
         daac_nc_path = os.path.join(self.tmp_dir, daac_nc_name)
@@ -824,14 +926,13 @@ class L1BAttDeliver(SlurmJobTask):
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(nc_path), tz=datetime.timezone.utc)
         l1bgeo_pge = wm.pges["emit-sds-l1b-geo"]
         ummg = daac_converter.initialize_ummg(granule_ur, nc_creation_time, "EMITL1BATT", collection_version,
-                                              wm.config["extended_build_num"], l1bgeo_pge.repo_name,
-                                              l1bgeo_pge.version_tag)
+                                              orbit.start_time, orbit.stop_time, l1bgeo_pge.repo_name,
+                                              l1bgeo_pge.version_tag,
+                                              software_build_version=wm.config["extended_build_num"],
+                                              doi=wm.config["dois"]["EMITL1BATT"], orbit=int(orbit.orbit_id))
         ummg = daac_converter.add_data_files_ummg(ummg, [daac_nc_path], "Both", ["NETCDF-4"])
-        ummg = daac_converter.add_related_url(ummg, l1bgeo_pge.repo_url, "DOWNLOAD SOFTWARE")
-        # TODO: Remove boundary for orbit?
-        # TODO: replace w/ database read or read from L1B Geolocate PGE
-        # tmp_boundary_points_list = [[-118.53, 35.85], [-118.53, 35.659], [-118.397, 35.659], [-118.397, 35.85]]
-        # ummg = daac_converter.add_boundary_ummg(ummg, tmp_boundary_points_list)
+        # ummg = daac_converter.add_related_url(ummg, l1bgeo_pge.repo_url, "DOWNLOAD SOFTWARE")
+
         daac_converter.dump_json(ummg, ummg_path)
         wm.change_group_ownership(ummg_path)
 
@@ -910,6 +1011,7 @@ class L1BAttDeliver(SlurmJobTask):
                 "extended_build_num": wm.config["extended_build_num"],
                 "collection": notification["collection"],
                 "collection_version": notification["product"]["dataVersion"],
+                "granule_ur": granule_ur,
                 "sds_filename": target_src_map[file["name"]],
                 "daac_filename": file["name"],
                 "uri": file["uri"],

@@ -46,10 +46,12 @@ class L2AReflectance(SlurmJobTask):
         logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
-        return (L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
-                             partition=self.partition),
-                L1BGeolocate(config_path=self.config_path, orbit_id=acq.orbit, level=self.level,
-                             partition=self.partition))
+        return None
+        # Don't look up dependencies here since the monitor guarantees that these have already run
+        # return (L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+        #                      partition=self.partition),
+        #         L1BGeolocate(config_path=self.config_path, orbit_id=acq.orbit, level=self.level,
+        #                      partition=self.partition))
 
     def output(self):
 
@@ -110,7 +112,9 @@ class L2AReflectance(SlurmJobTask):
                "--surface_path", tmp_surface_path,
                "--ray_temp_dir", "/tmp/ray",
                "--log_file", tmp_log_path,
-               "--logging_level", self.level]
+               "--logging_level", self.level,
+               "--num_neighbors=10",
+               "--pressure_elevation"]
 
         env["SIXS_DIR"] = wm.config["isofit_sixs_dir"]
         env["EMULATOR_DIR"] = emulator_base
@@ -128,11 +132,16 @@ class L2AReflectance(SlurmJobTask):
         tmp_lbl_hdr_path = envi_header(tmp_lbl_path)
         tmp_statesubs_path = os.path.join(
             self.local_tmp_dir, "output", self.acquisition_id + "_subs_state")
-        tmp_statesubs_hdr_path = envi_header(tmp_statesubs_path)
+        tmp_statesubsuncert_path = os.path.join(
+            self.local_tmp_dir, "output", self.acquisition_id + "_subs_uncert")
+        tmp_obssubs_path = os.path.join(
+            self.local_tmp_dir, "input", self.acquisition_id + "_subs_obs")
+        tmp_locsubs_path = os.path.join(
+            self.local_tmp_dir, "input", self.acquisition_id + "_subs_loc")
         tmp_quality_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_rfl_quality.txt")
 
-        cmd = ["gdal_translate", tmp_rfl_path, tmp_rfl_png_path, "-b", "32", "-b", "22", "-b",
-               "13", "-ot", "Byte", "-scale", "-exponent", "0.6", "-of", "PNG", "-co", "ZLEVEL=9"]
+        cmd = ["gdal_translate", tmp_rfl_path, tmp_rfl_png_path, "-b", "35", "-b", "23", "-b",
+               "11", "-ot", "Byte", "-scale", "-exponent", "0.6", "-of", "PNG", "-co", "ZLEVEL=9"]
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
         cmd = ["python", os.path.join(pge.repo_dir, "spectrum_quality.py"), tmp_rfl_path, tmp_quality_path]
@@ -145,7 +154,13 @@ class L2AReflectance(SlurmJobTask):
         wm.copy(tmp_lbl_path, acq.lbl_img_path)
         wm.copy(tmp_lbl_hdr_path, acq.lbl_hdr_path)
         wm.copy(tmp_statesubs_path, acq.statesubs_img_path)
-        wm.copy(tmp_statesubs_hdr_path, acq.statesubs_hdr_path)
+        wm.copy(envi_header(tmp_statesubs_path), acq.statesubs_hdr_path)
+        wm.copy(tmp_statesubsuncert_path, acq.statesubsuncert_img_path)
+        wm.copy(envi_header(tmp_statesubsuncert_path), acq.statesubsuncert_hdr_path)
+        wm.copy(tmp_obssubs_path, acq.obssubs_img_path)
+        wm.copy(envi_header(tmp_obssubs_path), acq.obssubs_hdr_path)
+        wm.copy(tmp_locsubs_path, acq.locsubs_img_path)
+        wm.copy(envi_header(tmp_locsubs_path), acq.locsubs_hdr_path)
         wm.copy(tmp_rfl_png_path, acq.rfl_png_path)
         wm.copy(tmp_quality_path, acq.quality_txt_path)
 
@@ -159,6 +174,7 @@ class L2AReflectance(SlurmJobTask):
         dm = wm.database_manager
         for img_path, hdr_path in [(acq.rfl_img_path, acq.rfl_hdr_path), (acq.rfluncert_img_path, acq.rfluncert_hdr_path)]:
             hdr = envi.read_envi_header(hdr_path)
+            hdr["description"] = "{{EMIT L2A surface reflectance (0-1)}}"
             hdr["emit acquisition start time"] = acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
             hdr["emit acquisition stop time"] = acq.stop_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
             hdr["emit pge name"] = pge.repo_url
@@ -237,10 +253,13 @@ class L2AMask(SlurmJobTask):
     def requires(self):
 
         logger.debug(self.task_family + " requires")
-        return (L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
-                             partition=self.partition),
-                L2AReflectance(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
-                               partition=self.partition))
+        return L2AReflectance(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+                              partition=self.partition)
+        # Only look include reflectance dependency for now.  The monitor guarantees that calibration has run
+        # return (L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+        #                      partition=self.partition),
+        #         L2AReflectance(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+        #                        partition=self.partition))
 
     def output(self):
 
@@ -395,9 +414,12 @@ class L2AFormat(SlurmJobTask):
 
         cmd = ["python", output_generator_exe, tmp_daac_rfl_nc_path, tmp_daac_rfl_unc_nc_path,
                tmp_daac_mask_nc_path, acq.rfl_img_path, acq.rfluncert_img_path,
-               acq.mask_img_path, acq.loc_img_path, acq.glt_img_path, "V0" + str(wm.config["processing_version"]),
-               "--log_file", tmp_log_path]
-        pge.run(cmd, tmp_dir=self.tmp_dir)
+               acq.mask_img_path, acq.bandmask_img_path, acq.loc_img_path, acq.glt_img_path,
+               "V0" + str(wm.config["processing_version"]), "--log_file", tmp_log_path]
+
+        # Run this inside the emit-main conda environment to include emit-utils and other requirements
+        main_pge = wm.pges["emit-main"]
+        main_pge.run(cmd, tmp_dir=self.tmp_dir)
 
         # Copy and rename output files back to /store
         log_path = acq.rfl_nc_path.replace(".nc", "_nc_pge.log")
@@ -505,17 +527,21 @@ class L2ADeliver(SlurmJobTask):
         daynight = "Day" if acq.submode == "science" else "Night"
         l2a_pge = wm.pges["emit-sds-l2a"]
         ummg = daac_converter.initialize_ummg(acq.rfl_granule_ur, nc_creation_time, "EMITL2ARFL",
-                                              acq.collection_version, wm.config["extended_build_num"],
-                                              l2a_pge.repo_name, l2a_pge.version_tag, cloud_fraction=acq.cloud_fraction)
+                                              acq.collection_version, acq.start_time,
+                                              acq.stop_time, l2a_pge.repo_name, l2a_pge.version_tag,
+                                              software_build_version=wm.config["extended_build_num"],
+                                              doi=wm.config["dois"]["EMITL2ARFL"], orbit=int(acq.orbit),
+                                              orbit_segment=int(acq.scene), scene=int(acq.daac_scene),
+                                              solar_zenith=acq.mean_solar_zenith,
+                                              solar_azimuth=acq.mean_solar_azimuth,
+                                              cloud_fraction=acq.cloud_fraction)
         ummg = daac_converter.add_data_files_ummg(
             ummg,
             [daac_rfl_nc_path, daac_rfluncert_nc_path, daac_mask_nc_path, daac_browse_path],
             daynight,
             ["NETCDF-4", "NETCDF-4", "NETCDF-4", "PNG"])
-        ummg = daac_converter.add_related_url(ummg, l2a_pge.repo_url, "DOWNLOAD SOFTWARE")
-        # TODO: replace w/ database read or read from L1B Geolocate PGE
-        tmp_boundary_points_list = [[-118.53, 35.85], [-118.53, 35.659], [-118.397, 35.659], [-118.397, 35.85]]
-        ummg = daac_converter.add_boundary_ummg(ummg, tmp_boundary_points_list)
+        # ummg = daac_converter.add_related_url(ummg, l2a_pge.repo_url, "DOWNLOAD SOFTWARE")
+        ummg = daac_converter.add_boundary_ummg(ummg, acq.gring)
         daac_converter.dump_json(ummg, ummg_path)
         wm.change_group_ownership(ummg_path)
 
@@ -621,6 +647,7 @@ class L2ADeliver(SlurmJobTask):
                 "extended_build_num": wm.config["extended_build_num"],
                 "collection": notification["collection"],
                 "collection_version": notification["product"]["dataVersion"],
+                "granule_ur": acq.rfl_granule_ur,
                 "sds_filename": target_src_map[file["name"]],
                 "daac_filename": file["name"],
                 "uri": file["uri"],
