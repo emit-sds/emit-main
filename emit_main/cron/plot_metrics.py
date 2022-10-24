@@ -94,7 +94,7 @@ def main():
                 csvwriter.writerow([dates[i].strftime("%Y-%m-%d"), packets[i], duplicates[i], gaps[i], missing[i],
                                     percents[i]])
 
-        plt.rcParams['figure.figsize'] = [10, 10]
+        plt.rcParams['figure.figsize'] = [10, 12]
 
         plt.subplot(5, 1, 1)
         plt.bar(dates_str, packets)
@@ -159,7 +159,7 @@ def main():
                         csvwriter.writerow([dates[i].strftime("%Y-%m-%d"), packets[i], duplicates[i], gaps[i],
                                             missing[i], percents[i]])
 
-            plt.rcParams['figure.figsize'] = [10, 10]
+            plt.rcParams['figure.figsize'] = [10, 12]
 
             plt.subplot(rows, 1, 1)
             plt.bar(dates_str, packets)
@@ -243,7 +243,7 @@ def main():
                                     corrupt_frames[i], decompression_errors[i], percent_missing[i], cloudy[i],
                                     f"{percent_cloudy[i]:.2f}", corrupt_lines[i]])
 
-        plt.rcParams['figure.figsize'] = [10, 14]
+        plt.rcParams['figure.figsize'] = [10, 18]
 
         plt.subplot(9, 1, 1)
         plt.bar(dates_str, dcids)
@@ -290,7 +290,7 @@ def main():
         plt.title("Corrupt Lines")
         plt.xticks(rotation=45, fontsize=8)
 
-        plt.subplots_adjust(hspace=1.4)
+        plt.subplots_adjust(hspace=1.5)
         plt.suptitle("Reassembly", fontsize=12)
         plt.savefig(os.path.join(args.output_dir, f"reassembly_{output_file_dates}.png"))
         if args.show_plots:
