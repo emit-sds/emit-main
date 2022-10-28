@@ -91,6 +91,8 @@ def parse_args():
                         help="Ignore missing BAD data in an orbit when reformatting BAD")
     parser.add_argument("--ignore_missing_radiance", action="store_true",
                         help="Ignore missing radiance files in an orbit when doing geolocation")
+    parser.add_argument("--daac_ingest_queue", default="forward",
+                        help="Options are 'forward' or 'backward' depending on which DAAC ingestion queue to use.")
     parser.add_argument("--dry_run", action="store_true",
                         help="Just return a list of paths to process from the ingest folder, but take no action")
     parser.add_argument("--test_mode", action="store_true",
@@ -170,7 +172,8 @@ def get_tasks_from_product_args(args):
     prod_task_map = {
         "l0hosc": L0StripHOSC(stream_path=args.stream_path, miss_pkt_thresh=args.miss_pkt_thresh,
                               **kwargs),
-        "l0daac": L0Deliver(stream_path=args.stream_path, miss_pkt_thresh=args.miss_pkt_thresh, **kwargs),
+        "l0daac": L0Deliver(stream_path=args.stream_path, miss_pkt_thresh=args.miss_pkt_thresh,
+                            daac_ingest_queue=args.daac_ingest_queue, **kwargs),
         "l0plan": L0ProcessPlanningProduct(plan_prod_path=args.plan_prod_path, test_mode=args.test_mode, **kwargs),
         "l0bad": L0IngestBAD(stream_path=args.stream_path, **kwargs),
         "l1aeng": L1AReformatEDP(stream_path=args.stream_path, pkt_format=args.pkt_format,
@@ -184,20 +187,21 @@ def get_tasks_from_product_args(args):
                                          acq_chunksize=args.acq_chunksize, test_mode=args.test_mode, **kwargs),
         "l1araw": L1AReassembleRaw(dcid=args.dcid, ignore_missing_frames=args.ignore_missing_frames,
                                    acq_chunksize=args.acq_chunksize, test_mode=args.test_mode, **kwargs),
-        "l1adaac": L1ADeliver(acquisition_id=args.acquisition_id, **kwargs),
+        "l1adaac": L1ADeliver(acquisition_id=args.acquisition_id, daac_ingest_queue=args.daac_ingest_queue, **kwargs),
         "l1abad": L1AReformatBAD(orbit_id=args.orbit_id, ignore_missing_bad=args.ignore_missing_bad, **kwargs),
         "l1bcal": L1BCalibrate(acquisition_id=args.acquisition_id, dark_path=args.dark_path, **kwargs),
         "l1bgeo": L1BGeolocate(orbit_id=args.orbit_id, ignore_missing_radiance=args.ignore_missing_radiance, **kwargs),
         "l1brdnformat": L1BRdnFormat(acquisition_id=args.acquisition_id, **kwargs),
-        "l1brdndaac": L1BRdnDeliver(acquisition_id=args.acquisition_id, **kwargs),
-        "l1battdaac": L1BAttDeliver(orbit_id=args.orbit_id, **kwargs),
+        "l1brdndaac": L1BRdnDeliver(acquisition_id=args.acquisition_id, daac_ingest_queue=args.daac_ingest_queue,
+                                    **kwargs),
+        "l1battdaac": L1BAttDeliver(orbit_id=args.orbit_id, daac_ingest_queue=args.daac_ingest_queue, **kwargs),
         "l2arefl": L2AReflectance(acquisition_id=args.acquisition_id, **kwargs),
         "l2amask": L2AMask(acquisition_id=args.acquisition_id, **kwargs),
         "l2aformat": L2AFormat(acquisition_id=args.acquisition_id, **kwargs),
-        "l2adaac": L2ADeliver(acquisition_id=args.acquisition_id, **kwargs),
+        "l2adaac": L2ADeliver(acquisition_id=args.acquisition_id, daac_ingest_queue=args.daac_ingest_queue, **kwargs),
         "l2babun": L2BAbundance(acquisition_id=args.acquisition_id, **kwargs),
         "l2bformat": L2BFormat(acquisition_id=args.acquisition_id, **kwargs),
-        "l2bdaac": L2BDeliver(acquisition_id=args.acquisition_id, **kwargs),
+        "l2bdaac": L2BDeliver(acquisition_id=args.acquisition_id, daac_ingest_queue=args.daac_ingest_queue, **kwargs),
         "l3unmix": L3Unmix(acquisition_id=args.acquisition_id, **kwargs),
         # "l3unmixformat": L3UnmixFormat(acquisition_id=args.acquisition_id, **kwargs)
         "daacscenes": AssignDAACSceneNumbers(orbit_id=args.orbit_id, override_output=args.override_output, **kwargs),

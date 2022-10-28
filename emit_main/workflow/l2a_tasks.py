@@ -475,6 +475,7 @@ class L2ADeliver(SlurmJobTask):
     acquisition_id = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
+    daac_ingest_queue = luigi.Parameter(default="forward")
 
     memory = 18000
 
@@ -574,9 +575,14 @@ class L2ADeliver(SlurmJobTask):
             daac_browse_name: os.path.basename(acq.rfl_png_path),
             daac_ummg_name: os.path.basename(ummg_path)
         }
+        provider = wm.config["daac_provider_forward"]
+        queue_url = wm.config["daac_submission_url_forward"]
+        if self.daac_ingest_queue == "backward":
+            provider = wm.config["daac_provider_backward"]
+            queue_url = wm.config["daac_submission_url_backward"]
         notification = {
             "collection": "EMITL2ARFL",
-            "provider": wm.config["daac_provider"],
+            "provider": provider,
             "identifier": cnm_submission_id,
             "version": wm.config["cnm_version"],
             "product": {
@@ -633,7 +639,7 @@ class L2ADeliver(SlurmJobTask):
         wm.change_group_ownership(cnm_submission_path)
 
         # Submit notification via AWS SQS
-        cmd_aws = [wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", wm.config["daac_submission_url"], "--message-body",
+        cmd_aws = [wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", queue_url, "--message-body",
                    f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"]]
         pge.run(cmd_aws, tmp_dir=self.tmp_dir)
         cnm_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(cnm_submission_path),
@@ -656,6 +662,7 @@ class L2ADeliver(SlurmJobTask):
                 "checksum": file["checksum"],
                 "checksum_type": file["checksumType"],
                 "submission_id": cnm_submission_id,
+                "submission_queue": queue_url,
                 "submission_status": "submitted"
             }
             dm.insert_granule_report(delivery_report)
