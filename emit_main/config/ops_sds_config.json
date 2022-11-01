@@ -41,7 +41,7 @@
     "aws_cli_exe": "/beegfs/store/shared/aws-cli/v2/current/bin/aws",
     "aws_profile": "default",
     "cnm_version": "1.4",
-    "daac_submission_url_forward": "https://sqs.us-west-2.amazonaws.com/560130786230/lp-prod-ingest-forward-processing",
+    "daac_submission_url_forward": "https://sqs.us-west-2.amazonaws.com/643705676985/lp-prod-ingest-forward-processing",
     "daac_submission_url_backward": "https://sqs.us-west-2.amazonaws.com/643705676985/lp-prod-ingest-backward-processing",
     "daac_provider_forward": "EMIT_FORWARD_PROCESSED",
     "daac_provider_backward": "EMIT_BACKWARD_PROCESSED",
