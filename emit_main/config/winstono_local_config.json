@@ -41,11 +41,21 @@
     "aws_cli_exe": "/usr/local/bin/aws",
     "aws_profile": "default",
     "cnm_version": "1.4",
-    "daac_submission_url": "https://sqs.us-west-2.amazonaws.com/560130786230/lp-uat-ingest-forward-processing",
-    "daac_provider": "JPL_EMIT_SDS",
+    "daac_submission_url_forward": "https://sqs.us-west-2.amazonaws.com/560130786230/lp-uat-ingest-forward-processing",
+    "daac_submission_url_backward": "https://sqs.us-west-2.amazonaws.com/560130786230/lp-uat-ingest-backward-processing",
+    "daac_provider_forward": "JPL_EMIT_SDS",
+    "daac_provider_backward": "JPL_EMIT_SDS_BACKWARD",
     "daac_server_internal": "ngis-data.jpl.nasa.gov",
     "daac_server_external": "popo.jpl.nasa.gov",
-    "daac_base_dir": "/data/emit/lp_daac"
+    "daac_base_dir": "/data/emit/lp_daac",
+    "dois": {
+      "EMITL1ARAW": "10.5067/EMIT/EMITL1ARAW.001",
+      "EMITL1BATT": "10.5067/EMIT/EMIT1LBATT.001",
+      "EMITL1BRAD": "10.5067/EMIT/EMITL1BRAD.001",
+      "EMITL2ARFL": "10.5067/EMIT/EMITL2ARFL.001",
+      "EMITL2BMIN": "10.5067/EMIT/EMITL2BMIN.001",
+      "EMITL3ASA": "10.5067/EMIT/EMITL3ASA.001"
+    }
   },
 
   "ancillary_paths": {

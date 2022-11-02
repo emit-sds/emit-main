@@ -49,21 +49,26 @@ def main():
         total_packets_read = 0
         total_missing = 0
         total_gaps = 0
+        total_duplicates = 0
         report_paths = glob.glob(f"/store/emit/{env}/data/streams/{apid}/{date}/l0/*report.txt")
         report_paths.sort()
         files_with_gaps = []
+        files_with_duplicates = []
         for p in report_paths:
             packet_count = 0
             missing_packets = 0
             psc_gaps = 0
+            duplicate_packets = 0
             with open(p, "r") as f:
                 for line in f.readlines():
-                    if "Packet Count" in line:
+                    if "Packet Count" in line and "Duplicate" not in line:
                         packet_count = int(line.rstrip("\n").split(" ")[-1])
                     if "Missing PSC Count" in line:
                         missing_packets = int(line.rstrip("\n").split(" ")[-1])
                     if "PSC Errors" in line:
                         psc_gaps = int(line.rstrip("\n").split(" ")[-1])
+                    if "Duplicate Packet Count" in line:
+                        duplicate_packets = int(line.rstrip("\n").split(" ")[-1])
             if psc_gaps > 0:
                 file_with_gaps = OrderedDict()
                 expected_total_packets = packet_count + missing_packets
@@ -74,15 +79,24 @@ def main():
                 file_with_gaps = {
                     "file": p,
                     "packets_read": packet_count,
-                    "missing_packets": missing_packets,
                     "psc_gaps": psc_gaps,
+                    "missing_packets": missing_packets,
                     "expected_total_packets": expected_total_packets,
                     "percent_missing": f"{percent_missing:.2f}%"
                 }
                 files_with_gaps.append(file_with_gaps)
+            if duplicate_packets > 0:
+                file_with_duplicates = OrderedDict()
+                file_with_duplicates = {
+                    "file": p,
+                    "packets_read": packet_count,
+                    "duplicate_packets": duplicate_packets
+                }
+                files_with_duplicates.append(file_with_duplicates)
             total_packets_read += packet_count
             total_missing += missing_packets
             total_gaps += psc_gaps
+            total_duplicates += duplicate_packets
 
         apid_report = OrderedDict()
         expected_total_packets = total_packets_read + total_missing
@@ -93,23 +107,28 @@ def main():
         apid_report = {
             "apid": apid,
             "packets_read": total_packets_read,
-            "missing_packets": total_missing,
+            "duplicate_packets": total_duplicates,
             "psc_gaps": total_gaps,
+            "missing_packets": total_missing,
             "expected_total_packets": expected_total_packets,
             "percent_missing": f"{percent_missing:.2f}%"
         }
         if len(files_with_gaps) > 0:
             apid_report["reports_showing_gaps"] = files_with_gaps
+        if len(files_with_duplicates) > 0:
+            apid_report["reports_showing_duplicates"] = files_with_duplicates
 
         report["streams"].append(apid_report)
 
     total_packets_read = 0
     total_missing = 0
     total_gaps = 0
+    total_duplicates = 0
     for apid in report["streams"]:
         total_packets_read += apid["packets_read"]
         total_missing += apid["missing_packets"]
         total_gaps += apid["psc_gaps"]
+        total_duplicates += apid["duplicate_packets"]
 
     expected_total_packets = total_packets_read + total_missing
     if expected_total_packets > 0:
@@ -118,8 +137,9 @@ def main():
         percent_missing = 0.0
     stream_totals = {
         "packets_read": total_packets_read,
-        "missing_packets": total_missing,
+        "duplicate_packets": total_duplicates,
         "psc_gaps": total_gaps,
+        "missing_packets": total_missing,
         "expected_total_packets": expected_total_packets,
         "percent_missing": f"{percent_missing:.2f}%"
     }
@@ -225,6 +245,7 @@ def main():
             report_paths.append(match[0])
     report_paths.sort()
     total_expected_frames = 0
+    total_corrupt_frames = 0
     total_decompression_errors = 0
     total_missing_frames = 0
     total_corrupt_lines = 0
@@ -232,6 +253,7 @@ def main():
     files_with_errors = []
     for p in report_paths:
         expected_frames = 0
+        corrupt_frames = 0
         decompression_errors = 0
         missing_frames = 0
         corrupt_lines = 0
@@ -240,6 +262,8 @@ def main():
             for line in f.readlines():
                 if "Total number of expected frames" in line:
                     expected_frames = int(line.rstrip("\n").split(" ")[-1])
+                if "Total corrupt frames" in line:
+                    corrupt_frames = int(line.rstrip("\n").split(" ")[-1])
                 if "Total decompression errors" in line:
                     decompression_errors = int(line.rstrip("\n").split(" ")[-1])
                 if "Total missing frames" in line:
@@ -248,11 +272,12 @@ def main():
                     corrupt_lines = int(line.rstrip("\n").split(" ")[-1])
                 if "Total cloudy frames" in line:
                     cloudy_frames = int(line.rstrip("\n").split(" ")[-1])
-        if decompression_errors > 0 or missing_frames > 0 or corrupt_lines > 0:
+        if corrupt_frames > 0 or decompression_errors > 0 or missing_frames > 0 or corrupt_lines > 0:
             file_with_errors = OrderedDict()
             file_with_errors = {
                 "file": p,
                 "total_expected_frames": expected_frames,
+                "corrupt_frames": corrupt_frames,
                 "decompression_errors": decompression_errors,
                 "missing_frames": missing_frames,
                 "corrupt_lines": corrupt_lines
@@ -260,12 +285,14 @@ def main():
             files_with_errors.append(file_with_errors)
 
         total_expected_frames += expected_frames
+        total_corrupt_frames += corrupt_frames
         total_decompression_errors += decompression_errors
         total_missing_frames += missing_frames
         total_corrupt_lines += corrupt_lines
         total_cloudy_frames += cloudy_frames
 
     reassembly["total_expected_frames"] = total_expected_frames
+    reassembly["corrupt_frames"] = total_corrupt_frames
     reassembly["decompression_errors"] = total_decompression_errors
     reassembly["missing_frames"] = total_missing_frames
     reassembly["corrupt_lines"] = total_corrupt_lines

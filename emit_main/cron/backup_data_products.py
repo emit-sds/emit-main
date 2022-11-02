@@ -30,6 +30,7 @@ def rclone(cmd, local_dir):
 def main():
     # Set up args
     parser = argparse.ArgumentParser(description="Back up data products by date range")
+    parser.add_argument("-b", "--build", help="The build number to tag the remote backup folder with")
     parser.add_argument("-d", "--days", help="How many days to backup starting from today")
     parser.add_argument("--start_date", help="Start date if using date range (YYYY-MM-DD)")
     parser.add_argument("--stop_date", help="Stop date if using date range (YYYY-MM-DD)")
@@ -87,7 +88,7 @@ def main():
         acq_filter = f"/store/shared/rclone/emit/filters/acquisition_filter.txt"
         date_str = date.strftime("%Y%m%d")
         local_dir = f"/store/emit/{args.env}/data/acquisitions/{date_str}"
-        remote_dir = f"aws-jpl-ngis:jpl-ngis/EMIT/SDS/backups/data_products/{args.env}/data/acquisitions/{date_str}"
+        remote_dir = f"aws-jpl-ngis:jpl-ngis/EMIT/SDS/backups/data_products/{args.env}/data_b{args.build}/acquisitions/{date_str}"
         cmd = ["/store/shared/rclone/bin/rclone", "sync", "-v", "--create-empty-src-dirs", "--filter-from", acq_filter]
         cmd += ["--log-file", rclone_log]
         if args.dry_run:
@@ -108,7 +109,7 @@ def main():
         for dcid in dcids:
             date_str = date.strftime("%Y%m%d")
             local_dir = f"/store/emit/{args.env}/data/data_collections/by_dcid/{dcid[:5]}/{dcid}"
-            remote_dir = f"aws-jpl-ngis:jpl-ngis/EMIT/SDS/backups/data_products/{args.env}/data/data_collections/by_dcid/{dcid[:5]}/{dcid}"
+            remote_dir = f"aws-jpl-ngis:jpl-ngis/EMIT/SDS/backups/data_products/{args.env}/data_b{args.build}/data_collections/by_dcid/{dcid[:5]}/{dcid}"
             cmd = ["/store/shared/rclone/bin/rclone", "sync", "-v", "--create-empty-src-dirs"]
             cmd += ["--log-file", rclone_log]
             if args.dry_run:
@@ -120,7 +121,7 @@ def main():
     ts_print("Backing up manual ops...")
     # Build command
     local_dir = f"/store/emit/{args.env}/data/manual_ops"
-    remote_dir = f"aws-jpl-ngis:jpl-ngis/EMIT/SDS/backups/data_products/{args.env}/data/manual_ops"
+    remote_dir = f"aws-jpl-ngis:jpl-ngis/EMIT/SDS/backups/data_products/{args.env}/data_b{args.build}/manual_ops"
     cmd = ["/store/shared/rclone/bin/rclone", "sync", "-v", "--create-empty-src-dirs"]
     cmd += ["--log-file", rclone_log]
     if args.dry_run:
@@ -135,7 +136,7 @@ def main():
         orbit_filter = f"/store/shared/rclone/emit/filters/orbit_filter.txt"
         date_str = date.strftime("%Y%m%d")
         local_dir = f"/store/emit/{args.env}/data/orbits/{date_str}"
-        remote_dir = f"aws-jpl-ngis:jpl-ngis/EMIT/SDS/backups/data_products/{args.env}/data/orbits/{date_str}"
+        remote_dir = f"aws-jpl-ngis:jpl-ngis/EMIT/SDS/backups/data_products/{args.env}/data_b{args.build}/orbits/{date_str}"
         cmd = ["/store/shared/rclone/bin/rclone", "sync", "-v", "--create-empty-src-dirs", "--filter-from", orbit_filter]
         cmd += ["--log-file", rclone_log]
         if args.dry_run:
@@ -147,7 +148,7 @@ def main():
     ts_print("Backing up planning products...")
     # Build command
     local_dir = f"/store/emit/{args.env}/data/planning_products"
-    remote_dir = f"aws-jpl-ngis:jpl-ngis/EMIT/SDS/backups/data_products/{args.env}/data/planning_products"
+    remote_dir = f"aws-jpl-ngis:jpl-ngis/EMIT/SDS/backups/data_products/{args.env}/data_b{args.build}/planning_products"
     cmd = ["/store/shared/rclone/bin/rclone", "sync", "-v", "--create-empty-src-dirs"]
     cmd += ["--log-file", rclone_log]
     if args.dry_run:
@@ -163,7 +164,7 @@ def main():
             # Build command
             date_str = date.strftime("%Y%m%d")
             local_dir = f"/store/emit/{args.env}/data/streams/{stream}/{date_str}"
-            remote_dir = f"aws-jpl-ngis:jpl-ngis/EMIT/SDS/backups/data_products/{args.env}/data/streams/{stream}/{date_str}"
+            remote_dir = f"aws-jpl-ngis:jpl-ngis/EMIT/SDS/backups/data_products/{args.env}/data_b{args.build}/streams/{stream}/{date_str}"
             cmd = ["/store/shared/rclone/bin/rclone", "sync", "-v", "--create-empty-src-dirs"]
             cmd += ["--log-file", rclone_log]
             if args.dry_run:

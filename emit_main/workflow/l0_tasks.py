@@ -85,7 +85,7 @@ class L0StripHOSC(SlurmJobTask):
         missing_packets = 0
         with open(tmp_report_path, "r") as f:
             for line in f.readlines():
-                if "Packet Count" in line:
+                if "Packet Count" in line and "Duplicate" not in line:
                     packet_count = int(line.rstrip("\n").split(" ")[-1])
                 if "Missing PSC Count" in line:
                     missing_packets = int(line.rstrip("\n").split(" ")[-1])
@@ -481,6 +481,8 @@ class L0ProcessPlanningProduct(SlurmJobTask):
         # Loop through events again and insert new orbits and DCIDS
         orbit_ids = []
         dcids = []
+        orbits_with_science = set()
+        orbits_with_dark = set()
         for e in events:
             # Check for orbit object
             if e["name"].lower() == "start orbit":
@@ -534,6 +536,7 @@ class L0ProcessPlanningProduct(SlurmJobTask):
             if e["name"].lower() in ("science", "dark"):
                 # Construct data collection metadata
                 dcid = str(e["dcid"]).zfill(10)
+                submode = e["name"].lower()
                 # Convert date strings to datetime objects to store in DB
                 e["datetime"] = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S")
                 e["endDatetime"] = datetime.datetime.strptime(e["endDatetime"], "%Y-%m-%dT%H:%M:%S")
@@ -544,7 +547,7 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                     "processing_version": wm.config["processing_version"],
                     "orbit": year + str(e["orbit number"]).zfill(5),
                     "scene": str(e["scene number"]).zfill(3),
-                    "submode": e["name"].lower(),
+                    "submode": submode,
                     "planning_product": e
                 }
 
@@ -559,6 +562,25 @@ class L0ProcessPlanningProduct(SlurmJobTask):
 
                 # Keep track of dcid for log entry
                 dcids.append(dcid)
+
+                # Keep track of orbits that have science and/or dark acquisitions
+                if submode == "science":
+                    orbits_with_science.add(dc_meta["orbit"])
+                if submode == "dark":
+                    orbits_with_dark.add(dc_meta["orbit"])
+
+        # Update orbits to include flags for has_science and has_dark
+        for orbit_id in orbit_ids:
+            orbit_meta = {
+                "has_science": False,
+                "has_dark": False
+            }
+            if orbit_id in orbits_with_science:
+                orbit_meta["has_science"] = True
+            if orbit_id in orbits_with_dark:
+                orbit_meta["has_dark"] = True
+            dm.update_orbit_metadata(orbit_id, orbit_meta)
+            wm.print(__name__, f"Updated orbit {orbit_id} in DB with {orbit_meta}")
 
         wm.print(__name__, f"Inserted a total of {len(orbit_ids)} orbits and {len(dcids)} data collections!")
 
@@ -597,6 +619,7 @@ class L0Deliver(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
     miss_pkt_thresh = luigi.FloatParameter(default=0.01)
+    daac_ingest_queue = luigi.Parameter(default="forward")
 
     memory = 18000
 
@@ -636,9 +659,10 @@ class L0Deliver(SlurmJobTask):
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(stream.ccsds_path), tz=datetime.timezone.utc)
         l0_pge = wm.pges["emit-sds-l0"]
         ummg = daac_converter.initialize_ummg(granule_ur, creation_time, "EMITL0", collection_version,
-                                              wm.config["extended_build_num"], l0_pge.repo_name, l0_pge.version_tag)
+                                              stream.start_time, stream.stop_time, l0_pge.repo_name, l0_pge.version_tag,
+                                              software_build_version=wm.config["extended_build_num"])
         ummg = daac_converter.add_data_files_ummg(ummg, [daac_ccsds_path], "Unspecified", ["BINARY"])
-        ummg = daac_converter.add_related_url(ummg, l0_pge.repo_url, "DOWNLOAD SOFTWARE")
+        # ummg = daac_converter.add_related_url(ummg, l0_pge.repo_url, "DOWNLOAD SOFTWARE")
         ummg_path = stream.ccsds_path.replace(".bin", ".cmr.json")
         daac_converter.dump_json(ummg, ummg_path)
         wm.change_group_ownership(ummg_path)
@@ -670,9 +694,14 @@ class L0Deliver(SlurmJobTask):
             daac_ccsds_name: os.path.basename(stream.ccsds_path),
             daac_ummg_name: os.path.basename(ummg_path)
         }
+        provider = wm.config["daac_provider_forward"]
+        queue_url = wm.config["daac_submission_url_forward"]
+        if self.daac_ingest_queue == "backward":
+            provider = wm.config["daac_provider_backward"]
+            queue_url = wm.config["daac_submission_url_backward"]
         notification = {
             "collection": "EMITL0",
-            "provider": wm.config["daac_provider"],
+            "provider": provider,
             "identifier": cnm_submission_id,
             "version": wm.config["cnm_version"],
             "product": {
@@ -705,8 +734,7 @@ class L0Deliver(SlurmJobTask):
         wm.change_group_ownership(cnm_submission_path)
 
         # Submit notification via AWS SQS
-        cmd_aws = [wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", wm.config["daac_submission_url"],
-                   "--message-body",
+        cmd_aws = [wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", queue_url, "--message-body",
                    f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"]]
         pge.run(cmd_aws, tmp_dir=self.tmp_dir)
         cnm_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(cnm_submission_path),
@@ -720,6 +748,7 @@ class L0Deliver(SlurmJobTask):
                 "extended_build_num": wm.config["extended_build_num"],
                 "collection": notification["collection"],
                 "collection_version": notification["product"]["dataVersion"],
+                "granule_ur": granule_ur,
                 "sds_filename": target_src_map[file["name"]],
                 "daac_filename": file["name"],
                 "uri": file["uri"],
@@ -728,6 +757,7 @@ class L0Deliver(SlurmJobTask):
                 "checksum": file["checksum"],
                 "checksum_type": file["checksumType"],
                 "submission_id": cnm_submission_id,
+                "submission_queue": queue_url,
                 "submission_status": "submitted"
             }
             dm.insert_granule_report(delivery_report)
