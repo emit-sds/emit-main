@@ -98,6 +98,7 @@ class L2AReflectance(SlurmJobTask):
         # Build PGE cmd for apply_oe
         apply_oe_exe = os.path.join(isofit_pge.repo_dir, "isofit", "utils", "apply_oe.py")
         tmp_log_path = os.path.join(self.local_tmp_dir, "isofit.log")
+        model_disc_file = os.path.join(isofit_pge.repo_dir, "data", "emit_model_discrepancy.mat")
 
         emulator_base = wm.config["isofit_emulator_base"]
         input_files = {
@@ -117,6 +118,7 @@ class L2AReflectance(SlurmJobTask):
                "--log_file", tmp_log_path,
                "--logging_level", self.level,
                "--num_neighbors=10",
+               "--model_discrepancy_path", model_disc_file,
                "--pressure_elevation"]
 
         env["SIXS_DIR"] = wm.config["isofit_sixs_dir"]
