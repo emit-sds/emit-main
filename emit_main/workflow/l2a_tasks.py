@@ -149,6 +149,7 @@ class L2AReflectance(SlurmJobTask):
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
         cmd = ["python", os.path.join(pge.repo_dir, "spectrum_quality.py"), tmp_rfl_path, tmp_quality_path]
+        quality_results = np.genfromtxt(tmp_quality_path)
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
         wm.copy(tmp_rfl_path, acq.rfl_img_path)
@@ -196,6 +197,7 @@ class L2AReflectance(SlurmJobTask):
             hdr["emit data product version"] = wm.config["processing_version"]
             daynight = "Day" if acq.submode == "science" else "Night"
             hdr["emit acquisition daynight"] = daynight
+            hdr["emit spectral quality"] = '{' + ', '.join(quality_results.astype(str).tolist()) + '}'
             envi.write_envi_header(hdr_path, hdr)
 
             # Update product dictionary in DB
