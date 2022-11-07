@@ -98,6 +98,7 @@ class L2AReflectance(SlurmJobTask):
         # Build PGE cmd for apply_oe
         apply_oe_exe = os.path.join(isofit_pge.repo_dir, "isofit", "utils", "apply_oe.py")
         tmp_log_path = os.path.join(self.local_tmp_dir, "isofit.log")
+        model_disc_file = os.path.join(isofit_pge.repo_dir, "data", "emit_model_discrepancy.mat")
 
         emulator_base = wm.config["isofit_emulator_base"]
         input_files = {
@@ -107,13 +108,17 @@ class L2AReflectance(SlurmJobTask):
             "surface_model_config": surface_config_path
         }
         cmd = ["python", apply_oe_exe, acq.rdn_img_path, acq.loc_img_path, acq.obs_img_path, self.local_tmp_dir, "emit",
-               "--presolve=1", "--empirical_line=1", "--emulator_base=" + emulator_base,
+               "--presolve=1",
+               "--empirical_line=0",
+               "--analytical_line=1",
+               "--emulator_base=" + emulator_base,
                "--n_cores", str(self.n_cores),
                "--surface_path", tmp_surface_path,
                "--ray_temp_dir", "/tmp/ray",
                "--log_file", tmp_log_path,
                "--logging_level", self.level,
                "--num_neighbors=10",
+               "--model_discrepancy_path", model_disc_file,
                "--pressure_elevation"]
 
         env["SIXS_DIR"] = wm.config["isofit_sixs_dir"]
@@ -139,6 +144,7 @@ class L2AReflectance(SlurmJobTask):
         tmp_locsubs_path = os.path.join(
             self.local_tmp_dir, "input", self.acquisition_id + "_subs_loc")
         tmp_quality_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_rfl_quality.txt")
+        tmp_atm_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_atm_interp")
 
         cmd = ["gdal_translate", tmp_rfl_path, tmp_rfl_png_path, "-b", "35", "-b", "23", "-b",
                "11", "-ot", "Byte", "-scale", "-exponent", "0.6", "-of", "PNG", "-co", "ZLEVEL=9"]
@@ -146,6 +152,7 @@ class L2AReflectance(SlurmJobTask):
 
         cmd = ["python", os.path.join(pge.repo_dir, "spectrum_quality.py"), tmp_rfl_path, tmp_quality_path]
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
+        quality_results = np.genfromtxt(tmp_quality_path)
 
         wm.copy(tmp_rfl_path, acq.rfl_img_path)
         wm.copy(tmp_rfl_hdr_path, acq.rfl_hdr_path)
@@ -163,6 +170,9 @@ class L2AReflectance(SlurmJobTask):
         wm.copy(envi_header(tmp_locsubs_path), acq.locsubs_hdr_path)
         wm.copy(tmp_rfl_png_path, acq.rfl_png_path)
         wm.copy(tmp_quality_path, acq.quality_txt_path)
+
+        wm.copy(tmp_atm_path, acq.atm_img_path)
+        wm.copy(envi_header(tmp_atm_path), acq.atm_hdr_path)
 
         # Copy log file and rename
         log_path = acq.rfl_img_path.replace(".img", "_pge.log")
@@ -189,6 +199,7 @@ class L2AReflectance(SlurmJobTask):
             hdr["emit data product version"] = wm.config["processing_version"]
             daynight = "Day" if acq.submode == "science" else "Night"
             hdr["emit acquisition daynight"] = daynight
+            hdr["emit spectral quality"] = '{' + ', '.join(quality_results.astype(str).tolist()) + '}'
             envi.write_envi_header(hdr_path, hdr)
 
             # Update product dictionary in DB
@@ -288,8 +299,7 @@ class L2AMask(SlurmJobTask):
         input_files = {
             "radiance_file": acq.rdn_img_path,
             "pixel_locations_file": acq.loc_img_path,
-            "subset_labels_file": acq.lbl_img_path,
-            "state_subset_file": acq.statesubs_img_path,
+            "atmosphere_file": acq.atm_img_path,
             "solar_irradiance_file": solar_irradiance_path
         }
 
@@ -300,7 +310,7 @@ class L2AMask(SlurmJobTask):
 
         env["RAY_worker_register_timeout_seconds"] = "600"
 
-        cmd = ["python", make_masks_exe, acq.rdn_img_path, acq.loc_img_path, acq.lbl_img_path, acq.statesubs_img_path,
+        cmd = ["python", make_masks_exe, acq.rdn_img_path, acq.loc_img_path, acq.atm_img_path,
                solar_irradiance_path, tmp_mask_path, "--n_cores", str(self.n_cores)]
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
@@ -475,6 +485,7 @@ class L2ADeliver(SlurmJobTask):
     acquisition_id = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
+    daac_ingest_queue = luigi.Parameter(default="forward")
 
     memory = 18000
 
@@ -574,9 +585,14 @@ class L2ADeliver(SlurmJobTask):
             daac_browse_name: os.path.basename(acq.rfl_png_path),
             daac_ummg_name: os.path.basename(ummg_path)
         }
+        provider = wm.config["daac_provider_forward"]
+        queue_url = wm.config["daac_submission_url_forward"]
+        if self.daac_ingest_queue == "backward":
+            provider = wm.config["daac_provider_backward"]
+            queue_url = wm.config["daac_submission_url_backward"]
         notification = {
             "collection": "EMITL2ARFL",
-            "provider": wm.config["daac_provider"],
+            "provider": provider,
             "identifier": cnm_submission_id,
             "version": wm.config["cnm_version"],
             "product": {
@@ -633,7 +649,7 @@ class L2ADeliver(SlurmJobTask):
         wm.change_group_ownership(cnm_submission_path)
 
         # Submit notification via AWS SQS
-        cmd_aws = [wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", wm.config["daac_submission_url"], "--message-body",
+        cmd_aws = [wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", queue_url, "--message-body",
                    f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"]]
         pge.run(cmd_aws, tmp_dir=self.tmp_dir)
         cnm_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(cnm_submission_path),
@@ -656,6 +672,7 @@ class L2ADeliver(SlurmJobTask):
                 "checksum": file["checksum"],
                 "checksum_type": file["checksumType"],
                 "submission_id": cnm_submission_id,
+                "submission_queue": queue_url,
                 "submission_status": "submitted"
             }
             dm.insert_granule_report(delivery_report)

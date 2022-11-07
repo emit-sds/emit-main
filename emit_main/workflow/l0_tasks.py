@@ -619,6 +619,7 @@ class L0Deliver(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
     miss_pkt_thresh = luigi.FloatParameter(default=0.01)
+    daac_ingest_queue = luigi.Parameter(default="forward")
 
     memory = 18000
 
@@ -693,9 +694,14 @@ class L0Deliver(SlurmJobTask):
             daac_ccsds_name: os.path.basename(stream.ccsds_path),
             daac_ummg_name: os.path.basename(ummg_path)
         }
+        provider = wm.config["daac_provider_forward"]
+        queue_url = wm.config["daac_submission_url_forward"]
+        if self.daac_ingest_queue == "backward":
+            provider = wm.config["daac_provider_backward"]
+            queue_url = wm.config["daac_submission_url_backward"]
         notification = {
             "collection": "EMITL0",
-            "provider": wm.config["daac_provider"],
+            "provider": provider,
             "identifier": cnm_submission_id,
             "version": wm.config["cnm_version"],
             "product": {
@@ -728,8 +734,7 @@ class L0Deliver(SlurmJobTask):
         wm.change_group_ownership(cnm_submission_path)
 
         # Submit notification via AWS SQS
-        cmd_aws = [wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", wm.config["daac_submission_url"],
-                   "--message-body",
+        cmd_aws = [wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", queue_url, "--message-body",
                    f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"]]
         pge.run(cmd_aws, tmp_dir=self.tmp_dir)
         cnm_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(cnm_submission_path),
@@ -752,6 +757,7 @@ class L0Deliver(SlurmJobTask):
                 "checksum": file["checksum"],
                 "checksum_type": file["checksumType"],
                 "submission_id": cnm_submission_id,
+                "submission_queue": queue_url,
                 "submission_status": "submitted"
             }
             dm.insert_granule_report(delivery_report)
