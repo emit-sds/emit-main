@@ -108,9 +108,9 @@ class L2AReflectance(SlurmJobTask):
             "surface_model_config": surface_config_path
         }
         cmd = ["python", apply_oe_exe, acq.rdn_img_path, acq.loc_img_path, acq.obs_img_path, self.local_tmp_dir, "emit",
-               "--presolve=1", 
-               "--empirical_line=0", 
-               "--analytical_line=1", 
+               "--presolve=1",
+               "--empirical_line=0",
+               "--analytical_line=1",
                "--emulator_base=" + emulator_base,
                "--n_cores", str(self.n_cores),
                "--surface_path", tmp_surface_path,
@@ -170,7 +170,7 @@ class L2AReflectance(SlurmJobTask):
         wm.copy(envi_header(tmp_locsubs_path), acq.locsubs_hdr_path)
         wm.copy(tmp_rfl_png_path, acq.rfl_png_path)
         wm.copy(tmp_quality_path, acq.quality_txt_path)
-        
+
         wm.copy(tmp_atm_path, acq.atm_img_path)
         wm.copy(envi_header(tmp_atm_path), acq.atm_hdr_path)
 
@@ -310,7 +310,7 @@ class L2AMask(SlurmJobTask):
 
         env["RAY_worker_register_timeout_seconds"] = "600"
 
-        cmd = ["python", make_masks_exe, acq.rdn_img_path, acq.loc_img_path, acq.atm_img_path, 
+        cmd = ["python", make_masks_exe, acq.rdn_img_path, acq.loc_img_path, acq.atm_img_path,
                solar_irradiance_path, tmp_mask_path, "--n_cores", str(self.n_cores)]
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
