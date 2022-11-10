@@ -12,8 +12,7 @@ else
   DATE=${1}
 fi
 
-YEAR=$(date -d ${DATE} +%Y)
-DOY=$(date -d ${DATE} +%j)
+DATE_DASHES=$(date -d ${DATE} +%Y-%m-%d)
 
 echo "$(date +"%F %T,%3N"): Executing copy_ingest_1675_science_data.sh cron job for date ${DATE}."
 
@@ -23,10 +22,9 @@ source /beegfs/store/shared/anaconda3/etc/profile.d/conda.sh
 conda activate ${OPS_CONDA_ENV}
 
 REMOTE_SERVER=emit-egse1.jpl.nasa.gov
-REMOTE_DIR=/proj/emit/ops/data/emit-egse1/${YEAR}/${YEAR}-${DOY}/downlink/edd
-# TODO: Update with correct file when available
-MARKER_FILE=${REMOTE_DIR}/marker.txt
-# MARKER_FILE=/home/emit-cron-ops/complete.txt
+REMOTE_DIR=/proj/emit/ops/data/emit-egse1/APID_1675
+# Marker file is a log file like this remote-epc-2022-11-09.log
+MARKER_FILE=${REMOTE_DIR}/remote-epc-${DATE_DASHES}.log
 EGSE_DIR=/store/emit/ops/ingest/egse1
 INGEST_DATE_DIR=${EGSE_DIR}/${DATE}
 
@@ -35,14 +33,15 @@ if [[ -d ${INGEST_DATE_DIR} ]]; then
   exit 0
 fi
 
-# If the directory doesn't exist then check the remote server for completion file
-if ssh ${REMOTE_SERVER} -q "test -e ${MARKER_FILE}"; then
-  echo "Found ${MARKER_FILE} on ${REMOTE_SERVER}. Ready to copy files."
+# If the directory doesn't exist then check the remote server for the log file to see if the data has been
+# transferred.  Log file will say "total size is" if so.
+if $(ssh ${REMOTE_SERVER} "cat ${MARKER_FILE} | grep -q 'total size is'"); then
+  echo "The file ${MARKER_FILE} on ${REMOTE_SERVER} says that files have completed transfer. Ready to copy files."
   mkdir ${INGEST_DATE_DIR}
   cd ${INGEST_DATE_DIR}
 
-  echo "Copying files from ${REMOTE_SERVER}:${REMOTE_DIR}/* to ${INGEST_DATE_DIR}"
-  scp -p ${REMOTE_SERVER}:${REMOTE_DIR}/* .
+  echo "Copying files from ${REMOTE_SERVER}:${REMOTE_DIR}/1675_${DATE}* to ${INGEST_DATE_DIR}"
+  scp -p ${REMOTE_SERVER}:${REMOTE_DIR}/1675_${DATE}* .
 
   if [ -z "$(ls -A ${INGEST_DATE_DIR})" ]; then
     echo "${INGEST_DATE_DIR} is empty after copying files. Exiting..."
@@ -77,6 +76,6 @@ if ssh ${REMOTE_SERVER} -q "test -e ${MARKER_FILE}"; then
     # python run_workflow.py -c config/ops_sds_config.json -p l1aframe --partition cron -s $file
   done
 else
-  echo "Did not find ${MARKER_FILE} on ${REMOTE_SERVER}. Exiting..."
+  echo "Either ${MARKER_FILE} did not exist on ${REMOTE_SERVER} or the files have not yet transferred for this date. Exiting..."
   exit 0
 fi
