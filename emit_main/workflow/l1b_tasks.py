@@ -169,8 +169,9 @@ class L1BCalibrate(SlurmJobTask):
         cmd_ds = ["python", destripe_exe,
                   tmp_rdn_img_path,
                   tmp_rdn_destripe_img_path,
-                  tmp_rdn_destripe_dark_img_path,
-                  tmp_rdn_destripe_flatfield_img_path]
+                  tmp_rdn_destripe_flatfield_img_path,
+                  tmp_rdn_destripe_dark_img_path
+                  ]
         pge.run(cmd_ds, tmp_dir=self.tmp_dir, env=env)
 
         # Copy output files to l1b dir (all but pre-destripped radiance)
