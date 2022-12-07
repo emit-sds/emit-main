@@ -618,7 +618,6 @@ class L0Deliver(SlurmJobTask):
     stream_path = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
-    miss_pkt_thresh = luigi.FloatParameter(default=0.01)
     daac_ingest_queue = luigi.Parameter(default="forward")
 
     memory = 18000
@@ -627,8 +626,7 @@ class L0Deliver(SlurmJobTask):
 
     def requires(self):
         logger.debug(f"{self.task_family} requires: {self.stream_path}")
-        return L0StripHOSC(config_path=self.config_path, stream_path=self.stream_path, level=self.level,
-                           partition=self.partition, miss_pkt_thresh=self.miss_pkt_thresh)
+        return None
 
     def output(self):
         logger.debug(f"{self.task_family} output: {self.stream_path}")

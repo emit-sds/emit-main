@@ -8,6 +8,7 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 import logging
 import os
 
+from emit_main.workflow.l1a_tasks import L1ADeliver
 from emit_main.workflow.l1b_tasks import L1BCalibrate
 from emit_main.workflow.l2a_tasks import L2AMask
 from emit_main.workflow.l2b_tasks import L2BAbundance
@@ -19,7 +20,7 @@ logger = logging.getLogger("emit-main")
 
 class AcquisitionMonitor:
 
-    def __init__(self, config_path, level="INFO", partition="emit"):
+    def __init__(self, config_path, level="INFO", partition="emit", daac_ingest_queue="forward"):
         """
         :param config_path: Path to config file containing environment settings
         """
@@ -27,6 +28,7 @@ class AcquisitionMonitor:
         self.config_path = os.path.abspath(config_path)
         self.level = level
         self.partition = partition
+        self.daac_ingest_queue = daac_ingest_queue
 
         # Get workflow manager
         self.wm = WorkflowManager(config_path=config_path)
@@ -83,5 +85,30 @@ class AcquisitionMonitor:
             #                      acquisition_id=acq["acquisition_id"],
             #                      level=self.level,
             #                      partition=self.partition))
+
+        return tasks
+
+    def get_l1a_delivery_tasks(self, start_time, stop_time, date_field="last_modified", retry_failed=False):
+        tasks = []
+        # Find acquisitions within time range
+        dm = self.wm.database_manager
+        acquisitions = dm.find_acquisitions_for_l1a_delivery(submode="science", start_time=start_time, stop=stop_time,
+                                                             date_field=date_field, retry_failed=retry_failed)
+        acquisitions += dm.find_acquisitions_for_l1a_delivery(submode="dark", start_time=start_time, stop=stop_time,
+                                                              date_field=date_field, retry_failed=retry_failed)
+
+        # If no results, just return empty list
+        if len(acquisitions) == 0:
+            logger.info(f"Did not find any acquisitions with {date_field} between {start_time} and {stop_time} needing "
+                        f"l1a delivery tasks. Not executing any tasks.")
+            return tasks
+
+        for acq in acquisitions:
+            logger.info(f"Creating L1ADeliver task for acquisition {acq['acquisition_id']}")
+            tasks.append(L1ADeliver(config_path=self.config_path,
+                                    acquisition_id=acq["acquisition_id"],
+                                    level=self.level,
+                                    partition=self.partition,
+                                    daac_ingest_queue=self.daac_ingest_queue))
 
         return tasks
