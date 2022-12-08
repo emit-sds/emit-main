@@ -128,6 +128,7 @@ class DatabaseManager:
         # Query for acquisitions with daac scene numbers but no daac ummg products.  If science, then we also need the
         # l1b browse image
         query = {
+            "submode": submode,
             "products.l1a.raw.img_path": {"$exists": 1},
             "daac_scene": {"$exists": 1},
             "products.l1a.raw_ummg": {"$exists": 0},
