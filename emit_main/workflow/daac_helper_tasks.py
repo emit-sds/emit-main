@@ -108,7 +108,9 @@ class AssignDAACSceneNumbers(SlurmJobTask):
             # Increment scene number
             daac_scene += 1
 
-        # Update orbit processing log too
+        # Update orbit metadata and processing log too
+        num_scenes = len(acq_ids)
+        dm.update_orbit_metadata(orbit.orbit_id, {"num_scenes": num_scenes})
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -121,7 +123,7 @@ class AssignDAACSceneNumbers(SlurmJobTask):
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
-                "number_of_scenes": daac_scene - 1
+                "number_of_scenes": num_scenes
             }
         }
 
