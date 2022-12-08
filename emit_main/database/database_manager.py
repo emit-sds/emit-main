@@ -131,7 +131,7 @@ class DatabaseManager:
             "submode": submode,
             "products.l1a.raw.img_path": {"$exists": 1},
             "daac_scene": {"$exists": 1},
-            "products.l1a.raw_ummg": {"$exists": 0},
+            "products.l1a.raw_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop},
             "build_num": self.config["build_num"]
         }
@@ -140,6 +140,26 @@ class DatabaseManager:
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L1ADeliver"])
+        return results
+
+    def find_acquisitions_for_l1brdn_delivery(self, start, stop, date_field="last_modified", retry_failed=False):
+        acquisitions_coll = self.db.acquisitions
+        # Query for acquisitions with daac scene numbers but no daac ummg products. We also need the
+        # l1b browse image
+        query = {
+            "products.l1b.rdn.img_path": {"$exists": 1},
+            "products.l1b.glt.img_path": {"$exists": 1},
+            "products.l1b.loc.img_path": {"$exists": 1},
+            "products.l1b.obs.img_path": {"$exists": 1},
+            "products.l1b.rdn_png.png_path": {"$exists": 1},
+            "daac_scene": {"$exists": 1},
+            "products.l1b.rdn_ummg.ummg_json_path": {"$exists": 0},
+            date_field: {"$gte": start, "$lte": stop},
+            "build_num": self.config["build_num"]
+        }
+        results = list(acquisitions_coll.find(query))
+        if not retry_failed:
+            results = self._remove_results_with_failed_tasks(results, ["emit.L1BRdnFormat", "emit.L1BRdnDeliver"])
         return results
 
     def insert_acquisition(self, metadata):

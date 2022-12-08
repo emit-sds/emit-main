@@ -447,7 +447,17 @@ def main():
         logger.info(f"Acquisition monitor deliver l1a tasks to run:\n{am_dl1a_tasks_str}")
         tasks += am_dl1a_tasks
 
-    # Get tasks from dl1batt monitor
+    # Get tasks from dl1brdn (deliver dl1brdn) monitor
+    if args.monitor and args.monitor == "dl1brdn":
+        am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
+                                daac_ingest_queue=args.daac_ingest_queue)
+        am_dl1brdn_tasks = am.get_l1brdn_delivery_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                                  date_field=args.date_field, retry_failed=args.retry_failed)
+        am_dl1brdn_tasks_str = "\n".join([str(t) for t in am_dl1brdn_tasks])
+        logger.info(f"Acquisition monitor deliver l1b radiance tasks to run:\n{am_dl1brdn_tasks_str}")
+        tasks += am_dl1brdn_tasks
+
+    # Get tasks from dl1batt (deliver l1b att/eph) monitor
     if args.monitor and args.monitor == "dl1batt":
         om = OrbitMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
                           daac_ingest_queue=args.daac_ingest_queue)

@@ -582,12 +582,7 @@ class L1BRdnFormat(SlurmJobTask):
     def requires(self):
 
         logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
-        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
-
-        return (L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
-                             partition=self.partition),
-                L1BGeolocate(config_path=self.config_path, orbit_id=acq.orbit, level=self.level,
-                             partition=self.partition))
+        return None
 
     def output(self):
 
@@ -675,7 +670,6 @@ class L1BRdnDeliver(SlurmJobTask):
     def requires(self):
 
         logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
-        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
         return L1BRdnFormat(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
                             partition=self.partition)
 
