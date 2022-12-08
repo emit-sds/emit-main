@@ -901,8 +901,7 @@ class L1BAttDeliver(SlurmJobTask):
     def requires(self):
 
         logger.debug(f"{self.task_family} requires: {self.orbit_id}")
-        return L1BGeolocate(config_path=self.config_path, orbit_id=self.orbit_id, level=self.level,
-                            partition=self.partition)
+        return None
 
     def output(self):
 

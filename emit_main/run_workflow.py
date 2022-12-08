@@ -439,12 +439,23 @@ def main():
 
     # Get tasks from dl1a (deliver l1a) monitor
     if args.monitor and args.monitor == "dl1a":
-        am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
+        am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
+                                daac_ingest_queue=args.daac_ingest_queue)
         am_dl1a_tasks = am.get_l1a_delivery_tasks(start_time=args.start_time, stop_time=args.stop_time,
                                                   date_field=args.date_field, retry_failed=args.retry_failed)
         am_dl1a_tasks_str = "\n".join([str(t) for t in am_dl1a_tasks])
         logger.info(f"Acquisition monitor deliver l1a tasks to run:\n{am_dl1a_tasks_str}")
         tasks += am_dl1a_tasks
+
+    # Get tasks from dl1batt monitor
+    if args.monitor and args.monitor == "dl1batt":
+        om = OrbitMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
+                          daac_ingest_queue=args.daac_ingest_queue)
+        om_dl1batt_tasks = om.get_l1batt_delivery_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                                        date_field=args.date_field, retry_failed=args.retry_failed)
+        om_dl1batt_tasks_str = "\n".join([str(t) for t in om_dl1batt_tasks])
+        logger.info(f"Orbit monitor deliver l1batt tasks to run:\n{om_dl1batt_tasks_str}")
+        tasks += om_dl1batt_tasks
 
     # Get tasks from products args
     if args.products:

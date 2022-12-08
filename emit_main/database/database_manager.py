@@ -411,6 +411,20 @@ class DatabaseManager:
             results = self._remove_results_with_failed_tasks(results, ["emit.AssignDAACSceneNumbers"])
         return results
 
+    def find_orbits_for_l1batt_delivery(self, start, stop, date_field="last_modified", retry_failed=False):
+        orbits_coll = self.db.orbits
+        # Query for orbits with complete set of raw files.
+        query = {
+            "products.l1b.corr_att_eph.nc_path": {"$exists": 1},
+            "products.l1b.att_ummg.ummg_json_path": {"$exists": 0},
+            date_field: {"$gte": start, "$lte": stop},
+            "build_num": self.config["build_num"]
+        }
+        results = list(orbits_coll.find(query))
+        if not retry_failed:
+            results = self._remove_results_with_failed_tasks(results, ["emit.L1BAttDeliver"])
+        return results
+
     def insert_orbit(self, metadata):
         if self.find_orbit_by_id(metadata["orbit_id"]) is None:
             utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
