@@ -92,9 +92,9 @@ class AcquisitionMonitor:
         tasks = []
         # Find acquisitions within time range
         dm = self.wm.database_manager
-        acquisitions = dm.find_acquisitions_for_l1a_delivery(submode="science", start_time=start_time, stop=stop_time,
+        acquisitions = dm.find_acquisitions_for_l1a_delivery(submode="science", start=start_time, stop=stop_time,
                                                              date_field=date_field, retry_failed=retry_failed)
-        acquisitions += dm.find_acquisitions_for_l1a_delivery(submode="dark", start_time=start_time, stop=stop_time,
+        acquisitions += dm.find_acquisitions_for_l1a_delivery(submode="dark", start=start_time, stop=stop_time,
                                                               date_field=date_field, retry_failed=retry_failed)
 
         # If no results, just return empty list
