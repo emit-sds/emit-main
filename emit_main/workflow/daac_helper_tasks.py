@@ -64,6 +64,10 @@ class AssignDAACSceneNumbers(SlurmJobTask):
         pge = wm.pges["emit-main"]
         dm = wm.database_manager
 
+        if not orbit.has_complete_raw() and not self.override_output:
+            raise RuntimeError(f"Orbit {orbit.orbit_id} does not have complete set of raw acquisitions. Use "
+                               f"--override_output if you want to continue to assign daac scene numbers.")
+
         # Get acquisitions in orbit
         acquisitions = dm.find_acquisitions_by_orbit_id(orbit.orbit_id, "science", min_valid_lines=0)
         acquisitions += dm.find_acquisitions_by_orbit_id(orbit.orbit_id, "dark", min_valid_lines=0)
