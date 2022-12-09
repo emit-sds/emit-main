@@ -123,6 +123,45 @@ class DatabaseManager:
                                                                        "emit.L3Unmix"])
         return results
 
+    def find_acquisitions_for_l1a_delivery(self, submode, start, stop, date_field="last_modified", retry_failed=False):
+        acquisitions_coll = self.db.acquisitions
+        # Query for acquisitions with daac scene numbers but no daac ummg products.  If science, then we also need the
+        # l1b browse image
+        query = {
+            "submode": submode,
+            "products.l1a.raw.img_path": {"$exists": 1},
+            "daac_scene": {"$exists": 1},
+            "products.l1a.raw_ummg.ummg_json_path": {"$exists": 0},
+            date_field: {"$gte": start, "$lte": stop},
+            "build_num": self.config["build_num"]
+        }
+        if submode == "science":
+            query["products.l1b.rdn_png.png_path"] = {"$exists": 1}
+        results = list(acquisitions_coll.find(query))
+        if not retry_failed:
+            results = self._remove_results_with_failed_tasks(results, ["emit.L1ADeliver"])
+        return results
+
+    def find_acquisitions_for_l1brdn_delivery(self, start, stop, date_field="last_modified", retry_failed=False):
+        acquisitions_coll = self.db.acquisitions
+        # Query for acquisitions with daac scene numbers but no daac ummg products. We also need the
+        # l1b browse image
+        query = {
+            "products.l1b.rdn.img_path": {"$exists": 1},
+            "products.l1b.glt.img_path": {"$exists": 1},
+            "products.l1b.loc.img_path": {"$exists": 1},
+            "products.l1b.obs.img_path": {"$exists": 1},
+            "products.l1b.rdn_png.png_path": {"$exists": 1},
+            "daac_scene": {"$exists": 1},
+            "products.l1b.rdn_ummg.ummg_json_path": {"$exists": 0},
+            date_field: {"$gte": start, "$lte": stop},
+            "build_num": self.config["build_num"]
+        }
+        results = list(acquisitions_coll.find(query))
+        if not retry_failed:
+            results = self._remove_results_with_failed_tasks(results, ["emit.L1BRdnFormat", "emit.L1BRdnDeliver"])
+        return results
+
     def insert_acquisition(self, metadata):
         if self.find_acquisition_by_id(metadata["acquisition_id"]) is None:
             utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
@@ -184,6 +223,21 @@ class DatabaseManager:
         results = list(streams_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L1AReformatEDP"])
+        return results
+
+    def find_streams_for_l0_delivery(self, start, stop, date_field="last_modified", retry_failed=False):
+        streams_coll = self.db.streams
+        # Query for 1675 streams that have l0 ccsds products but no umm-g products
+        query = {
+            "apid": "1675",
+            date_field: {"$gte": start, "$lte": stop},
+            "products.l0.ccsds_path": {"$exists": 1},
+            "products.daac.ccsds_ummg": {"$exists": 0},
+            "build_num": self.config["build_num"]
+        }
+        results = list(streams_coll.find(query))
+        if not retry_failed:
+            results = self._remove_results_with_failed_tasks(results, ["emit.L0Deliver"])
         return results
 
     def insert_stream(self, name, metadata):
@@ -361,6 +415,34 @@ class DatabaseManager:
         results = list(orbits_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L1BGeolocate"])
+        return results
+
+    def find_orbits_for_daac_scene_numbers(self, start, stop, date_field="last_modified", retry_failed=False):
+        orbits_coll = self.db.orbits
+        # Query for orbits with complete set of raw files.
+        query = {
+            "raw_status": "complete",
+            date_field: {"$gte": start, "$lte": stop},
+            "num_scenes": {"$exists": 0},
+            "build_num": self.config["build_num"]
+        }
+        results = list(orbits_coll.find(query))
+        if not retry_failed:
+            results = self._remove_results_with_failed_tasks(results, ["emit.AssignDAACSceneNumbers"])
+        return results
+
+    def find_orbits_for_l1batt_delivery(self, start, stop, date_field="last_modified", retry_failed=False):
+        orbits_coll = self.db.orbits
+        # Query for orbits with complete set of raw files.
+        query = {
+            "products.l1b.corr_att_eph.nc_path": {"$exists": 1},
+            "products.l1b.att_ummg.ummg_json_path": {"$exists": 0},
+            date_field: {"$gte": start, "$lte": stop},
+            "build_num": self.config["build_num"]
+        }
+        results = list(orbits_coll.find(query))
+        if not retry_failed:
+            results = self._remove_results_with_failed_tasks(results, ["emit.L1BAttDeliver"])
         return results
 
     def insert_orbit(self, metadata):

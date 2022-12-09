@@ -64,6 +64,10 @@ class AssignDAACSceneNumbers(SlurmJobTask):
         pge = wm.pges["emit-main"]
         dm = wm.database_manager
 
+        if not orbit.has_complete_raw() and not self.override_output:
+            raise RuntimeError(f"Orbit {orbit.orbit_id} does not have complete set of raw acquisitions. Use "
+                               f"--override_output if you want to continue to assign daac scene numbers.")
+
         # Get acquisitions in orbit
         acquisitions = dm.find_acquisitions_by_orbit_id(orbit.orbit_id, "science", min_valid_lines=0)
         acquisitions += dm.find_acquisitions_by_orbit_id(orbit.orbit_id, "dark", min_valid_lines=0)
@@ -108,7 +112,9 @@ class AssignDAACSceneNumbers(SlurmJobTask):
             # Increment scene number
             daac_scene += 1
 
-        # Update orbit processing log too
+        # Update orbit metadata and processing log too
+        num_scenes = len(acq_ids)
+        dm.update_orbit_metadata(orbit.orbit_id, {"num_scenes": num_scenes})
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -121,7 +127,7 @@ class AssignDAACSceneNumbers(SlurmJobTask):
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
-                "number_of_scenes": daac_scene - 1
+                "number_of_scenes": num_scenes
             }
         }
 

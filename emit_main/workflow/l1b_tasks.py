@@ -505,16 +505,19 @@ class L1BGeolocate(SlurmJobTask):
         # Update attitude/ephemeris netcdf metadata before copy
         ae_nc = netCDF4.Dataset(tmp_corr_att_eph_path, 'r+')
         daac_converter.makeGlobalAttrBase(ae_nc)
-        ae_nc.title = "EMIT L1B Corrected Spacecraft Attitude and Ephemeris V001"
+        ae_nc.title = f"EMIT L1B Corrected Spacecraft Attitude and Ephemeris V0{wm.config['processing_version']}"
         ae_nc.summary = ae_nc.summary + \
             f"\\n\\nThis collection contains L1B Corrected Spacecraft Attitude and Ephemeris (ATT). \
 ATT contains the uncorrected Broadcast Ancillary Data (BAD) ephemeris and attitude quaternions \
 from the ISS, and the data after correction by the geolocation process. \
 This product is generated at the orbit level."
-        ae_nc.product_version = wm.config["extended_build_num"]
         ae_nc.time_coverage_start = orbit.start_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         ae_nc.time_coverage_end = orbit.stop_time.strftime("%Y-%m-%dT%H:%M:%S%z")
-        ae_nc.history = f"PGE Input files: {orbit.uncorr_att_eph_path}"
+        ae_nc.software_build_version = wm.config["extended_build_num"]
+        ae_nc.product_version = "V0" + wm.config["processing_version"]
+        run_command = "PGE Run Command: {" + " ".join(cmd) + "}"
+        nc_input_files = "PGE Input Files: {" + orbit.uncorr_att_eph_path + "}"
+        ae_nc.history = run_command + ", " + nc_input_files
 
         ae_nc.sync()
         ae_nc.close()
@@ -579,12 +582,7 @@ class L1BRdnFormat(SlurmJobTask):
     def requires(self):
 
         logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
-        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
-
-        return (L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
-                             partition=self.partition),
-                L1BGeolocate(config_path=self.config_path, orbit_id=acq.orbit, level=self.level,
-                             partition=self.partition))
+        return None
 
     def output(self):
 
@@ -672,7 +670,6 @@ class L1BRdnDeliver(SlurmJobTask):
     def requires(self):
 
         logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
-        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
         return L1BRdnFormat(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
                             partition=self.partition)
 
@@ -898,8 +895,7 @@ class L1BAttDeliver(SlurmJobTask):
     def requires(self):
 
         logger.debug(f"{self.task_family} requires: {self.orbit_id}")
-        return L1BGeolocate(config_path=self.config_path, orbit_id=self.orbit_id, level=self.level,
-                            partition=self.partition)
+        return None
 
     def output(self):
 

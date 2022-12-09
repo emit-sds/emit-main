@@ -188,3 +188,54 @@ class Orbit:
 
         # If we made it this far, then return True
         return True
+
+    def has_complete_raw(self):
+        # Check to see if all the raw files for this orbit have been generated
+        from emit_main.workflow.workflow_manager import WorkflowManager
+        wm = WorkflowManager(config_path=self.config_path)
+
+        # First find all the DCIDs in an orbit
+        dm = DatabaseManager(self.config_path)
+        data_collections = dm.find_data_collections_by_orbit_id(self.orbit_id)
+
+        if len(data_collections) == 0:
+            wm.print(__name__, f"Did not find any data collections associated with orbit {self.orbit_id}")
+            return False
+
+        # Then find all the associated acquisitions
+        acquisition_ids = []
+        for dc in data_collections:
+            if "associated_acquisitions" in dc and len(dc["associated_acquisitions"]) > 0:
+                for id in dc["associated_acquisitions"]:
+                    acquisition_ids.append(id)
+            else:
+                wm.print(__name__, f"Found data collections associated with orbit {self.orbit_id}, but at least one of "
+                                   f"them doesn't have any associated acquisitions yet.")
+                return False
+
+        if len(acquisition_ids) == 0:
+            wm.print(__name__, f"Did not find any acquisitions associated with orbit {self.orbit_id}")
+            return False
+
+        acquisition_ids = list(set(acquisition_ids))
+        acquisition_ids.sort()
+
+        # Look up acquisitions to see if the raw product has been generated. Return False if not.
+        for id in acquisition_ids:
+            acq = dm.find_acquisition_by_id(id)
+            if acq is None:
+                wm.print(__name__, f"Couldn't find acquisition {id} in DB while checking for complete set of raw "
+                                   f"scenes")
+                return False
+            try:
+                raw_img_path = acq["products"]["l1a"]["raw"]["img_path"]
+            except KeyError:
+                wm.print(__name__, f"Acquisition {id} in orbit {self.orbit_id} does not have a raw product yet.")
+                return False
+            if not os.path.exists(raw_img_path):
+                wm.print(__name__, f"Acquisition {id} in orbit {self.orbit_id} has raw_img_path of {raw_img_path} "
+                         f"but file does not exist.")
+                return False
+
+        # If we made it this far, then return True
+        return True
