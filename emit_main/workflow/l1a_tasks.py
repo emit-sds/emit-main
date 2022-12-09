@@ -642,6 +642,14 @@ class L1AReassembleRaw(SlurmJobTask):
         dm.update_data_collection_metadata(self.dcid, {"products.l1a.line_stats": product_dict_line_stats})
         dm.update_data_collection_metadata(self.dcid, {"products.l1a.acquisitions": acq_product_map})
 
+        # Check if orbit now has complete set of raw files and update orbit metadata
+        wm_orbit = WorkflowManager(config_path=self.config_path, orbit_id=orbit)
+        orbit = wm_orbit.orbit
+        if orbit.has_complete_raw():
+            dm.update_orbit_metadata(orbit.orbit_id, {"raw_status": "complete"})
+        else:
+            dm.update_orbit_metadata(orbit.orbit_id, {"raw_status": "incomplete"})
+
         # Add log entry to DB
         log_entry = {
             "task": self.task_family,
@@ -796,15 +804,9 @@ class L1ADeliver(SlurmJobTask):
 
     def requires(self):
 
+        # Assume DAAC scene numbers have been assigned already
         logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
-        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        acq = wm.acquisition
-
-        if "daac_scene" in acq.metadata:
-            return None
-        else:
-            return AssignDAACSceneNumbers(config_path=self.config_path, orbit_id=acq.orbit, level=self.level,
-                                          partition=self.partition)
+        return None
 
     def output(self):
 
@@ -999,6 +1001,12 @@ class L1ADeliver(SlurmJobTask):
             dm.insert_granule_report(delivery_report)
 
         # Update db with log entry
+        product_dict_ummg = {
+            "ummg_json_path": ummg_path,
+            "created": datetime.datetime.fromtimestamp(os.path.getmtime(ummg_path), tz=datetime.timezone.utc)
+        }
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1a.raw_ummg": product_dict_ummg})
+
         if "raw_daac_submissions" in acq.metadata["products"]["l1a"] and \
                 acq.metadata["products"]["l1a"]["raw_daac_submissions"] is not None:
             acq.metadata["products"]["l1a"]["raw_daac_submissions"].append(cnm_submission_path)

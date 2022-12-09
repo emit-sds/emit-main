@@ -8,8 +8,9 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 import logging
 import os
 
+from emit_main.workflow.daac_helper_tasks import AssignDAACSceneNumbers
 from emit_main.workflow.l1a_tasks import L1AReformatBAD
-from emit_main.workflow.l1b_tasks import L1BGeolocate
+from emit_main.workflow.l1b_tasks import L1BGeolocate, L1BAttDeliver
 from emit_main.workflow.workflow_manager import WorkflowManager
 
 logger = logging.getLogger("emit-main")
@@ -17,7 +18,7 @@ logger = logging.getLogger("emit-main")
 
 class OrbitMonitor:
 
-    def __init__(self, config_path, level="INFO", partition="emit"):
+    def __init__(self, config_path, level="INFO", partition="emit", daac_ingest_queue="forward"):
         """
         :param config_path: Path to config file containing environment settings
         """
@@ -25,6 +26,7 @@ class OrbitMonitor:
         self.config_path = os.path.abspath(config_path)
         self.level = level
         self.partition = partition
+        self.daac_ingest_queue = daac_ingest_queue
 
         # Get workflow manager
         self.wm = WorkflowManager(config_path=config_path)
@@ -70,5 +72,50 @@ class OrbitMonitor:
                                       orbit_id=orbit['orbit_id'],
                                       level=self.level,
                                       partition=self.partition))
+
+        return tasks
+
+    def get_daac_scenes_tasks(self, start_time, stop_time, date_field="last_modified", retry_failed=False):
+        tasks = []
+        # Find orbits within time range
+        dm = self.wm.database_manager
+        orbits = dm.find_orbits_for_daac_scene_numbers(start=start_time, stop=stop_time, date_field=date_field,
+                                                       retry_failed=retry_failed)
+
+        # If no results, just return empty list
+        if len(orbits) == 0:
+            logger.info(f"Did not find any orbits with {date_field} between {start_time} and {stop_time} needing "
+                        f"DAAC scene number tasks. Not executing any tasks.")
+            return tasks
+
+        for orbit in orbits:
+            logger.info(f"Creating AssignDAACSceneNumbers task for orbit {orbit['orbit_id']}")
+            tasks.append(AssignDAACSceneNumbers(config_path=self.config_path,
+                                                orbit_id=orbit['orbit_id'],
+                                                level=self.level,
+                                                partition=self.partition))
+
+        return tasks
+
+    def get_l1batt_delivery_tasks(self, start_time, stop_time, date_field="last_modified", retry_failed=False):
+        tasks = []
+        # Find orbits within time range
+        dm = self.wm.database_manager
+        orbits = dm.find_orbits_for_l1batt_delivery(start=start_time, stop=stop_time, date_field=date_field,
+                                                    retry_failed=retry_failed)
+
+        # If no results, just return empty list
+        if len(orbits) == 0:
+            logger.info(f"Did not find any orbits with {date_field} between {start_time} and {stop_time} needing "
+                        f"L1B att/eph delivery tasks. Not executing any tasks.")
+            return tasks
+
+        for orbit in orbits:
+            logger.info(f"Creating L1BAttDeliver task for orbit {orbit['orbit_id']}")
+            tasks.append(L1BAttDeliver(config_path=self.config_path,
+                                       orbit_id=orbit['orbit_id'],
+                                       level=self.level,
+                                       partition=self.partition,
+                                       daac_ingest_queue=self.daac_ingest_queue))
 
         return tasks
