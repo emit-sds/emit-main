@@ -195,3 +195,89 @@ class GetAdditionalMetadata(SlurmJobTask):
         }
 
         dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
+
+
+class ReconciliationReport(SlurmJobTask):
+    """
+    Create and submit a reconciliation report based on start and end dates
+    """
+
+    config_path = luigi.Parameter()
+    level = luigi.Parameter()
+    partition = luigi.Parameter()
+    start_time = luigi.Parameter()
+    stop_time = luigi.Parameter()
+
+    memory = 18000
+
+    task_namespace = "emit"
+
+    def requires(self):
+
+        logger.debug(f"{self.task_family} requires: None")
+        return None
+
+    def output(self):
+
+        logger.debug(f"{self.task_family} output: None")
+        return None
+
+    def work(self):
+
+        logger.debug(f"{self.task_family} work: {self.start_time} to {self.stop_time}")
+
+        wm = WorkflowManager(config_path=self.config_path)
+        pge = wm.pges["emit-main"]
+        dm = wm.database_manager
+
+        files = dm.find_files_for_reconciliation_report(self.start_time, self.stop_time)
+        if len(files) == 0:
+            raise RuntimeError(f"No files were found between {self.start_time} and {self.stop_time} for the "
+                               f"reconciliation report. Exiting...")
+
+        # Generate the report
+        start = self.start_time.replace("-", "").replace(":", "")
+        stop = self.stop_time.replace("-", "").replace(":", "")
+        utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
+        report_name = f"EMIT_RECON_{start}_{stop}_{utc_now.strftime('%Y%m%dT%H%M%S')}.rpt"
+        tmp_report_path = os.path.join(self.tmp_dir, report_name)
+        with open(tmp_report_path, "w") as rf:
+            # collection,collection_version,granuleId,fileName,fileSize,ingestTime,hash
+            for f in files:
+                line = ",".join([f["collection"], f["collection_version"], f["granule_ur"], f["daac_filename"],
+                                 f["size"], f["timestamp"], f["checksum"]])
+                rf.write(line + "\n")
+
+        # Copy files to staging server
+        partial_dir_arg = f"--partial-dir={wm.daac_partial_dir}"
+        log_file_arg = f"--log-file={os.path.join(self.tmp_dir, 'rsync.log')}"
+        target = f"{wm.config['daac_server_internal']}:{wm.daac_recon_staging_dir}/"
+        # First set up permissions if needed
+        group = f"emit-{wm.config['environment']}" if wm.config["environment"] in ("test", "ops") else "emit-dev"
+        # This command only makes the directory and changes ownership if the directory doesn't exist
+        cmd_make_target = ["ssh", wm.config["daac_server_internal"], "\"if", "[", "!", "-d",
+                           f"'{wm.daac_recon_staging_dir}'", "];", "then", "mkdir", f"{wm.daac_recon_staging_dir};",
+                           "chgrp", group, f"{wm.daac_recon_staging_dir};", "fi\""]
+        pge.run(cmd_make_target, tmp_dir=self.tmp_dir)
+        # Rsync the files
+        cmd_rsync = ["rsync", "-azv", partial_dir_arg, log_file_arg, tmp_report_path, target]
+        pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
+
+        # Create a submission file
+        submission_dict = {
+            "report": {
+                "uri": os.path.join(wm.daac_recon_uri_base, report_name)
+            }
+        }
+        tmp_submission_path = os.path.join(self.tmp_dir, report_name.replace(".rpt", "submission.json"))
+        with open(tmp_submission_path, "w") as f:
+            f.write(json.dumps(submission_dict))
+
+        # Submit notification via AWS SQS
+        cmd_aws = [wm.config["aws_cli_exe"], "sns", "publish", "--topic-arn", wm.config["daac_reconciliation_arn"],
+                   "--message", f"file://{tmp_submission_path}", "--profile", wm.config["aws_profile"]]
+        pge.run(cmd_aws, tmp_dir=self.tmp_dir)
+
+        # Copy reconciliation report and submission to reconciliation dir
+        wm.copy(tmp_report_path, os.path.join(wm.reconciliation_dir, os.path.basename(tmp_report_path)))
+        wm.copy(tmp_submission_path, os.path.join(wm.reconciliation_dir, os.path.basename(tmp_submission_path)))

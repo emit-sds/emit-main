@@ -94,6 +94,7 @@ class WorkflowManager:
                                               self.config["environment"], "error")
         self.local_tmp_dir = os.path.join("/tmp", self.config["instrument"], self.config["environment"])
         self.planning_products_dir = os.path.join(self.data_dir, "planning_products")
+        self.reconciliation_dir = os.path.join(self.data_dir, "reconciliation")
 
         dirs.extend([self.instrument_dir, self.environment_dir, self.data_dir, self.ingest_dir,
                      self.ingest_duplicates_dir, self.ingest_errors_dir, self.logs_dir, self.repos_dir,
@@ -102,6 +103,14 @@ class WorkflowManager:
         # Make directories if they don't exist
         for d in dirs:
             self.makedirs(d)
+
+        # Build paths for DAAC delivery on staging server
+        self.daac_recon_staging_dir = os.path.join(self.config["daac_base_dir"], self.config['environment'],
+                                                   "reconciliation")
+        self.daac_recon_uri_base = f"https://{self.config['daac_server_external']}/emit/lpdaac/" \
+                                   f"{self.config['environment']}/reconciliation/"
+        self.daac_partial_dir = os.path.join(self.config["daac_base_dir"], self.config['environment'],
+                                             "partial_transfers")
 
         # Create repository paths and PGEs based on build config
         self.pges = {}

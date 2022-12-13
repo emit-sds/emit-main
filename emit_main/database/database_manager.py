@@ -489,3 +489,18 @@ class DatabaseManager:
             }
         }
         granule_reports_coll.update_many(query, set_value, upsert=True)
+
+    def find_files_for_reconciliation_report(self, start, stop):
+        granule_reports_coll = self.db.granule_reports
+        # Query for granules that haven't been reconciled or that have failed
+        query = {
+            "timestamp": {"$gte": start, "$lte": stop},
+            "last_reconciliation_status": {"$exists": 0}
+        }
+        results = list(granule_reports_coll.find(query))
+        query = {
+            "timestamp": {"$gte": start, "$lte": stop},
+            "last_reconciliation_status": {"$regex": "FAILURE.*"}
+        }
+        results += list(granule_reports_coll.find(query))
+        return results
