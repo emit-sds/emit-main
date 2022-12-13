@@ -205,8 +205,8 @@ class ReconciliationReport(SlurmJobTask):
     config_path = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
-    start_time = luigi.Parameter()
-    stop_time = luigi.Parameter()
+    start_time = luigi.DateParameter()
+    stop_time = luigi.DateParameter()
 
     memory = 18000
 
