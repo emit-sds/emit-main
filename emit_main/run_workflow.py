@@ -206,7 +206,8 @@ def get_tasks_from_product_args(args):
         # "l3unmixformat": L3UnmixFormat(acquisition_id=args.acquisition_id, **kwargs)
         "daacscenes": AssignDAACSceneNumbers(orbit_id=args.orbit_id, override_output=args.override_output, **kwargs),
         "daacaddl": GetAdditionalMetadata(acquisition_id=args.acquisition_id, **kwargs),
-        "recon": ReconciliationReport(start_time=args.start_time, stop_time=args.stop_time, **kwargs)
+        "recon": ReconciliationReport(start_time=args.start_time.strftime("%Y%m%dT%H%M%S"),
+                                      stop_time=args.stop_time.strftime("%Y%m%dT%H%M%S"), **kwargs)
     }
     tasks = []
     for prod in products:

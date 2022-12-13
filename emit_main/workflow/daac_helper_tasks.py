@@ -205,8 +205,8 @@ class ReconciliationReport(SlurmJobTask):
     config_path = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
-    start_time = luigi.DateParameter()
-    stop_time = luigi.DateParameter()
+    start_time = luigi.Parameter()
+    stop_time = luigi.Parameter()
 
     memory = 18000
 
@@ -230,16 +230,17 @@ class ReconciliationReport(SlurmJobTask):
         pge = wm.pges["emit-main"]
         dm = wm.database_manager
 
-        files = dm.find_files_for_reconciliation_report(self.start_time, self.stop_time)
+        start = datetime.datetime.strptime(self.start_time, "%Y%m%dT%H%M%S")
+        stop = datetime.datetime.strptime(self.stop_time, "%Y%m%dT%H%M%S")
+
+        files = dm.find_files_for_reconciliation_report(start, stop)
         if len(files) == 0:
-            raise RuntimeError(f"No files were found between {self.start_time} and {self.stop_time} for the "
+            raise RuntimeError(f"No files were found between {start} and {stop} for the "
                                f"reconciliation report. Exiting...")
 
         # Generate the report
-        start = self.start_time.strftime("%Y%m%dT%H%M%S")
-        stop = self.stop_time.strftime("%Y%m%dT%H%M%S")
         utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
-        report_name = f"EMIT_RECON_{start}_{stop}_{utc_now.strftime('%Y%m%dT%H%M%S')}.rpt"
+        report_name = f"EMIT_RECON_{self.start_time}_{self.stop_time}_{utc_now.strftime('%Y%m%dT%H%M%S')}.rpt"
         tmp_report_path = os.path.join(self.tmp_dir, report_name)
         with open(tmp_report_path, "w") as rf:
             # collection,collection_version,granuleId,fileName,fileSize,ingestTime,hash
