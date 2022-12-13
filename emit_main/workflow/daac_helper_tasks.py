@@ -248,6 +248,7 @@ class ReconciliationReport(SlurmJobTask):
                 line = ",".join([f["collection"], f["collection_version"], f["granule_ur"], f["daac_filename"],
                                  str(f["size"]), f["timestamp"].strftime("%Y-%m-%dT%H:%M:%SZ"), f["checksum"]])
                 rf.write(line + "\n")
+        wm.change_group_ownership(tmp_report_path)
 
         # Copy files to staging server
         partial_dir_arg = f"--partial-dir={wm.daac_partial_dir}"
@@ -270,7 +271,7 @@ class ReconciliationReport(SlurmJobTask):
                 "uri": os.path.join(wm.daac_recon_uri_base, report_name)
             }
         }
-        tmp_submission_path = os.path.join(self.tmp_dir, report_name.replace(".rpt", "submission.json"))
+        tmp_submission_path = os.path.join(self.tmp_dir, report_name.replace(".rpt", "_submission.json"))
         with open(tmp_submission_path, "w") as f:
             f.write(json.dumps(submission_dict))
 

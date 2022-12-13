@@ -98,7 +98,8 @@ class WorkflowManager:
 
         dirs.extend([self.instrument_dir, self.environment_dir, self.data_dir, self.ingest_dir,
                      self.ingest_duplicates_dir, self.ingest_errors_dir, self.logs_dir, self.repos_dir,
-                     self.resources_dir, self.scratch_tmp_dir, self.scratch_error_dir, self.planning_products_dir])
+                     self.resources_dir, self.scratch_tmp_dir, self.scratch_error_dir, self.planning_products_dir,
+                     self.reconciliation_dir])
 
         # Make directories if they don't exist
         for d in dirs:
