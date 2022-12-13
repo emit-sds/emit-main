@@ -504,3 +504,17 @@ class DatabaseManager:
         }
         results += list(granule_reports_coll.find(query))
         return results
+
+    def update_reconciliation_submission_status(self, daac_filename, submission_id, report):
+        granule_reports_coll = self.db.granule_reports
+        query = {
+            "daac_filename": daac_filename,
+            "submission_id": submission_id
+        }
+        set_value = {
+            "$set": {
+                "last_reconciliation_report": report,
+                "last_reconciliation_status": "submitted"
+            }
+        }
+        granule_reports_coll.update_one(query, set_value, upsert=True)

@@ -281,3 +281,7 @@ class ReconciliationReport(SlurmJobTask):
         # Copy reconciliation report and submission to reconciliation dir
         wm.copy(tmp_report_path, os.path.join(wm.reconciliation_dir, os.path.basename(tmp_report_path)))
         wm.copy(tmp_submission_path, os.path.join(wm.reconciliation_dir, os.path.basename(tmp_submission_path)))
+
+        # Update granules with reconciliation report submission
+        for f in files:
+            dm.update_reconciliation_submission_status(f["daac_filename"], f["submission_id"], report_name)
