@@ -246,7 +246,7 @@ class ReconciliationReport(SlurmJobTask):
             # collection,collection_version,granuleId,fileName,fileSize,ingestTime,hash
             for f in files:
                 line = ",".join([f["collection"], f["collection_version"], f["granule_ur"], f["daac_filename"],
-                                 f["size"], f["timestamp"], f["checksum"]])
+                                 str(f["size"]), f["timestamp"].strftime("%Y-%m-%dT%H:%M:%SZ"), f["checksum"]])
                 rf.write(line + "\n")
 
         # Copy files to staging server
