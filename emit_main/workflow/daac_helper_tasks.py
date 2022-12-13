@@ -236,8 +236,8 @@ class ReconciliationReport(SlurmJobTask):
                                f"reconciliation report. Exiting...")
 
         # Generate the report
-        start = self.start_time.replace("-", "").replace(":", "")
-        stop = self.stop_time.replace("-", "").replace(":", "")
+        start = self.start_time.strftime("%Y%m%dT%H%M%S")
+        stop = self.stop_time.strftime("%Y%m%dT%H%M%S")
         utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
         report_name = f"EMIT_RECON_{start}_{stop}_{utc_now.strftime('%Y%m%dT%H%M%S')}.rpt"
         tmp_report_path = os.path.join(self.tmp_dir, report_name)
