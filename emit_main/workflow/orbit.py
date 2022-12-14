@@ -196,7 +196,8 @@ class Orbit:
 
         # First find all the DCIDs in an orbit
         dm = DatabaseManager(self.config_path)
-        data_collections = dm.find_data_collections_by_orbit_id(self.orbit_id)
+        data_collections = dm.find_data_collections_by_orbit_id(self.orbit_id, submode="science")
+        data_collections += dm.find_data_collections_by_orbit_id(self.orbit_id, submode="dark")
 
         if len(data_collections) == 0:
             wm.print(__name__, f"Did not find any data collections associated with orbit {self.orbit_id}")
