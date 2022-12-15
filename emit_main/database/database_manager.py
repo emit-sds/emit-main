@@ -123,20 +123,17 @@ class DatabaseManager:
                                                                        "emit.L3Unmix"])
         return results
 
-    def find_acquisitions_for_l1a_delivery(self, submode, start, stop, date_field="last_modified", retry_failed=False):
+    def find_acquisitions_for_l1a_delivery(self, start, stop, date_field="last_modified", retry_failed=False):
         acquisitions_coll = self.db.acquisitions
         # Query for acquisitions with daac scene numbers but no daac ummg products.  If science, then we also need the
         # l1b browse image
         query = {
-            "submode": submode,
             "products.l1a.raw.img_path": {"$exists": 1},
             "daac_scene": {"$exists": 1},
             "products.l1a.raw_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop},
             "build_num": self.config["build_num"]
         }
-        if submode == "science":
-            query["products.l1b.rdn_png.png_path"] = {"$exists": 1}
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L1ADeliver"])
@@ -489,3 +486,32 @@ class DatabaseManager:
             }
         }
         granule_reports_coll.update_many(query, set_value, upsert=True)
+
+    def find_files_for_reconciliation_report(self, start, stop):
+        granule_reports_coll = self.db.granule_reports
+        # Query for granules that haven't been reconciled or that have failed
+        query = {
+            "timestamp": {"$gte": start, "$lte": stop},
+            "last_reconciliation_status": {"$exists": 0}
+        }
+        results = list(granule_reports_coll.find(query))
+        query = {
+            "timestamp": {"$gte": start, "$lte": stop},
+            "last_reconciliation_status": {"$regex": "FAILURE.*"}
+        }
+        results += list(granule_reports_coll.find(query))
+        return results
+
+    def update_reconciliation_submission_status(self, daac_filename, submission_id, report):
+        granule_reports_coll = self.db.granule_reports
+        query = {
+            "daac_filename": daac_filename,
+            "submission_id": submission_id
+        }
+        set_value = {
+            "$set": {
+                "last_reconciliation_report": report,
+                "last_reconciliation_status": "submitted"
+            }
+        }
+        granule_reports_coll.update_one(query, set_value, upsert=True)
