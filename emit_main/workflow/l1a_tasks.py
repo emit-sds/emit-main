@@ -835,15 +835,11 @@ class L1ADeliver(SlurmJobTask):
         daac_ummg_name = f"{acq.raw_granule_ur}.cmr.json"
         daac_raw_path = os.path.join(self.tmp_dir, daac_raw_name)
         daac_raw_hdr_path = os.path.join(self.tmp_dir, daac_raw_hdr_name)
-        if is_science:
-            daac_browse_path = os.path.join(self.tmp_dir, daac_browse_name)
         daac_ummg_path = os.path.join(self.tmp_dir, daac_ummg_name)
 
         # Copy files to tmp dir and rename
         wm.copy(acq.raw_img_path, daac_raw_path)
         wm.copy(acq.raw_hdr_path, daac_raw_hdr_path)
-        if is_science:
-            wm.copy(acq.rdn_png_path, daac_browse_path)
 
         # First create the UMM-G file
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.raw_img_path), tz=datetime.timezone.utc)
@@ -854,12 +850,9 @@ class L1ADeliver(SlurmJobTask):
                                                   acq.stop_time, l1a_pge.repo_name, l1a_pge.version_tag,
                                                   software_build_version=wm.config["extended_build_num"],
                                                   doi=wm.config["dois"]["EMITL1ARAW"], orbit=int(acq.orbit),
-                                                  orbit_segment=int(acq.scene), scene=int(acq.daac_scene),
-                                                  solar_zenith=acq.mean_solar_zenith,
-                                                  solar_azimuth=acq.mean_solar_azimuth,
-                                                  cloud_fraction=acq.cloud_fraction)
-            ummg = daac_converter.add_data_files_ummg(ummg, [daac_raw_path, daac_raw_hdr_path, daac_browse_path], "Day",
-                                                      ["BINARY", "ASCII", "PNG"])
+                                                  orbit_segment=int(acq.scene), scene=int(acq.daac_scene))
+            ummg = daac_converter.add_data_files_ummg(ummg, [daac_raw_path, daac_raw_hdr_path], "Day",
+                                                      ["BINARY", "ASCII"])
             # ummg = daac_converter.add_related_url(ummg, l1a_pge.repo_url, "DOWNLOAD SOFTWARE")
             # Since darks don't have spatial coordinates, we must remove the spatial extent for science scenes too
             # ummg = daac_converter.add_boundary_ummg(ummg, acq.gring)
@@ -890,21 +883,12 @@ class L1ADeliver(SlurmJobTask):
                            group, f"{acq.daac_staging_dir};", "fi\""]
         pge.run(cmd_make_target, tmp_dir=self.tmp_dir)
 
-        if is_science:
-            paths = (daac_raw_path, daac_raw_hdr_path, daac_browse_path, daac_ummg_path)
-            target_src_map = {
-                daac_raw_name: os.path.basename(acq.raw_img_path),
-                daac_raw_hdr_name: os.path.basename(acq.raw_hdr_path),
-                daac_browse_name: os.path.basename(acq.rdn_png_path),
-                daac_ummg_name: os.path.basename(ummg_path)
-            }
-        else:
-            paths = (daac_raw_path, daac_raw_hdr_path, daac_ummg_path)
-            target_src_map = {
-                daac_raw_name: os.path.basename(acq.raw_img_path),
-                daac_raw_hdr_name: os.path.basename(acq.raw_hdr_path),
-                daac_ummg_name: os.path.basename(ummg_path)
-            }
+        paths = (daac_raw_path, daac_raw_hdr_path, daac_ummg_path)
+        target_src_map = {
+            daac_raw_name: os.path.basename(acq.raw_img_path),
+            daac_raw_hdr_name: os.path.basename(acq.raw_hdr_path),
+            daac_ummg_name: os.path.basename(ummg_path)
+        }
 
         for path in paths:
             cmd_rsync = ["rsync", "-azv", partial_dir_arg, log_file_arg, path, target]
@@ -955,16 +939,6 @@ class L1ADeliver(SlurmJobTask):
                 ]
             }
         }
-
-        # Add in browse image if science
-        if is_science:
-            notification["product"]["files"].insert(2, {
-                "name": daac_browse_name,
-                "uri": acq.daac_uri_base + daac_browse_name,
-                "type": "browse",
-                "size": os.path.getsize(daac_browse_path),
-                "checksumType": "sha512",
-                "checksum": daac_converter.calc_checksum(daac_browse_path, "sha512")})
 
         # Write notification submission to file
         with open(cnm_submission_path, "w") as f:
@@ -1034,8 +1008,6 @@ class L1ADeliver(SlurmJobTask):
                 "l1a_raw_cnm_submission_path": cnm_submission_path
             }
         }
-        if is_science:
-            log_entry["pge_input_files"]["rdn_png_path"] = acq.rdn_png_path
 
         dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
 

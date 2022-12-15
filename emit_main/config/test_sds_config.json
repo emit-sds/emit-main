@@ -33,7 +33,7 @@
   },
 
   "build_config": {
-    "extended_build_num": "010605",
+    "extended_build_num": "010606",
     "conda_base_dir": "/beegfs/store/shared/anaconda3/"
   },
 
@@ -45,6 +45,7 @@
     "daac_submission_url_backward": "https://sqs.us-west-2.amazonaws.com/560130786230/lp-uat-ingest-backward-processing",
     "daac_provider_forward": "JPL_EMIT_SDS",
     "daac_provider_backward": "JPL_EMIT_SDS_BACKWARD",
+    "daac_reconciliation_arn": "arn:aws:sns:us-west-2:560130786230:lp-uat-reconciliation-notification",
     "daac_server_internal": "ngis-data.jpl.nasa.gov",
     "daac_server_external": "popo.jpl.nasa.gov",
     "daac_base_dir": "/data/emit/lp_daac",

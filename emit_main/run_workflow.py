@@ -20,7 +20,7 @@ from emit_main.monitor.email_monitor import EmailMonitor
 from emit_main.monitor.frames_monitor import FramesMonitor
 from emit_main.monitor.ingest_monitor import IngestMonitor
 from emit_main.monitor.orbit_monitor import OrbitMonitor
-from emit_main.workflow.daac_helper_tasks import AssignDAACSceneNumbers, GetAdditionalMetadata
+from emit_main.workflow.daac_helper_tasks import AssignDAACSceneNumbers, GetAdditionalMetadata, ReconciliationReport
 from emit_main.workflow.l0_tasks import L0StripHOSC, L0ProcessPlanningProduct, L0IngestBAD, L0Deliver
 from emit_main.workflow.l1a_tasks import L1ADepacketizeScienceFrames, L1AReassembleRaw, L1AReformatEDP, \
     L1AFrameReport, L1AReformatBAD, L1ADeliver
@@ -40,7 +40,7 @@ def parse_args():
     product_choices = ["l0hosc", "l0daac", "l0plan", "l0bad", "l1aeng", "l1aframe", "l1aframereport", "l1araw",
                        "l1adaac", "l1abad", "l1bcal", "l1bgeo", "l1brdnformat", "l1brdndaac", "l1battdaac", "l2arefl",
                        "l2amask", "l2aformat", "l2adaac", "l2babun", "l2bformat", "l2bdaac", "l3unmix", "daacscenes",
-                       "daacaddl"]
+                       "daacaddl", "recon"]
     monitor_choices = ["ingest", "frames", "edp", "cal", "bad", "geo", "l2", "email", "daacscenes", "dl0", "dl1a",
                        "dl1brdn", "dl1batt", "dl2a", "dl2b"]
     parser = argparse.ArgumentParser(
@@ -205,7 +205,9 @@ def get_tasks_from_product_args(args):
         "l3unmix": L3Unmix(acquisition_id=args.acquisition_id, **kwargs),
         # "l3unmixformat": L3UnmixFormat(acquisition_id=args.acquisition_id, **kwargs)
         "daacscenes": AssignDAACSceneNumbers(orbit_id=args.orbit_id, override_output=args.override_output, **kwargs),
-        "daacaddl": GetAdditionalMetadata(acquisition_id=args.acquisition_id, **kwargs)
+        "daacaddl": GetAdditionalMetadata(acquisition_id=args.acquisition_id, **kwargs),
+        "recon": ReconciliationReport(start_time=args.start_time.strftime("%Y%m%dT%H%M%S"),
+                                      stop_time=args.stop_time.strftime("%Y%m%dT%H%M%S"), **kwargs)
     }
     tasks = []
     for prod in products:
