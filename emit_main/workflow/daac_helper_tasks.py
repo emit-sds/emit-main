@@ -239,8 +239,18 @@ class ReconciliationReport(SlurmJobTask):
                                f"reconciliation report. Exiting...")
 
         # Generate the report
-        utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
-        report_name = f"EMIT_RECON_{self.start_time}_{self.stop_time}_{utc_now.strftime('%Y%m%dT%H%M%S')}.rpt"
+        # utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
+        # report_name = f"EMIT_RECON_{self.start_time}_{self.stop_time}_{utc_now.strftime('%Y%m%dT%H%M%S')}.rpt"
+        report_match = f"ER_{self.start_time}_{self.stop_time}*"
+        matching_reports = glob.glob(os.path.join(wm.reconciliation_dir, report_match))
+        if len(matching_reports) == 0:
+            report_name = f"ER_{self.start_time}_{self.stop_time}_v01.rpt"
+        else:
+            matching_reports.sort()
+            # Get version
+            ver = int(matching_reports[-1].split("_")[-1][1:3]) + 1
+            report_name = f"ER_{self.start_time}_{self.stop_time}_v{str(ver).zfill(2)}.rpt"
+
         tmp_report_path = os.path.join(self.tmp_dir, report_name)
         with open(tmp_report_path, "w") as rf:
             # collection,collection_version,granuleId,fileName,fileSize,ingestTime,hash
@@ -286,4 +296,4 @@ class ReconciliationReport(SlurmJobTask):
 
         # Update granules with reconciliation report submission
         for f in files:
-            dm.update_reconciliation_submission_status(f["daac_filename"], f["submission_id"], report_name)
+            dm.update_reconciliation_submission_status(f["daac_filename"], f["submission_id"], report_name, "submitted")

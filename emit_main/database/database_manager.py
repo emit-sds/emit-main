@@ -502,7 +502,16 @@ class DatabaseManager:
         results += list(granule_reports_coll.find(query))
         return results
 
-    def update_reconciliation_submission_status(self, daac_filename, submission_id, report):
+    def find_files_by_last_reconciliation_report(self, report):
+        granule_reports_coll = self.db.granule_reports
+        # Query for all files in a report
+        query = {
+            "last_reconciliation_report": report
+        }
+        results = list(granule_reports_coll.find(query))
+        return results
+
+    def update_reconciliation_submission_status(self, daac_filename, submission_id, report, status):
         granule_reports_coll = self.db.granule_reports
         query = {
             "daac_filename": daac_filename,
@@ -511,7 +520,7 @@ class DatabaseManager:
         set_value = {
             "$set": {
                 "last_reconciliation_report": report,
-                "last_reconciliation_status": "submitted"
+                "last_reconciliation_status": status
             }
         }
         granule_reports_coll.update_one(query, set_value, upsert=True)

@@ -42,7 +42,7 @@ def parse_args():
                        "l2amask", "l2aformat", "l2adaac", "l2babun", "l2bformat", "l2bdaac", "l3unmix", "daacscenes",
                        "daacaddl", "recon"]
     monitor_choices = ["ingest", "frames", "edp", "cal", "bad", "geo", "l2", "email", "daacscenes", "dl0", "dl1a",
-                       "dl1brdn", "dl1batt", "dl2a", "dl2b"]
+                       "dl1brdn", "dl1batt", "dl2a", "dl2b", "reconresp"]
     parser = argparse.ArgumentParser(
         description="Description: This is the top-level run script for executing the various EMIT SDS workflow and "
                     "monitor tasks.\n"
@@ -353,6 +353,15 @@ def main():
 
     # Initialize tasks list
     tasks = []
+
+    if args.monitor and args.monitor == "reconresp":
+        em = EmailMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
+                          daac_ingest_queue=args.daac_ingest_queue)
+        em_tasks = em.process_daac_reconciliation_responses(
+            reconciliation_response_path=args.reconciliation_response_path)
+        em_tasks_str = "\n".join([str(t) for t in em_tasks])
+        logger.info(f"Email monitor reconciliation response tasks to run:\n{em_tasks_str}")
+        tasks += em_tasks
 
     # Get tasks from ingest monitor
     if args.monitor and args.monitor == "ingest":
