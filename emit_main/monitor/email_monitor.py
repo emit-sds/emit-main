@@ -116,6 +116,7 @@ class EmailMonitor:
                 item.move(self.delivery_failure_folder)
 
     def process_daac_reconciliation_responses(self):
+        # TODO: This is just a placeholder for now - needs correct implementation
         items = self.acct.inbox.all()
         logger.info(f"Attempting to process {self.acct.inbox.total_count} messages in inbox for DAAC reconciliation "
                     f"responses.")
