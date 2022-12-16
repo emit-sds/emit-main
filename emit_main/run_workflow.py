@@ -63,6 +63,8 @@ def parse_args():
                         help="Orbit number in the padded format XXXXXXX")
     parser.add_argument("--plan_prod_path", default="",
                         help="Path to planning product file")
+    parser.add_argument("--recon_resp_path",
+                        help="Path to reconciliation response file")
     parser.add_argument("-p", "--products",
                         help=("Comma delimited list of products to create (no spaces). "
                               "Choose from " + ", ".join(product_choices)))
@@ -358,7 +360,7 @@ def main():
         em = EmailMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
                           daac_ingest_queue=args.daac_ingest_queue)
         em_tasks = em.process_daac_reconciliation_responses(
-            reconciliation_response_path=args.reconciliation_response_path)
+            reconciliation_response_path=args.recon_resp_path)
         em_tasks_str = "\n".join([str(t) for t in em_tasks])
         logger.info(f"Email monitor reconciliation response tasks to run:\n{em_tasks_str}")
         tasks += em_tasks
