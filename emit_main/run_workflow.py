@@ -360,7 +360,7 @@ def main():
         em = EmailMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
                           daac_ingest_queue=args.daac_ingest_queue)
         em_tasks = em.process_daac_reconciliation_responses(
-            reconciliation_response_path=args.recon_resp_path)
+            reconciliation_response_path=args.recon_resp_path, retry_failed=args.retry_failed)
         em_tasks_str = "\n".join([str(t) for t in em_tasks])
         logger.info(f"Email monitor reconciliation response tasks to run:\n{em_tasks_str}")
         tasks += em_tasks

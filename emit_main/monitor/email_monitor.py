@@ -127,7 +127,7 @@ class EmailMonitor:
                                                              ",".join([response_status, error_code, error_message]))
                 item.move(self.delivery_failure_folder)
 
-    def process_daac_reconciliation_responses(self, reconciliation_response_path=None):
+    def process_daac_reconciliation_responses(self, reconciliation_response_path=None, retry_failed=False):
         # If the response path is not specified, then check the inbox for responses
         if reconciliation_response_path is None:
             items = self.acct.inbox.all()
@@ -180,7 +180,7 @@ class EmailMonitor:
                     pge.run(cmd, tmp_dir=self.tmp_dir)
 
         # Check if we have response path now and update files accordingly
-        tasks = []
+        granule_urs = set()
         if reconciliation_response_path is not None:
             # Check that file exists
             if not os.path.exists(reconciliation_response_path):
@@ -191,7 +191,6 @@ class EmailMonitor:
             files = dm.find_files_by_last_reconciliation_report(report=report)
             # Create lookup for failed ingests
             failed_files = {}
-            granule_urs = set()
             with open(reconciliation_response_path, "r") as f:
                 collections = json.load(f)
                 for coll in collections:
@@ -221,6 +220,9 @@ class EmailMonitor:
                 dm.update_reconciliation_submission_status(f["daac_filename"], f["submission_id"], report,
                                                            f["last_reconciliation_status"])
 
+        # If retry failed is true then set up tasks to run based on failed granules
+        tasks = []
+        if retry_failed is True:
             # Now create tasks based on granule urs
             for g in granule_urs:
                 if g.startswith("EMIT_L0"):
