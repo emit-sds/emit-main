@@ -128,13 +128,13 @@ class EmailMonitor:
                 item.move(self.delivery_failure_folder)
 
     def process_daac_reconciliation_responses(self, reconciliation_response_path=None, retry_failed=False):
+        dm = self.wm.database_manager
+        env = self.wm.config["environment"]
         # If the response path is not specified, then check the inbox for responses
         if reconciliation_response_path is None:
             items = self.acct.inbox.all()
             logger.info(f"Attempting to process {self.acct.inbox.total_count} messages in inbox for DAAC reconciliation "
                         f"responses.")
-            dm = self.wm.database_manager
-            env = self.wm.config["environment"]
             for item in items:
                 # Get time received
                 time_received = item.datetime_received.astimezone(self.acct.default_timezone)
