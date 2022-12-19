@@ -243,7 +243,8 @@ class EmailMonitor:
                                                stream_path=stream_path,
                                                level=self.level,
                                                partition=self.partition,
-                                               daac_ingest_queue=self.daac_ingest_queue))
+                                               daac_ingest_queue=self.daac_ingest_queue,
+                                               override_output=True))
                 if g.startswith("EMIT_L1A_RAW"):
                     # Get acquisition id
                     timestamp = g.split("_")[4].replace("T", "t")
@@ -253,6 +254,7 @@ class EmailMonitor:
                                             acquisition_id=acquisition_id,
                                             level=self.level,
                                             partition=self.partition,
-                                            daac_ingest_queue=self.daac_ingest_queue))
+                                            daac_ingest_queue=self.daac_ingest_queue,
+                                            override_output=True))
 
         return tasks

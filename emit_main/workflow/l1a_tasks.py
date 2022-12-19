@@ -797,6 +797,7 @@ class L1ADeliver(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
     daac_ingest_queue = luigi.Parameter(default="forward")
+    override_output = luigi.BoolParameter(default=False)
 
     memory = 18000
 
@@ -811,6 +812,10 @@ class L1ADeliver(SlurmJobTask):
     def output(self):
 
         logger.debug(f"{self.task_family} output: {self.acquisition_id}")
+
+        if self.override_output:
+            return None
+
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family)
 

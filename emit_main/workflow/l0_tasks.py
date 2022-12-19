@@ -619,6 +619,7 @@ class L0Deliver(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
     daac_ingest_queue = luigi.Parameter(default="forward")
+    override_output = luigi.BoolParameter(default=False)
 
     memory = 18000
 
@@ -630,6 +631,10 @@ class L0Deliver(SlurmJobTask):
 
     def output(self):
         logger.debug(f"{self.task_family} output: {self.stream_path}")
+
+        if self.override_output:
+            return None
+
         wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
         return StreamTarget(stream=wm.stream, task_family=self.task_family)
 
