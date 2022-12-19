@@ -204,8 +204,8 @@ class EmailMonitor:
                                     "checksum": coll[k]["report"][file]["cksum"],
                                     "status": coll[k]["report"][file]["status"]
                                 }
-                                if "error" in coll[k]["report"][file] and "cause" in coll[k]["report"][file]["error"]:
-                                    failed_files[file]["cause"] = coll[k]["report"][file]["error"]["cause"]
+                                if "error" in coll[k]["report"][file] and "Cause" in coll[k]["report"][file]["error"]:
+                                    failed_files[file]["cause"] = coll[k]["report"][file]["error"]["Cause"]
 
             # Now go through the files from the report and update their statuses accordingly
             for f in files:
