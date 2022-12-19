@@ -178,6 +178,7 @@ class EmailMonitor:
                     cmd = [self.wm.config["aws_cli_exe"], "s3", "cp", s3_link, reconciliation_response_path,
                            "--profile", self.wm.config["aws_profile"]]
                     pge.run(cmd, tmp_dir=self.tmp_dir)
+                    item.move(self.reconciliation_failure_folder)
 
         # Check if we have response path now and update files accordingly
         granule_urs = set()
