@@ -177,7 +177,7 @@ class EmailMonitor:
                         s3_link = f"s3://lp-prod-reconciliation/reports/{report_response_name}"
                     cmd = [self.wm.config["aws_cli_exe"], "s3", "cp", s3_link, reconciliation_response_path,
                            "--profile", self.wm.config["aws_profile"]]
-                    pge.run(cmd, tmp_dir=self.tmp_dir)
+                    pge.run(cmd)
                     item.move(self.reconciliation_failure_folder)
 
         # Check if we have response path now and update files accordingly
