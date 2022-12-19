@@ -199,7 +199,8 @@ class EmailMonitor:
                     for k in coll:
                         if "report" in coll[k]:
                             for file in coll[k]["report"]:
-                                granule_urs.add(coll[k]["report"][file]["granuleId"])
+                                if coll[k]["report"][file]["status"] != "queued":
+                                    granule_urs.add(coll[k]["report"][file]["granuleId"])
                                 failed_files[file] = {
                                     "checksum": coll[k]["report"][file]["cksum"],
                                     "status": coll[k]["report"][file]["status"]
