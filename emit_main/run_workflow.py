@@ -497,7 +497,7 @@ def main():
     # If it's a dry run just print the tasks and exit
     if args.dry_run:
         tasks_str = "\n".join([str(t) for t in tasks])
-        logger.info(f"Dry run flag set. Below are the tasks that Luigi would run:\n{tasks_str}")
+        logger.info(f"Dry run flag set. Below are the {len(tasks)} tasks that Luigi would run:\n{tasks_str}")
         sys.exit(0)
 
     # Build luigi logging.conf path
