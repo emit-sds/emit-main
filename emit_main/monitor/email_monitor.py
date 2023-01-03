@@ -141,10 +141,10 @@ class EmailMonitor:
 
                 # Check that the subject includes "Rec-Report for lp-prod-reconciliation" or
                 # "Rec-Report for lp-uat-reconciliation"
-                if env == "ops" and "Rec-Report for lp-prod" not in item.subject:
+                if env == "ops" and "Rec-Report EMIT lp-prod" not in item.subject:
                     continue
 
-                if env == "test" and "Rec-Report for lp-uat" not in item.subject:
+                if env == "test" and "Rec-Report EMIT lp-uat" not in item.subject:
                     continue
 
                 match = re.search("ER_.+rpt", item.subject)
