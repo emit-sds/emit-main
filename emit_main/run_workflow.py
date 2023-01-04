@@ -197,15 +197,18 @@ def get_tasks_from_product_args(args):
         "l1bgeo": L1BGeolocate(orbit_id=args.orbit_id, ignore_missing_radiance=args.ignore_missing_radiance, **kwargs),
         "l1brdnformat": L1BRdnFormat(acquisition_id=args.acquisition_id, **kwargs),
         "l1brdndaac": L1BRdnDeliver(acquisition_id=args.acquisition_id, daac_ingest_queue=args.daac_ingest_queue,
-                                    **kwargs),
-        "l1battdaac": L1BAttDeliver(orbit_id=args.orbit_id, daac_ingest_queue=args.daac_ingest_queue, **kwargs),
+                                    override_output=args.override_output, **kwargs),
+        "l1battdaac": L1BAttDeliver(orbit_id=args.orbit_id, daac_ingest_queue=args.daac_ingest_queue,
+                                    override_output=args.override_output, **kwargs),
         "l2arefl": L2AReflectance(acquisition_id=args.acquisition_id, **kwargs),
         "l2amask": L2AMask(acquisition_id=args.acquisition_id, **kwargs),
         "l2aformat": L2AFormat(acquisition_id=args.acquisition_id, **kwargs),
-        "l2adaac": L2ADeliver(acquisition_id=args.acquisition_id, daac_ingest_queue=args.daac_ingest_queue, **kwargs),
+        "l2adaac": L2ADeliver(acquisition_id=args.acquisition_id, daac_ingest_queue=args.daac_ingest_queue,
+                              override_output=args.override_output, **kwargs),
         "l2babun": L2BAbundance(acquisition_id=args.acquisition_id, **kwargs),
         "l2bformat": L2BFormat(acquisition_id=args.acquisition_id, **kwargs),
-        "l2bdaac": L2BDeliver(acquisition_id=args.acquisition_id, daac_ingest_queue=args.daac_ingest_queue, **kwargs),
+        "l2bdaac": L2BDeliver(acquisition_id=args.acquisition_id, daac_ingest_queue=args.daac_ingest_queue,
+                              override_output=args.override_output, **kwargs),
         "l3unmix": L3Unmix(acquisition_id=args.acquisition_id, **kwargs),
         # "l3unmixformat": L3UnmixFormat(acquisition_id=args.acquisition_id, **kwargs)
         "daacscenes": AssignDAACSceneNumbers(orbit_id=args.orbit_id, override_output=args.override_output, **kwargs),
@@ -480,6 +483,16 @@ def main():
         om_dl1batt_tasks_str = "\n".join([str(t) for t in om_dl1batt_tasks])
         logger.info(f"Orbit monitor deliver l1batt tasks to run:\n{om_dl1batt_tasks_str}")
         tasks += om_dl1batt_tasks
+
+    # Get tasks from dl2a (deliver dl2a) monitor
+    if args.monitor and args.monitor == "dl2a":
+        am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
+                                daac_ingest_queue=args.daac_ingest_queue)
+        am_dl2a_tasks = am.get_l2a_delivery_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                                  date_field=args.date_field, retry_failed=args.retry_failed)
+        am_dl2a_tasks_str = "\n".join([str(t) for t in am_dl2a_tasks])
+        logger.info(f"Acquisition monitor deliver l2a reflectance tasks to run:\n{am_dl2a_tasks_str}")
+        tasks += am_dl2a_tasks
 
     # Get tasks from products args
     if args.products:

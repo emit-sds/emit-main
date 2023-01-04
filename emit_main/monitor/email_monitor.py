@@ -14,6 +14,8 @@ from exchangelib import Account, Configuration, Credentials, FaultTolerance, DEL
 
 from emit_main.workflow.l0_tasks import L0Deliver
 from emit_main.workflow.l1a_tasks import L1ADeliver
+from emit_main.workflow.l1b_tasks import L1BRdnDeliver, L1BAttDeliver
+from emit_main.workflow.l2a_tasks import L2ADeliver
 from emit_main.workflow.workflow_manager import WorkflowManager
 
 logger = logging.getLogger("emit-main")
@@ -201,6 +203,8 @@ class EmailMonitor:
                             for file in coll[k]["report"]:
                                 # if coll[k]["report"][file]["status"] != "queued":
                                 granule_urs.add(coll[k]["report"][file]["granuleId"])
+                                # TODO: If there are multiple files in the report with the same name but different
+                                # TODO: checksums, this could be an issue.  Use <file>_<checksum> here
                                 failed_files[file] = {
                                     "checksum": coll[k]["report"][file]["cksum"],
                                     "status": coll[k]["report"][file]["status"]
@@ -215,7 +219,10 @@ class EmailMonitor:
                     if "cause" in failed_files[f["daac_filename"]]:
                         f["last_reconciliation_status"] = f["last_reconciliation_status"] + "," + \
                                                           failed_files[f["daac_filename"]]["cause"]
-                else:
+
+                # TODO: What about case where the checksum doesn't match?
+
+                if f["daac_filename"] not in failed_files:
                     # This means the file in the report had no errors
                     f["last_reconciliation_status"] = "RECONCILED"
 
@@ -232,10 +239,10 @@ class EmailMonitor:
                     # Need to find the stream name
                     stream_files = [f for f in files if f["granule_ur"] == g]
                     ccsds_name = None
-                    for sf in stream_files:
-                        if sf["sds_filename"].endswith(".bin"):
-                            ccsds_name = sf["sds_filename"]
-                            break
+                    if len(stream_files) > 0:
+                        ccsds_name = stream_files[0]["sds_filename"]
+                        if ccsds_name.endswith(".cmr.json"):
+                            ccsds_name = ccsds_name.replace(".cmr.json", ".bin")
                     if ccsds_name is not None:
                         stream = dm.find_stream_by_name(ccsds_name)
                         stream_path = stream["products"]["l0"]["ccsds_path"]
@@ -252,6 +259,41 @@ class EmailMonitor:
                     acquisition_id = f"emit{timestamp}"
                     logger.info(f"Creating L1ADeliver task for acquisition {acquisition_id}")
                     tasks.append(L1ADeliver(config_path=self.config_path,
+                                            acquisition_id=acquisition_id,
+                                            level=self.level,
+                                            partition=self.partition,
+                                            daac_ingest_queue=self.daac_ingest_queue,
+                                            override_output=True))
+
+                if g.startswith("EMIT_L1B_RAD"):
+                    # Get acquisition id
+                    timestamp = g.split("_")[4].replace("T", "t")
+                    acquisition_id = f"emit{timestamp}"
+                    logger.info(f"Creating L1BRdnDeliver task for acquisition {acquisition_id}")
+                    tasks.append(L1BRdnDeliver(config_path=self.config_path,
+                                               acquisition_id=acquisition_id,
+                                               level=self.level,
+                                               partition=self.partition,
+                                               daac_ingest_queue=self.daac_ingest_queue,
+                                               override_output=True))
+
+                if g.startswith("EMIT_L1B_ATT"):
+                    # Get orbit
+                    orbit_id = g.split("_")[-1]
+                    logger.info(f"Creating L1BAttDeliver task for orbit {orbit_id}")
+                    tasks.append(L1BAttDeliver(config_path=self.config_path,
+                                               orbit_id=orbit_id,
+                                               level=self.level,
+                                               partition=self.partition,
+                                               daac_ingest_queue=self.daac_ingest_queue,
+                                               override_output=True))
+
+                if g.startswith("EMIT_L2A_RFL"):
+                    # Get acquisition id
+                    timestamp = g.split("_")[4].replace("T", "t")
+                    acquisition_id = f"emit{timestamp}"
+                    logger.info(f"Creating L2ADeliver task for acquisition {acquisition_id}")
+                    tasks.append(L2ADeliver(config_path=self.config_path,
                                             acquisition_id=acquisition_id,
                                             level=self.level,
                                             partition=self.partition,

@@ -662,6 +662,7 @@ class L1BRdnDeliver(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
     daac_ingest_queue = luigi.Parameter(default="forward")
+    override_output = luigi.BoolParameter(default=False)
 
     memory = 18000
 
@@ -676,6 +677,10 @@ class L1BRdnDeliver(SlurmJobTask):
     def output(self):
 
         logger.debug(f"{self.task_family} output: {self.acquisition_id}")
+
+        if self.override_output:
+            return None
+
         acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
         return AcquisitionTarget(acquisition=acq, task_family=self.task_family)
 
@@ -810,9 +815,11 @@ class L1BRdnDeliver(SlurmJobTask):
         wm.change_group_ownership(cnm_submission_path)
 
         # Submit notification via AWS SQS
+        cnm_submission_output = cnm_submission_path.replace(".json", ".out")
         cmd_aws = [wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", queue_url, "--message-body",
-                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"]]
+                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"], ">", cnm_submission_output]
         pge.run(cmd_aws, tmp_dir=self.tmp_dir)
+        wm.change_group_ownership(cnm_submission_output)
         cnm_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(cnm_submission_path),
                                                             tz=datetime.timezone.utc)
 
@@ -887,6 +894,7 @@ class L1BAttDeliver(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
     daac_ingest_queue = luigi.Parameter(default="forward")
+    override_output = luigi.BoolParameter(default=False)
 
     memory = 18000
 
@@ -900,6 +908,10 @@ class L1BAttDeliver(SlurmJobTask):
     def output(self):
 
         logger.debug(f"{self.task_family} output: {self.orbit_id}")
+
+        if self.override_output:
+            return None
+
         wm = WorkflowManager(config_path=self.config_path, orbit_id=self.orbit_id)
         return OrbitTarget(orbit=wm.orbit, task_family=self.task_family)
 
@@ -1007,9 +1019,11 @@ class L1BAttDeliver(SlurmJobTask):
         wm.change_group_ownership(cnm_submission_path)
 
         # Submit notification via AWS SQS
+        cnm_submission_output = cnm_submission_path.replace(".json", ".out")
         cmd_aws = [wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", queue_url, "--message-body",
-                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"]]
+                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"], ">", cnm_submission_output]
         pge.run(cmd_aws, tmp_dir=self.tmp_dir)
+        wm.change_group_ownership(cnm_submission_output)
         cnm_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(cnm_submission_path),
                                                             tz=datetime.timezone.utc)
 
