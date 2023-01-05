@@ -714,6 +714,7 @@ class L1BRdnDeliver(SlurmJobTask):
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rdn_nc_path), tz=datetime.timezone.utc)
         daynight = "Day" if acq.submode == "science" else "Night"
         l1b_pge = wm.pges["emit-sds-l1b"]
+        cloud_fraction = acq.cloud_fraction if "cloud_fraction" in acq.metadata else None
         ummg = daac_converter.initialize_ummg(acq.rdn_granule_ur, nc_creation_time, "EMITL1BRAD",
                                               acq.collection_version, acq.start_time,
                                               acq.stop_time, l1b_pge.repo_name, l1b_pge.version_tag,
@@ -722,7 +723,7 @@ class L1BRdnDeliver(SlurmJobTask):
                                               orbit_segment=int(acq.scene), scene=int(acq.daac_scene),
                                               solar_zenith=acq.mean_solar_zenith,
                                               solar_azimuth=acq.mean_solar_azimuth,
-                                              cloud_fraction=acq.cloud_fraction)
+                                              cloud_fraction=cloud_fraction)
 
         ummg = daac_converter.add_data_files_ummg(ummg, [daac_rdn_nc_path, daac_obs_nc_path, daac_browse_path],
                                                   daynight, ["NETCDF-4", "NETCDF-4", "PNG"])

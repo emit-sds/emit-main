@@ -149,6 +149,7 @@ class DatabaseManager:
             "products.l1b.loc.img_path": {"$exists": 1},
             "products.l1b.obs.img_path": {"$exists": 1},
             "products.l1b.rdn_png.png_path": {"$exists": 1},
+            "products.l2a.rfl.img_path": {"$exists": 1},
             "daac_scene": {"$exists": 1},
             "products.l1b.rdn_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop},
