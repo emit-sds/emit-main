@@ -42,7 +42,7 @@ def parse_args():
                        "l2amask", "l2aformat", "l2adaac", "l2babun", "l2bformat", "l2bdaac", "l3unmix", "daacscenes",
                        "daacaddl", "recon"]
     monitor_choices = ["ingest", "frames", "edp", "cal", "bad", "geo", "l2", "email", "daacscenes", "dl0", "dl1a",
-                       "dl1brdn", "dl1batt", "dl2a", "dl2b"]
+                       "dl1brdn", "dl1batt", "dl2a", "dl2b", "reconresp"]
     parser = argparse.ArgumentParser(
         description="Description: This is the top-level run script for executing the various EMIT SDS workflow and "
                     "monitor tasks.\n"
@@ -63,6 +63,8 @@ def parse_args():
                         help="Orbit number in the padded format XXXXXXX")
     parser.add_argument("--plan_prod_path", default="",
                         help="Path to planning product file")
+    parser.add_argument("--recon_resp_path",
+                        help="Path to reconciliation response file")
     parser.add_argument("-p", "--products",
                         help=("Comma delimited list of products to create (no spaces). "
                               "Choose from " + ", ".join(product_choices)))
@@ -173,7 +175,8 @@ def get_tasks_from_product_args(args):
     prod_task_map = {
         "l0hosc": L0StripHOSC(stream_path=args.stream_path, miss_pkt_thresh=args.miss_pkt_thresh,
                               **kwargs),
-        "l0daac": L0Deliver(stream_path=args.stream_path, daac_ingest_queue=args.daac_ingest_queue, **kwargs),
+        "l0daac": L0Deliver(stream_path=args.stream_path, daac_ingest_queue=args.daac_ingest_queue,
+                            override_output=args.override_output, **kwargs),
         "l0plan": L0ProcessPlanningProduct(plan_prod_path=args.plan_prod_path, test_mode=args.test_mode, **kwargs),
         "l0bad": L0IngestBAD(stream_path=args.stream_path, **kwargs),
         "l1aeng": L1AReformatEDP(stream_path=args.stream_path, pkt_format=args.pkt_format,
@@ -187,21 +190,25 @@ def get_tasks_from_product_args(args):
                                          acq_chunksize=args.acq_chunksize, test_mode=args.test_mode, **kwargs),
         "l1araw": L1AReassembleRaw(dcid=args.dcid, ignore_missing_frames=args.ignore_missing_frames,
                                    acq_chunksize=args.acq_chunksize, test_mode=args.test_mode, **kwargs),
-        "l1adaac": L1ADeliver(acquisition_id=args.acquisition_id, daac_ingest_queue=args.daac_ingest_queue, **kwargs),
+        "l1adaac": L1ADeliver(acquisition_id=args.acquisition_id, daac_ingest_queue=args.daac_ingest_queue,
+                              override_output=args.override_output, **kwargs),
         "l1abad": L1AReformatBAD(orbit_id=args.orbit_id, ignore_missing_bad=args.ignore_missing_bad, **kwargs),
         "l1bcal": L1BCalibrate(acquisition_id=args.acquisition_id, dark_path=args.dark_path, **kwargs),
         "l1bgeo": L1BGeolocate(orbit_id=args.orbit_id, ignore_missing_radiance=args.ignore_missing_radiance, **kwargs),
         "l1brdnformat": L1BRdnFormat(acquisition_id=args.acquisition_id, **kwargs),
         "l1brdndaac": L1BRdnDeliver(acquisition_id=args.acquisition_id, daac_ingest_queue=args.daac_ingest_queue,
-                                    **kwargs),
-        "l1battdaac": L1BAttDeliver(orbit_id=args.orbit_id, daac_ingest_queue=args.daac_ingest_queue, **kwargs),
+                                    override_output=args.override_output, **kwargs),
+        "l1battdaac": L1BAttDeliver(orbit_id=args.orbit_id, daac_ingest_queue=args.daac_ingest_queue,
+                                    override_output=args.override_output, **kwargs),
         "l2arefl": L2AReflectance(acquisition_id=args.acquisition_id, **kwargs),
         "l2amask": L2AMask(acquisition_id=args.acquisition_id, **kwargs),
         "l2aformat": L2AFormat(acquisition_id=args.acquisition_id, **kwargs),
-        "l2adaac": L2ADeliver(acquisition_id=args.acquisition_id, daac_ingest_queue=args.daac_ingest_queue, **kwargs),
+        "l2adaac": L2ADeliver(acquisition_id=args.acquisition_id, daac_ingest_queue=args.daac_ingest_queue,
+                              override_output=args.override_output, **kwargs),
         "l2babun": L2BAbundance(acquisition_id=args.acquisition_id, **kwargs),
         "l2bformat": L2BFormat(acquisition_id=args.acquisition_id, **kwargs),
-        "l2bdaac": L2BDeliver(acquisition_id=args.acquisition_id, daac_ingest_queue=args.daac_ingest_queue, **kwargs),
+        "l2bdaac": L2BDeliver(acquisition_id=args.acquisition_id, daac_ingest_queue=args.daac_ingest_queue,
+                              override_output=args.override_output, **kwargs),
         "l3unmix": L3Unmix(acquisition_id=args.acquisition_id, **kwargs),
         # "l3unmixformat": L3UnmixFormat(acquisition_id=args.acquisition_id, **kwargs)
         "daacscenes": AssignDAACSceneNumbers(orbit_id=args.orbit_id, override_output=args.override_output, **kwargs),
@@ -354,6 +361,15 @@ def main():
     # Initialize tasks list
     tasks = []
 
+    if args.monitor and args.monitor == "reconresp":
+        em = EmailMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
+                          daac_ingest_queue=args.daac_ingest_queue)
+        em_tasks = em.process_daac_reconciliation_responses(
+            reconciliation_response_path=args.recon_resp_path, retry_failed=args.retry_failed)
+        em_tasks_str = "\n".join([str(t) for t in em_tasks])
+        logger.info(f"Email monitor reconciliation response tasks to run:\n{em_tasks_str}")
+        tasks += em_tasks
+
     # Get tasks from ingest monitor
     if args.monitor and args.monitor == "ingest":
         im = IngestMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
@@ -468,6 +484,16 @@ def main():
         logger.info(f"Orbit monitor deliver l1batt tasks to run:\n{om_dl1batt_tasks_str}")
         tasks += om_dl1batt_tasks
 
+    # Get tasks from dl2a (deliver dl2a) monitor
+    if args.monitor and args.monitor == "dl2a":
+        am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
+                                daac_ingest_queue=args.daac_ingest_queue)
+        am_dl2a_tasks = am.get_l2a_delivery_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                                  date_field=args.date_field, retry_failed=args.retry_failed)
+        am_dl2a_tasks_str = "\n".join([str(t) for t in am_dl2a_tasks])
+        logger.info(f"Acquisition monitor deliver l2a reflectance tasks to run:\n{am_dl2a_tasks_str}")
+        tasks += am_dl2a_tasks
+
     # Get tasks from products args
     if args.products:
         prod_tasks = get_tasks_from_product_args(args)
@@ -486,7 +512,7 @@ def main():
     # If it's a dry run just print the tasks and exit
     if args.dry_run:
         tasks_str = "\n".join([str(t) for t in tasks])
-        logger.info(f"Dry run flag set. Below are the tasks that Luigi would run:\n{tasks_str}")
+        logger.info(f"Dry run flag set. Below are the {len(tasks)} tasks that Luigi would run:\n{tasks_str}")
         sys.exit(0)
 
     # Build luigi logging.conf path

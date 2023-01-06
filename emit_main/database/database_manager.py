@@ -149,6 +149,7 @@ class DatabaseManager:
             "products.l1b.loc.img_path": {"$exists": 1},
             "products.l1b.obs.img_path": {"$exists": 1},
             "products.l1b.rdn_png.png_path": {"$exists": 1},
+            "products.l2a.rfl.img_path": {"$exists": 1},
             "daac_scene": {"$exists": 1},
             "products.l1b.rdn_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop},
@@ -157,6 +158,26 @@ class DatabaseManager:
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L1BRdnFormat", "emit.L1BRdnDeliver"])
+        return results
+
+    def find_acquisitions_for_l2a_delivery(self, start, stop, date_field="last_modified", retry_failed=False):
+        acquisitions_coll = self.db.acquisitions
+        # Query for acquisitions with daac scene numbers but no daac ummg products. We also need the
+        # l2a browse image
+        query = {
+            "products.l2a.rfl.img_path": {"$exists": 1},
+            "products.l2a.rfluncert.img_path": {"$exists": 1},
+            "products.l2a.mask.img_path": {"$exists": 1},
+            "products.l1b.glt.img_path": {"$exists": 1},
+            "products.l1b.loc.img_path": {"$exists": 1},
+            "daac_scene": {"$exists": 1},
+            "products.l2a.rfl_ummg.ummg_json_path": {"$exists": 0},
+            date_field: {"$gte": start, "$lte": stop},
+            "build_num": self.config["build_num"]
+        }
+        results = list(acquisitions_coll.find(query))
+        if not retry_failed:
+            results = self._remove_results_with_failed_tasks(results, ["emit.L2AFormat", "emit.L2ADeliver"])
         return results
 
     def insert_acquisition(self, metadata):
@@ -502,7 +523,16 @@ class DatabaseManager:
         results += list(granule_reports_coll.find(query))
         return results
 
-    def update_reconciliation_submission_status(self, daac_filename, submission_id, report):
+    def find_files_by_last_reconciliation_report(self, report):
+        granule_reports_coll = self.db.granule_reports
+        # Query for all files in a report
+        query = {
+            "last_reconciliation_report": report
+        }
+        results = list(granule_reports_coll.find(query))
+        return results
+
+    def update_reconciliation_submission_status(self, daac_filename, submission_id, report, status):
         granule_reports_coll = self.db.granule_reports
         query = {
             "daac_filename": daac_filename,
@@ -511,7 +541,7 @@ class DatabaseManager:
         set_value = {
             "$set": {
                 "last_reconciliation_report": report,
-                "last_reconciliation_status": "submitted"
+                "last_reconciliation_status": status
             }
         }
         granule_reports_coll.update_one(query, set_value, upsert=True)
