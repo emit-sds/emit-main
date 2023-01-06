@@ -217,8 +217,7 @@ class EmailMonitor:
                 if f["daac_filename"] in failed_files and f["checksum"] == failed_files[f["daac_filename"]]["checksum"]:
                     f["last_reconciliation_status"] = "FAILURE," + failed_files[f["daac_filename"]]["status"]
                     if "cause" in failed_files[f["daac_filename"]]:
-                        f["last_reconciliation_status"] = f["last_reconciliation_status"] + "," + \
-                                                          failed_files[f["daac_filename"]]["cause"]
+                        f["last_reconciliation_status"] = f["last_reconciliation_status"] + "," + failed_files[f["daac_filename"]]["cause"]
 
                 # TODO: What about case where the checksum doesn't match?
 
