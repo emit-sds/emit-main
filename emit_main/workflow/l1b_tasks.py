@@ -382,7 +382,16 @@ class L1BGeolocate(SlurmJobTask):
             tmp_obs_img_path = glob.glob(os.path.join(tmp_output_dir, f"{id}*obs*img"))[0]
             tmp_obs_hdr_path = glob.glob(os.path.join(tmp_output_dir, f"{id}*obs*hdr"))[0]
             tmp_rdn_kmz_path = glob.glob(os.path.join(tmp_output_dir, f"{id}*rdn*kmz"))[0]
-            tmp_rdn_png_path = glob.glob(os.path.join(tmp_output_dir, f"{id}*rdn*png"))[0]
+            # Get png paths and then identify non-projected vs projected
+            tmp_rdn_png_paths = glob.glob(os.path.join(tmp_output_dir, f"{id}*rdn*png"))
+            tmp_rdn_png_path = None
+            tmp_rdn_proj_png_path = None
+            for png_path in tmp_rdn_png_paths:
+                if "_proj" in png_path:
+                    tmp_rdn_proj_png_path = png_path
+                else:
+                    tmp_rdn_png_path = png_path
+
             # Copy tmp paths to /store
             wm.print(__name__, f"Copying {tmp_glt_img_path} to {acq.glt_img_path}")
             wm.copy(tmp_glt_img_path, acq.glt_img_path)
@@ -393,6 +402,7 @@ class L1BGeolocate(SlurmJobTask):
             wm.copy(tmp_obs_hdr_path, acq.obs_hdr_path)
             wm.copy(tmp_rdn_kmz_path, acq.rdn_kmz_path)
             wm.copy(tmp_rdn_png_path, acq.rdn_png_path)
+            wm.copy(tmp_rdn_proj_png_path, acq.rdn_png_path.replace(".png", "_proj.png"))
             # Symlink from orbits l1b dir to acquisitions l1b dir
             wm.symlink(acq.glt_img_path, os.path.join(orbit.l1b_dir, os.path.basename(acq.glt_img_path)))
             wm.symlink(acq.glt_hdr_path, os.path.join(orbit.l1b_dir, os.path.basename(acq.glt_hdr_path)))
