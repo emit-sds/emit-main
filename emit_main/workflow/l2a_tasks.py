@@ -146,6 +146,11 @@ class L2AReflectance(SlurmJobTask):
         tmp_quality_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_rfl_quality.txt")
         tmp_atm_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_atm_interp")
 
+        #ensure that the tmp_rfl_path has a nodata value set, before we make the quicklook
+        hdr = envi.read_envi_header(tmp_rfl_hdr_path)
+        hdr["data ignore value"] = -9999
+        envi.write_envi_header(tmp_rfl_hdr_path, hdr)
+
         cmd = ["gdal_translate", tmp_rfl_path, tmp_rfl_png_path, "-b", "35", "-b", "23", "-b",
                "11", "-ot", "Byte", "-scale", "-exponent", "0.6", "-of", "PNG", "-co", "ZLEVEL=9"]
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
@@ -200,7 +205,6 @@ class L2AReflectance(SlurmJobTask):
             daynight = "Day" if acq.submode == "science" else "Night"
             hdr["emit acquisition daynight"] = daynight
             hdr["emit spectral quality"] = '{' + ', '.join(quality_results.astype(str).tolist()) + '}'
-            hdr["data ignore value"] = -9999
             envi.write_envi_header(hdr_path, hdr)
 
             # Update product dictionary in DB
