@@ -200,6 +200,7 @@ class L2AReflectance(SlurmJobTask):
             daynight = "Day" if acq.submode == "science" else "Night"
             hdr["emit acquisition daynight"] = daynight
             hdr["emit spectral quality"] = '{' + ', '.join(quality_results.astype(str).tolist()) + '}'
+            hdr["data ignore value"] = -9999
             envi.write_envi_header(hdr_path, hdr)
 
             # Update product dictionary in DB
