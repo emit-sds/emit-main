@@ -422,9 +422,9 @@ class L0ProcessPlanningProduct(SlurmJobTask):
         horizon_end_time = None
         for e in events:
             if e["name"].lower() == "planning horizon start":
-                horizon_start_time = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S")
+                horizon_start_time = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S.%f")
             if e["name"].lower() == "planning horizon end":
-                horizon_end_time = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S")
+                horizon_end_time = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S.%f")
 
         if (horizon_start_time is None or horizon_end_time is None) and not self.test_mode:
             raise RuntimeError("Either the horizon start time or the horizon end time is not defined.  Aborting.  Use "
@@ -487,7 +487,7 @@ class L0ProcessPlanningProduct(SlurmJobTask):
             # Check for orbit object
             if e["name"].lower() == "start orbit":
                 # Construct orbit object
-                start_time = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S")
+                start_time = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S.%f")
                 year = start_time.strftime("%y")
                 orbit_num = int(e["orbitId"])
                 orbit_id = year + str(orbit_num).zfill(5)
