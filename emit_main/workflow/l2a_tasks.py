@@ -146,7 +146,7 @@ class L2AReflectance(SlurmJobTask):
         tmp_quality_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_rfl_quality.txt")
         tmp_atm_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_atm_interp")
 
-        #ensure that the tmp_rfl_path has a nodata value set, before we make the quicklook
+        # ensure that the tmp_rfl_path has a nodata value set, before we make the quicklook
         hdr = envi.read_envi_header(tmp_rfl_hdr_path)
         hdr["data ignore value"] = -9999
         envi.write_envi_header(tmp_rfl_hdr_path, hdr)
