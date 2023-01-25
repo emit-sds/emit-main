@@ -90,10 +90,10 @@ class DataCollection:
             wm.print(__name__, "Set of frames is not sequential!")
             return False
 
-        # Check that we have at least the expected number minus math.ceil(expected/100) and no more than the expected number
-        if found_num < expected_num - math.ceil(expected_num / 100) or found_num > expected_num:
-            wm.print(__name__, f"Number of frames, {found_num}, is not within a few frames of the expected number of "
-                               f"{expected_num}, or it is more than the expected number.")
+        # Check that we have the expected number
+        if found_num != expected_num:
+            wm.print(__name__, f"Number of frames found, {found_num}, does not equal the expected number of "
+                               f"{expected_num}")
             return False
 
         # Check that first frame has status 1 or 5
