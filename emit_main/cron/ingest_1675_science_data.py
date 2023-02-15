@@ -138,7 +138,8 @@ def main():
 
     # Run all files in a bash for loop
     logger.info("The following stream files will be ingested in this order: ")
-    subprocess.run(f"for file in `ls {ingest_date_dir}/1675* | sort -V`; do echo $file; done", shell=True)
+    subprocess.run(f"for file in `ls {ingest_date_dir}/1675* | sort -V`; do echo $file >> "
+                   f"/store/emit/{args.env}/logs/cron_ingest_science_data.log; done", shell=True)
     cmd = f"for file in `ls {ingest_date_dir}/1675* | sort -V`; do " \
           f"python /store/emit/{args.env}/repos/emit-main/emit_main/run_workflow.py -c " \
           f"/store/emit/{args.env}/repos/emit-main/emit_main/config/{args.env}_sds_config.json -p l1aframe " \
