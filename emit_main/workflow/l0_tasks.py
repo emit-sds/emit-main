@@ -658,12 +658,20 @@ class L0Deliver(SlurmJobTask):
         # Copy files to tmp dir and rename
         wm.copy(stream.ccsds_path, daac_ccsds_path)
 
+        # Get the software_build_version (extended build num when product was created)
+        software_build_version = None
+        for log in reversed(stream.processing_log):
+            if log["task"] == "emit.L0StripHOSC" and log["completion_status"] == "SUCCESS":
+                software_build_version = log["extended_build_num"]
+                break
+
         # Create the UMM-G file
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(stream.ccsds_path), tz=datetime.timezone.utc)
         l0_pge = wm.pges["emit-sds-l0"]
         ummg = daac_converter.initialize_ummg(granule_ur, creation_time, "EMITL0", collection_version,
                                               stream.start_time, stream.stop_time, l0_pge.repo_name, l0_pge.version_tag,
-                                              software_build_version=wm.config["extended_build_num"])
+                                              software_build_version=software_build_version,
+                                              software_delivery_version=wm.config["extended_build_num"])
         ummg = daac_converter.add_data_files_ummg(ummg, [daac_ccsds_path], "Unspecified", ["BINARY"])
         # ummg = daac_converter.add_related_url(ummg, l0_pge.repo_url, "DOWNLOAD SOFTWARE")
         ummg_path = stream.ccsds_path.replace(".bin", ".cmr.json")

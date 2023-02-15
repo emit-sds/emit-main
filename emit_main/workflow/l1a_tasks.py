@@ -13,10 +13,7 @@ import os
 import luigi
 import spectral.io.envi as envi
 
-
-from emit_main.workflow.daac_helper_tasks import AssignDAACSceneNumbers
-from emit_main.workflow.output_targets import StreamTarget, DataCollectionTarget, OrbitTarget, AcquisitionTarget, \
-    DAACSceneNumbersTarget
+from emit_main.workflow.output_targets import StreamTarget, DataCollectionTarget, OrbitTarget, AcquisitionTarget
 from emit_main.workflow.l0_tasks import L0StripHOSC
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_main.workflow.workflow_manager import WorkflowManager
@@ -846,6 +843,10 @@ class L1ADeliver(SlurmJobTask):
         wm.copy(acq.raw_img_path, daac_raw_path)
         wm.copy(acq.raw_hdr_path, daac_raw_hdr_path)
 
+        # Get the software_build_version (extended build num when product was created)
+        hdr = envi.read_envi_header(acq.raw_hdr_path)
+        software_build_version = hdr["emit software build version"]
+
         # First create the UMM-G file
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.raw_img_path), tz=datetime.timezone.utc)
         l1a_pge = wm.pges["emit-sds-l1a"]
@@ -853,7 +854,8 @@ class L1ADeliver(SlurmJobTask):
             ummg = daac_converter.initialize_ummg(acq.raw_granule_ur, creation_time, "EMITL1ARAW",
                                                   acq.collection_version, acq.start_time,
                                                   acq.stop_time, l1a_pge.repo_name, l1a_pge.version_tag,
-                                                  software_build_version=wm.config["extended_build_num"],
+                                                  software_build_version=software_build_version,
+                                                  software_delivery_version=wm.config["extended_build_num"],
                                                   doi=wm.config["dois"]["EMITL1ARAW"], orbit=int(acq.orbit),
                                                   orbit_segment=int(acq.scene), scene=int(acq.daac_scene))
             ummg = daac_converter.add_data_files_ummg(ummg, [daac_raw_path, daac_raw_hdr_path], "Day",
@@ -865,7 +867,8 @@ class L1ADeliver(SlurmJobTask):
             ummg = daac_converter.initialize_ummg(acq.raw_granule_ur, creation_time, "EMITL1ARAW",
                                                   acq.collection_version, acq.start_time,
                                                   acq.stop_time, l1a_pge.repo_name, l1a_pge.version_tag,
-                                                  software_build_version=wm.config["extended_build_num"],
+                                                  software_build_version=software_build_version,
+                                                  software_delivery_version=wm.config["extended_build_num"],
                                                   doi=wm.config["dois"]["EMITL1ARAW"], orbit=int(acq.orbit),
                                                   orbit_segment=int(acq.scene), scene=int(acq.daac_scene))
             ummg = daac_converter.add_data_files_ummg(ummg, [daac_raw_path, daac_raw_hdr_path], "Night",
