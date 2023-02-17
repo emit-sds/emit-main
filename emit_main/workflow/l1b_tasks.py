@@ -616,7 +616,8 @@ class L1BRdnFormat(SlurmJobTask):
         tmp_daac_obs_nc_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l1b_obs.nc")
         tmp_log_path = os.path.join(self.local_tmp_dir, "output_conversion_pge.log")
         cmd = ["python", output_generator_exe, tmp_daac_rdn_nc_path, tmp_daac_obs_nc_path, acq.rdn_img_path, acq.obs_img_path, acq.loc_img_path,
-               acq.glt_img_path, "V0" + str(wm.config["processing_version"]), "--log_file", tmp_log_path]
+               acq.glt_img_path, "V0" + str(wm.config["processing_version"]), wm.config["extended_build_num"],
+               "--log_file", tmp_log_path]
 
         # Run this inside the emit-main conda environment to include emit-utils and other requirements
         main_pge = wm.pges["emit-main"]
@@ -721,6 +722,10 @@ class L1BRdnDeliver(SlurmJobTask):
         wm.copy(acq.obs_nc_path, daac_obs_nc_path)
         wm.copy(acq.rdn_png_path, daac_browse_path)
 
+        # Get the software_build_version (extended build num when product was created)
+        hdr = envi.read_envi_header(acq.rdn_hdr_path)
+        software_build_version = hdr["emit software build version"]
+
         # Create the UMM-G file
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rdn_nc_path), tz=datetime.timezone.utc)
         daynight = "Day" if acq.submode == "science" else "Night"
@@ -729,7 +734,8 @@ class L1BRdnDeliver(SlurmJobTask):
         ummg = daac_converter.initialize_ummg(acq.rdn_granule_ur, nc_creation_time, "EMITL1BRAD",
                                               acq.collection_version, acq.start_time,
                                               acq.stop_time, l1b_pge.repo_name, l1b_pge.version_tag,
-                                              software_build_version=wm.config["extended_build_num"],
+                                              software_build_version=software_build_version,
+                                              software_delivery_version=wm.config["extended_build_num"],
                                               doi=wm.config["dois"]["EMITL1BRAD"], orbit=int(acq.orbit),
                                               orbit_segment=int(acq.scene), scene=int(acq.daac_scene),
                                               solar_zenith=acq.mean_solar_zenith,
@@ -939,6 +945,13 @@ class L1BAttDeliver(SlurmJobTask):
         nc_path = orbit.corr_att_eph_path
         ummg_path = nc_path.replace(".nc", ".cmr.json")
 
+        # Update NetCDF with software_delivery_version and get software_build_version
+        nc_ds = netCDF4.Dataset(nc_path, 'r+')
+        software_build_version = nc_ds.software_build_version
+        nc_ds.software_delivery_version = wm.config["extended_build_num"]
+        nc_ds.sync()
+        nc_ds.close()
+
         # Create local/tmp daac names and paths
         collection_version = f"0{wm.config['processing_version']}"
         start_time_str = orbit.start_time.strftime("%Y%m%dT%H%M%S")
@@ -957,7 +970,8 @@ class L1BAttDeliver(SlurmJobTask):
         ummg = daac_converter.initialize_ummg(granule_ur, nc_creation_time, "EMITL1BATT", collection_version,
                                               orbit.start_time, orbit.stop_time, l1bgeo_pge.repo_name,
                                               l1bgeo_pge.version_tag,
-                                              software_build_version=wm.config["extended_build_num"],
+                                              software_build_version=software_build_version,
+                                              software_delivery_version=wm.config["extended_build_num"],
                                               doi=wm.config["dois"]["EMITL1BATT"], orbit=int(orbit.orbit_id))
         ummg = daac_converter.add_data_files_ummg(ummg, [daac_nc_path], "Both", ["NETCDF-4"])
         # ummg = daac_converter.add_related_url(ummg, l1bgeo_pge.repo_url, "DOWNLOAD SOFTWARE")
