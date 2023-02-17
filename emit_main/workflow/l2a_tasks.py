@@ -430,7 +430,8 @@ class L2AFormat(SlurmJobTask):
         cmd = ["python", output_generator_exe, tmp_daac_rfl_nc_path, tmp_daac_rfl_unc_nc_path,
                tmp_daac_mask_nc_path, acq.rfl_img_path, acq.rfluncert_img_path,
                acq.mask_img_path, acq.bandmask_img_path, acq.loc_img_path, acq.glt_img_path,
-               "V0" + str(wm.config["processing_version"]), "--log_file", tmp_log_path]
+               "V0" + str(wm.config["processing_version"]), wm.config["extended_build_num"],
+               "--log_file", tmp_log_path]
 
         # Run this inside the emit-main conda environment to include emit-utils and other requirements
         main_pge = wm.pges["emit-main"]
@@ -543,6 +544,10 @@ class L2ADeliver(SlurmJobTask):
         wm.copy(acq.mask_nc_path, daac_mask_nc_path)
         wm.copy(acq.rfl_png_path, daac_browse_path)
 
+        # Get the software_build_version (extended build num when product was created)
+        hdr = envi.read_envi_header(acq.rfl_hdr_path)
+        software_build_version = hdr["emit software build version"]
+
         # Create the UMM-G file
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rfl_nc_path), tz=datetime.timezone.utc)
         daynight = "Day" if acq.submode == "science" else "Night"
@@ -550,7 +555,8 @@ class L2ADeliver(SlurmJobTask):
         ummg = daac_converter.initialize_ummg(acq.rfl_granule_ur, nc_creation_time, "EMITL2ARFL",
                                               acq.collection_version, acq.start_time,
                                               acq.stop_time, l2a_pge.repo_name, l2a_pge.version_tag,
-                                              software_build_version=wm.config["extended_build_num"],
+                                              software_build_version=software_build_version,
+                                              software_delivery_version=wm.config["extended_build_num"],
                                               doi=wm.config["dois"]["EMITL2ARFL"], orbit=int(acq.orbit),
                                               orbit_segment=int(acq.scene), scene=int(acq.daac_scene),
                                               solar_zenith=acq.mean_solar_zenith,

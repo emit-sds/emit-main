@@ -97,7 +97,7 @@ class Orbit:
             return False
 
         bad_sto_files = [os.path.basename(p) for p in self.metadata["associated_bad_sto"]]
-        bad_sto_files.sort()
+        bad_sto_files.sort(key=lambda x: x.split("_")[-2])
 
         # Check if empty
         if len(bad_sto_files) == 0:

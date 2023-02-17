@@ -229,7 +229,8 @@ class L2BFormat(SlurmJobTask):
 
         cmd = ["python", output_generator_exe, tmp_daac_nc_abun_path, tmp_daac_nc_abununcert_path,
                acq.abun_img_path, acq.abununcert_img_path, acq.loc_img_path, acq.glt_img_path,
-               "V0" + str(wm.config["processing_version"]), "--log_file", tmp_log_path]
+               "V0" + str(wm.config["processing_version"]), wm.config["extended_build_num"],
+               "--log_file", tmp_log_path]
         pge.run(cmd, tmp_dir=self.tmp_dir)
 
         # Copy and rename output files back to /store
@@ -332,6 +333,10 @@ class L2BDeliver(SlurmJobTask):
         wm.copy(acq.abununcert_nc_path, daac_abununcert_nc_path)
         wm.copy(acq.abun_png_path, daac_browse_path)
 
+        # Get the software_build_version (extended build num when product was created)
+        hdr = envi.read_envi_header(acq.abun_hdr_path)
+        software_build_version = hdr["emit software build version"]
+
         # Create the UMM-G file
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.abun_nc_path), tz=datetime.timezone.utc)
         daynight = "Day" if acq.submode == "science" else "Night"
@@ -339,7 +344,8 @@ class L2BDeliver(SlurmJobTask):
         ummg = daac_converter.initialize_ummg(acq.abun_granule_ur, nc_creation_time, "EMITL2BMIN",
                                               acq.collection_version, acq.start_time,
                                               acq.stop_time, l2b_pge.repo_name, l2b_pge.version_tag,
-                                              software_build_version=wm.config["extended_build_num"],
+                                              software_build_version=software_build_version,
+                                              software_delivery_version=wm.config["extended_build_num"],
                                               doi=wm.config["dois"]["EMITL2BMIN"], orbit=int(acq.orbit),
                                               orbit_segment=int(acq.scene), scene=int(acq.daac_scene),
                                               solar_zenith=acq.mean_solar_zenith,
