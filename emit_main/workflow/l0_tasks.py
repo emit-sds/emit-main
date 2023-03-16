@@ -487,7 +487,10 @@ class L0ProcessPlanningProduct(SlurmJobTask):
             # Check for orbit object
             if e["name"].lower() == "start orbit":
                 # Construct orbit object
-                start_time = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S")
+                if "." in e["datetime"]:
+                    start_time = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S.%f")
+                else:
+                    start_time = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S")
                 year = start_time.strftime("%y")
                 orbit_num = int(e["orbitId"])
                 orbit_id = year + str(orbit_num).zfill(5)
