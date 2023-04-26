@@ -18,6 +18,8 @@ import yaml
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
+from emit_main.workflow.workflow_manager import WorkflowManager
+
 
 def calc_cloud_metrics(input_json):
     with open(input_json, "r") as f:
@@ -352,7 +354,54 @@ def main():
         total_eff_missing = eff_missing_clouds + eff_missing_pkt_loss + eff_missing_hs_overflow + eff_missing_ioc_timing
         cloud_percent, cloud_cirrus_percent, clouds_buffer_percent, screened_onboard_percent, total_cloud_percent = calc_cloud_metrics(args.tracking_json)
 
+        # Get workflow manager and db collections
+        config_path = f"/store/emit/ops/repos/emit-main/emit_main/config/ops_sds_config.json"
+        wm = WorkflowManager(config_path=config_path)
+        db = wm.database_manager.db
+        acq_coll = db.acquisitions
+
+        start_time = dt.datetime.strptime("2022-08-10T00:00:00", "%Y-%m-%dT%H:%M:%S")
+        query = {
+            "build_num": "0106",
+            "start_time": {"$gte": start_time}
+        }
+        num_raw = len(list(acq_coll.find(query)))
+
+        query = {
+            "build_num": "0106",
+            "start_time": {"$gte": start_time},
+            "submode": "science"
+        }
+        num_science = len(list(acq_coll.find(query)))
+
+        query = {
+            "build_num": "0106",
+            "start_time": {"$gte": start_time},
+            "submode": "dark"
+        }
+        num_dark = len(list(acq_coll.find(query)))
+
+        query = {
+            "build_num": "0106",
+            "start_time": {"$gte": start_time},
+            "products.l1b.rdn.img_path": {"$exists": 1}
+        }
+        num_rdn = len(list(acq_coll.find(query)))
+
+        query = {
+            "build_num": "0106",
+            "start_time": {"$gte": start_time},
+            "products.l2a.rfl.img_path": {"$exists": 1}
+        }
+        num_rfl = len(list(acq_coll.find(query)))
+
         print(f"""
+Number of raw: {num_raw}
+Number of raw science: {num_science}
+Number of raw dark: {num_dark}
+Number of radiance: {num_rdn}
+Number of reflectance: {num_rfl}
+        
 Percent clouds screened on orbit: {percent_clouds_screened:.1f}%
 Percent clouds in scenes: {cloud_percent:.1f}%
 Percent clouds + cirrus in scenes: {cloud_cirrus_percent:.1f}%
