@@ -52,7 +52,6 @@ def calc_cloud_metrics(input_json):
         total_cloud_percent
 
 
-
 def main():
     # Set up args
     parser = argparse.ArgumentParser(description="Generate a daily report")
@@ -401,7 +400,7 @@ Number of raw science: {num_science}
 Number of raw dark: {num_dark}
 Number of radiance: {num_rdn}
 Number of reflectance: {num_rfl}
-        
+
 Percent clouds screened on orbit: {percent_clouds_screened:.1f}%
 Percent clouds in scenes: {cloud_percent:.1f}%
 Percent clouds + cirrus in scenes: {cloud_cirrus_percent:.1f}%

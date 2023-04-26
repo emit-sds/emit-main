@@ -21,7 +21,7 @@ def main():
         last_frame = int(os.path.basename(frames[-1]).split("_")[2])
         total_frames = int(os.path.basename(frames[-1]).split("_")[3])
         num_missing = total_frames - last_frame - 1
-        if num_missing  > 0:
+        if num_missing > 0:
             print(f"{dir}: {num_missing}")
             if date in dates:
                 dates[date] += num_missing
