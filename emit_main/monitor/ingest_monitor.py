@@ -119,7 +119,7 @@ class IngestMonitor:
         return self.ingest_files()
 
     def _ingest_file_list(self, paths):
-        paths.sort()
+        paths.sort(key=lambda x: os.path.getmtime(x))
         # Return luigi tasks
         tasks = []
         for p in paths:
@@ -138,7 +138,7 @@ class IngestMonitor:
                                              partition=self.partition,
                                              miss_pkt_thresh=self.miss_pkt_thresh))
 
-                if apid == "1685":  # Change back to 1675 when ready to ingest 1675 again
+                if apid == "1675":  # Change back to 1675 when ready to ingest 1675 again
                     logger.info(f"Creating L1ADepacketizeScienceFrames task for path {p}")
                     tasks.append(L1ADepacketizeScienceFrames(config_path=self.config_path,
                                                              stream_path=p,

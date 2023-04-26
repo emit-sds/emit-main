@@ -37,7 +37,7 @@ def main():
         args.date = yesterday.strftime("%Y%m%d")
     date = args.date
     # Now get date + 1 day in order to get transfer log date
-    log_date = dt.datetime.strptime(date, "%Y%m%d").strftime("%Y-%m-%d")
+    log_date = (dt.datetime.strptime(date, "%Y%m%d") + dt.timedelta(days=1)).strftime("%Y-%m-%d")
     logger.info(f"Ingesting science data for date {date}...")
 
     # Define paths

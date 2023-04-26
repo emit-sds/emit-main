@@ -8,6 +8,7 @@ import argparse
 import csv
 import datetime as dt
 import glob
+import json
 import matplotlib
 import os
 import subprocess
@@ -17,16 +18,51 @@ import yaml
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
+from emit_main.workflow.workflow_manager import WorkflowManager
+
+
+def calc_cloud_metrics(input_json):
+    with open(input_json, "r") as f:
+        scenes = json.load(f)["features"]
+
+    cloud_fraction = 0
+    cloud_cirrus_fraction = 0
+    clouds_buffer_fraction = 0
+    screened_onboard_fraction = 0
+    total_cloud_fraction = 0
+    total_scenes_with_stats = 0
+    above = 0
+    for s in scenes:
+        if "Cloud Fraction" in s["properties"]:
+            cloud_fraction += s["properties"]["Cloud Fraction"]
+            cloud_cirrus_fraction += s["properties"]["Cloud + Cirrus Fraction"]
+            clouds_buffer_fraction += s["properties"]["Clouds & Buffer Fraction"]
+            screened_onboard_fraction += s["properties"]["Screened Onboard Fraction"]
+            total_cloud_fraction += s["properties"]["Total Cloud Fraction"]
+            total_scenes_with_stats += 1
+
+    # Calculate average
+    cloud_percent = cloud_fraction / total_scenes_with_stats * 100
+    cloud_cirrus_percent = cloud_cirrus_fraction / total_scenes_with_stats * 100
+    clouds_buffer_percent = clouds_buffer_fraction / total_scenes_with_stats * 100
+    screened_onboard_percent = screened_onboard_fraction / total_scenes_with_stats * 100
+    total_cloud_percent = total_cloud_fraction / total_scenes_with_stats * 100
+
+    return cloud_percent, cloud_cirrus_percent, clouds_buffer_percent, screened_onboard_percent, \
+        total_cloud_percent
+
 
 def main():
     # Set up args
     parser = argparse.ArgumentParser(description="Generate a daily report")
     parser.add_argument("-i", "--input_dir", default="/store/emit/ops/reports", help="Where to get report files")
     parser.add_argument("-p", "--plots", default="1675,reassembly",
-                        help="Comma separate choices: streams,1674,1675,1676,reassembly")
+                        help="Comma separate choices: streams,1674,1675,1676,reassembly,status")
     parser.add_argument("-d", "--dates", help="Comma separated dates (YYYYMMDD,YYYYMMDD)")
     parser.add_argument("-o", "--output_dir", default="/store/emit/ops/reports/trending",
                         help="Output dir for plots and csvs")
+    parser.add_argument("--tracking_json", default="/beegfs/scratch/brodrick/emit/emit-visuals/track_coverage.json",
+                        help="Path to the tracking json file with cloud metrics")
     parser.add_argument("--timestamp", action="store_true")
     parser.add_argument("--show_plots", action="store_true")
     args = parser.parse_args()
@@ -64,8 +100,10 @@ def main():
 
     # Depacketization totals
     packets = [int(m["stream_totals"]["packets_read"]) for m in metrics]
+    total_packets = sum(packets)
     gaps = [int(m["stream_totals"]["psc_gaps"]) for m in metrics]
     missing = [int(m["stream_totals"]["missing_packets"]) for m in metrics]
+    total_missing_packets = sum(missing)
     percents = [float(m["stream_totals"]["percent_missing"].replace("%", "")) for m in metrics]
     duplicates = [int(m["stream_totals"]["duplicate_packets"]) for m in metrics]
 
@@ -295,6 +333,97 @@ def main():
         plt.savefig(os.path.join(args.output_dir, f"reassembly_{output_file_dates}.png"))
         if args.show_plots:
             plt.show()
+
+    # Calculate totals and produce a status report
+    if "status" in args.plots:
+        total_dcids = sum(dcids)
+        total_cloudy = sum(cloudy)
+        total_expected = sum(expected_frames)
+        total_missing_frames = sum(missing_frames)
+        total_corrupt = sum(corrupt_frames)
+        percent_clouds_screened = total_cloudy / (total_expected - total_missing_frames) * 100
+        eff_missing_clouds = total_cloudy / 40
+        # 1486 is the number of missing frames due to IOC timing issues
+        MISSING_FRAMES_IOC_TIMING = 1486
+        # 1343 is the number missing frames due to H/S overflow
+        MISSING_FRAMES_HS_OVERFLOW = 1343
+        eff_missing_pkt_loss = (total_missing_frames + total_corrupt - MISSING_FRAMES_IOC_TIMING - MISSING_FRAMES_HS_OVERFLOW) / 40
+        eff_missing_hs_overflow = MISSING_FRAMES_HS_OVERFLOW / 40
+        eff_missing_ioc_timing = MISSING_FRAMES_IOC_TIMING / 40
+        total_eff_missing = eff_missing_clouds + eff_missing_pkt_loss + eff_missing_hs_overflow + eff_missing_ioc_timing
+        cloud_percent, cloud_cirrus_percent, clouds_buffer_percent, screened_onboard_percent, total_cloud_percent = calc_cloud_metrics(args.tracking_json)
+
+        # Get workflow manager and db collections
+        config_path = f"/store/emit/ops/repos/emit-main/emit_main/config/ops_sds_config.json"
+        wm = WorkflowManager(config_path=config_path)
+        db = wm.database_manager.db
+        acq_coll = db.acquisitions
+
+        start_time = dt.datetime.strptime("2022-08-10T00:00:00", "%Y-%m-%dT%H:%M:%S")
+        query = {
+            "build_num": "0106",
+            "start_time": {"$gte": start_time}
+        }
+        num_raw = len(list(acq_coll.find(query)))
+
+        query = {
+            "build_num": "0106",
+            "start_time": {"$gte": start_time},
+            "submode": "science"
+        }
+        num_science = len(list(acq_coll.find(query)))
+
+        query = {
+            "build_num": "0106",
+            "start_time": {"$gte": start_time},
+            "submode": "dark"
+        }
+        num_dark = len(list(acq_coll.find(query)))
+
+        query = {
+            "build_num": "0106",
+            "start_time": {"$gte": start_time},
+            "products.l1b.rdn.img_path": {"$exists": 1}
+        }
+        num_rdn = len(list(acq_coll.find(query)))
+
+        query = {
+            "build_num": "0106",
+            "start_time": {"$gte": start_time},
+            "products.l2a.rfl.img_path": {"$exists": 1}
+        }
+        num_rfl = len(list(acq_coll.find(query)))
+
+        print(f"""
+Number of raw: {num_raw}
+Number of raw science: {num_science}
+Number of raw dark: {num_dark}
+Number of radiance: {num_rdn}
+Number of reflectance: {num_rfl}
+
+Percent clouds screened on orbit: {percent_clouds_screened:.1f}%
+Percent clouds in scenes: {cloud_percent:.1f}%
+Percent clouds + cirrus in scenes: {cloud_cirrus_percent:.1f}%
+Percent clouds + cirrus + buffer in scenes: {clouds_buffer_percent:.1f}%
+Effective number of missing scenes: {total_eff_missing:.1f}
+Due to cloud screening: {eff_missing_clouds:.1f}
+Due to packet loss: {eff_missing_pkt_loss:.1f}
+Due to high-speed buffer overflow: {eff_missing_hs_overflow:.1f}
+Due to acquisition timing issues during IOC: {eff_missing_ioc_timing:.1f}
+
+Total orbit segments: {total_dcids}
+Total frames: {total_expected}
+Total missing frames: {total_cloudy + total_missing_frames + total_corrupt}
+Due to cloud screening: {total_cloudy}
+Due to packet loss: {total_missing_frames + total_corrupt - MISSING_FRAMES_HS_OVERFLOW - MISSING_FRAMES_IOC_TIMING}
+Due to high-speed buffer overflow: {MISSING_FRAMES_HS_OVERFLOW}
+Due to acquisition timing issues during IOC: {MISSING_FRAMES_IOC_TIMING}
+
+Total packets read: {total_packets}
+Total missing packets: {total_missing_packets}
+Percent missing packets: {total_missing_packets / (total_packets + total_missing_packets) * 100:.3f}
+
+""")
 
 
 if __name__ == '__main__':

@@ -500,8 +500,8 @@ class L1BGeolocate(SlurmJobTask):
 
             # Get additional attributes and add to DB
             glt_gring = get_gring_boundary_points(acq.glt_hdr_path)
-            mean_solar_azimuth = get_band_mean(acq.obs_img_path, 1)
-            mean_solar_zenith = get_band_mean(acq.obs_img_path, 2)
+            mean_solar_azimuth = get_band_mean(acq.obs_img_path, 3)
+            mean_solar_zenith = get_band_mean(acq.obs_img_path, 4)
             meta = {
                 "gring": glt_gring,
                 "mean_solar_azimuth": mean_solar_azimuth,

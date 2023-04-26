@@ -1,0 +1,106 @@
+"""
+A script that performs typical daily checks on data processing and prints out the results
+
+Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
+"""
+
+import argparse
+import os
+
+from emit_main.workflow.workflow_manager import WorkflowManager
+
+
+def main():
+    # Set up args
+    parser = argparse.ArgumentParser(description="Find missing frames for DCID")
+    parser.add_argument("dcid", help="The DCID to look up")
+    parser.add_argument("-e", "--env", default="ops", help="Where to run the report")
+    args = parser.parse_args()
+
+    env = args.env
+
+    # Get workflow manager and db collections
+    config_path = f"/store/emit/{env}/repos/emit-main/emit_main/config/{env}_sds_config.json"
+    wm = WorkflowManager(config_path=config_path)
+    db = wm.database_manager.db
+    dc_coll = db.data_collections
+
+    # Check for DCIDs with missing frames
+    query = {
+        "build_num": wm.config["build_num"],
+        "dcid": args.dcid,
+    }
+    dc = dc_coll.find_one(query)
+
+    frames = dc["products"]["l1a"]["frames"]
+    frames.sort(key=lambda x: os.path.basename(x).split("_")[2])
+    frame_nums = [int(os.path.basename(f).split("_")[2]) for f in frames]
+    flookup = {}
+    for i in range(len(frames)):
+        flookup[frame_nums[i]] = frames[i]
+
+    # Find duplicate frames
+    total_frames = int(os.path.basename(frames[0]).split("_")[3])
+    if len(frames) > total_frames:
+        print(f"\nToo many frames. Expected {total_frames} and found {len(frames)}. Duplicates below:")
+
+        # Get duplicates
+        count_dict = {}
+        for element in frame_nums:
+            if element in count_dict:
+                count_dict[element] += 1
+            else:
+                count_dict[element] = 1
+
+        # Printing the duplicate elements
+        duplicates = []
+        for element, count in count_dict.items():
+            if count > 1:
+                duplicates.append(element)
+
+        for dupe in duplicates:
+            print(flookup[dupe])
+
+    # Find missing frames
+    seq_frame_nums = list(range(total_frames))
+    missing_frame_nums = list(set(seq_frame_nums) - set(frame_nums))
+    missing_frame_nums.sort()
+
+    if len(missing_frame_nums) > 0:
+        # Find the gap boundaries
+        gaps = []
+        start = 0
+        stop = 0
+        last = 0
+        for i, num in enumerate(missing_frame_nums):
+            if i == 0:
+                start = num - 1
+                last = num
+                continue
+            if num - last > 1:
+                stop = last + 1
+                gaps.append((start, stop))
+                start = num - 1
+            last = num
+
+        gaps.append((start, missing_frame_nums[-1] + 1))
+
+        print(f"\nFound missing frames. Expected {total_frames} and found {len(frames)}. Missing {len(missing_frame_nums)} nums are below:")
+        print(missing_frame_nums)
+        # print(gaps)
+
+        print("\nFrames that bound each of the gaps:")
+        for gap in gaps:
+            if gap[0] < 0:
+                print("\nStart: No prior frame")
+            else:
+                print(f"\nStart: {flookup[gap[0]]}")
+
+            if gap[1] >= total_frames:
+                print("Stop: No subsequent frame")
+            else:
+                print(f"Stop: {flookup[gap[1]]}")
+
+
+if __name__ == '__main__':
+    main()
