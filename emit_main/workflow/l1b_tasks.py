@@ -63,15 +63,17 @@ class L1BCalibrate(SlurmJobTask):
         pge = wm.pges["emit-sds-l1b"]
 
         # PGE writes to tmp folder
-        tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
+        tmp_dir = self.local_tmp_dir
+        tmp_output_dir = os.path.join(tmp_dir, "output")
         wm.makedirs(tmp_output_dir)
         tmp_rdn_img_path = os.path.join(tmp_output_dir, os.path.basename(acq.rdn_img_path))
-        tmp_rdn_destripe_img_path = tmp_rdn_img_path.replace("rdn", "rdn_destripe")
-        tmp_rdn_destripe_dark_img_path = os.path.join(tmp_output_dir, os.path.basename(acq.destripedark_img_path))
-        tmp_rdn_destripe_flatfield_img_path = os.path.join(tmp_output_dir, os.path.basename(acq.destripeff_img_path))
-        tmp_rdn_bandmask_img_path = os.path.join(tmp_output_dir, os.path.basename(acq.bandmask_img_path))
+        tmp_rdndestripe_img_path = tmp_rdn_img_path.replace("rdn", "rdndestripe")
+        tmp_bandmask_img_path = os.path.join(tmp_output_dir, os.path.basename(acq.bandmask_img_path))
+        tmp_ffupdate_img_path = os.path.join(tmp_output_dir, os.path.basename(acq.ffupdate_img_path))
+        tmp_ffmedian_img_path = os.path.join(tmp_output_dir, os.path.basename(acq.ffmedian_img_path))
         log_name = os.path.basename(acq.rdn_img_path.replace(".img", "_pge.log"))
         tmp_log_path = os.path.join(tmp_output_dir, log_name)
+        tmp_runconfig_path = os.path.join(tmp_dir, "runconfig.json")
         l1b_config_path = wm.config["l1b_config_path"]
 
         # Set instrument mode
@@ -81,30 +83,26 @@ class L1BCalibrate(SlurmJobTask):
 
         # Update config file values with absolute paths and store all input files for logging later
         with open(l1b_config_path, "r") as f:
-            config = json.load(f)
+            l1b_config = json.load(f)
         input_files = {}
-        for key, value in config.items():
+        for key, value in l1b_config.items():
             if "_file" in key:
                 if not value.startswith("/"):
-                    config[key] = os.path.abspath(os.path.join(os.path.dirname(l1b_config_path), value))
-                input_files[key] = config[key]
+                    l1b_config[key] = os.path.abspath(os.path.join(os.path.dirname(l1b_config_path), value))
+                input_files[key] = l1b_config[key]
 
         # Also update the nested "modes"
-        if "modes" in config:
-            for key, value in config["modes"].items():
+        if "modes" in l1b_config:
+            for key, value in l1b_config["modes"].items():
                 for k, v in value.items():
                     if "_file" in k:
                         if not v.startswith("/"):
-                            config["modes"][key][k] = os.path.abspath(os.path.join(os.path.dirname(l1b_config_path), v))
+                            l1b_config["modes"][key][k] = os.path.abspath(os.path.join(os.path.dirname(l1b_config_path), v))
                         if key == instrument_mode:
-                            input_files[k] = config["modes"][key][k]
+                            input_files[k] = l1b_config["modes"][key][k]
 
-        tmp_config_path = os.path.join(self.local_tmp_dir, "l1b_config.json")
-        with open(tmp_config_path, "w") as outfile:
-            json.dump(config, outfile)
-
+        # Get nearby darks
         dm = wm.database_manager
-
         dark_img_path = ""
         if len(self.dark_path) > 0:
             dark_img_path = self.dark_path
@@ -147,42 +145,52 @@ class L1BCalibrate(SlurmJobTask):
                 dark_img_path = recent_darks[0]["products"]["l1a"]["raw"]["img_path"]
                 wm.print(__name__, "Recent dark offset is less than future dark offset")
 
+        # Add to input files
         input_files["dark_file"] = dark_img_path
+        input_files["raw_file"] = acq.raw_img_path
 
-        emitrdn_exe = os.path.join(pge.repo_dir, "emitrdn.py")
-        destripe_exe = os.path.join(pge.repo_dir, "utils", "fitflatfield.py")
+        # Get recent ffupdate paths (returns the 350 most recent in descending order)
+        recent_ffupdate_acqs = dm.find_recent_acquisitions_with_ffupdate(acq.acquisition_id, 350)
+        recent_ffupdate_paths = []
+        for acq in reversed(recent_ffupdate_acqs):
+            if os.path.exists(acq["products"]["l1b"]["ffupdate"]["img_path"]):
+                recent_ffupdate_paths.append(acq["products"]["l1b"]["ffupdate"]["img_path"])
+        # Add the tmp one that will be created below
+        recent_ffupdate_paths.append(tmp_ffupdate_img_path)
+
+        # Create runconfig
+        runconfig = {
+            "repository_dir": pge.repo_dir,
+            "tmp_dir": tmp_dir,
+            "level": self.level,
+            "instrument_mode": instrument_mode,
+            "raw_img_path": acq.raw_img_path,
+            "dark_img_path": dark_img_path,
+            "l1b_config": l1b_config,
+            "recent_ffupdate_paths": recent_ffupdate_paths
+        }
+        with open(tmp_runconfig_path, "w") as f:
+            f.write(json.dumps(runconfig, indent=4))
+        input_files["runconfig"] = tmp_runconfig_path
+
+        emitrdn_wrapper_exe = os.path.join(pge.repo_dir, "emitrdn_wrapper.py")
         utils_path = os.path.join(pge.repo_dir, "utils")
         env = os.environ.copy()
         env["PYTHONPATH"] = f"$PYTHONPATH:{utils_path}"
         env["RAY_worker_register_timeout_seconds"] = "600"
-        cmd = ["python", emitrdn_exe,
-               "--mode", instrument_mode,
-               "--level", self.level,
-               "--log_file", tmp_log_path,
-               acq.raw_img_path,
-               dark_img_path,
-               tmp_config_path,
-               tmp_rdn_img_path,
-               tmp_rdn_bandmask_img_path]
+        cmd = ["python", emitrdn_wrapper_exe, tmp_runconfig_path]
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
-        cmd_ds = ["python", destripe_exe,
-                  tmp_rdn_img_path,
-                  tmp_rdn_destripe_img_path,
-                  tmp_rdn_destripe_flatfield_img_path,
-                  tmp_rdn_destripe_dark_img_path
-                  ]
-        pge.run(cmd_ds, tmp_dir=self.tmp_dir, env=env)
-
         # Copy output files to l1b dir (all but pre-destripped radiance)
-        wm.copy(tmp_rdn_destripe_img_path, acq.rdn_img_path)
-        wm.copy(envi_header(tmp_rdn_destripe_img_path), acq.rdn_hdr_path)
-        wm.copy(tmp_rdn_destripe_dark_img_path, acq.destripedark_img_path)
-        wm.copy(envi_header(tmp_rdn_destripe_dark_img_path), acq.destripedark_hdr_path)
-        wm.copy(tmp_rdn_destripe_flatfield_img_path, acq.destripeff_img_path)
-        wm.copy(envi_header(tmp_rdn_destripe_flatfield_img_path), acq.destripeff_hdr_path)
-        wm.copy(tmp_rdn_bandmask_img_path, acq.bandmask_img_path)
-        wm.copy(envi_header(tmp_rdn_bandmask_img_path), acq.bandmask_hdr_path)
+        wm.copy(tmp_rdndestripe_img_path, acq.rdn_img_path)
+        wm.copy(envi_header(tmp_rdndestripe_img_path), acq.rdn_hdr_path)
+        wm.copy(tmp_bandmask_img_path, acq.bandmask_img_path)
+        wm.copy(envi_header(tmp_bandmask_img_path), acq.bandmask_hdr_path)
+        wm.copy(tmp_ffupdate_img_path, acq.ffupdate_img_path)
+        wm.copy(envi_header(tmp_ffupdate_img_path), acq.ffupdate_hdr_path)
+        wm.copy(tmp_ffmedian_img_path, acq.ffmedian_img_path)
+        wm.copy(envi_header(tmp_ffmedian_img_path), acq.ffmedian_hdr_path)
+        wm.copy(tmp_runconfig_path, acq.rdn_img_path.replace(".img", "_pge.log"))
         wm.copy(tmp_log_path, os.path.join(acq.l1b_data_dir, os.path.basename(tmp_log_path)))
 
         # Update hdr files
@@ -194,7 +202,7 @@ class L1BCalibrate(SlurmJobTask):
         hdr["emit pge name"] = pge.repo_url
         hdr["emit pge version"] = pge.version_tag
         hdr["emit pge input files"] = input_files_arr
-        hdr["emit pge run command"] = " ".join(cmd) + ";" + " ".join(cmd_ds)
+        hdr["emit pge run command"] = " ".join(cmd)
         hdr["emit software build version"] = wm.config["extended_build_num"]
         hdr["emit documentation version"] = doc_version
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rdn_img_path), tz=datetime.timezone.utc)
@@ -218,29 +226,24 @@ class L1BCalibrate(SlurmJobTask):
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn": product_dict})
 
-        product_dict_dd = {
-            "img_path": acq.destripedark_img_path,
-            "hdr_path": acq.destripedark_hdr_path,
+        product_dict_ffupdate = {
+            "img_path": acq.ffupdate_img_path,
+            "hdr_path": acq.ffupdate_hdr_path,
             "created": creation_time,
         }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.destripedark": product_dict_dd})
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.ffupdate": product_dict_ffupdate})
 
-        product_dict_df = {
-            "img_path": acq.destripeff_img_path,
-            "hdr_path": acq.destripeff_hdr_path,
+        product_dict_ffmedian = {
+            "img_path": acq.ffmedian_img_path,
+            "hdr_path": acq.ffmedian_hdr_path,
             "created": creation_time,
         }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.destripeff": product_dict_df})
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.ffmedian": product_dict_ffmedian})
 
         product_dict_bm = {
             "img_path": acq.bandmask_img_path,
             "hdr_path": acq.bandmask_hdr_path,
-            "created": creation_time,
-            "dimensions": {
-                "lines": hdr["lines"],
-                "samples": hdr["samples"],
-                "bands": hdr["bands"]
-            }
+            "created": creation_time
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.bandmask": product_dict_bm})
 
@@ -265,10 +268,10 @@ class L1BCalibrate(SlurmJobTask):
             "output": {
                 "l1b_rdn_img_path": acq.rdn_img_path,
                 "l1b_rdn_hdr_path:": acq.rdn_hdr_path,
-                "l1b_destripedark_img_path:": acq.destripedark_img_path,
-                "l1b_destripedark_hdr_path:": acq.destripedark_hdr_path,
-                "l1b_destripeff_img_path:": acq.destripeff_img_path,
-                "l1b_destripeff_hdr_path:": acq.destripeff_hdr_path,
+                "l1b_ffupdate_img_path:": acq.ffudpate_img_path,
+                "l1b_ffupdate_hdr_path:": acq.ffupdate_hdr_path,
+                "l1b_ffmedian_img_path:": acq.ffmedian_img_path,
+                "l1b_ffmedian_hdr_path:": acq.ffmedian_hdr_path,
                 "l1b_bandmask_img_path:": acq.bandmask_img_path,
                 "l1b_bandmask_hdr_path:": acq.bandmask_hdr_path
             }

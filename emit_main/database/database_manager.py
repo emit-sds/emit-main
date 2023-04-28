@@ -67,6 +67,15 @@ class DatabaseManager:
         }
         return list(acquisitions_coll.find(query).sort(field, sort))
 
+    def find_recent_acquisitions_with_ffupdate(self, acquisition_id, limit=350):
+        acquisitions_coll = self.db.acquisitions
+        query = {
+            "acquisition_id": {"$lt": acquisition_id},
+            "products.l1b.ffupdate": {"$exists": 1},
+            "build_num": self.config["build_num"]
+        }
+        return list(acquisitions_coll.find(query).sort("acquisition_id", -1).limit(limit))
+
     def find_acquisitions_for_calibration(self, start, stop, date_field="last_modified", retry_failed=False):
         acquisitions_coll = self.db.acquisitions
         # Query for "science" acquisitions with non-zero valid lines and with complete l1a raw outputs but no l1b rdn
