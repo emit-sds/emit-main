@@ -67,14 +67,15 @@ class DatabaseManager:
         }
         return list(acquisitions_coll.find(query).sort(field, sort))
 
-    def find_recent_acquisitions_with_ffupdate(self, acquisition_id, limit=350):
+    def find_recent_acquisitions_with_ffupdate(self, start_time, limit=350):
+        no_earlier_date = start_time - datetime.timedelta(days=60)
         acquisitions_coll = self.db.acquisitions
         query = {
-            "acquisition_id": {"$lt": acquisition_id},
+            "start_time": {"$gte": no_earlier_date, "$lt": start_time},
             "products.l1b.ffupdate": {"$exists": 1},
             "build_num": self.config["build_num"]
         }
-        return list(acquisitions_coll.find(query).sort("acquisition_id", -1).limit(limit))
+        return list(acquisitions_coll.find(query).sort("start_time", -1).limit(limit))
 
     def find_acquisitions_for_calibration(self, start, stop, date_field="last_modified", retry_failed=False):
         acquisitions_coll = self.db.acquisitions

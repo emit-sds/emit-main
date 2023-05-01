@@ -150,13 +150,12 @@ class L1BCalibrate(SlurmJobTask):
         input_files["raw_file"] = acq.raw_img_path
 
         # Get recent ffupdate paths (returns the 350 most recent in descending order)
-        recent_ffupdate_acqs = dm.find_recent_acquisitions_with_ffupdate(acq.acquisition_id, 350)
+        recent_ffupdate_acqs = dm.find_recent_acquisitions_with_ffupdate(acq.start_time, 350)
         recent_ffupdate_paths = []
         for acq in reversed(recent_ffupdate_acqs):
             if os.path.exists(acq["products"]["l1b"]["ffupdate"]["img_path"]):
                 recent_ffupdate_paths.append(acq["products"]["l1b"]["ffupdate"]["img_path"])
-        # Add the tmp one that will be created below
-        recent_ffupdate_paths.append(tmp_ffupdate_img_path)
+        input_files["recent_ffupdate_paths"] = recent_ffupdate_paths
 
         # Create runconfig
         runconfig = {
@@ -171,7 +170,6 @@ class L1BCalibrate(SlurmJobTask):
         }
         with open(tmp_runconfig_path, "w") as f:
             f.write(json.dumps(runconfig, indent=4))
-        input_files["runconfig"] = tmp_runconfig_path
 
         emitrdn_wrapper_exe = os.path.join(pge.repo_dir, "emitrdn_wrapper.py")
         utils_path = os.path.join(pge.repo_dir, "utils")
@@ -181,19 +179,28 @@ class L1BCalibrate(SlurmJobTask):
         cmd = ["python", emitrdn_wrapper_exe, tmp_runconfig_path]
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
-        # Copy output files to l1b dir (all but pre-destripped radiance)
-        wm.copy(tmp_rdndestripe_img_path, acq.rdn_img_path)
-        wm.copy(envi_header(tmp_rdndestripe_img_path), acq.rdn_hdr_path)
+        # Copy output files to l1b dir
+        # Copy flat field update if it exists
+        if os.path.exists(tmp_ffupdate_img_path):
+            wm.copy(tmp_ffupdate_img_path, acq.ffupdate_img_path)
+            wm.copy(envi_header(tmp_ffupdate_img_path), acq.ffupdate_hdr_path)
+        # Copy the median flat field and the destriped radiance if they exist, otherwise copy the undestriped radiance
+        if os.path.exists(tmp_ffmedian_img_path):
+            wm.copy(tmp_rdndestripe_img_path, acq.rdn_img_path)
+            wm.copy(envi_header(tmp_rdndestripe_img_path), acq.rdn_hdr_path)
+            wm.copy(tmp_ffmedian_img_path, acq.ffmedian_img_path)
+            wm.copy(envi_header(tmp_ffmedian_img_path), acq.ffmedian_hdr_path)
+        else:
+            wm.copy(tmp_rdn_img_path, acq.rdn_img_path)
+            wm.copy(envi_header(tmp_rdn_img_path), acq.rdn_hdr_path)
+        # Copy the rest of the files
         wm.copy(tmp_bandmask_img_path, acq.bandmask_img_path)
         wm.copy(envi_header(tmp_bandmask_img_path), acq.bandmask_hdr_path)
-        wm.copy(tmp_ffupdate_img_path, acq.ffupdate_img_path)
-        wm.copy(envi_header(tmp_ffupdate_img_path), acq.ffupdate_hdr_path)
-        wm.copy(tmp_ffmedian_img_path, acq.ffmedian_img_path)
-        wm.copy(envi_header(tmp_ffmedian_img_path), acq.ffmedian_hdr_path)
-        wm.copy(tmp_runconfig_path, acq.rdn_img_path.replace(".img", "_pge.log"))
+        wm.copy(tmp_runconfig_path, acq.rdn_img_path.replace(".img", "_runconfig.json"))
         wm.copy(tmp_log_path, os.path.join(acq.l1b_data_dir, os.path.basename(tmp_log_path)))
 
         # Update hdr files
+        input_files["runconfig"] = acq.rdn_img_path.replace(".img", "_runconfig.json")
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
         doc_version = "EMIT SDS L1B JPL-D 104187, Initial"
         hdr = envi.read_envi_header(acq.rdn_hdr_path)
@@ -226,26 +233,28 @@ class L1BCalibrate(SlurmJobTask):
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn": product_dict})
 
-        product_dict_ffupdate = {
-            "img_path": acq.ffupdate_img_path,
-            "hdr_path": acq.ffupdate_hdr_path,
-            "created": creation_time,
-        }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.ffupdate": product_dict_ffupdate})
-
-        product_dict_ffmedian = {
-            "img_path": acq.ffmedian_img_path,
-            "hdr_path": acq.ffmedian_hdr_path,
-            "created": creation_time,
-        }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.ffmedian": product_dict_ffmedian})
-
         product_dict_bm = {
             "img_path": acq.bandmask_img_path,
             "hdr_path": acq.bandmask_hdr_path,
             "created": creation_time
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.bandmask": product_dict_bm})
+
+        if os.path.exists(acq.ffupdate_img_path):
+            product_dict_ffupdate = {
+                "img_path": acq.ffupdate_img_path,
+                "hdr_path": acq.ffupdate_hdr_path,
+                "created": creation_time,
+            }
+            dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.ffupdate": product_dict_ffupdate})
+
+        if os.path.exists(acq.ffmedian_img_path):
+            product_dict_ffmedian = {
+                "img_path": acq.ffmedian_img_path,
+                "hdr_path": acq.ffmedian_hdr_path,
+                "created": creation_time,
+            }
+            dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.ffmedian": product_dict_ffmedian})
 
         # Check if orbit now has complete set of radiance files and update orbit metadata
         wm_orbit = WorkflowManager(config_path=self.config_path, orbit_id=acq.orbit)
@@ -268,14 +277,17 @@ class L1BCalibrate(SlurmJobTask):
             "output": {
                 "l1b_rdn_img_path": acq.rdn_img_path,
                 "l1b_rdn_hdr_path:": acq.rdn_hdr_path,
-                "l1b_ffupdate_img_path:": acq.ffupdate_hdr_path,
-                "l1b_ffupdate_hdr_path:": acq.ffupdate_hdr_path,
-                "l1b_ffmedian_img_path:": acq.ffmedian_img_path,
-                "l1b_ffmedian_hdr_path:": acq.ffmedian_hdr_path,
                 "l1b_bandmask_img_path:": acq.bandmask_img_path,
-                "l1b_bandmask_hdr_path:": acq.bandmask_hdr_path
+                "l1b_bandmask_hdr_path:": acq.bandmask_hdr_path,
             }
         }
+        if os.path.exists(acq.ffupdate_img_path):
+            log_entry["output"]["l1b_ffupdate_img_path"] = acq.ffupdate_img_path
+            log_entry["output"]["l1b_ffupdate_hdr_path"] = acq.ffupdate_hdr_path
+
+        if os.path.exists(acq.ffmedian_img_path):
+            log_entry["output"]["l1b_ffmedian_img_path"] = acq.ffmedian_img_path
+            log_entry["output"]["l1b_ffmedian_hdr_path"] = acq.ffmedian_hdr_path
 
         dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
 
