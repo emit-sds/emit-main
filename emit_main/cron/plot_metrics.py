@@ -346,7 +346,7 @@ def main():
         # 1486 is the number of missing frames due to IOC timing issues
         MISSING_FRAMES_IOC_TIMING = 1486
         # 1343 is the number missing frames due to H/S overflow
-        MISSING_FRAMES_HS_OVERFLOW = 1343
+        MISSING_FRAMES_HS_OVERFLOW = 6659
         eff_missing_pkt_loss = (total_missing_frames + total_corrupt - MISSING_FRAMES_IOC_TIMING - MISSING_FRAMES_HS_OVERFLOW) / 40
         eff_missing_hs_overflow = MISSING_FRAMES_HS_OVERFLOW / 40
         eff_missing_ioc_timing = MISSING_FRAMES_IOC_TIMING / 40

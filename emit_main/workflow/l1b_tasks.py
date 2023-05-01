@@ -268,7 +268,7 @@ class L1BCalibrate(SlurmJobTask):
             "output": {
                 "l1b_rdn_img_path": acq.rdn_img_path,
                 "l1b_rdn_hdr_path:": acq.rdn_hdr_path,
-                "l1b_ffupdate_img_path:": acq.ffudpate_img_path,
+                "l1b_ffupdate_img_path:": acq.ffupdate_hdr_path,
                 "l1b_ffupdate_hdr_path:": acq.ffupdate_hdr_path,
                 "l1b_ffmedian_img_path:": acq.ffmedian_img_path,
                 "l1b_ffmedian_hdr_path:": acq.ffmedian_hdr_path,
