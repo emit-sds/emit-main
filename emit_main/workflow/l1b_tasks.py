@@ -152,11 +152,15 @@ class L1BCalibrate(SlurmJobTask):
 
         # Get recent ffupdate paths (returns the 350 most recent in descending order)
         recent_ffupdate_acqs = dm.find_recent_acquisitions_with_ffupdate(acq.start_time, 350)
-        recent_ffupdate_paths = []
+        flat_field_update_paths = []
         for acq in reversed(recent_ffupdate_acqs):
             if os.path.exists(acq["products"]["l1b"]["ffupdate"]["img_path"]):
-                recent_ffupdate_paths.append(acq["products"]["l1b"]["ffupdate"]["img_path"])
-        input_files["recent_ffupdate_paths"] = recent_ffupdate_paths
+                flat_field_update_paths.append(acq["products"]["l1b"]["ffupdate"]["img_path"])
+        # If the number of paths is less than 100, then set to empty because we can't use them
+        if flat_field_update_paths >= 100:
+            input_files["flat_field_update_paths"] = flat_field_update_paths
+        else:
+            flat_field_update_paths = []
 
         # Create runconfig
         runconfig = {
@@ -167,7 +171,7 @@ class L1BCalibrate(SlurmJobTask):
             "raw_img_path": acq.raw_img_path,
             "dark_img_path": dark_img_path,
             "l1b_config": l1b_config,
-            "recent_ffupdate_paths": recent_ffupdate_paths
+            "flat_field_update_paths": flat_field_update_paths
         }
         with open(tmp_runconfig_path, "w") as f:
             f.write(json.dumps(runconfig, indent=4))
@@ -218,6 +222,10 @@ class L1BCalibrate(SlurmJobTask):
         hdr["emit data product version"] = wm.config["processing_version"]
         hdr["emit acquisition daynight"] = acq.daynight
         hdr["data ignore value"] = -9999
+        if os.path.exists(tmp_ffmedian_img_path):
+            hdr["emit flat field median based destriping"] = 1
+        else:
+            hdr["emit flat field median based destriping"] = 0
 
         envi.write_envi_header(acq.rdn_hdr_path, hdr)
 
