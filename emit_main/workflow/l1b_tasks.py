@@ -157,7 +157,7 @@ class L1BCalibrate(SlurmJobTask):
             if os.path.exists(acq["products"]["l1b"]["ffupdate"]["img_path"]):
                 flat_field_update_paths.append(acq["products"]["l1b"]["ffupdate"]["img_path"])
         # If the number of paths is less than 100, then set to empty because we can't use them
-        if flat_field_update_paths >= 100:
+        if len(flat_field_update_paths) >= 100:
             input_files["flat_field_update_paths"] = flat_field_update_paths
         else:
             flat_field_update_paths = []
