@@ -72,8 +72,9 @@ class L1BCalibrate(SlurmJobTask):
         tmp_ffupdate_img_path = os.path.join(tmp_output_dir, os.path.basename(acq.ffupdate_img_path))
         tmp_ffmedian_img_path = os.path.join(tmp_output_dir, os.path.basename(acq.ffmedian_img_path))
         log_name = os.path.basename(acq.rdn_img_path.replace(".img", "_pge.log"))
+        runconfig_name = os.path.basename(acq.rdn_img_path.replace(".img", "_runconfig.json"))
         tmp_log_path = os.path.join(tmp_output_dir, log_name)
-        tmp_runconfig_path = os.path.join(tmp_dir, "runconfig.json")
+        tmp_runconfig_path = os.path.join(tmp_dir, runconfig_name)
         l1b_config_path = wm.config["l1b_config_path"]
 
         # Set instrument mode
@@ -196,11 +197,11 @@ class L1BCalibrate(SlurmJobTask):
         # Copy the rest of the files
         wm.copy(tmp_bandmask_img_path, acq.bandmask_img_path)
         wm.copy(envi_header(tmp_bandmask_img_path), acq.bandmask_hdr_path)
-        wm.copy(tmp_runconfig_path, acq.rdn_img_path.replace(".img", "_runconfig.json"))
+        wm.copy(tmp_runconfig_path, os.path.join(acq.l1b_data_dir, runconfig_name))
         wm.copy(tmp_log_path, os.path.join(acq.l1b_data_dir, os.path.basename(tmp_log_path)))
 
         # Update hdr files
-        input_files["runconfig"] = acq.rdn_img_path.replace(".img", "_runconfig.json")
+        input_files["runconfig"] = tmp_runconfig_path
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
         doc_version = "EMIT SDS L1B JPL-D 104187, Initial"
         hdr = envi.read_envi_header(acq.rdn_hdr_path)
