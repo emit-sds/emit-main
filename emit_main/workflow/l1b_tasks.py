@@ -221,11 +221,11 @@ class L1BCalibrate(SlurmJobTask):
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         hdr["emit data product version"] = wm.config["processing_version"]
         hdr["emit acquisition daynight"] = acq.daynight
-        hdr["data ignore value"] = -9999
         if os.path.exists(tmp_ffmedian_img_path):
-            hdr["emit flat field median based destriping"] = 1
+            hdr["emit flat field median-based destriping"] = 1
         else:
-            hdr["emit flat field median based destriping"] = 0
+            hdr["emit flat field median-based destriping"] = 0
+        hdr["data ignore value"] = -9999
 
         envi.write_envi_header(acq.rdn_hdr_path, hdr)
 
