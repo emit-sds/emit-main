@@ -67,15 +67,23 @@ class DatabaseManager:
         }
         return list(acquisitions_coll.find(query).sort(field, sort))
 
-    def find_recent_acquisitions_with_ffupdate(self, start_time, limit=350):
-        no_earlier_date = start_time - datetime.timedelta(days=60)
+    def find_nearby_acquisitions_with_ffupdate(self, start_time, use_future_flat, limit=350):
+        if use_future_flat:
+            q_start = start_time
+            q_stop = start_time + datetime.timedelta(days=60)
+        else:
+            q_start = start_time - datetime.timedelta(days=60)
+            q_stop = start_time
         acquisitions_coll = self.db.acquisitions
         query = {
-            "start_time": {"$gte": no_earlier_date, "$lt": start_time},
+            "start_time": {"$gt": q_start, "$lt": q_stop},
             "products.l1b.ffupdate": {"$exists": 1},
             "build_num": self.config["build_num"]
         }
-        return list(acquisitions_coll.find(query).sort("start_time", -1).limit(limit))
+        if use_future_flat:
+            return list(acquisitions_coll.find(query).sort("start_time", 1).limit(limit))
+        else:
+            return list(acquisitions_coll.find(query).sort("start_time", -1).limit(limit))
 
     def find_acquisitions_for_calibration(self, start, stop, date_field="last_modified", retry_failed=False):
         acquisitions_coll = self.db.acquisitions

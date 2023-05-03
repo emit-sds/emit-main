@@ -37,6 +37,7 @@ class L1BCalibrate(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
     dark_path = luigi.Parameter(default="")
+    use_future_flat = luigi.BoolParameter(default=False)
 
     n_cores = 40
     memory = 180000
@@ -151,9 +152,11 @@ class L1BCalibrate(SlurmJobTask):
         input_files["raw_file"] = acq.raw_img_path
 
         # Get recent ffupdate paths (returns the 350 most recent in descending order)
-        recent_ffupdate_acqs = dm.find_recent_acquisitions_with_ffupdate(acq.start_time, 350)
+        ffupdate_acqs = dm.find_nearby_acquisitions_with_ffupdate(acq.start_time, self.use_future_flat, 350)
+        if not self.use_future_flat:
+            ffupdate_acqs.reverse()
         flat_field_update_paths = []
-        for acq_obj in reversed(recent_ffupdate_acqs):
+        for acq_obj in ffupdate_acqs:
             if os.path.exists(acq_obj["products"]["l1b"]["ffupdate"]["img_path"]):
                 flat_field_update_paths.append(acq_obj["products"]["l1b"]["ffupdate"]["img_path"])
         # If the number of paths is less than 100, then set to empty because we can't use them

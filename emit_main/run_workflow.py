@@ -90,6 +90,8 @@ def parse_args():
                         help="The number of lines in which to split acquisitions")
     parser.add_argument("--dark_path", default="",
                         help="Path to dark file to use for L1B calibration")
+    parser.add_argument("--use_future_flat", action="store_true",
+                        help="Use future flat fields for destriping")
     parser.add_argument("--ignore_missing_bad", action="store_true",
                         help="Ignore missing BAD data in an orbit when reformatting BAD")
     parser.add_argument("--ignore_missing_radiance", action="store_true",
@@ -193,7 +195,8 @@ def get_tasks_from_product_args(args):
         "l1adaac": L1ADeliver(acquisition_id=args.acquisition_id, daac_ingest_queue=args.daac_ingest_queue,
                               override_output=args.override_output, **kwargs),
         "l1abad": L1AReformatBAD(orbit_id=args.orbit_id, ignore_missing_bad=args.ignore_missing_bad, **kwargs),
-        "l1bcal": L1BCalibrate(acquisition_id=args.acquisition_id, dark_path=args.dark_path, **kwargs),
+        "l1bcal": L1BCalibrate(acquisition_id=args.acquisition_id, dark_path=args.dark_path,
+                               use_future_flat=args.use_future_flat, **kwargs),
         "l1bgeo": L1BGeolocate(orbit_id=args.orbit_id, ignore_missing_radiance=args.ignore_missing_radiance, **kwargs),
         "l1brdnformat": L1BRdnFormat(acquisition_id=args.acquisition_id, **kwargs),
         "l1brdndaac": L1BRdnDeliver(acquisition_id=args.acquisition_id, daac_ingest_queue=args.daac_ingest_queue,
