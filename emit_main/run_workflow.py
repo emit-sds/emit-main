@@ -505,7 +505,7 @@ def main():
         logger.info(f"Orbit monitor deliver l1batt tasks to run:\n{om_dl1batt_tasks_str}")
         tasks += om_dl1batt_tasks
 
-    # Get tasks from dl2a (deliver dl2a) monitor
+    # Get tasks from dl2a (deliver l2a) monitor
     if args.monitor and args.monitor == "dl2a":
         am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
                                 daac_ingest_queue=args.daac_ingest_queue)
@@ -514,6 +514,16 @@ def main():
         am_dl2a_tasks_str = "\n".join([str(t) for t in am_dl2a_tasks])
         logger.info(f"Acquisition monitor deliver l2a reflectance tasks to run:\n{am_dl2a_tasks_str}")
         tasks += am_dl2a_tasks
+
+    # Get tasks from dl2b (deliver l2b) monitor
+    if args.monitor and args.monitor == "dl2b":
+        am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
+                                daac_ingest_queue=args.daac_ingest_queue)
+        am_dl2b_tasks = am.get_l2b_delivery_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                                  date_field=args.date_field, retry_failed=args.retry_failed)
+        am_dl2b_tasks_str = "\n".join([str(t) for t in am_dl2b_tasks])
+        logger.info(f"Acquisition monitor deliver l2b abundance tasks to run:\n{am_dl2b_tasks_str}")
+        tasks += am_dl2b_tasks
 
     # Get tasks from products args
     if args.products:

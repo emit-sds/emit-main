@@ -218,6 +218,7 @@ class DatabaseManager:
             "products.l2a.mask.img_path": {"$exists": 1},
             "products.l1b.glt.img_path": {"$exists": 1},
             "products.l1b.loc.img_path": {"$exists": 1},
+            "cloud_fraction": {"$exists": 1},
             "daac_scene": {"$exists": 1},
             "products.l2a.rfl_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop},
@@ -226,6 +227,25 @@ class DatabaseManager:
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L2AFormat", "emit.L2ADeliver"])
+        return results
+
+    def find_acquisitions_for_l2b_delivery(self, start, stop, date_field="last_modified", retry_failed=False):
+        acquisitions_coll = self.db.acquisitions
+        # Query for acquisitions with daac scene numbers but no daac ummg products.
+        query = {
+            "products.l2b.abun.img_path": {"$exists": 1},
+            "products.l2b.abununcert.img_path": {"$exists": 1},
+            "products.l1b.glt.img_path": {"$exists": 1},
+            "products.l1b.loc.img_path": {"$exists": 1},
+            "cloud_fraction": {"$exists": 1},
+            "daac_scene": {"$exists": 1},
+            "products.l2b.abun_ummg.ummg_json_path": {"$exists": 0},
+            date_field: {"$gte": start, "$lte": stop},
+            "build_num": self.config["build_num"]
+        }
+        results = list(acquisitions_coll.find(query))
+        if not retry_failed:
+            results = self._remove_results_with_failed_tasks(results, ["emit.L2BFormat", "emit.L2BDeliver"])
         return results
 
     def insert_acquisition(self, metadata):
