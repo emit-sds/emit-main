@@ -41,8 +41,8 @@ def parse_args():
                        "l1adaac", "l1abad", "l1bcal", "l1bgeo", "l1brdnformat", "l1brdndaac", "l1battdaac", "l2arefl",
                        "l2amask", "l2aformat", "l2adaac", "l2babun", "l2bformat", "l2bdaac", "l3unmix", "daacscenes",
                        "daacaddl", "recon"]
-    monitor_choices = ["ingest", "frames", "edp", "cal", "bad", "geo", "l2", "email", "daacscenes", "dl0", "dl1a",
-                       "dl1brdn", "dl1batt", "dl2a", "dl2b", "reconresp"]
+    monitor_choices = ["ingest", "frames", "edp", "cal", "bad", "geo", "l2", "l2b", "l3", "email", "daacscenes", "dl0",
+                       "dl1a", "dl1brdn", "dl1batt", "dl2a", "dl2b", "reconresp"]
     parser = argparse.ArgumentParser(
         description="Description: This is the top-level run script for executing the various EMIT SDS workflow and "
                     "monitor tasks.\n"
@@ -429,7 +429,7 @@ def main():
         logger.info(f"Acquisition monitor calibration tasks to run:\n{am_cal_tasks_str}")
         tasks += am_cal_tasks
 
-    # Get tasks from acquisition monitor for L2+ tasks
+    # Get tasks from acquisition monitor for L2 tasks
     if args.monitor and args.monitor == "l2":
         am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
         am_l2_tasks = am.get_l2_tasks(start_time=args.start_time, stop_time=args.stop_time,
@@ -437,6 +437,24 @@ def main():
         am_l2_tasks_str = "\n".join([str(t) for t in am_l2_tasks])
         logger.info(f"Acquisition monitor L2 tasks to run:\n{am_l2_tasks_str}")
         tasks += am_l2_tasks
+
+    # Get tasks from acquisition monitor for L2b tasks
+    if args.monitor and args.monitor == "l2b":
+        am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
+        am_l2b_tasks = am.get_l2b_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                        date_field=args.date_field, retry_failed=args.retry_failed)
+        am_l2b_tasks_str = "\n".join([str(t) for t in am_l2b_tasks])
+        logger.info(f"Acquisition monitor L2B tasks to run:\n{am_l2b_tasks_str}")
+        tasks += am_l2b_tasks
+
+    # Get tasks from acquisition monitor for L3 tasks
+    if args.monitor and args.monitor == "l3":
+        am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
+        am_l3_tasks = am.get_l3_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                      date_field=args.date_field, retry_failed=args.retry_failed)
+        am_l3_tasks_str = "\n".join([str(t) for t in am_l3_tasks])
+        logger.info(f"Acquisition monitor L3 tasks to run:\n{am_l3_tasks_str}")
+        tasks += am_l3_tasks
 
     # Get tasks from daacscenes monitor
     if args.monitor and args.monitor == "daacscenes":
