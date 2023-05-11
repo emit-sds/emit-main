@@ -645,6 +645,9 @@ class L1BRdnFormat(SlurmJobTask):
         cmd = ["python", output_generator_exe, tmp_daac_rdn_nc_path, tmp_daac_obs_nc_path, acq.rdn_img_path, acq.obs_img_path, acq.loc_img_path,
                acq.glt_img_path, "V0" + str(wm.config["processing_version"]), wm.config["extended_build_num"],
                "--log_file", tmp_log_path]
+        # If we have the flat field update median file, then add it to NetCDF
+        if os.path.exists(acq.ffmedian_img_path):
+            cmd.extend(["--flat_field_update", acq.ffmedian_img_path])
 
         # Run this inside the emit-main conda environment to include emit-utils and other requirements
         main_pge = wm.pges["emit-main"]
