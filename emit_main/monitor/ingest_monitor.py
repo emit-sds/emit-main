@@ -122,7 +122,7 @@ class IngestMonitor:
         paths.sort(key=lambda x: os.path.getmtime(x))
         # Return luigi tasks
         tasks = []
-        priority = len(tasks)
+        priority = len(paths)
         for p in paths:
             # Process HOSC files
             if p.endswith("hsc.bin"):
