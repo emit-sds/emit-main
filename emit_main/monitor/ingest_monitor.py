@@ -140,7 +140,7 @@ class IngestMonitor:
                                              miss_pkt_thresh=self.miss_pkt_thresh))
 
                 if apid == "1675":  # Change back to 1675 when ready to ingest 1675 again
-                    logger.info(f"Creating L1ADepacketizeScienceFrames task for path {p}")
+                    logger.info(f"Creating L1ADepacketizeScienceFrames task for path {p} with priority {priority}")
                     tasks.append(L1ADepacketizeScienceFrames(config_path=self.config_path,
                                                              stream_path=p,
                                                              level=self.level,
