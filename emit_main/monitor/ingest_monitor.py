@@ -122,6 +122,7 @@ class IngestMonitor:
         paths.sort(key=lambda x: os.path.getmtime(x))
         # Return luigi tasks
         tasks = []
+        priority = len(tasks)
         for p in paths:
             # Process HOSC files
             if p.endswith("hsc.bin"):
@@ -146,7 +147,9 @@ class IngestMonitor:
                                                              partition=self.partition,
                                                              pkt_format=self.pkt_format,
                                                              miss_pkt_thresh=self.miss_pkt_thresh,
-                                                             test_mode=self.test_mode))
+                                                             test_mode=self.test_mode,
+                                                             priority=priority))
+                    priority -= 1
 
             # Process Planning Product files
             if p.endswith(".json"):

@@ -36,6 +36,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
     miss_pkt_thresh = luigi.FloatParameter()
     test_mode = luigi.BoolParameter(default=False)
     override_output = luigi.BoolParameter(default=False)
+    priority = luigi.IntParameter(default=0)
 
     memory = 30000
 
