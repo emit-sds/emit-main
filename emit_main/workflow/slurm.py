@@ -25,10 +25,10 @@ def _build_sbatch_script(tmp_dir, cmd, job_name, partition, outfile, errfile, n_
     conda_env = os.getenv("CONDA_DEFAULT_ENV")
 
     # Only run one instance of these types of jobs at a time
-    if job_name in ("emit.L0StripHOSC", "emit.L1ADepacketizeScienceFrames"):
-        singleton_flag = "#SBATCH --dependency=singleton"
-    else:
-        singleton_flag = ""
+    singleton_flag = ""
+    # TODO: If you want to run only one instance of these job types, uncomment these lines
+    # if job_name in ("emit.L0StripHOSC", "emit.L1ADepacketizeScienceFrames"):
+    #     singleton_flag = "#SBATCH --dependency=singleton"
 
     sbatch_template = """#!/bin/bash
 #SBATCH -J {job_name}
