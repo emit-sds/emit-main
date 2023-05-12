@@ -163,6 +163,13 @@ class L2BAbundance(SlurmJobTask):
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2b.abun": product_dict})
 
+        product_dict_abununcert = {
+            "img_path": acq.abununcert_img_path,
+            "hdr_path": acq.abununcert_hdr_path,
+            "created": creation_time,
+        }
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2b.abununcert": product_dict_abununcert})
+
         total_time = time.time() - start_time
         log_entry = {
             "task": self.task_family,

@@ -117,6 +117,8 @@ class Acquisition:
                 "destripedark": ["img", "hdr"],
                 "destripeff": ["img", "hdr"],
                 "bandmask": ["img", "hdr"],
+                "ffupdate": ["img", "hdr"],
+                "ffmedian": ["img", "hdr"],
                 "loc": ["img", "hdr"],
                 "obs": ["img", "hdr", "nc"],
                 "glt": ["img", "hdr"],

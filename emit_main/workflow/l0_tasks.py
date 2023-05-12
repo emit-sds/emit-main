@@ -30,6 +30,7 @@ class L0StripHOSC(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
     miss_pkt_thresh = luigi.FloatParameter(default=0.01)
+    priority = luigi.IntParameter(default=0)
 
     memory = 18000
 

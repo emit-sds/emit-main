@@ -11,7 +11,7 @@ import os
 from emit_main.workflow.l1a_tasks import L1ADeliver
 from emit_main.workflow.l1b_tasks import L1BCalibrate, L1BRdnDeliver
 from emit_main.workflow.l2a_tasks import L2AMask, L2ADeliver
-from emit_main.workflow.l2b_tasks import L2BAbundance
+from emit_main.workflow.l2b_tasks import L2BAbundance, L2BDeliver
 from emit_main.workflow.l3_tasks import L3Unmix
 from emit_main.workflow.workflow_manager import WorkflowManager
 
@@ -65,7 +65,7 @@ class AcquisitionMonitor:
         # If no results, just return empty list
         if len(acquisitions) == 0:
             logger.info(f"Did not find any acquisitions with {date_field} between {start_time} and {stop_time} needing "
-                        f"MESMA tasks. Not executing any tasks.")
+                        f"l2a reflectance and mask tasks. Not executing any tasks.")
             return tasks
 
         for acq in acquisitions:
@@ -74,17 +74,50 @@ class AcquisitionMonitor:
                                  acquisition_id=acq["acquisition_id"],
                                  level=self.level,
                                  partition=self.partition))
-            # Temporarily remove L2BAbundance and L3Unmix
-            # logger.info(f"Creating L2BAbundance task for acquisition {acq['acquisition_id']}")
-            # tasks.append(L2BAbundance(config_path=self.config_path,
-            #                           acquisition_id=acq["acquisition_id"],
-            #                           level=self.level,
-            #                           partition=self.partition))
-            # logger.info(f"Creating L3Unmix task for acquisition {acq['acquisition_id']}")
-            # tasks.append(L3Unmix(config_path=self.config_path,
-            #                      acquisition_id=acq["acquisition_id"],
-            #                      level=self.level,
-            #                      partition=self.partition))
+
+        return tasks
+
+    def get_l2b_tasks(self, start_time, stop_time, date_field="last_modified", retry_failed=False):
+        tasks = []
+        # Find acquisitions within time range
+        dm = self.wm.database_manager
+        acquisitions = dm.find_acquisitions_for_l2b(start=start_time, stop=stop_time, date_field=date_field,
+                                                    retry_failed=retry_failed)
+
+        # If no results, just return empty list
+        if len(acquisitions) == 0:
+            logger.info(f"Did not find any acquisitions with {date_field} between {start_time} and {stop_time} needing "
+                        f"l2b abundance tasks. Not executing any tasks.")
+            return tasks
+
+        for acq in acquisitions:
+            logger.info(f"Creating L2BAbundance task for acquisition {acq['acquisition_id']}")
+            tasks.append(L2BAbundance(config_path=self.config_path,
+                                      acquisition_id=acq["acquisition_id"],
+                                      level=self.level,
+                                      partition=self.partition))
+
+        return tasks
+
+    def get_l3_tasks(self, start_time, stop_time, date_field="last_modified", retry_failed=False):
+        tasks = []
+        # Find acquisitions within time range
+        dm = self.wm.database_manager
+        acquisitions = dm.find_acquisitions_for_l3(start=start_time, stop=stop_time, date_field=date_field,
+                                                   retry_failed=retry_failed)
+
+        # If no results, just return empty list
+        if len(acquisitions) == 0:
+            logger.info(f"Did not find any acquisitions with {date_field} between {start_time} and {stop_time} needing "
+                        f"l3 unmix tasks. Not executing any tasks.")
+            return tasks
+
+        for acq in acquisitions:
+            logger.info(f"Creating L3Unmix task for acquisition {acq['acquisition_id']}")
+            tasks.append(L3Unmix(config_path=self.config_path,
+                                 acquisition_id=acq["acquisition_id"],
+                                 level=self.level,
+                                 partition=self.partition))
 
         return tasks
 
@@ -150,6 +183,29 @@ class AcquisitionMonitor:
         for acq in acquisitions:
             logger.info(f"Creating L2ADeliver task for acquisition {acq['acquisition_id']}")
             tasks.append(L2ADeliver(config_path=self.config_path,
+                                    acquisition_id=acq["acquisition_id"],
+                                    level=self.level,
+                                    partition=self.partition,
+                                    daac_ingest_queue=self.daac_ingest_queue))
+
+        return tasks
+
+    def get_l2b_delivery_tasks(self, start_time, stop_time, date_field="last_modified", retry_failed=False):
+        tasks = []
+        # Find acquisitions within time range
+        dm = self.wm.database_manager
+        acquisitions = dm.find_acquisitions_for_l2b_delivery(start=start_time, stop=stop_time,
+                                                             date_field=date_field, retry_failed=retry_failed)
+
+        # If no results, just return empty list
+        if len(acquisitions) == 0:
+            logger.info(f"Did not find any acquisitions with {date_field} between {start_time} and {stop_time} needing "
+                        f"l2b abundance delivery tasks. Not executing any tasks.")
+            return tasks
+
+        for acq in acquisitions:
+            logger.info(f"Creating L2BDeliver task for acquisition {acq['acquisition_id']}")
+            tasks.append(L2BDeliver(config_path=self.config_path,
                                     acquisition_id=acq["acquisition_id"],
                                     level=self.level,
                                     partition=self.partition,

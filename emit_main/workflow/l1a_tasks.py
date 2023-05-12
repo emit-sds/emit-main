@@ -36,6 +36,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
     miss_pkt_thresh = luigi.FloatParameter()
     test_mode = luigi.BoolParameter(default=False)
     override_output = luigi.BoolParameter(default=False)
+    priority = luigi.IntParameter(default=0)
 
     memory = 30000
 
@@ -46,7 +47,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
         logger.debug(f"{self.task_family} requires: {self.stream_path}")
         # TODO: Add dependency on previous stream file (if one is found in DB)
         return L0StripHOSC(config_path=self.config_path, stream_path=self.stream_path, level=self.level,
-                           partition=self.partition, miss_pkt_thresh=self.miss_pkt_thresh)
+                           partition=self.partition, miss_pkt_thresh=self.miss_pkt_thresh, priority=self.priority)
 
     def output(self):
 
