@@ -113,7 +113,7 @@ class L2BAbundance(SlurmJobTask):
             "mineral_group_mat_file": min_group_mat_file,
             "tetracorder_config_filename": tetracorder_config_file
         }
-        cmd = ["python", aggregator_exe, tmp_tetra_output_path, tmp_abun_path, min_group_mat_file,
+        cmd = ["python", aggregator_exe, tmp_tetra_output_path, min_group_mat_file, tmp_abun_path, 
                "--calculate_uncertainty",
                "--reflectance_file", acq.rfl_img_path,
                "--reflectance_uncertainty_file", acq.rfluncert_img_path,
