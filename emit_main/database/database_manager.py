@@ -67,6 +67,24 @@ class DatabaseManager:
         }
         return list(acquisitions_coll.find(query).sort(field, sort))
 
+    def find_nearby_acquisitions_with_ffupdate(self, start_time, use_future_flat, limit=350):
+        if use_future_flat:
+            q_start = start_time
+            q_stop = start_time + datetime.timedelta(days=60)
+        else:
+            q_start = start_time - datetime.timedelta(days=60)
+            q_stop = start_time
+        acquisitions_coll = self.db.acquisitions
+        query = {
+            "start_time": {"$gt": q_start, "$lt": q_stop},
+            "products.l1b.ffupdate": {"$exists": 1},
+            "build_num": self.config["build_num"]
+        }
+        if use_future_flat:
+            return list(acquisitions_coll.find(query).sort("start_time", 1).limit(limit))
+        else:
+            return list(acquisitions_coll.find(query).sort("start_time", -1).limit(limit))
+
     def find_acquisitions_for_calibration(self, start, stop, date_field="last_modified", retry_failed=False):
         acquisitions_coll = self.db.acquisitions
         # Query for "science" acquisitions with non-zero valid lines and with complete l1a raw outputs but no l1b rdn
@@ -114,13 +132,43 @@ class DatabaseManager:
             "products.l1b.loc.img_path": {"$exists": 1},
             "products.l1b.obs.img_path": {"$exists": 1},
             "products.l2a.rfl.img_path": {"$exists": 0},
+            "products.l2a.mask.img_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop},
             "build_num": self.config["build_num"]
         }
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
-            results = self._remove_results_with_failed_tasks(results, ["emit.L2AReflectance", "emit.L2AMask",
-                                                                       "emit.L3Unmix"])
+            results = self._remove_results_with_failed_tasks(results, ["emit.L2AReflectance", "emit.L2AMask"])
+        return results
+
+    def find_acquisitions_for_l2b(self, start, stop, date_field="last_modified", retry_failed=False):
+        acquisitions_coll = self.db.acquisitions
+        # Query for acquisitions with complete l2a outputs but no l2b abun outputs in time range
+        query = {
+            "products.l2a.rfl.img_path": {"$exists": 1},
+            "products.l2a.mask.img_path": {"$exists": 1},
+            "products.l2b.abun.img_path": {"$exists": 0},
+            date_field: {"$gte": start, "$lte": stop},
+            "build_num": self.config["build_num"]
+        }
+        results = list(acquisitions_coll.find(query))
+        if not retry_failed:
+            results = self._remove_results_with_failed_tasks(results, ["emit.L2BAbundance"])
+        return results
+
+    def find_acquisitions_for_l3(self, start, stop, date_field="last_modified", retry_failed=False):
+        acquisitions_coll = self.db.acquisitions
+        # Query for acquisitions with complete l2a outputs but no l3 cover outputs in time range
+        query = {
+            "products.l2a.rfl.img_path": {"$exists": 1},
+            "products.l2a.mask.img_path": {"$exists": 1},
+            "products.l3.cover.img_path": {"$exists": 0},
+            date_field: {"$gte": start, "$lte": stop},
+            "build_num": self.config["build_num"]
+        }
+        results = list(acquisitions_coll.find(query))
+        if not retry_failed:
+            results = self._remove_results_with_failed_tasks(results, ["emit.L3Unmix"])
         return results
 
     def find_acquisitions_for_l1a_delivery(self, start, stop, date_field="last_modified", retry_failed=False):
@@ -170,6 +218,7 @@ class DatabaseManager:
             "products.l2a.mask.img_path": {"$exists": 1},
             "products.l1b.glt.img_path": {"$exists": 1},
             "products.l1b.loc.img_path": {"$exists": 1},
+            "cloud_fraction": {"$exists": 1},
             "daac_scene": {"$exists": 1},
             "products.l2a.rfl_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop},
@@ -178,6 +227,25 @@ class DatabaseManager:
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L2AFormat", "emit.L2ADeliver"])
+        return results
+
+    def find_acquisitions_for_l2b_delivery(self, start, stop, date_field="last_modified", retry_failed=False):
+        acquisitions_coll = self.db.acquisitions
+        # Query for acquisitions with daac scene numbers but no daac ummg products.
+        query = {
+            "products.l2b.abun.img_path": {"$exists": 1},
+            "products.l2b.abununcert.img_path": {"$exists": 1},
+            "products.l1b.glt.img_path": {"$exists": 1},
+            "products.l1b.loc.img_path": {"$exists": 1},
+            "cloud_fraction": {"$exists": 1},
+            "daac_scene": {"$exists": 1},
+            "products.l2b.abun_ummg.ummg_json_path": {"$exists": 0},
+            date_field: {"$gte": start, "$lte": stop},
+            "build_num": self.config["build_num"]
+        }
+        results = list(acquisitions_coll.find(query))
+        if not retry_failed:
+            results = self._remove_results_with_failed_tasks(results, ["emit.L2BFormat", "emit.L2BDeliver"])
         return results
 
     def insert_acquisition(self, metadata):

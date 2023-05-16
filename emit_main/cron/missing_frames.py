@@ -10,6 +10,22 @@ import os
 from emit_main.workflow.workflow_manager import WorkflowManager
 
 
+def lookup_depack_log(frame_path, dc, s_coll, wm):
+    for path in dc["associated_ccsds"]:
+        ccsds_name = os.path.basename(path)
+        query = {
+            "build_num": wm.config["build_num"],
+            "ccsds_name": ccsds_name
+        }
+        stream = s_coll.find_one(query)
+        s_frame_paths = stream["products"]["l1a"]["data_collections"][dc["dcid"]]["dcid_frame_paths"]
+        if frame_path in s_frame_paths:
+            # Get l1a name
+            l1a_log = path.replace("/l0/", "/l1a/").replace("l0_ccsds", "l1a_frames").replace(".bin", "_pge.log")
+            l1a_report = l1a_log.replace("_pge.log", "_report.txt")
+            return l1a_report, l1a_log
+
+
 def main():
     # Set up args
     parser = argparse.ArgumentParser(description="Find missing frames for DCID")
@@ -24,6 +40,7 @@ def main():
     wm = WorkflowManager(config_path=config_path)
     db = wm.database_manager.db
     dc_coll = db.data_collections
+    s_coll = db.streams
 
     # Check for DCIDs with missing frames
     query = {
@@ -91,15 +108,37 @@ def main():
 
         print("\nFrames that bound each of the gaps:")
         for gap in gaps:
+            print("-----------------------------------")
             if gap[0] < 0:
-                print("\nStart: No prior frame")
+                print("\nBefore gap:")
+                print(f"No prior frame")
             else:
-                print(f"\nStart: {flookup[gap[0]]}")
+                print(f"\nBefore gap:")
+                print(f"{flookup[gap[0]]}")
+                # Look up report file
+                start_report, start_log = lookup_depack_log(flookup[gap[0]], dc, s_coll, wm)
 
             if gap[1] >= total_frames:
-                print("Stop: No subsequent frame")
+                print("After gap:")
+                print(f"No subsequent frame")
             else:
-                print(f"Stop: {flookup[gap[1]]}")
+                print(f"\nAfter gap:")
+                print(f"{flookup[gap[1]]}")
+                stop_report, stop_log = lookup_depack_log(flookup[gap[1]], dc, s_coll, wm)
+
+            # Print reports
+            print("\nDepacketization Report(s) (if more than one, then they correspond to frames before and after gap "
+                  "respectively):")
+            print(f"{start_report}")
+            if stop_report != start_report:
+                print(f"{stop_report}")
+            print("\nDepacketization Log(s) (if more than one, then they correspond to frames before and after gap "
+                  "respectively):")
+            print(f"{start_log}")
+            if stop_log != start_log:
+                print(f"{stop_log}")
+
+        print("-----------------------------------")
 
 
 if __name__ == '__main__':

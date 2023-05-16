@@ -122,6 +122,7 @@ class IngestMonitor:
         paths.sort(key=lambda x: os.path.getmtime(x))
         # Return luigi tasks
         tasks = []
+        priority = len(paths)
         for p in paths:
             # Process HOSC files
             if p.endswith("hsc.bin"):
@@ -138,15 +139,19 @@ class IngestMonitor:
                                              partition=self.partition,
                                              miss_pkt_thresh=self.miss_pkt_thresh))
 
-                if apid == "1675":  # Change back to 1675 when ready to ingest 1675 again
-                    logger.info(f"Creating L1ADepacketizeScienceFrames task for path {p}")
-                    tasks.append(L1ADepacketizeScienceFrames(config_path=self.config_path,
-                                                             stream_path=p,
-                                                             level=self.level,
-                                                             partition=self.partition,
-                                                             pkt_format=self.pkt_format,
-                                                             miss_pkt_thresh=self.miss_pkt_thresh,
-                                                             test_mode=self.test_mode))
+                # TODO: APID 1675 is currently ingested by another script to preserve order, but if you want to
+                # TODO: ingest it here, then uncomment these lines and also the singleton_flag in slurm.py
+                # if apid == "1675":
+                #     logger.info(f"Creating L1ADepacketizeScienceFrames task for path {p} with priority {priority}")
+                #     tasks.append(L1ADepacketizeScienceFrames(config_path=self.config_path,
+                #                                              stream_path=p,
+                #                                              level=self.level,
+                #                                              partition=self.partition,
+                #                                              pkt_format=self.pkt_format,
+                #                                              miss_pkt_thresh=self.miss_pkt_thresh,
+                #                                              test_mode=self.test_mode,
+                #                                              priority=priority))
+                #     priority -= 1
 
             # Process Planning Product files
             if p.endswith(".json"):

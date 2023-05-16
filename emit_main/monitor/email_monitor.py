@@ -16,6 +16,7 @@ from emit_main.workflow.l0_tasks import L0Deliver
 from emit_main.workflow.l1a_tasks import L1ADeliver
 from emit_main.workflow.l1b_tasks import L1BRdnDeliver, L1BAttDeliver
 from emit_main.workflow.l2a_tasks import L2ADeliver
+from emit_main.workflow.l2b_tasks import L2BDeliver
 from emit_main.workflow.workflow_manager import WorkflowManager
 
 logger = logging.getLogger("emit-main")
@@ -293,6 +294,18 @@ class EmailMonitor:
                     acquisition_id = f"emit{timestamp}"
                     logger.info(f"Creating L2ADeliver task for acquisition {acquisition_id}")
                     tasks.append(L2ADeliver(config_path=self.config_path,
+                                            acquisition_id=acquisition_id,
+                                            level=self.level,
+                                            partition=self.partition,
+                                            daac_ingest_queue=self.daac_ingest_queue,
+                                            override_output=True))
+
+                if g.startswith("EMIT_L2B_MIN"):
+                    # Get acquisition id
+                    timestamp = g.split("_")[4].replace("T", "t")
+                    acquisition_id = f"emit{timestamp}"
+                    logger.info(f"Creating L2BDeliver task for acquisition {acquisition_id}")
+                    tasks.append(L2BDeliver(config_path=self.config_path,
                                             acquisition_id=acquisition_id,
                                             level=self.level,
                                             partition=self.partition,
