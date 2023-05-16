@@ -94,7 +94,7 @@ class L2BAbundance(SlurmJobTask):
         os.chdir(current_pwd)
 
         # Build aggregator cmd
-        aggregator_exe = os.path.join(pge.repo_dir, "aggregator.py")
+        aggregator_exe = os.path.join(pge.repo_dir, "group_aggregator.py")
         tmp_output_dir = os.path.join(self.local_tmp_dir, "l2b_aggregation_output")
         wm.makedirs(tmp_output_dir)
         tmp_abun_path = os.path.join(tmp_output_dir, os.path.basename(acq.abun_img_path))
@@ -103,17 +103,23 @@ class L2BAbundance(SlurmJobTask):
             wm.config['tetracorder_library_dir'], f's{wm.config["tetracorder_library_basename"]}_envi')
         research_library = os.path.join(
             wm.config['tetracorder_library_dir'], f'r{wm.config["tetracorder_library_basename"]}_envi')
+        tetracorder_config_file = os.path.join(wm.config['tetracorder_cmds_path'], wm.config["tetracorder_config_filename"])
+        min_group_mat_file = os.path.join(pge.repo_dir, 'data', wm.config["mineral_matrix_name"])
+
         input_files = {
             "reflectance_file": acq.rfl_img_path,
             "reflectance_uncertainty_file": acq.rfluncert_img_path,
-            "tetracorder_library_basename": wm.config["tetracorder_library_basename"]
+            "tetracorder_library_basename": wm.config["tetracorder_library_basename"],
+            "mineral_group_mat_file": min_group_mat_file,
+            "tetracorder_config_filename": tetracorder_config_file
         }
-        cmd = ["python", aggregator_exe, tmp_tetra_output_path, tmp_abun_path,
-               "--calculate_uncertainty", "1",
+        cmd = ["python", aggregator_exe, tmp_tetra_output_path, tmp_abun_path, min_group_mat_file,
+               "--calculate_uncertainty",
                "--reflectance_file", acq.rfl_img_path,
                "--reflectance_uncertainty_file", acq.rfluncert_img_path,
                "--reference_library", standard_library,
                "--research_library", research_library,
+               "--expert_system_file", tetracorder_config_file,
                ]
         pge.run(cmd, cwd=pge.repo_dir, tmp_dir=self.tmp_dir)
 
