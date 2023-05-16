@@ -233,7 +233,7 @@ class L2BFormat(SlurmJobTask):
 
         pge = wm.pges["emit-sds-l2b"]
 
-        output_generator_exe = os.path.join(pge.repo_dir, "output_conversion.py")
+        output_generator_exe = os.path.join(pge.repo_dir, "group_output_conversion.py")
         tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
         wm.makedirs(tmp_output_dir)
         tmp_daac_nc_abun_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l2b_abun.nc")
