@@ -123,7 +123,7 @@ class L2BAbundance(SlurmJobTask):
                ]
         pge.run(cmd, cwd=pge.repo_dir, tmp_dir=self.tmp_dir)
 
-        cmd = ['python', os.path.join(pge.repo_dir, 'quicklook.py'), tmp_abun_path, tmp_quicklook_path]
+        cmd = ['python', os.path.join(pge.repo_dir, 'quicklook.py'), tmp_abun_path, tmp_quicklook_path, '--unc_file', tmp_abun_path + '_uncert']
         pge.run(cmd, cwd=pge.repo_dir, tmp_dir=self.tmp_dir)
 
         # Copy mask files to l2a dir
