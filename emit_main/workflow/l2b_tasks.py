@@ -113,7 +113,11 @@ class L2BAbundance(SlurmJobTask):
             "mineral_group_mat_file": min_group_mat_file,
             "tetracorder_config_filename": tetracorder_config_file
         }
-        cmd = ["python", aggregator_exe, tmp_tetra_output_path, min_group_mat_file, tmp_abun_path, 
+
+        env = os.environ.copy()
+        emit_utils_pge = wm.pges["emit-utils"]
+        env["PYTHONPATH"] = f"$PYTHONPATH:{emit_utils_pge.repo_dir}"
+        agg_cmd = ["python", aggregator_exe, tmp_tetra_output_path, min_group_mat_file, tmp_abun_path,
                "--calculate_uncertainty",
                "--reflectance_file", acq.rfl_img_path,
                "--reflectance_uncertainty_file", acq.rfluncert_img_path,
@@ -121,10 +125,10 @@ class L2BAbundance(SlurmJobTask):
                "--research_library", research_library,
                "--expert_system_file", tetracorder_config_file,
                ]
-        pge.run(cmd, cwd=pge.repo_dir, tmp_dir=self.tmp_dir)
+        pge.run(agg_cmd, cwd=pge.repo_dir, tmp_dir=self.tmp_dir, env=env)
 
-        cmd = ['python', os.path.join(pge.repo_dir, 'quicklook.py'), tmp_abun_path, tmp_quicklook_path, '--unc_file', tmp_abun_path + '_uncert']
-        pge.run(cmd, cwd=pge.repo_dir, tmp_dir=self.tmp_dir)
+        ql_cmd = ['python', os.path.join(pge.repo_dir, 'quicklook.py'), tmp_abun_path, tmp_quicklook_path, '--unc_file', tmp_abun_path + '_uncert']
+        pge.run(ql_cmd, cwd=pge.repo_dir, tmp_dir=self.tmp_dir, env=env)
 
         # Copy mask files to l2a dir
         wm.copytree(tmp_tetra_output_path, acq.tetra_dir_path)
@@ -143,7 +147,7 @@ class L2BAbundance(SlurmJobTask):
         hdr["emit pge name"] = pge.repo_url
         hdr["emit pge version"] = pge.version_tag
         hdr["emit pge input files"] = input_files_arr
-        hdr["emit pge run command"] = " ".join(cmd)
+        hdr["emit pge run command"] = " ".join(agg_cmd)
         hdr["emit software build version"] = wm.config["extended_build_num"]
         hdr["emit documentation version"] = doc_version
         creation_time = datetime.datetime.fromtimestamp(
@@ -182,7 +186,7 @@ class L2BAbundance(SlurmJobTask):
             "pge_name": pge.repo_url,
             "pge_version": pge.version_tag,
             "pge_input_files": input_files,
-            "pge_run_command": " ".join(cmd),
+            "pge_run_command": " ".join(agg_cmd),
             "documentation_version": doc_version,
             "product_creation_time": creation_time,
             "pge_runtime_seconds": total_time,
