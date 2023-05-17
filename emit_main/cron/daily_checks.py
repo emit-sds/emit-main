@@ -38,6 +38,11 @@ def main():
     orbit_coll = db.orbits
     acq_coll = db.acquisitions
 
+    print("==================================================================================")
+    print(f"Running Daily Checks at {dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} (Pacific) or "
+          f"{dt.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} (UTC)")
+    print("==================================================================================")
+
     # Check for DCIDs with missing frames
     query = {
         "build_num": wm.config["build_num"],

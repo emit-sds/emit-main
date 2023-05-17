@@ -404,8 +404,7 @@ class L1AReassembleRaw(SlurmJobTask):
             wm.copy(path, os.path.join(dc.decomp_dir, os.path.basename(path)))
 
         # If in test_mode, also copy the decompressed frames with no header to /store
-        # TODO: For now, always copy these paths.  They can be manually deleted after
-        if True:  # self.test_mode:
+        if self.test_mode:
             for path in tmp_decomp_no_header_paths:
                 wm.copy(path, os.path.join(dc.decomp_dir, os.path.basename(path)))
 
