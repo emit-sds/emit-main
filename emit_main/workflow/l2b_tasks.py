@@ -143,7 +143,7 @@ class L2BAbundance(SlurmJobTask):
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
         doc_version = "EMIT SDS L2B JPL-D 104237, Rev A"
         for img_path, hdr_path in [(acq.abun_img_path, acq.abun_hdr_path),
-                                   (acq.abununcert_img_path, acq.abununcert_hdr_path_hdr_path)]:
+                                   (acq.abununcert_img_path, acq.abununcert_hdr_path)]:
             hdr = envi.read_envi_header(hdr_path)
             hdr["emit acquisition start time"] = acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
             hdr["emit acquisition stop time"] = acq.stop_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
