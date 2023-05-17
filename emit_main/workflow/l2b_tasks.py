@@ -98,6 +98,7 @@ class L2BAbundance(SlurmJobTask):
         tmp_output_dir = os.path.join(self.local_tmp_dir, "l2b_aggregation_output")
         wm.makedirs(tmp_output_dir)
         tmp_abun_path = os.path.join(tmp_output_dir, os.path.basename(acq.abun_img_path))
+        tmp_abun_unc_path = os.path.join(tmp_output_dir, os.path.basename(acq.abununcert_img_path))
         tmp_quicklook_path = os.path.join(tmp_output_dir, os.path.splitext(os.path.basename(acq.abun_img_path))[0] + '_quicklook.png')
         standard_library = os.path.join(
             wm.config['tetracorder_library_dir'], f's{wm.config["tetracorder_library_basename"]}_envi')
@@ -113,7 +114,7 @@ class L2BAbundance(SlurmJobTask):
             "mineral_group_mat_file": min_group_mat_file,
             "tetracorder_config_filename": tetracorder_config_file
         }
-        cmd = ["python", aggregator_exe, tmp_tetra_output_path, min_group_mat_file, tmp_abun_path, 
+        cmd = ["python", aggregator_exe, tmp_tetra_output_path, min_group_mat_file, tmp_abun_path, tmp_abun_unc_path,
                "--calculate_uncertainty",
                "--reflectance_file", acq.rfl_img_path,
                "--reflectance_uncertainty_file", acq.rfluncert_img_path,
@@ -123,15 +124,15 @@ class L2BAbundance(SlurmJobTask):
                ]
         pge.run(cmd, cwd=pge.repo_dir, tmp_dir=self.tmp_dir)
 
-        cmd = ['python', os.path.join(pge.repo_dir, 'quicklook.py'), tmp_abun_path, tmp_quicklook_path, '--unc_file', tmp_abun_path + '_uncert']
+        cmd = ['python', os.path.join(pge.repo_dir, 'quicklook.py'), tmp_abun_path, tmp_quicklook_path, '--unc_file', tmp_abun_unc_path]
         pge.run(cmd, cwd=pge.repo_dir, tmp_dir=self.tmp_dir)
 
         # Copy mask files to l2a dir
         wm.copytree(tmp_tetra_output_path, acq.tetra_dir_path)
         wm.copy(tmp_abun_path, acq.abun_img_path)
         wm.copy(envi_header(tmp_abun_path), acq.abun_hdr_path)
-        wm.copy(tmp_abun_path + '_uncert', acq.abununcert_img_path)
-        wm.copy(envi_header(tmp_abun_path + '_uncert'), acq.abununcert_hdr_path)
+        wm.copy(tmp_abun_unc_path, acq.abununcert_img_path)
+        wm.copy(envi_header(tmp_abun_unc_path), acq.abununcert_hdr_path)
         wm.copy(tmp_quicklook_path, acq.abun_png_path)
 
         # Update hdr files
