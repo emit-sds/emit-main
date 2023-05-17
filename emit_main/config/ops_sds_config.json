@@ -5,8 +5,10 @@
     "processing_version": "01",
     "luigi_local_scheduler": false,
     "luigi_workers": 2,
-    "tetracorder_library_basename": "06emitc",
-    "tetracorder_library_cmdname": "emit_c"
+    "tetracorder_library_basename": "06emite",
+    "tetracorder_library_cmdname": "emit_e",
+    "mineral_matrix_name": "mineral_grouping_matrix_20230503.csv",
+    "tetracorder_config_filename": "cmd.lib.setup.t5.27d1"
   },
 
   "filesystem_config": {
@@ -33,7 +35,7 @@
   },
 
   "build_config": {
-    "extended_build_num": "010612",
+    "extended_build_num": "010613",
     "conda_base_dir": "/beegfs/store/shared/anaconda3/"
   },
 
@@ -70,7 +72,7 @@
     "isofit_sixs_dir": "/beegfs/store/shared/sixs",
     "specpr_path": "/beegfs/store/shared/specpr",
     "tetracorder_path": "/beegfs/store/shared/spectroscopy-tetracorder/tetracorder5.27",
-    "tetracorder_cmds_path": "/beegfs/store/shared/spectroscopy-tetracorder/tetracorder.cmds/tetracorder5.27a.cmds",
+    "tetracorder_cmds_path": "/beegfs/store/shared/spectroscopy-tetracorder/tetracorder.cmds/tetracorder5.27c.cmds",
     "tetracorder_library_dir": "/beegfs/store/shared/tetracorder_libraries",
     "unmixing_library": "/beegfs/store/shared/unmixing_libraries/pc-endmember_before-split_num-dims_3_num-samples_8_library.csv",
     "versions": []
