@@ -245,11 +245,14 @@ class L2BFormat(SlurmJobTask):
         tmp_daac_nc_abununcert_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l2b_abununcert.nc")
         tmp_log_path = os.path.join(self.local_tmp_dir, "output_conversion_pge.log")
 
+        env = os.environ.copy()
+        emit_utils_pge = wm.pges["emit-utils"]
+        env["PYTHONPATH"] = f"$PYTHONPATH:{emit_utils_pge.repo_dir}"
         cmd = ["python", output_generator_exe, tmp_daac_nc_abun_path, tmp_daac_nc_abununcert_path,
                acq.abun_img_path, acq.abununcert_img_path, acq.loc_img_path, acq.glt_img_path,
                "V0" + str(wm.config["processing_version"]), wm.config["extended_build_num"],
                "--log_file", tmp_log_path]
-        pge.run(cmd, tmp_dir=self.tmp_dir)
+        pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
         # Copy and rename output files back to /store
         log_path = acq.abun_nc_path.replace(".nc", "_nc_pge.log")
