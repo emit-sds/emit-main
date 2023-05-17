@@ -147,7 +147,7 @@ class L2BAbundance(SlurmJobTask):
         hdr["emit pge name"] = pge.repo_url
         hdr["emit pge version"] = pge.version_tag
         hdr["emit pge input files"] = input_files_arr
-        hdr["emit pge run command"] = " ".join(agg_cmd)
+        hdr["emit pge run command"] = " ".join(cmd_tetra_setup) + ", " + " ".join(agg_cmd)
         hdr["emit software build version"] = wm.config["extended_build_num"]
         hdr["emit documentation version"] = doc_version
         creation_time = datetime.datetime.fromtimestamp(
@@ -186,7 +186,7 @@ class L2BAbundance(SlurmJobTask):
             "pge_name": pge.repo_url,
             "pge_version": pge.version_tag,
             "pge_input_files": input_files,
-            "pge_run_command": " ".join(agg_cmd),
+            "pge_run_command": " ".join(cmd_tetra_setup) + ", " + " ".join(agg_cmd),
             "documentation_version": doc_version,
             "product_creation_time": creation_time,
             "pge_runtime_seconds": total_time,
