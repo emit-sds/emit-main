@@ -37,8 +37,8 @@
     },
     {
       "url": "git@github.com:emit-sds/emit-sds-l2b.git",
-      "tag": "v1.2.3",
-      "conda_env": "emit-isofit"
+      "tag": "v1.3.0",
+      "conda_env": "emit-main-20220606"
     },
     {
       "url": "git@github.com:emit-sds/emit-sds-l3.git",
