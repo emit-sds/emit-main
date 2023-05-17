@@ -142,22 +142,24 @@ class L2BAbundance(SlurmJobTask):
         # Update hdr files
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
         doc_version = "EMIT SDS L2B JPL-D 104237, Rev A"
-        hdr = envi.read_envi_header(acq.abun_hdr_path)
-        hdr["emit acquisition start time"] = acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
-        hdr["emit acquisition stop time"] = acq.stop_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
-        hdr["emit pge name"] = pge.repo_url
-        hdr["emit pge version"] = pge.version_tag
-        hdr["emit pge input files"] = input_files_arr
-        hdr["emit pge run command"] = " ".join(cmd_tetra_setup) + ", " + " ".join(agg_cmd)
-        hdr["emit software build version"] = wm.config["extended_build_num"]
-        hdr["emit documentation version"] = doc_version
-        creation_time = datetime.datetime.fromtimestamp(
-            os.path.getmtime(acq.abun_img_path), tz=datetime.timezone.utc)
-        hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
-        hdr["emit data product version"] = wm.config["processing_version"]
-        daynight = "Day" if acq.submode == "science" else "Night"
-        hdr["emit acquisition daynight"] = daynight
-        envi.write_envi_header(acq.abun_hdr_path, hdr)
+        for img_path, hdr_path in [(acq.abun_img_path, acq.abun_hdr_path),
+                                   (acq.abununcert_img_path, acq.abununcert_hdr_path_hdr_path)]:
+            hdr = envi.read_envi_header(hdr_path)
+            hdr["emit acquisition start time"] = acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
+            hdr["emit acquisition stop time"] = acq.stop_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
+            hdr["emit pge name"] = pge.repo_url
+            hdr["emit pge version"] = pge.version_tag
+            hdr["emit pge input files"] = input_files_arr
+            hdr["emit pge run command"] = " ".join(cmd_tetra_setup) + ", " + " ".join(agg_cmd)
+            hdr["emit software build version"] = wm.config["extended_build_num"]
+            hdr["emit documentation version"] = doc_version
+            creation_time = datetime.datetime.fromtimestamp(
+                os.path.getmtime(img_path), tz=datetime.timezone.utc)
+            hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
+            hdr["emit data product version"] = wm.config["processing_version"]
+            daynight = "Day" if acq.submode == "science" else "Night"
+            hdr["emit acquisition daynight"] = daynight
+            envi.write_envi_header(hdr_path, hdr)
 
         # PGE writes metadata to db
         dm = wm.database_manager
