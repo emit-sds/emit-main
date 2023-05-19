@@ -108,6 +108,10 @@ def main():
 
         print("\nFrames that bound each of the gaps:")
         for gap in gaps:
+            start_report = None
+            start_log = None
+            stop_report = None
+            stop_log = None
             print("-----------------------------------")
             if gap[0] < 0:
                 print("\nBefore gap:")
@@ -129,13 +133,15 @@ def main():
             # Print reports
             print("\nDepacketization Report(s) (if more than one, then they correspond to frames before and after gap "
                   "respectively):")
-            print(f"{start_report}")
-            if stop_report != start_report:
+            if start_report:
+                print(f"{start_report}")
+            if stop_report and stop_report != start_report:
                 print(f"{stop_report}")
             print("\nDepacketization Log(s) (if more than one, then they correspond to frames before and after gap "
                   "respectively):")
-            print(f"{start_log}")
-            if stop_log != start_log:
+            if start_log:
+                print(f"{start_log}")
+            if stop_log and stop_log != start_log:
                 print(f"{stop_log}")
 
         print("-----------------------------------")
