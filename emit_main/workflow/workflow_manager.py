@@ -94,14 +94,24 @@ class WorkflowManager:
                                               self.config["environment"], "error")
         self.local_tmp_dir = os.path.join("/tmp", self.config["instrument"], self.config["environment"])
         self.planning_products_dir = os.path.join(self.data_dir, "planning_products")
+        self.reconciliation_dir = os.path.join(self.data_dir, "reconciliation")
 
         dirs.extend([self.instrument_dir, self.environment_dir, self.data_dir, self.ingest_dir,
                      self.ingest_duplicates_dir, self.ingest_errors_dir, self.logs_dir, self.repos_dir,
-                     self.resources_dir, self.scratch_tmp_dir, self.scratch_error_dir, self.planning_products_dir])
+                     self.resources_dir, self.scratch_tmp_dir, self.scratch_error_dir, self.planning_products_dir,
+                     self.reconciliation_dir])
 
         # Make directories if they don't exist
         for d in dirs:
             self.makedirs(d)
+
+        # Build paths for DAAC delivery on staging server
+        self.daac_recon_staging_dir = os.path.join(self.config["daac_base_dir"], self.config['environment'],
+                                                   "reconciliation")
+        self.daac_recon_uri_base = f"https://{self.config['daac_server_external']}/emit/lpdaac/" \
+                                   f"{self.config['environment']}/reconciliation/"
+        self.daac_partial_dir = os.path.join(self.config["daac_base_dir"], self.config['environment'],
+                                             "partial_transfers")
 
         # Create repository paths and PGEs based on build config
         self.pges = {}
@@ -194,10 +204,33 @@ class WorkflowManager:
                 self.print(__name__, f"Unable to make directory {d}, but proceeding anyway...")
 
     def copy(self, src, dst):
+        # First check if the dst path exists
+        if os.path.exists(dst):
+            # If the dst file is owned by a different user, then delete it first.
+            owner = pwd.getpwuid(os.stat(dst, follow_symlinks=False).st_uid).pw_name
+            current_user = pwd.getpwuid(os.getuid()).pw_name
+            if owner != current_user:
+                self.print(__name__, f"Attempting to overwrite file owned by another user ({dst}). Will delete the "
+                                     f"file first and then copy.")
+                if os.path.isfile(dst):
+                    os.remove(dst)
+        # Now copy
         shutil.copy2(src, dst)
         self.change_group_ownership(dst)
 
     def copytree(self, src, dst):
+        # First check if the dst dir exists. Right now this only impacts the tetracorder directory in l2b.
+        # This is kept purposely very specific so as not to call rmtree on some other directory by mistake.
+        if os.path.exists(dst) and "tetra" in os.path.basename(dst):
+            # If the dst file is owned by a different user, then delete it first.
+            owner = pwd.getpwuid(os.stat(dst, follow_symlinks=False).st_uid).pw_name
+            current_user = pwd.getpwuid(os.getuid()).pw_name
+            if owner != current_user:
+                self.print(__name__, f"Attempting to overwrite directory owned by another user ({dst}). Will delete "
+                                     f"the directory first and then copy.")
+                if os.path.isdir(dst):
+                    shutil.rmtree(dst)
+        # Now copy
         shutil.copytree(src, dst)
         self.change_group_ownership(dst)
 

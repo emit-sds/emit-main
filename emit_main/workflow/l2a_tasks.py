@@ -8,6 +8,8 @@ import datetime
 import json
 import logging
 import os
+import time
+import numpy as np
 
 import luigi
 import spectral.io.envi as envi
@@ -17,7 +19,7 @@ from emit_main.workflow.output_targets import AcquisitionTarget
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.l1b_tasks import L1BCalibrate, L1BGeolocate
 from emit_main.workflow.slurm import SlurmJobTask
-from emit_utils.file_checks import envi_header
+from emit_utils.file_checks import envi_header, check_cloudfraction
 from emit_utils import daac_converter
 
 logger = logging.getLogger("emit-main")
@@ -36,6 +38,7 @@ class L2AReflectance(SlurmJobTask):
 
     n_cores = 40
     memory = 180000
+
     task_namespace = "emit"
 
     def requires(self):
@@ -43,10 +46,12 @@ class L2AReflectance(SlurmJobTask):
         logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
-        return (L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
-                             partition=self.partition),
-                L1BGeolocate(config_path=self.config_path, orbit_id=acq.orbit, level=self.level,
-                             partition=self.partition))
+        return None
+        # Don't look up dependencies here since the monitor guarantees that these have already run
+        # return (L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+        #                      partition=self.partition),
+        #         L1BGeolocate(config_path=self.config_path, orbit_id=acq.orbit, level=self.level,
+        #                      partition=self.partition))
 
     def output(self):
 
@@ -56,47 +61,104 @@ class L2AReflectance(SlurmJobTask):
 
     def work(self):
 
+        start_time = time.time()
         logger.debug(f"{self.task_family} run: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
         pge = wm.pges["emit-sds-l2a"]
 
-        # Build PGE cmd
-        apply_oe_exe = os.path.join(wm.pges["isofit"].repo_dir, "isofit", "utils", "apply_oe.py")
+        # Build PGE cmd for surface model
+        isofit_pge = wm.pges["isofit"]
+        surface_config_path = wm.config["isofit_surface_config"]
+        tmp_surface_path = os.path.join(self.local_tmp_dir, f"{acq.acquisition_id}_surface.mat")
+        # Get wavelength file from l1b config
+        l1b_config_path = wm.config["l1b_config_path"]
+        with open(l1b_config_path, "r") as f:
+            config = json.load(f)
+        wavelength_path = config["spectral_calibration_file"]
+        if not wavelength_path.startswith("/"):
+            wavelength_path = os.path.abspath(os.path.join(os.path.dirname(l1b_config_path), wavelength_path))
+
+        first_wavelength_ind = int(config["first_distributed_row"])
+        last_wavelength_ind = int(config["last_distributed_row"])
+        # Clip and Flip
+        wavelengths = np.genfromtxt(wavelength_path)[first_wavelength_ind:last_wavelength_ind + 1, :][::-1, :]
+        tmp_clipped_wavelength_path = os.path.join(self.local_tmp_dir, f"{acq.acquisition_id}_wavelengths.txt")
+        np.savetxt(tmp_clipped_wavelength_path, wavelengths, fmt='%f')
+
+        # Set environment
+        env = os.environ.copy()
+        env["PYTHONPATH"] = f"$PYTHONPATH:{isofit_pge.repo_dir}"
+        surf_cmd = ["python", "-c", "\"from isofit.utils import surface_model;",
+                    f"surface_model('{surface_config_path}', wavelength_path='{tmp_clipped_wavelength_path}', "
+                    f"output_path='{tmp_surface_path}')\""]
+        pge.run(surf_cmd, tmp_dir=self.tmp_dir, env=env)
+
+        # Build PGE cmd for apply_oe
+        apply_oe_exe = os.path.join(isofit_pge.repo_dir, "isofit", "utils", "apply_oe.py")
         tmp_log_path = os.path.join(self.local_tmp_dir, "isofit.log")
-        surface_path = wm.config["isofit_surface_path"]
+        model_disc_file = os.path.join(isofit_pge.repo_dir, "data", "emit_model_discrepancy.mat")
+
         emulator_base = wm.config["isofit_emulator_base"]
         input_files = {
             "radiance_file": acq.rdn_img_path,
             "pixel_locations_file": acq.loc_img_path,
             "observation_parameters_file": acq.obs_img_path,
-            "surface_file": surface_path
+            "surface_model_config": surface_config_path
         }
         cmd = ["python", apply_oe_exe, acq.rdn_img_path, acq.loc_img_path, acq.obs_img_path, self.local_tmp_dir, "emit",
-               "--presolve=1", "--empirical_line=1", "--emulator_base=" + emulator_base,
+               "--presolve=1",
+               "--empirical_line=0",
+               "--analytical_line=1",
+               "--emulator_base=" + emulator_base,
                "--n_cores", str(self.n_cores),
-               "--surface_path", surface_path,
+               "--surface_path", tmp_surface_path,
                "--ray_temp_dir", "/tmp/ray",
                "--log_file", tmp_log_path,
-               "--logging_level", self.level]
+               "--logging_level", self.level,
+               "--num_neighbors=10",
+               "--model_discrepancy_path", model_disc_file,
+               "--pressure_elevation"]
 
-        env = os.environ.copy()
         env["SIXS_DIR"] = wm.config["isofit_sixs_dir"]
         env["EMULATOR_DIR"] = emulator_base
+        env["RAY_worker_register_timeout_seconds"] = "600"
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
         # Copy output files to l2a dir and rename
         tmp_rfl_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_rfl")
+        tmp_rfl_png_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_rfl_rgb.png")
         tmp_rfl_hdr_path = envi_header(tmp_rfl_path)
         tmp_rfluncert_path = os.path.join(self.local_tmp_dir, "output",
-                                       self.acquisition_id + "_uncert")
+                                          self.acquisition_id + "_uncert")
         tmp_rfluncert_hdr_path = envi_header(tmp_rfluncert_path)
         tmp_lbl_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_lbl")
         tmp_lbl_hdr_path = envi_header(tmp_lbl_path)
         tmp_statesubs_path = os.path.join(
             self.local_tmp_dir, "output", self.acquisition_id + "_subs_state")
-        tmp_statesubs_hdr_path = envi_header(tmp_statesubs_path)
+        tmp_statesubsuncert_path = os.path.join(
+            self.local_tmp_dir, "output", self.acquisition_id + "_subs_uncert")
+        tmp_obssubs_path = os.path.join(
+            self.local_tmp_dir, "input", self.acquisition_id + "_subs_obs")
+        tmp_locsubs_path = os.path.join(
+            self.local_tmp_dir, "input", self.acquisition_id + "_subs_loc")
+        tmp_quality_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_rfl_quality.txt")
+        tmp_atm_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_atm_interp")
+
+        # ensure that the tmp_rfl_path has a nodata value set, before we make the quicklook
+        hdr = envi.read_envi_header(tmp_rfl_hdr_path)
+        hdr["data ignore value"] = -9999
+        envi.write_envi_header(tmp_rfl_hdr_path, hdr)
+
+        cmd = ["gdal_translate", tmp_rfl_path, tmp_rfl_png_path, "-b", "35", "-b", "23", "-b",
+               "11", "-ot", "Byte", "-scale", "-exponent", "0.6", "-of", "PNG", "-co", "ZLEVEL=9"]
+        pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
+
+        cmd = ["python", os.path.join(pge.repo_dir, "spectrum_quality.py"), tmp_rfl_path, tmp_quality_path]
+        pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
+        quality_results = np.genfromtxt(tmp_quality_path)
+
         wm.copy(tmp_rfl_path, acq.rfl_img_path)
         wm.copy(tmp_rfl_hdr_path, acq.rfl_hdr_path)
         wm.copy(tmp_rfluncert_path, acq.rfluncert_img_path)
@@ -104,7 +166,18 @@ class L2AReflectance(SlurmJobTask):
         wm.copy(tmp_lbl_path, acq.lbl_img_path)
         wm.copy(tmp_lbl_hdr_path, acq.lbl_hdr_path)
         wm.copy(tmp_statesubs_path, acq.statesubs_img_path)
-        wm.copy(tmp_statesubs_hdr_path, acq.statesubs_hdr_path)
+        wm.copy(envi_header(tmp_statesubs_path), acq.statesubs_hdr_path)
+        wm.copy(tmp_statesubsuncert_path, acq.statesubsuncert_img_path)
+        wm.copy(envi_header(tmp_statesubsuncert_path), acq.statesubsuncert_hdr_path)
+        wm.copy(tmp_obssubs_path, acq.obssubs_img_path)
+        wm.copy(envi_header(tmp_obssubs_path), acq.obssubs_hdr_path)
+        wm.copy(tmp_locsubs_path, acq.locsubs_img_path)
+        wm.copy(envi_header(tmp_locsubs_path), acq.locsubs_hdr_path)
+        wm.copy(tmp_rfl_png_path, acq.rfl_png_path)
+        wm.copy(tmp_quality_path, acq.quality_txt_path)
+
+        wm.copy(tmp_atm_path, acq.atm_img_path)
+        wm.copy(envi_header(tmp_atm_path), acq.atm_hdr_path)
 
         # Copy log file and rename
         log_path = acq.rfl_img_path.replace(".img", "_pge.log")
@@ -116,6 +189,7 @@ class L2AReflectance(SlurmJobTask):
         dm = wm.database_manager
         for img_path, hdr_path in [(acq.rfl_img_path, acq.rfl_hdr_path), (acq.rfluncert_img_path, acq.rfluncert_hdr_path)]:
             hdr = envi.read_envi_header(hdr_path)
+            hdr["description"] = "{{EMIT L2A surface reflectance (0-1)}}"
             hdr["emit acquisition start time"] = acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
             hdr["emit acquisition stop time"] = acq.stop_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
             hdr["emit pge name"] = pge.repo_url
@@ -128,7 +202,9 @@ class L2AReflectance(SlurmJobTask):
                 os.path.getmtime(img_path), tz=datetime.timezone.utc)
             hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
             hdr["emit data product version"] = wm.config["processing_version"]
-            hdr["emit acquisition daynight"] = acq.daynight
+            daynight = "Day" if acq.submode == "science" else "Night"
+            hdr["emit acquisition daynight"] = daynight
+            hdr["emit spectral quality"] = '{' + ', '.join(quality_results.astype(str).tolist()) + '}'
             envi.write_envi_header(hdr_path, hdr)
 
             # Update product dictionary in DB
@@ -145,10 +221,11 @@ class L2AReflectance(SlurmJobTask):
             if "_rfl_" in img_path:
                 dm.update_acquisition_metadata(
                     acq.acquisition_id, {"products.l2a.rfl": product_dict})
-            elif "_uncert_" in img_path:
+            elif "_rfluncert_" in img_path:
                 dm.update_acquisition_metadata(
-                    acq.acquisition_id, {"products.l2a.uncert": product_dict})
+                    acq.acquisition_id, {"products.l2a.rfluncert": product_dict})
 
+        total_time = time.time() - start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -157,13 +234,16 @@ class L2AReflectance(SlurmJobTask):
             "pge_run_command": " ".join(cmd),
             "documentation_version": doc_version,
             "product_creation_time": creation_time,
+            "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
                 "l2a_rfl_img_path": acq.rfl_img_path,
                 "l2a_rfl_hdr_path:": acq.rfl_hdr_path,
+                "l2a_rfl_png_path:": acq.rfl_png_path,
                 "l2a_rfluncert_img_path": acq.rfluncert_img_path,
-                "l2a_rfluncert_hdr_path:": acq.rfluncert_hdr_path
+                "l2a_rfluncert_hdr_path:": acq.rfluncert_hdr_path,
+                "l2a_quality_txt_path:": acq.quality_txt_path
             }
         }
 
@@ -183,15 +263,19 @@ class L2AMask(SlurmJobTask):
 
     n_cores = 40
     memory = 180000
+
     task_namespace = "emit"
 
     def requires(self):
 
         logger.debug(self.task_family + " requires")
-        return (L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
-                             partition=self.partition),
-                L2AReflectance(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
-                               partition=self.partition))
+        return L2AReflectance(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+                              partition=self.partition)
+        # Only look include reflectance dependency for now.  The monitor guarantees that calibration has run
+        # return (L1BCalibrate(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+        #                      partition=self.partition),
+        #         L2AReflectance(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+        #                        partition=self.partition))
 
     def output(self):
 
@@ -201,6 +285,7 @@ class L2AMask(SlurmJobTask):
 
     def work(self):
 
+        start_time = time.time()
         logger.debug(self.task_family + " run")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
@@ -219,14 +304,22 @@ class L2AMask(SlurmJobTask):
         input_files = {
             "radiance_file": acq.rdn_img_path,
             "pixel_locations_file": acq.loc_img_path,
-            "subset_labels_file": acq.lbl_img_path,
-            "state_subset_file": acq.statesubs_img_path,
+            "atmosphere_file": acq.atm_img_path,
             "solar_irradiance_file": solar_irradiance_path
         }
 
-        cmd = ["python", make_masks_exe, acq.rdn_img_path, acq.loc_img_path, acq.lbl_img_path, acq.statesubs_img_path,
+        env = os.environ.copy()
+        isofit_pge = wm.pges["isofit"]
+        emit_utils_pge = wm.pges["emit-utils"]
+        env["PYTHONPATH"] = f"$PYTHONPATH:{isofit_pge.repo_dir}:{emit_utils_pge.repo_dir}"
+
+        env["RAY_worker_register_timeout_seconds"] = "600"
+
+        cmd = ["python", make_masks_exe, acq.rdn_img_path, acq.loc_img_path, acq.atm_img_path,
                solar_irradiance_path, tmp_mask_path, "--n_cores", str(self.n_cores)]
-        pge.run(cmd, tmp_dir=self.tmp_dir)
+        pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
+
+        cloud_fraction = check_cloudfraction(tmp_mask_path)
 
         # Copy mask files to l2a dir
         wm.copy(tmp_mask_path, acq.mask_img_path)
@@ -249,6 +342,7 @@ class L2AMask(SlurmJobTask):
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         hdr["emit data product version"] = wm.config["processing_version"]
         hdr["emit acquisition daynight"] = acq.daynight
+        hdr["emit acquisition cloudfraction"] = cloud_fraction
         envi.write_envi_header(acq.mask_hdr_path, hdr)
 
         # PGE writes metadata to db
@@ -264,7 +358,9 @@ class L2AMask(SlurmJobTask):
             }
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2a.mask": product_dict})
+        dm.update_acquisition_metadata(acq.acquisition_id, {"cloud_fraction": cloud_fraction})
 
+        total_time = time.time() - start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -273,6 +369,7 @@ class L2AMask(SlurmJobTask):
             "pge_run_command": " ".join(cmd),
             "documentation_version": doc_version,
             "product_creation_time": creation_time,
+            "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
@@ -295,15 +392,14 @@ class L2AFormat(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
 
+    memory = 18000
+
     task_namespace = "emit"
 
     def requires(self):
 
         logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
-        return (L2AReflectance(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
-                               partition=self.partition),
-                L2AMask(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
-                        partition=self.partition))
+        return None
 
     def output(self):
 
@@ -328,11 +424,15 @@ class L2AFormat(SlurmJobTask):
         tmp_daac_mask_nc_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l2a_mask.nc")
         tmp_log_path = os.path.join(self.local_tmp_dir, "output_conversion_pge.log")
 
-        cmd = ["python", output_generator_exe, tmp_daac_rfl_nc_path, tmp_daac_rfl_unc_nc_path, 
+        cmd = ["python", output_generator_exe, tmp_daac_rfl_nc_path, tmp_daac_rfl_unc_nc_path,
                tmp_daac_mask_nc_path, acq.rfl_img_path, acq.rfluncert_img_path,
-               acq.mask_img_path, acq.loc_img_path, acq.glt_img_path, "--log_file",
-               tmp_log_path]
-        pge.run(cmd, tmp_dir=self.tmp_dir)
+               acq.mask_img_path, acq.bandmask_img_path, acq.loc_img_path, acq.glt_img_path,
+               "V0" + str(wm.config["processing_version"]), wm.config["extended_build_num"],
+               "--log_file", tmp_log_path]
+
+        # Run this inside the emit-main conda environment to include emit-utils and other requirements
+        main_pge = wm.pges["emit-main"]
+        main_pge.run(cmd, tmp_dir=self.tmp_dir)
 
         # Copy and rename output files back to /store
         log_path = acq.rfl_nc_path.replace(".nc", "_nc_pge.log")
@@ -358,7 +458,7 @@ class L2AFormat(SlurmJobTask):
             "pge_version": pge.version_tag,
             "pge_input_files": {
                 "rfl_img_path": acq.rfl_img_path,
-                "rfl_uncert_img_path": acq.rfluncert_img_path,
+                "rfluncert_img_path": acq.rfluncert_img_path,
                 "mask_img_path": acq.mask_img_path,
                 "loc_img_path": acq.loc_img_path,
                 "glt_img_path": acq.glt_img_path
@@ -388,10 +488,12 @@ class L2ADeliver(SlurmJobTask):
     acquisition_id = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
+    daac_ingest_queue = luigi.Parameter(default="forward")
+    override_output = luigi.BoolParameter(default=False)
+
+    memory = 18000
 
     task_namespace = "emit"
-    n_cores = 1
-    memory = 30000
 
     def requires(self):
 
@@ -402,6 +504,10 @@ class L2ADeliver(SlurmJobTask):
     def output(self):
 
         logger.debug(f"{self.task_family} output: {self.acquisition_id}")
+
+        if self.override_output:
+            return None
+
         acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
         return AcquisitionTarget(acquisition=acq, task_family=self.task_family)
 
@@ -433,24 +539,33 @@ class L2ADeliver(SlurmJobTask):
         wm.copy(acq.rfl_nc_path, daac_rfl_nc_path)
         wm.copy(acq.rfluncert_nc_path, daac_rfluncert_nc_path)
         wm.copy(acq.mask_nc_path, daac_mask_nc_path)
-        wm.copy(acq.rdn_png_path, daac_browse_path)
+        wm.copy(acq.rfl_png_path, daac_browse_path)
+
+        # Get the software_build_version (extended build num when product was created)
+        hdr = envi.read_envi_header(acq.rfl_hdr_path)
+        software_build_version = hdr["emit software build version"]
 
         # Create the UMM-G file
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rfl_nc_path), tz=datetime.timezone.utc)
         daynight = "Day" if acq.submode == "science" else "Night"
         l2a_pge = wm.pges["emit-sds-l2a"]
         ummg = daac_converter.initialize_ummg(acq.rfl_granule_ur, nc_creation_time, "EMITL2ARFL",
-                                              acq.collection_version, wm.config["extended_build_num"],
-                                              l2a_pge.repo_name, l2a_pge.version_tag)
+                                              acq.collection_version, acq.start_time,
+                                              acq.stop_time, l2a_pge.repo_name, l2a_pge.version_tag,
+                                              software_build_version=software_build_version,
+                                              software_delivery_version=wm.config["extended_build_num"],
+                                              doi=wm.config["dois"]["EMITL2ARFL"], orbit=int(acq.orbit),
+                                              orbit_segment=int(acq.scene), scene=int(acq.daac_scene),
+                                              solar_zenith=acq.mean_solar_zenith,
+                                              solar_azimuth=acq.mean_solar_azimuth,
+                                              cloud_fraction=acq.cloud_fraction)
         ummg = daac_converter.add_data_files_ummg(
             ummg,
             [daac_rfl_nc_path, daac_rfluncert_nc_path, daac_mask_nc_path, daac_browse_path],
             daynight,
             ["NETCDF-4", "NETCDF-4", "NETCDF-4", "PNG"])
-        ummg = daac_converter.add_related_url(ummg, l2a_pge.repo_url, "DOWNLOAD SOFTWARE")
-        # TODO: replace w/ database read or read from L1B Geolocate PGE
-        tmp_boundary_points_list = [[-118.53, 35.85], [-118.53, 35.659], [-118.397, 35.659], [-118.397, 35.85]]
-        ummg = daac_converter.add_boundary_ummg(ummg, tmp_boundary_points_list)
+        # ummg = daac_converter.add_related_url(ummg, l2a_pge.repo_url, "DOWNLOAD SOFTWARE")
+        ummg = daac_converter.add_boundary_ummg(ummg, acq.gring)
         daac_converter.dump_json(ummg, ummg_path)
         wm.change_group_ownership(ummg_path)
 
@@ -480,12 +595,17 @@ class L2ADeliver(SlurmJobTask):
             daac_rfl_nc_name: os.path.basename(acq.rfl_nc_path),
             daac_rfluncert_nc_name: os.path.basename(acq.rfluncert_nc_path),
             daac_mask_nc_name: os.path.basename(acq.mask_nc_path),
-            daac_browse_name: os.path.basename(acq.rdn_png_path),
+            daac_browse_name: os.path.basename(acq.rfl_png_path),
             daac_ummg_name: os.path.basename(ummg_path)
         }
+        provider = wm.config["daac_provider_forward"]
+        queue_url = wm.config["daac_submission_url_forward"]
+        if self.daac_ingest_queue == "backward":
+            provider = wm.config["daac_provider_backward"]
+            queue_url = wm.config["daac_submission_url_backward"]
         notification = {
             "collection": "EMITL2ARFL",
-            "provider": wm.config["daac_provider"],
+            "provider": provider,
             "identifier": cnm_submission_id,
             "version": wm.config["cnm_version"],
             "product": {
@@ -542,9 +662,11 @@ class L2ADeliver(SlurmJobTask):
         wm.change_group_ownership(cnm_submission_path)
 
         # Submit notification via AWS SQS
-        cmd_aws = [wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", wm.config["daac_submission_url"], "--message-body",
-                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"]]
+        cnm_submission_output = cnm_submission_path.replace(".json", ".out")
+        cmd_aws = [wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", queue_url, "--message-body",
+                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"], ">", cnm_submission_output]
         pge.run(cmd_aws, tmp_dir=self.tmp_dir)
+        wm.change_group_ownership(cnm_submission_output)
         cnm_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(cnm_submission_path),
                                                             tz=datetime.timezone.utc)
 
@@ -556,6 +678,7 @@ class L2ADeliver(SlurmJobTask):
                 "extended_build_num": wm.config["extended_build_num"],
                 "collection": notification["collection"],
                 "collection_version": notification["product"]["dataVersion"],
+                "granule_ur": acq.rfl_granule_ur,
                 "sds_filename": target_src_map[file["name"]],
                 "daac_filename": file["name"],
                 "uri": file["uri"],
@@ -564,6 +687,7 @@ class L2ADeliver(SlurmJobTask):
                 "checksum": file["checksum"],
                 "checksum_type": file["checksumType"],
                 "submission_id": cnm_submission_id,
+                "submission_queue": queue_url,
                 "submission_status": "submitted"
             }
             dm.insert_granule_report(delivery_report)
@@ -592,7 +716,7 @@ class L2ADeliver(SlurmJobTask):
                 "rfl_netcdf_path": acq.rfl_nc_path,
                 "rfluncert_netcdf_path": acq.rfluncert_nc_path,
                 "mask_netcdf_path": acq.mask_nc_path,
-                "rdn_png_path": acq.rdn_png_path
+                "rfl_png_path": acq.rfl_png_path
             },
             "pge_run_command": " ".join(cmd_aws),
             "documentation_version": "TBD",

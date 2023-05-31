@@ -8,6 +8,7 @@ import datetime
 import json
 import logging
 import os
+import time
 
 import luigi
 import spectral.io.envi as envi
@@ -36,7 +37,6 @@ class L2BAbundance(SlurmJobTask):
     partition = luigi.Parameter()
 
     memory = 30000
-    local_tmp_space = 125000
 
     task_namespace = "emit"
 
@@ -56,6 +56,7 @@ class L2BAbundance(SlurmJobTask):
 
     def work(self):
 
+        start_time = time.time()
         logger.debug(self.task_family + " run")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
@@ -68,6 +69,7 @@ class L2BAbundance(SlurmJobTask):
         env["SP_LOCAL"] = wm.config["specpr_path"]
         env["SP_BIN"] = "${SP_LOCAL}/bin"
         env["TETRA"] = wm.config["tetracorder_path"]
+        env["TETRA_CMDS"] = wm.config["tetracorder_cmds_path"]
         env["PATH"] = "${PATH}:${SP_LOCAL}/bin:${TETRA}/bin:/usr/bin"
 
         # This has to be a bit truncated because of character limitations
@@ -80,7 +82,7 @@ class L2BAbundance(SlurmJobTask):
         # This has to be a bit truncated because of character limitations
         tmp_tetra_output_path = os.path.join(self.local_tmp_dir, os.path.basename(acq.abun_img_path).split('_')[0] + '_tetra')
 
-        cmd_tetra_setup = [wm.config["tetracorder_setup_cmd_path"], tmp_tetra_output_path,
+        cmd_tetra_setup = [os.path.join(wm.config["tetracorder_cmds_path"], 'cmd-setup-tetrun'), tmp_tetra_output_path,
                            wm.config["tetracorder_library_cmdname"], "cube", tmp_rfl_path, "1", "-T", "-20", "80", "C",
                            "-P", ".5", "1.5", "bar"]
         pge.run(cmd_tetra_setup, tmp_dir=self.tmp_dir, env=env)
@@ -92,59 +94,79 @@ class L2BAbundance(SlurmJobTask):
         os.chdir(current_pwd)
 
         # Build aggregator cmd
-        aggregator_exe = os.path.join(pge.repo_dir, "aggregator.py")
+        aggregator_exe = os.path.join(pge.repo_dir, "group_aggregator.py")
         tmp_output_dir = os.path.join(self.local_tmp_dir, "l2b_aggregation_output")
         wm.makedirs(tmp_output_dir)
         tmp_abun_path = os.path.join(tmp_output_dir, os.path.basename(acq.abun_img_path))
+        tmp_abun_unc_path = os.path.join(tmp_output_dir, os.path.basename(acq.abununcert_img_path))
+        tmp_quicklook_path = os.path.join(tmp_output_dir, os.path.splitext(os.path.basename(acq.abun_img_path))[0] + '_quicklook.png')
         standard_library = os.path.join(
             wm.config['tetracorder_library_dir'], f's{wm.config["tetracorder_library_basename"]}_envi')
         research_library = os.path.join(
             wm.config['tetracorder_library_dir'], f'r{wm.config["tetracorder_library_basename"]}_envi')
+        tetracorder_config_file = os.path.join(wm.config['tetracorder_cmds_path'], wm.config["tetracorder_config_filename"])
+        min_group_mat_file = os.path.join(pge.repo_dir, 'data', wm.config["mineral_matrix_name"])
+
         input_files = {
             "reflectance_file": acq.rfl_img_path,
             "reflectance_uncertainty_file": acq.rfluncert_img_path,
-            "tetracorder_library_basename": wm.config["tetracorder_library_basename"]
+            "tetracorder_library_basename": wm.config["tetracorder_library_basename"],
+            "mineral_group_mat_file": min_group_mat_file,
+            "tetracorder_config_filename": tetracorder_config_file
         }
-        cmd = ["python", aggregator_exe, tmp_tetra_output_path, tmp_abun_path,
-               "--calculate_uncertainty", "1",
+
+        env = os.environ.copy()
+        emit_utils_pge = wm.pges["emit-utils"]
+        env["PYTHONPATH"] = f"$PYTHONPATH:{emit_utils_pge.repo_dir}"
+        agg_cmd = ["python", aggregator_exe, tmp_tetra_output_path, min_group_mat_file, tmp_abun_path, tmp_abun_unc_path,
+               "--calculate_uncertainty",
                "--reflectance_file", acq.rfl_img_path,
                "--reflectance_uncertainty_file", acq.rfluncert_img_path,
                "--reference_library", standard_library,
                "--research_library", research_library,
+               "--expert_system_file", tetracorder_config_file,
                ]
-        pge.run(cmd, cwd=pge.repo_dir, tmp_dir=self.tmp_dir)
+        pge.run(agg_cmd, cwd=pge.repo_dir, tmp_dir=self.tmp_dir, env=env)
+
+        ql_cmd = ['python', os.path.join(pge.repo_dir, 'quicklook.py'), tmp_abun_path, tmp_quicklook_path, '--unc_file', tmp_abun_unc_path]
+        pge.run(ql_cmd, cwd=pge.repo_dir, tmp_dir=self.tmp_dir, env=env)
 
         # Copy mask files to l2a dir
         wm.copytree(tmp_tetra_output_path, acq.tetra_dir_path)
         wm.copy(tmp_abun_path, acq.abun_img_path)
         wm.copy(envi_header(tmp_abun_path), acq.abun_hdr_path)
-        wm.copy(tmp_abun_path + '_uncert', acq.abununcert_img_path)
-        wm.copy(envi_header(tmp_abun_path + '_uncert'), acq.abununcert_hdr_path)
+        wm.copy(tmp_abun_unc_path, acq.abununcert_img_path)
+        wm.copy(envi_header(tmp_abun_unc_path), acq.abununcert_hdr_path)
+        wm.copy(tmp_quicklook_path, acq.abun_png_path)
 
         # Update hdr files
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
         doc_version = "EMIT SDS L2B JPL-D 104237, Rev A"
-        hdr = envi.read_envi_header(acq.abun_hdr_path)
-        hdr["emit acquisition start time"] = acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
-        hdr["emit acquisition stop time"] = acq.stop_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
-        hdr["emit pge name"] = pge.repo_url
-        hdr["emit pge version"] = pge.version_tag
-        hdr["emit pge input files"] = input_files_arr
-        hdr["emit pge run command"] = " ".join(cmd)
-        hdr["emit software build version"] = wm.config["extended_build_num"]
-        hdr["emit documentation version"] = doc_version
-        creation_time = datetime.datetime.fromtimestamp(
-            os.path.getmtime(acq.abun_img_path), tz=datetime.timezone.utc)
-        hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
-        hdr["emit data product version"] = wm.config["processing_version"]
-        hdr["emit acquisition daynight"] = acq.daynight
-        envi.write_envi_header(acq.abun_hdr_path, hdr)
+        for img_path, hdr_path in [(acq.abun_img_path, acq.abun_hdr_path),
+                                   (acq.abununcert_img_path, acq.abununcert_hdr_path)]:
+            hdr = envi.read_envi_header(hdr_path)
+            hdr["emit acquisition start time"] = acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
+            hdr["emit acquisition stop time"] = acq.stop_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
+            hdr["emit pge name"] = pge.repo_url
+            hdr["emit pge version"] = pge.version_tag
+            hdr["emit pge input files"] = input_files_arr
+            hdr["emit pge run command"] = " ".join(cmd_tetra_setup) + ", " + " ".join(agg_cmd)
+            hdr["emit software build version"] = wm.config["extended_build_num"]
+            hdr["emit documentation version"] = doc_version
+            creation_time = datetime.datetime.fromtimestamp(
+                os.path.getmtime(img_path), tz=datetime.timezone.utc)
+            hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
+            hdr["emit data product version"] = wm.config["processing_version"]
+            daynight = "Day" if acq.submode == "science" else "Night"
+            hdr["emit acquisition daynight"] = daynight
+            envi.write_envi_header(hdr_path, hdr)
 
         # PGE writes metadata to db
         dm = wm.database_manager
         product_dict = {
             "img_path": acq.abun_img_path,
             "hdr_path": acq.abun_hdr_path,
+            "png_path": acq.abun_png_path,
             "created": creation_time,
             "dimensions": {
                 "lines": hdr["lines"],
@@ -154,19 +176,29 @@ class L2BAbundance(SlurmJobTask):
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2b.abun": product_dict})
 
+        product_dict_abununcert = {
+            "img_path": acq.abununcert_img_path,
+            "hdr_path": acq.abununcert_hdr_path,
+            "created": creation_time,
+        }
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2b.abununcert": product_dict_abununcert})
+
+        total_time = time.time() - start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
             "pge_version": pge.version_tag,
             "pge_input_files": input_files,
-            "pge_run_command": " ".join(cmd),
+            "pge_run_command": " ".join(cmd_tetra_setup) + ", " + " ".join(agg_cmd),
             "documentation_version": doc_version,
             "product_creation_time": creation_time,
+            "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
                 "l2b_abun_img_path": acq.abun_img_path,
                 "l2b_abun_hdr_path:": acq.abun_hdr_path,
+                "l2b_abun_png_path:": acq.abun_png_path,
                 "l2b_abununcert_img_path": acq.abununcert_img_path,
                 "l2b_abununcert_hdr_path:": acq.abununcert_hdr_path
             }
@@ -186,12 +218,13 @@ class L2BFormat(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
 
+    memory = 18000
+
     task_namespace = "emit"
 
     def requires(self):
         logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
-        return L2BAbundance(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
-                            partition=self.partition)
+        return None
 
     def output(self):
         logger.debug(f"{self.task_family} output: {self.acquisition_id}")
@@ -206,17 +239,21 @@ class L2BFormat(SlurmJobTask):
 
         pge = wm.pges["emit-sds-l2b"]
 
-        output_generator_exe = os.path.join(pge.repo_dir, "output_conversion.py")
+        output_generator_exe = os.path.join(pge.repo_dir, "group_output_conversion.py")
         tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
         wm.makedirs(tmp_output_dir)
         tmp_daac_nc_abun_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l2b_abun.nc")
         tmp_daac_nc_abununcert_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l2b_abununcert.nc")
         tmp_log_path = os.path.join(self.local_tmp_dir, "output_conversion_pge.log")
 
+        env = os.environ.copy()
+        emit_utils_pge = wm.pges["emit-utils"]
+        env["PYTHONPATH"] = f"$PYTHONPATH:{emit_utils_pge.repo_dir}"
         cmd = ["python", output_generator_exe, tmp_daac_nc_abun_path, tmp_daac_nc_abununcert_path,
-               acq.abun_img_path, acq.abununcert_img_path, acq.loc_img_path, acq.glt_img_path, "--log_file",
-               tmp_log_path]
-        pge.run(cmd, tmp_dir=self.tmp_dir)
+               acq.abun_img_path, acq.abununcert_img_path, acq.loc_img_path, acq.glt_img_path,
+               "V0" + str(wm.config["processing_version"]), wm.config["extended_build_num"],
+               "--log_file", tmp_log_path]
+        pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
         # Copy and rename output files back to /store
         log_path = acq.abun_nc_path.replace(".nc", "_nc_pge.log")
@@ -268,10 +305,12 @@ class L2BDeliver(SlurmJobTask):
     acquisition_id = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
+    daac_ingest_queue = luigi.Parameter(default="forward")
+    override_output = luigi.BoolParameter(default=False)
+
+    memory = 18000
 
     task_namespace = "emit"
-    n_cores = 1
-    memory = 30000
 
     def requires(self):
 
@@ -282,6 +321,10 @@ class L2BDeliver(SlurmJobTask):
     def output(self):
 
         logger.debug(f"{self.task_family} output: {self.acquisition_id}")
+
+        if self.override_output:
+            return None
+
         acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
         return AcquisitionTarget(acquisition=acq, task_family=self.task_family)
 
@@ -310,24 +353,33 @@ class L2BDeliver(SlurmJobTask):
         # Copy files to tmp dir and rename
         wm.copy(acq.abun_nc_path, daac_abun_nc_path)
         wm.copy(acq.abununcert_nc_path, daac_abununcert_nc_path)
-        wm.copy(acq.rdn_png_path, daac_browse_path)
+        wm.copy(acq.abun_png_path, daac_browse_path)
+
+        # Get the software_build_version (extended build num when product was created)
+        hdr = envi.read_envi_header(acq.abun_hdr_path)
+        software_build_version = hdr["emit software build version"]
 
         # Create the UMM-G file
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.abun_nc_path), tz=datetime.timezone.utc)
         daynight = "Day" if acq.submode == "science" else "Night"
         l2b_pge = wm.pges["emit-sds-l2b"]
         ummg = daac_converter.initialize_ummg(acq.abun_granule_ur, nc_creation_time, "EMITL2BMIN",
-                                              acq.collection_version, wm.config["extended_build_num"],
-                                              l2b_pge.repo_name, l2b_pge.version_tag)
+                                              acq.collection_version, acq.start_time,
+                                              acq.stop_time, l2b_pge.repo_name, l2b_pge.version_tag,
+                                              software_build_version=software_build_version,
+                                              software_delivery_version=wm.config["extended_build_num"],
+                                              doi=wm.config["dois"]["EMITL2BMIN"], orbit=int(acq.orbit),
+                                              orbit_segment=int(acq.scene), scene=int(acq.daac_scene),
+                                              solar_zenith=acq.mean_solar_zenith,
+                                              solar_azimuth=acq.mean_solar_azimuth,
+                                              cloud_fraction=acq.cloud_fraction)
         ummg = daac_converter.add_data_files_ummg(
             ummg,
             [daac_abun_nc_path, daac_abununcert_nc_path, daac_browse_path],
             daynight,
             ["NETCDF-4", "NETCDF-4", "PNG"])
-        ummg = daac_converter.add_related_url(ummg, l2b_pge.repo_url, "DOWNLOAD SOFTWARE")
-        # TODO: replace w/ database read or read from L1B Geolocate PGE
-        tmp_boundary_points_list = [[-118.53, 35.85], [-118.53, 35.659], [-118.397, 35.659], [-118.397, 35.85]]
-        ummg = daac_converter.add_boundary_ummg(ummg, tmp_boundary_points_list)
+        # ummg = daac_converter.add_related_url(ummg, l2b_pge.repo_url, "DOWNLOAD SOFTWARE")
+        ummg = daac_converter.add_boundary_ummg(ummg, acq.gring)
         daac_converter.dump_json(ummg, ummg_path)
         wm.change_group_ownership(ummg_path)
 
@@ -356,12 +408,17 @@ class L2BDeliver(SlurmJobTask):
         target_src_map = {
             daac_abun_nc_name: os.path.basename(acq.abun_nc_path),
             daac_abununcert_nc_name: os.path.basename(acq.abununcert_nc_path),
-            daac_browse_name: os.path.basename(acq.rdn_png_path),
+            daac_browse_name: os.path.basename(acq.abun_png_path),
             daac_ummg_name: os.path.basename(ummg_path)
         }
+        provider = wm.config["daac_provider_forward"]
+        queue_url = wm.config["daac_submission_url_forward"]
+        if self.daac_ingest_queue == "backward":
+            provider = wm.config["daac_provider_backward"]
+            queue_url = wm.config["daac_submission_url_backward"]
         notification = {
             "collection": "EMITL2BMIN",
-            "provider": wm.config["daac_provider"],
+            "provider": provider,
             "identifier": cnm_submission_id,
             "version": wm.config["cnm_version"],
             "product": {
@@ -410,9 +467,11 @@ class L2BDeliver(SlurmJobTask):
         wm.change_group_ownership(cnm_submission_path)
 
         # Submit notification via AWS SQS
-        cmd_aws = [wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", wm.config["daac_submission_url"], "--message-body",
-                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"]]
+        cnm_submission_output = cnm_submission_path.replace(".json", ".out")
+        cmd_aws = [wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", queue_url, "--message-body",
+                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"], ">", cnm_submission_output]
         pge.run(cmd_aws, tmp_dir=self.tmp_dir)
+        wm.change_group_ownership(cnm_submission_output)
         cnm_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(cnm_submission_path),
                                                             tz=datetime.timezone.utc)
 
@@ -424,6 +483,7 @@ class L2BDeliver(SlurmJobTask):
                 "extended_build_num": wm.config["extended_build_num"],
                 "collection": notification["collection"],
                 "collection_version": notification["product"]["dataVersion"],
+                "granule_ur": acq.abun_granule_ur,
                 "sds_filename": target_src_map[file["name"]],
                 "daac_filename": file["name"],
                 "uri": file["uri"],
@@ -432,6 +492,7 @@ class L2BDeliver(SlurmJobTask):
                 "checksum": file["checksum"],
                 "checksum_type": file["checksumType"],
                 "submission_id": cnm_submission_id,
+                "submission_queue": queue_url,
                 "submission_status": "submitted"
             }
             dm.insert_granule_report(delivery_report)
@@ -459,7 +520,7 @@ class L2BDeliver(SlurmJobTask):
             "pge_input_files": {
                 "abun_netcdf_path": acq.abun_nc_path,
                 "abununcert_netcdf_path": acq.abununcert_nc_path,
-                "rdn_png_path": acq.rdn_png_path
+                "abun_png_path": acq.abun_png_path
             },
             "pge_run_command": " ".join(cmd_aws),
             "documentation_version": "TBD",

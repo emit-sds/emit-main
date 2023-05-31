@@ -29,9 +29,10 @@ class L0StripHOSC(SlurmJobTask):
     stream_path = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
-    miss_pkt_thresh = luigi.FloatParameter(default=0.1)
+    miss_pkt_thresh = luigi.FloatParameter(default=0.01)
+    priority = luigi.IntParameter(default=0)
 
-    memory = 90000
+    memory = 18000
 
     task_namespace = "emit"
 
@@ -58,8 +59,10 @@ class L0StripHOSC(SlurmJobTask):
         tmp_input_dir = os.path.join(self.local_tmp_dir, "input")
         wm.makedirs(tmp_input_dir)
         hosc_name = os.path.basename(self.stream_path)
-        # TODO: Get apid based on new filename
-        apid = hosc_name.split("_")[1]
+        if hosc_name.lower().startswith("emit"):
+            apid = hosc_name.split("_")[1]
+        else:
+            apid = hosc_name.split("_")[0]
         tmp_input_path = os.path.join(tmp_input_dir, hosc_name)
         wm.copy(self.stream_path, tmp_input_path)
         # Create output dir and log file name
@@ -83,14 +86,17 @@ class L0StripHOSC(SlurmJobTask):
         missing_packets = 0
         with open(tmp_report_path, "r") as f:
             for line in f.readlines():
-                if "Packet Count" in line:
+                if "Packet Count" in line and "Duplicate" not in line:
                     packet_count = int(line.rstrip("\n").split(" ")[-1])
-                if "PSC Errors Encountered" in line:
+                if "Missing PSC Count" in line:
                     missing_packets = int(line.rstrip("\n").split(" ")[-1])
-        miss_pkt_percent = missing_packets / packet_count
-        if missing_packets / packet_count >= self.miss_pkt_thresh:
-            raise RuntimeError(f"{missing_packets} PSC errors out of {packet_count} total is greater than the "
-                               f"missing packet threshold of {self.miss_pkt_thresh}")
+        total_expected_packets = packet_count + missing_packets
+        miss_pkt_ratio = missing_packets / total_expected_packets
+        if miss_pkt_ratio >= self.miss_pkt_thresh:
+            raise RuntimeError(f"Packets read: {packet_count}, missing packets: {missing_packets}. Ratio of missing "
+                               f"packets ({missing_packets}) to total expected ({total_expected_packets}) is "
+                               f"{miss_pkt_ratio} which is greater than or equal to the missing packet threshold of "
+                               f"{self.miss_pkt_thresh}")
 
         # Set up command to get CCSDS start/stop times
         get_start_stop_exe = os.path.join(pge.repo_dir, "get_ccsds_start_stop_times.py")
@@ -142,6 +148,16 @@ class L0StripHOSC(SlurmJobTask):
             # Move HOSC file out of ingest folder
             wm.move(self.stream_path, stream.hosc_path)
 
+        # Symlink the start time and stop times onto the HOSC filename for convenience
+        hosc_symlink = "_".join([
+            stream.apid,
+            stream.start_time.strftime("%Y%m%dT%H%M%S"),
+            stream.stop_time.strftime("%Y%m%dT%H%M%S")
+        ])
+        hosc_symlink += stream.hosc_name.replace(stream.apid, "")
+        hosc_symlink = os.path.join(stream.raw_dir, hosc_symlink)
+        wm.symlink(stream.hosc_name, hosc_symlink)
+
         # Update DB
         metadata = {
             "ccsds_name": ccsds_name,
@@ -192,7 +208,7 @@ class L0IngestBAD(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
 
-    memory = 90000
+    memory = 18000
 
     task_namespace = "emit"
 
@@ -260,8 +276,10 @@ class L0IngestBAD(SlurmJobTask):
         stream = wm.stream
 
         # Find orbits that touch this stream file and update them
-        orbits = dm.find_orbits_touching_date_range("start_time", stream.start_time, stream.stop_time) + \
-            dm.find_orbits_touching_date_range("stop_time", stream.start_time, stream.stop_time) + \
+        orbits = dm.find_orbits_touching_date_range("start_time", stream.start_time,
+                                                    stream.stop_time + datetime.timedelta(seconds=10)) + \
+            dm.find_orbits_touching_date_range("stop_time", stream.start_time - datetime.timedelta(seconds=10),
+                                               stream.stop_time) + \
             dm.find_orbits_encompassing_date_range(stream.start_time, stream.stop_time)
         orbit_symlink_paths = []
         # orbit_l1a_dirs = []
@@ -275,6 +293,7 @@ class L0IngestBAD(SlurmJobTask):
                 if "associated_orbit_ids" in stream.metadata and stream.metadata["associated_orbit_ids"] is not None:
                     if orbit_id not in stream.metadata["associated_orbit_ids"]:
                         stream.metadata["associated_orbit_ids"].append(orbit_id)
+                        stream.metadata["associated_orbit_ids"].sort()
                 else:
                     stream.metadata["associated_orbit_ids"] = [orbit_id]
                 dm.update_stream_metadata(stream.bad_name,
@@ -286,6 +305,7 @@ class L0IngestBAD(SlurmJobTask):
                 if "associated_bad_sto" in orbit.metadata and orbit.metadata["associated_bad_sto"] is not None:
                     if stream.extended_bad_path not in orbit.metadata["associated_bad_sto"]:
                         orbit.metadata["associated_bad_sto"].append(stream.extended_bad_path)
+                        orbit.metadata["associated_bad_sto"].sort()
                 else:
                     orbit.metadata["associated_bad_sto"] = [stream.extended_bad_path]
                 dm.update_orbit_metadata(orbit_id, {"associated_bad_sto": orbit.metadata["associated_bad_sto"]})
@@ -371,8 +391,9 @@ class L0ProcessPlanningProduct(SlurmJobTask):
     plan_prod_path = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
+    test_mode = luigi.BoolParameter(default=False)
 
-    memory = 90000
+    memory = 18000
 
     task_namespace = "emit"
 
@@ -393,101 +414,202 @@ class L0ProcessPlanningProduct(SlurmJobTask):
         dm = wm.database_manager
         pge = wm.pges["emit-main"]
 
-        horizon_start_time = None
+        # Read in pp
         with open(self.plan_prod_path, "r") as f:
             events = json.load(f)
-            orbit_ids = []
-            dcids = []
-            for e in events:
-                # Check for starting orbit number
-                if e["name"].lower() == "planning horizon start":
-                    horizon_start_time = e["datetime"]
 
-                # Check for orbit object
-                if e["name"].lower() == "start orbit":
-                    # Construct orbit object
-                    orbit_num = int(e["orbitId"])
-                    orbit_id = str(orbit_num).zfill(5)
+        # Get start/stop times
+        horizon_start_time = None
+        horizon_end_time = None
+        for e in events:
+            if e["name"].lower() == "planning horizon start":
+                horizon_start_time = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S")
+            if e["name"].lower() == "planning horizon end":
+                horizon_end_time = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S")
+
+        if (horizon_start_time is None or horizon_end_time is None) and not self.test_mode:
+            raise RuntimeError("Either the horizon start time or the horizon end time is not defined.  Aborting.  Use "
+                               "--test_mode to bypass this error.")
+
+        wm.print(__name__, f"Processing planning product with horizon start and end of {horizon_start_time} and "
+                           f"{horizon_end_time}")
+
+        # Throw error if in the past
+        if horizon_start_time < datetime.datetime.utcnow() and not self.test_mode:
+            raise RuntimeError("Planning product horizon start time is before now. There can be problems "
+                               "updating orbits or DCIDs in the past. Use --test_mode flag to bypass.")
+
+        # Check all orbits and DCIDS overlapping and throw error if they have any products
+        overlapping_orbits = dm.find_orbits_touching_date_range("start_time", horizon_start_time, horizon_end_time) + \
+            dm.find_orbits_touching_date_range("stop_time", horizon_start_time, horizon_end_time)
+        for o in overlapping_orbits:
+            if "products" in o:
+                raise RuntimeError(f"Found an orbit overlapping the horizon start and end times that has some "
+                                   f"products already defined. Check the planning product or adjust the DB as needed.")
+
+        # Check both planned start and stop time dates and actual start and stop
+        overlapping_dcs = dm.find_data_collections_touching_date_range("planning_product.datetime", horizon_start_time,
+                                                                       horizon_end_time)
+        overlapping_dcs += dm.find_data_collections_touching_date_range("planning_product.endDatetime",
+                                                                        horizon_start_time, horizon_end_time)
+        overlapping_dcs += dm.find_data_collections_touching_date_range("start_time", horizon_start_time,
+                                                                        horizon_end_time)
+        overlapping_dcs += dm.find_data_collections_touching_date_range("stop_time",
+                                                                        horizon_start_time, horizon_end_time)
+        for dc in overlapping_dcs:
+            if "products" in dc:
+                raise RuntimeError(f"Found a data collection overlapping the horizon start and end times that has some "
+                                   f"products already defined. Check the planning product or adjust the DB as needed.")
+
+        # If we made it this far, delete all orbits and DCIDs in DB overlapping time range (delete folders?)
+        deleted = dm.delete_orbits_touching_date_range("start_time", horizon_start_time, horizon_end_time)
+        deleted += dm.delete_orbits_touching_date_range("stop_time", horizon_start_time, horizon_end_time)
+        if len(deleted) > 0:
+            wm.print(__name__, f"Found {len(deleted)} orbits overlapping planning product date range. Deleting...")
+            wm.print(__name__, f"Deleted {len(deleted)} orbits: {[d['orbit_id'] for d in deleted]}")
+        # Now data collections
+        deleted = dm.delete_data_collections_touching_date_range("planning_product.datetime", horizon_start_time,
+                                                                 horizon_end_time)
+        deleted += dm.delete_data_collections_touching_date_range("planning_product.endDatetime", horizon_start_time,
+                                                                  horizon_end_time)
+        deleted += dm.delete_data_collections_touching_date_range("start_time", horizon_start_time, horizon_end_time)
+        deleted += dm.delete_data_collections_touching_date_range("stop_time", horizon_start_time, horizon_end_time)
+        if len(deleted) > 0:
+            wm.print(__name__, f"Found {len(deleted)} data collections overlapping planning product date range. "
+                               f"Deleting...")
+            wm.print(__name__, f"Deleted {len(deleted)} data collections: {[d['dcid'] for d in deleted]}")
+
+        # Loop through events again and insert new orbits and DCIDS
+        orbit_ids = []
+        dcids = []
+        orbits_with_science = set()
+        orbits_with_dark = set()
+        for e in events:
+            # Check for orbit object
+            if e["name"].lower() == "start orbit":
+                # Construct orbit object
+                if "." in e["datetime"]:
+                    start_time = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S.%f")
+                else:
                     start_time = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S")
-                    orbit_meta = {
-                        "orbit_id": orbit_id,
-                        "build_num": wm.config["build_num"],
-                        "processing_version": wm.config["processing_version"],
-                        "start_time": start_time
-                    }
+                year = start_time.strftime("%y")
+                orbit_num = int(e["orbitId"])
+                orbit_id = year + str(orbit_num).zfill(5)
 
-                    # Insert or update orbit in DB
-                    if dm.find_orbit_by_id(orbit_id):
-                        dm.update_orbit_metadata(orbit_id, orbit_meta)
-                        logger.debug(f"Updated orbit in DB with {orbit_meta}")
-                    else:
-                        dm.insert_orbit(orbit_meta)
-                        logger.debug(f"Inserted orbit in DB with {orbit_meta}")
-
-                    # Update the stop_time of the previous orbit in DB
-                    if orbit_num > 0:
-                        prev_orbit_id = str(orbit_num - 1).zfill(5)
-                        prev_orbit = dm.find_orbit_by_id(prev_orbit_id)
-                        if prev_orbit is None:
-                            raise RuntimeError(f"Unable to find previous orbit stop time while trying to update orbit "
-                                               f"{orbit_id}")
-                        prev_orbit["stop_time"] = start_time
-                        dm.update_orbit_metadata(prev_orbit_id, prev_orbit)
-
-                    # Keep track of orbit_ids for log entry
-                    orbit_ids.append(orbit_id)
-
-                # Check for data collection (i.e. acquisition)
-                if e["name"].lower() in ("science", "dark"):
-                    # Construct data collection metadata
-                    dcid = str(e["dcid"]).zfill(10)
-                    # Convert date strings to datetime objects to store in DB
-                    e["datetime"] = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S")
-                    e["endDatetime"] = datetime.datetime.strptime(e["endDatetime"], "%Y-%m-%dT%H:%M:%S")
-                    dc_meta = {
-                        "dcid": dcid,
-                        "build_num": wm.config["build_num"],
-                        "processing_version": wm.config["processing_version"],
-                        "orbit": str(e["orbit number"]).zfill(5),
-                        "scene": str(e["scene number"]).zfill(3),
-                        "submode": e["name"].lower(),
-                        "planning_product": e,
-                        "frames_status": ""
-                    }
-
-                    # Insert or update data collection in DB
-                    if dm.find_data_collection_by_id(dcid):
-                        dm.update_data_collection_metadata(dcid, dc_meta)
-                        logger.debug(f"Updated data collection in DB with {dc_meta}")
-                    else:
-                        dm.insert_data_collection(dc_meta)
-                        logger.debug(f"Inserted data collection in DB with {dc_meta}")
-
-                    # Keep track of dcid for log entry
-                    dcids.append(dcid)
-
-            # Copy/move processed file to archive
-            target_pp_path = os.path.join(wm.planning_products_dir, os.path.basename(self.plan_prod_path))
-            wm.move(self.plan_prod_path, target_pp_path)
-
-            # Add processing log entry for orbits and data collections
-            log_entry = {
-                "task": self.task_family,
-                "pge_name": pge.repo_url,
-                "pge_version": pge.version_tag,
-                "pge_input_files": self.plan_prod_path,
-                "pge_run_command": "N/A - database updates only",
-                "documentation_version": "N/A",
-                "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
-                "completion_status": "SUCCESS",
-                "output": {
-                    "raw_planning_product_path": target_pp_path
+                orbit_meta = {
+                    "orbit_id": orbit_id,
+                    "build_num": wm.config["build_num"],
+                    "processing_version": wm.config["processing_version"],
+                    "start_time": start_time
                 }
+
+                # Insert or update orbit in DB
+                if dm.find_orbit_by_id(orbit_id):
+                    dm.update_orbit_metadata(orbit_id, orbit_meta)
+                    wm.print(__name__, f"Updated orbit in DB with {orbit_meta}")
+                else:
+                    dm.insert_orbit(orbit_meta)
+                    wm.print(__name__, f"Inserted orbit in DB with {orbit_meta}")
+
+                # Update the stop_time of the previous orbit in DB
+                if len(orbit_ids) > 0:
+                    prev_orbit_id = orbit_ids[-1]
+                    prev_orbit = dm.find_orbit_by_id(prev_orbit_id)
+                    if prev_orbit is None:
+                        raise RuntimeError(f"Unable to find previous orbit with id {prev_orbit_id}. Not able to set "
+                                           f"stop time of previous orbit.")
+                    prev_orbit["stop_time"] = start_time
+                    dm.update_orbit_metadata(prev_orbit_id, prev_orbit)
+                    wm.print(__name__, f"Updated orbit {prev_orbit_id} with stop time")
+
+                # Keep track of orbit_ids for log entry
+                orbit_ids.append(orbit_id)
+
+            # Get final orbit end time from horizon end
+            if e["name"].lower() == "planning horizon end":
+                prev_orbit_id = orbit_ids[-1]
+                prev_orbit = dm.find_orbit_by_id(prev_orbit_id)
+                if prev_orbit is None:
+                    raise RuntimeError(f"Unable to find previous orbit with id {prev_orbit_id}. Not able to set "
+                                       f"stop time of previous orbit.")
+                prev_orbit["stop_time"] = horizon_end_time
+                dm.update_orbit_metadata(prev_orbit_id, prev_orbit)
+                wm.print(__name__, f"Updated orbit {prev_orbit_id} with stop time")
+
+            # Check for data collection (i.e. acquisition)
+            if e["name"].lower() in ("science", "dark"):
+                # Construct data collection metadata
+                dcid = str(e["dcid"]).zfill(10)
+                submode = e["name"].lower()
+                # Convert date strings to datetime objects to store in DB
+                e["datetime"] = datetime.datetime.strptime(e["datetime"], "%Y-%m-%dT%H:%M:%S")
+                e["endDatetime"] = datetime.datetime.strptime(e["endDatetime"], "%Y-%m-%dT%H:%M:%S")
+                year = e["datetime"].strftime("%y")
+                dc_meta = {
+                    "dcid": dcid,
+                    "build_num": wm.config["build_num"],
+                    "processing_version": wm.config["processing_version"],
+                    "orbit": year + str(e["orbit number"]).zfill(5),
+                    "scene": str(e["scene number"]).zfill(3),
+                    "submode": submode,
+                    "planning_product": e
+                }
+
+                # Insert or update data collection in DB
+                if dm.find_data_collection_by_id(dcid):
+                    dm.update_data_collection_metadata(dcid, dc_meta)
+                    wm.print(__name__, f"Updated data collection in DB with {dc_meta}")
+                else:
+                    dc_meta["frames_status"] = ""
+                    dm.insert_data_collection(dc_meta)
+                    wm.print(__name__, f"Inserted data collection in DB with {dc_meta}")
+
+                # Keep track of dcid for log entry
+                dcids.append(dcid)
+
+                # Keep track of orbits that have science and/or dark acquisitions
+                if submode == "science":
+                    orbits_with_science.add(dc_meta["orbit"])
+                if submode == "dark":
+                    orbits_with_dark.add(dc_meta["orbit"])
+
+        # Update orbits to include flags for has_science and has_dark
+        for orbit_id in orbit_ids:
+            orbit_meta = {
+                "has_science": False,
+                "has_dark": False
             }
-            for orbit_id in orbit_ids:
-                dm.insert_orbit_log_entry(orbit_id, log_entry)
-            for dcid in dcids:
-                dm.insert_data_collection_log_entry(dcid, log_entry)
+            if orbit_id in orbits_with_science:
+                orbit_meta["has_science"] = True
+            if orbit_id in orbits_with_dark:
+                orbit_meta["has_dark"] = True
+            dm.update_orbit_metadata(orbit_id, orbit_meta)
+            wm.print(__name__, f"Updated orbit {orbit_id} in DB with {orbit_meta}")
+
+        wm.print(__name__, f"Inserted a total of {len(orbit_ids)} orbits and {len(dcids)} data collections!")
+
+        # Copy/move processed file to archive
+        target_pp_path = os.path.join(wm.planning_products_dir, os.path.basename(self.plan_prod_path))
+        wm.move(self.plan_prod_path, target_pp_path)
+
+        # Add processing log entry for orbits and data collections
+        log_entry = {
+            "task": self.task_family,
+            "pge_name": pge.repo_url,
+            "pge_version": pge.version_tag,
+            "pge_input_files": self.plan_prod_path,
+            "pge_run_command": "N/A - database updates only",
+            "documentation_version": "N/A",
+            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
+            "completion_status": "SUCCESS",
+            "output": {
+                "raw_planning_product_path": target_pp_path
+            }
+        }
+        for orbit_id in orbit_ids:
+            dm.insert_orbit_log_entry(orbit_id, log_entry)
+        for dcid in dcids:
+            dm.insert_data_collection_log_entry(dcid, log_entry)
 
 
 class L0Deliver(SlurmJobTask):
@@ -500,19 +622,23 @@ class L0Deliver(SlurmJobTask):
     stream_path = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
-    miss_pkt_thresh = luigi.FloatParameter(default=0.1)
+    daac_ingest_queue = luigi.Parameter(default="forward")
+    override_output = luigi.BoolParameter(default=False)
 
-    memory = 90000
+    memory = 18000
 
     task_namespace = "emit"
 
     def requires(self):
         logger.debug(f"{self.task_family} requires: {self.stream_path}")
-        return L0StripHOSC(config_path=self.config_path, stream_path=self.stream_path, level=self.level,
-                           partition=self.partition, miss_pkt_thresh=self.miss_pkt_thresh)
+        return None
 
     def output(self):
         logger.debug(f"{self.task_family} output: {self.stream_path}")
+
+        if self.override_output:
+            return None
+
         wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
         return StreamTarget(stream=wm.stream, task_family=self.task_family)
 
@@ -536,13 +662,22 @@ class L0Deliver(SlurmJobTask):
         # Copy files to tmp dir and rename
         wm.copy(stream.ccsds_path, daac_ccsds_path)
 
+        # Get the software_build_version (extended build num when product was created)
+        software_build_version = None
+        for log in reversed(stream.processing_log):
+            if log["task"] == "emit.L0StripHOSC" and log["completion_status"] == "SUCCESS":
+                software_build_version = log["extended_build_num"]
+                break
+
         # Create the UMM-G file
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(stream.ccsds_path), tz=datetime.timezone.utc)
-        l0_pge = wm.pges["emit-sds-l0-pge"]
+        l0_pge = wm.pges["emit-sds-l0"]
         ummg = daac_converter.initialize_ummg(granule_ur, creation_time, "EMITL0", collection_version,
-                                              wm.config["extended_build_num"], l0_pge.repo_name, l0_pge.version_tag)
-        ummg = daac_converter.add_data_files_ummg(ummg, [daac_ccsds_path], "Unspecified", ["CCSDS"])
-        ummg = daac_converter.add_related_url(ummg, l0_pge.repo_url, "DOWNLOAD SOFTWARE")
+                                              stream.start_time, stream.stop_time, l0_pge.repo_name, l0_pge.version_tag,
+                                              software_build_version=software_build_version,
+                                              software_delivery_version=wm.config["extended_build_num"])
+        ummg = daac_converter.add_data_files_ummg(ummg, [daac_ccsds_path], "Unspecified", ["BINARY"])
+        # ummg = daac_converter.add_related_url(ummg, l0_pge.repo_url, "DOWNLOAD SOFTWARE")
         ummg_path = stream.ccsds_path.replace(".bin", ".cmr.json")
         daac_converter.dump_json(ummg, ummg_path)
         wm.change_group_ownership(ummg_path)
@@ -574,9 +709,14 @@ class L0Deliver(SlurmJobTask):
             daac_ccsds_name: os.path.basename(stream.ccsds_path),
             daac_ummg_name: os.path.basename(ummg_path)
         }
+        provider = wm.config["daac_provider_forward"]
+        queue_url = wm.config["daac_submission_url_forward"]
+        if self.daac_ingest_queue == "backward":
+            provider = wm.config["daac_provider_backward"]
+            queue_url = wm.config["daac_submission_url_backward"]
         notification = {
             "collection": "EMITL0",
-            "provider": wm.config["daac_provider"],
+            "provider": provider,
             "identifier": cnm_submission_id,
             "version": wm.config["cnm_version"],
             "product": {
@@ -609,10 +749,11 @@ class L0Deliver(SlurmJobTask):
         wm.change_group_ownership(cnm_submission_path)
 
         # Submit notification via AWS SQS
-        cmd_aws = [wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", wm.config["daac_submission_url"],
-                   "--message-body",
-                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"]]
+        cnm_submission_output = cnm_submission_path.replace(".json", ".out")
+        cmd_aws = [wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", queue_url, "--message-body",
+                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"], ">", cnm_submission_output]
         pge.run(cmd_aws, tmp_dir=self.tmp_dir)
+        wm.change_group_ownership(cnm_submission_output)
         cnm_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(cnm_submission_path),
                                                             tz=datetime.timezone.utc)
 
@@ -624,6 +765,7 @@ class L0Deliver(SlurmJobTask):
                 "extended_build_num": wm.config["extended_build_num"],
                 "collection": notification["collection"],
                 "collection_version": notification["product"]["dataVersion"],
+                "granule_ur": granule_ur,
                 "sds_filename": target_src_map[file["name"]],
                 "daac_filename": file["name"],
                 "uri": file["uri"],
@@ -632,6 +774,7 @@ class L0Deliver(SlurmJobTask):
                 "checksum": file["checksum"],
                 "checksum_type": file["checksumType"],
                 "submission_id": cnm_submission_id,
+                "submission_queue": queue_url,
                 "submission_status": "submitted"
             }
             dm.insert_granule_report(delivery_report)

@@ -13,7 +13,6 @@ import os
 import luigi
 import spectral.io.envi as envi
 
-
 from emit_main.workflow.output_targets import StreamTarget, DataCollectionTarget, OrbitTarget, AcquisitionTarget
 from emit_main.workflow.l0_tasks import L0StripHOSC
 from emit_main.workflow.slurm import SlurmJobTask
@@ -33,12 +32,13 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
     stream_path = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
+    pkt_format = luigi.Parameter(default="1.3")
     miss_pkt_thresh = luigi.FloatParameter()
     test_mode = luigi.BoolParameter(default=False)
     override_output = luigi.BoolParameter(default=False)
+    priority = luigi.IntParameter(default=0)
 
-    memory = 90000
-    local_tmp_space = 125000
+    memory = 30000
 
     task_namespace = "emit"
 
@@ -47,7 +47,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
         logger.debug(f"{self.task_family} requires: {self.stream_path}")
         # TODO: Add dependency on previous stream file (if one is found in DB)
         return L0StripHOSC(config_path=self.config_path, stream_path=self.stream_path, level=self.level,
-                           partition=self.partition, miss_pkt_thresh=self.miss_pkt_thresh)
+                           partition=self.partition, miss_pkt_thresh=self.miss_pkt_thresh, priority=self.priority)
 
     def output(self):
 
@@ -74,6 +74,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
         tmp_report_path = tmp_log_path.replace(".log", "_report.txt")
         input_files = {"ccsds_path": stream.ccsds_path}
         cmd = ["python", sds_l1a_science_packet_exe, stream.ccsds_path,
+               "--pkt_format", self.pkt_format,
                "--work_dir", self.local_tmp_dir,
                "--level", self.level,
                "--log_path", tmp_log_path]
@@ -184,8 +185,8 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
             for path in tmp_dcid_frame_paths:
                 dcid_frame_name = os.path.basename(path)
                 dcid_frame_path = os.path.join(dc.frames_dir, dcid_frame_name)
-                if not os.path.exists(dcid_frame_path):
-                    wm.copy(path, dcid_frame_path)
+                # if not os.path.exists(dcid_frame_path):
+                wm.copy(path, dcid_frame_path)
                 dcid_frame_paths.append(dcid_frame_path)
 
             # Create a symlink from the stream l1a dir to the dcid frames dir
@@ -286,7 +287,6 @@ class L1AReassembleRaw(SlurmJobTask):
     test_mode = luigi.BoolParameter(default=False)
 
     memory = 90000
-    local_tmp_space = 125000
 
     task_namespace = "emit"
 
@@ -321,6 +321,10 @@ class L1AReassembleRaw(SlurmJobTask):
             if "orbit" not in dc.metadata or "scene" not in dc.metadata or "submode" not in dc.metadata:
                 raise RuntimeError(f"Attempting to create acquisitions without orbit, scene, or submode! "
                                    f"It appears that there was no planning product for DCID {self.dcid}")
+        # If we made it this far, then initialize these values for the rest of the task
+        orbit = dc.metadata["orbit"] if "orbit" in dc.metadata else "0000000"
+        scene = dc.metadata["scene"] if "scene" in dc.metadata else "000"
+        submode = dc.metadata["submode"] if "submode" in dc.metadata else "science"
 
         pge_reassemble = wm.pges["emit-sds-l1a"]
         reassemble_raw_pge = os.path.join(pge_reassemble.repo_dir, "reassemble_raw_cube.py")
@@ -342,9 +346,13 @@ class L1AReassembleRaw(SlurmJobTask):
                "--work_dir", self.local_tmp_dir,
                "--level", self.level,
                "--log_path", tmp_log_path,
-               "--chunksize", str(self.acq_chunksize)]
+               "--chunksize", str(self.acq_chunksize),
+               "--orbit", orbit,
+               "--scene", scene,
+               "--submode", submode]
         if self.test_mode:
             cmd.append("--test_mode")
+
         env = os.environ.copy()
         env["AIT_ROOT"] = wm.pges["emit-ios"].repo_dir
         env["AIT_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "config.yaml")
@@ -364,6 +372,31 @@ class L1AReassembleRaw(SlurmJobTask):
         tmp_line_stats_path = os.path.join(self.local_tmp_dir, "line_stats.txt")
         cmd = ["python", compute_line_stats_exe, tmp_no_header_list, ">", tmp_line_stats_path]
         pge_line_stats.run(cmd, tmp_dir=self.tmp_dir)
+
+        # Copy dcid reassembly report and log to decomp folder
+        dc_report_name = f"{dc.dcid}_reassembly_report.txt"
+        tmp_dc_report_path = os.path.join(self.local_tmp_dir, dc_report_name)
+        dc_report_path = os.path.join(dc.decomp_dir, dc_report_name)
+        wm.copy(tmp_dc_report_path, dc_report_path)
+        wm.copy(tmp_log_path, dc_report_path.replace("report.txt", "pge.log"))
+
+        # Update the dcid reassembly report with depacketization stats
+        dc_report_file = open(dc_report_path, "a")
+        # Get depacketization report from associated CCSDS files
+        for path in dc.associated_ccsds:
+            depacket_report_path = path.replace("l0", "l1a").replace("ccsds", "frames").replace(".bin", "_report.txt")
+            if os.path.exists(depacket_report_path):
+                with open(depacket_report_path, "r") as f:
+                    dc_report_file.write("\n")
+                    dc_report_file.write("====================================\n")
+                    dc_report_file.write("UPSTREAM DEPACKETIZATION REPORT FILE\n")
+                    dc_report_file.write("====================================\n")
+                    dc_report_file.write(f"{depacket_report_path}\n\n")
+                    dc_report_file.write(f.read())
+            else:
+                wm.print(__name__, f"Unable to find depacketization report located at {depacket_report_path}")
+
+        dc_report_file.close()
 
         # Copy decompressed frames to /store
         tmp_decomp_frame_paths = glob.glob(os.path.join(tmp_image_dir, "*.decomp"))
@@ -405,16 +438,14 @@ class L1AReassembleRaw(SlurmJobTask):
         }
         acq_product_map = {}
         for acq_id in acq_ids:
-            orbit = dc.metadata["orbit"] if "orbit" in dc.metadata else "00000"
-            scene = dc.metadata["scene"] if "scene" in dc.metadata else"000"
-            submode = dc.metadata["submode"] if "submode" in dc.metadata else "science"
-
             # Get start/stop times from reassembly report
             tmp_report_path = os.path.join(tmp_image_dir, f"{acq_id}_report.txt")
             start_time = None
             stop_time = None
             start_index = None
             stop_index = None
+            num_valid_lines = None
+            instrument_mode = None
             with open(tmp_report_path, "r") as f:
                 for line in f.readlines():
                     if "Start time" in line:
@@ -427,6 +458,10 @@ class L1AReassembleRaw(SlurmJobTask):
                         start_index = int(line.rstrip("\n").split(": ")[1])
                     if "Last frame number in acquisition" in line:
                         stop_index = int(line.rstrip("\n").split(": ")[1])
+                    if "Number of lines with valid data" in line:
+                        num_valid_lines = int(line.rstrip("\n").split(": ")[1])
+                    if "Instrument mode:" in line:
+                        instrument_mode = line.rstrip("\n").split(": ")[1]
 
             # TODO: Check valid date?
             if start_time is None or stop_time is None:
@@ -454,6 +489,8 @@ class L1AReassembleRaw(SlurmJobTask):
                 "scene": scene,
                 "submode": submode.lower(),
                 "daynight": daynight,
+                "instrument_mode": instrument_mode,
+                "num_valid_lines": num_valid_lines,
                 "associated_dcid": self.dcid
             }
 
@@ -488,30 +525,31 @@ class L1AReassembleRaw(SlurmJobTask):
             # Create rawqa report file based on CCSDS depacketization report(s) and reassembly report
             rawqa_file = open(acq.rawqa_txt_path, "w")
 
+            # Get reassembly report
+            if os.path.exists(report_path):
+                with open(report_path, "r") as f:
+                    rawqa_file.write("======================\n")
+                    rawqa_file.write("REASSEMBLY REPORT FILE\n")
+                    rawqa_file.write("======================\n")
+                    rawqa_file.write(f"{report_path}\n\n")
+                    rawqa_file.write(f.read())
+            else:
+                wm.print(__name__, f"Unable to find reassembly report located at {report_path}")
+
             # Get depacketization report from associated CCSDS files
             for path in dc.associated_ccsds:
                 depacket_report_path = path.replace(
                     "l0", "l1a").replace("ccsds", "frames").replace(".bin", "_report.txt")
                 if os.path.exists(depacket_report_path):
                     with open(depacket_report_path, "r") as f:
-                        rawqa_file.write("===========\n")
-                        rawqa_file.write("SOURCE FILE\n")
-                        rawqa_file.write("===========\n")
+                        rawqa_file.write("\n")
+                        rawqa_file.write("====================================\n")
+                        rawqa_file.write("UPSTREAM DEPACKETIZATION REPORT FILE\n")
+                        rawqa_file.write("====================================\n")
                         rawqa_file.write(f"{depacket_report_path}\n\n")
-                        rawqa_file.write(f.read() + "\n\n")
+                        rawqa_file.write(f.read())
                 else:
                     wm.print(__name__, f"Unable to find depacketization report located at {depacket_report_path}")
-
-            # Get reassembly report
-            if os.path.exists(report_path):
-                with open(tmp_report_path, "r") as f:
-                    rawqa_file.write("===========\n")
-                    rawqa_file.write("SOURCE FILE\n")
-                    rawqa_file.write("===========\n")
-                    rawqa_file.write(f"{report_path}\n\n")
-                    rawqa_file.write(f.read())
-            else:
-                wm.print(__name__, f"Unable to find reassembly report located at {report_path}")
 
             rawqa_file.close()
             wm.change_group_ownership(acq.rawqa_txt_path)
@@ -601,6 +639,14 @@ class L1AReassembleRaw(SlurmJobTask):
         dm.update_data_collection_metadata(self.dcid, {"products.l1a.line_stats": product_dict_line_stats})
         dm.update_data_collection_metadata(self.dcid, {"products.l1a.acquisitions": acq_product_map})
 
+        # Check if orbit now has complete set of raw files and update orbit metadata
+        wm_orbit = WorkflowManager(config_path=self.config_path, orbit_id=orbit)
+        orbit = wm_orbit.orbit
+        if orbit.has_complete_raw():
+            dm.update_orbit_metadata(orbit.orbit_id, {"raw_status": "complete"})
+        else:
+            dm.update_orbit_metadata(orbit.orbit_id, {"raw_status": "incomplete"})
+
         # Add log entry to DB
         log_entry = {
             "task": self.task_family,
@@ -632,8 +678,7 @@ class L1AFrameReport(SlurmJobTask):
     acq_chunksize = luigi.IntParameter(default=1280)
     test_mode = luigi.BoolParameter(default=False)
 
-    memory = 30000
-    local_tmp_space = 125000
+    memory = 90000
 
     task_namespace = "emit"
 
@@ -748,20 +793,26 @@ class L1ADeliver(SlurmJobTask):
     acquisition_id = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
+    daac_ingest_queue = luigi.Parameter(default="forward")
+    override_output = luigi.BoolParameter(default=False)
+
+    memory = 18000
 
     task_namespace = "emit"
-    n_cores = 1
-    memory = 90000
 
     def requires(self):
 
+        # Assume DAAC scene numbers have been assigned already
         logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
-        # TODO: Add dependency for reassemble by looking up DCID
         return None
 
     def output(self):
 
         logger.debug(f"{self.task_family} output: {self.acquisition_id}")
+
+        if self.override_output:
+            return None
+
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family)
 
@@ -773,6 +824,9 @@ class L1ADeliver(SlurmJobTask):
         acq = wm.acquisition
         pge = wm.pges["emit-main"]
 
+        # science and darks are handled differently (no browse or spatial for darks), so set a flag
+        is_science = True if acq.submode == "science" else False
+
         # Get local SDS names
         ummg_path = acq.raw_img_path.replace(".img", ".cmr.json")
 
@@ -783,29 +837,43 @@ class L1ADeliver(SlurmJobTask):
         daac_ummg_name = f"{acq.raw_granule_ur}.cmr.json"
         daac_raw_path = os.path.join(self.tmp_dir, daac_raw_name)
         daac_raw_hdr_path = os.path.join(self.tmp_dir, daac_raw_hdr_name)
-        daac_browse_path = os.path.join(self.tmp_dir, daac_browse_name)
         daac_ummg_path = os.path.join(self.tmp_dir, daac_ummg_name)
 
         # Copy files to tmp dir and rename
         wm.copy(acq.raw_img_path, daac_raw_path)
         wm.copy(acq.raw_hdr_path, daac_raw_hdr_path)
-        wm.copy(acq.rdn_png_path, daac_browse_path)
+
+        # Get the software_build_version (extended build num when product was created)
+        hdr = envi.read_envi_header(acq.raw_hdr_path)
+        software_build_version = hdr["emit software build version"]
 
         # First create the UMM-G file
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.raw_img_path), tz=datetime.timezone.utc)
         l1a_pge = wm.pges["emit-sds-l1a"]
-        ummg = daac_converter.initialize_ummg(acq.raw_granule_ur, creation_time, "EMITL1ARAW", acq.collection_version,
-                                              wm.config["extended_build_num"], l1a_pge.repo_name, l1a_pge.version_tag)
-        daynight = "Day" if acq.submode == "science" else "Night"
-        ummg = daac_converter.add_data_files_ummg(
-            ummg,
-            [daac_raw_path, daac_raw_hdr_path, daac_browse_path],
-            daynight,
-            ["ENVI", "ASCII", "PNG"])
-        ummg = daac_converter.add_related_url(ummg, l1a_pge.repo_url, "DOWNLOAD SOFTWARE")
-        # TODO: replace w/ database read or read from L1B Geolocate PGE
-        tmp_boundary_points_list = [[-118.53, 35.85], [-118.53, 35.659], [-118.397, 35.659], [-118.397, 35.85]]
-        ummg = daac_converter.add_boundary_ummg(ummg, tmp_boundary_points_list)
+        if is_science:
+            ummg = daac_converter.initialize_ummg(acq.raw_granule_ur, creation_time, "EMITL1ARAW",
+                                                  acq.collection_version, acq.start_time,
+                                                  acq.stop_time, l1a_pge.repo_name, l1a_pge.version_tag,
+                                                  software_build_version=software_build_version,
+                                                  software_delivery_version=wm.config["extended_build_num"],
+                                                  doi=wm.config["dois"]["EMITL1ARAW"], orbit=int(acq.orbit),
+                                                  orbit_segment=int(acq.scene), scene=int(acq.daac_scene))
+            ummg = daac_converter.add_data_files_ummg(ummg, [daac_raw_path, daac_raw_hdr_path], "Day",
+                                                      ["BINARY", "ASCII"])
+            # ummg = daac_converter.add_related_url(ummg, l1a_pge.repo_url, "DOWNLOAD SOFTWARE")
+            # Since darks don't have spatial coordinates, we must remove the spatial extent for science scenes too
+            # ummg = daac_converter.add_boundary_ummg(ummg, acq.gring)
+        else:
+            ummg = daac_converter.initialize_ummg(acq.raw_granule_ur, creation_time, "EMITL1ARAW",
+                                                  acq.collection_version, acq.start_time,
+                                                  acq.stop_time, l1a_pge.repo_name, l1a_pge.version_tag,
+                                                  software_build_version=software_build_version,
+                                                  software_delivery_version=wm.config["extended_build_num"],
+                                                  doi=wm.config["dois"]["EMITL1ARAW"], orbit=int(acq.orbit),
+                                                  orbit_segment=int(acq.scene), scene=int(acq.daac_scene))
+            ummg = daac_converter.add_data_files_ummg(ummg, [daac_raw_path, daac_raw_hdr_path], "Night",
+                                                      ["BINARY", "ASCII"])
+
         daac_converter.dump_json(ummg, ummg_path)
         wm.change_group_ownership(ummg_path)
 
@@ -823,7 +891,14 @@ class L1ADeliver(SlurmJobTask):
                            group, f"{acq.daac_staging_dir};", "fi\""]
         pge.run(cmd_make_target, tmp_dir=self.tmp_dir)
 
-        for path in (daac_raw_path, daac_raw_hdr_path, daac_browse_path, daac_ummg_path):
+        paths = (daac_raw_path, daac_raw_hdr_path, daac_ummg_path)
+        target_src_map = {
+            daac_raw_name: os.path.basename(acq.raw_img_path),
+            daac_raw_hdr_name: os.path.basename(acq.raw_hdr_path),
+            daac_ummg_name: os.path.basename(ummg_path)
+        }
+
+        for path in paths:
             cmd_rsync = ["rsync", "-azv", partial_dir_arg, log_file_arg, path, target]
             pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
 
@@ -831,15 +906,14 @@ class L1ADeliver(SlurmJobTask):
         utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
         cnm_submission_id = f"{acq.raw_granule_ur}_{utc_now.strftime('%Y%m%dt%H%M%S')}"
         cnm_submission_path = os.path.join(acq.l1a_data_dir, cnm_submission_id + "_cnm.json")
-        target_src_map = {
-            daac_raw_name: os.path.basename(acq.raw_img_path),
-            daac_raw_hdr_name: os.path.basename(acq.raw_hdr_path),
-            daac_browse_name: os.path.basename(acq.rdn_png_path),
-            daac_ummg_name: os.path.basename(ummg_path)
-        }
+        provider = wm.config["daac_provider_forward"]
+        queue_url = wm.config["daac_submission_url_forward"]
+        if self.daac_ingest_queue == "backward":
+            provider = wm.config["daac_provider_backward"]
+            queue_url = wm.config["daac_submission_url_backward"]
         notification = {
             "collection": "EMITL1ARAW",
-            "provider": wm.config["daac_provider"],
+            "provider": provider,
             "identifier": cnm_submission_id,
             "version": wm.config["cnm_version"],
             "product": {
@@ -863,14 +937,6 @@ class L1ADeliver(SlurmJobTask):
                         "checksum": daac_converter.calc_checksum(daac_raw_hdr_path, "sha512")
                     },
                     {
-                        "name": daac_browse_name,
-                        "uri": acq.daac_uri_base + daac_browse_name,
-                        "type": "browse",
-                        "size": os.path.getsize(daac_browse_path),
-                        "checksumType": "sha512",
-                        "checksum": daac_converter.calc_checksum(daac_browse_path, "sha512")
-                    },
-                    {
                         "name": daac_ummg_name,
                         "uri": acq.daac_uri_base + daac_ummg_name,
                         "type": "metadata",
@@ -888,9 +954,11 @@ class L1ADeliver(SlurmJobTask):
         wm.change_group_ownership(cnm_submission_path)
 
         # Submit notification via AWS SQS
-        cmd_aws = [wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", wm.config["daac_submission_url"], "--message-body",
-                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"]]
+        cnm_submission_output = cnm_submission_path.replace(".json", ".out")
+        cmd_aws = [wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", queue_url, "--message-body",
+                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"], ">", cnm_submission_output]
         pge.run(cmd_aws, tmp_dir=self.tmp_dir)
+        wm.change_group_ownership(cnm_submission_output)
         cnm_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(cnm_submission_path),
                                                             tz=datetime.timezone.utc)
 
@@ -902,6 +970,7 @@ class L1ADeliver(SlurmJobTask):
                 "extended_build_num": wm.config["extended_build_num"],
                 "collection": notification["collection"],
                 "collection_version": notification["product"]["dataVersion"],
+                "granule_ur": acq.raw_granule_ur,
                 "sds_filename": target_src_map[file["name"]],
                 "daac_filename": file["name"],
                 "uri": file["uri"],
@@ -910,11 +979,18 @@ class L1ADeliver(SlurmJobTask):
                 "checksum": file["checksum"],
                 "checksum_type": file["checksumType"],
                 "submission_id": cnm_submission_id,
+                "submission_queue": queue_url,
                 "submission_status": "submitted"
             }
             dm.insert_granule_report(delivery_report)
 
         # Update db with log entry
+        product_dict_ummg = {
+            "ummg_json_path": ummg_path,
+            "created": datetime.datetime.fromtimestamp(os.path.getmtime(ummg_path), tz=datetime.timezone.utc)
+        }
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1a.raw_ummg": product_dict_ummg})
+
         if "raw_daac_submissions" in acq.metadata["products"]["l1a"] and \
                 acq.metadata["products"]["l1a"]["raw_daac_submissions"] is not None:
             acq.metadata["products"]["l1a"]["raw_daac_submissions"].append(cnm_submission_path)
@@ -930,8 +1006,7 @@ class L1ADeliver(SlurmJobTask):
             "pge_version": pge.version_tag,
             "pge_input_files": {
                 "raw_img_path": acq.raw_img_path,
-                "raw_hdr_path": acq.raw_hdr_path,
-                "rdn_png_path": acq.rdn_png_path
+                "raw_hdr_path": acq.raw_hdr_path
             },
             "pge_run_command": " ".join(cmd_aws),
             "documentation_version": "TBD",
@@ -957,10 +1032,10 @@ class L1AReformatEDP(SlurmJobTask):
     stream_path = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
+    pkt_format = luigi.Parameter(default="1.3")
     miss_pkt_thresh = luigi.FloatParameter()
 
-    memory = 90000
-    local_tmp_space = 125000
+    memory = 18000
 
     task_namespace = "emit"
 
@@ -1018,7 +1093,8 @@ class L1AReformatEDP(SlurmJobTask):
         cmd = ["python", l1_edp_exe,
                f"--input-dir={tmp_input_dir}",
                f"--output-dir={tmp_output_dir}",
-               f"--log-dir={tmp_log_dir}"]
+               f"--log-dir={tmp_log_dir}",
+               f"--pkt-format={self.pkt_format}"]
         env = os.environ.copy()
         env["AIT_ROOT"] = pge.repo_dir
         env["AIT_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "config.yaml")
@@ -1082,8 +1158,7 @@ class L1AReformatBAD(SlurmJobTask):
     partition = luigi.Parameter()
     ignore_missing_bad = luigi.BoolParameter(default=False)
 
-    memory = 90000
-    local_tmp_space = 125000
+    memory = 18000
 
     task_namespace = "emit"
 
@@ -1106,8 +1181,6 @@ class L1AReformatBAD(SlurmJobTask):
         orbit = wm.orbit
         pge = wm.pges["emit-sds-l1a"]
 
-        # TODO: Use --test_mode to remove dependency on database.  Is this even possible since orbit must be defined?
-
         # Check for missing BAD data before proceeding. Override with --ignore_missing_bad arg
         if self.ignore_missing_bad is False and orbit.has_complete_bad_data() is False:
             raise RuntimeError(f"Unable to run {self.task_family} on {self.orbit_id} due to missing BAD data in "
@@ -1129,8 +1202,8 @@ class L1AReformatBAD(SlurmJobTask):
         tmp_log_path = os.path.join(self.local_tmp_dir, "reformat_bad_pge.log")
         cmd = ["python", reformat_bad_exe, tmp_bad_sto_dir,
                "--work_dir", self.local_tmp_dir,
-               # "--start_time", orbit.start_time.strftime("%Y-%m-%dT%H:%M:%S"),
-               # "--stop_time", orbit.stop_time.strftime("%Y-%m-%dT%H:%M:%S"),
+               "--start_time", (orbit.start_time - datetime.timedelta(seconds=10)).strftime("%Y-%m-%dT%H:%M:%S"),
+               "--stop_time", (orbit.stop_time + datetime.timedelta(seconds=10)).strftime("%Y-%m-%dT%H:%M:%S"),
                "--level", self.level,
                "--log_path", tmp_log_path]
         env = os.environ.copy()
@@ -1173,7 +1246,7 @@ class L1AReformatBAD(SlurmJobTask):
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "output": {
-                "l1a_ucorr_att_eph_path": orbit.uncorr_att_eph_path
+                "l1a_uncorr_att_eph_path": orbit.uncorr_att_eph_path
             }
         }
         dm.insert_orbit_log_entry(orbit.orbit_id, log_entry)

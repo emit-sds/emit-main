@@ -20,7 +20,8 @@ from emit_main.monitor.email_monitor import EmailMonitor
 from emit_main.monitor.frames_monitor import FramesMonitor
 from emit_main.monitor.ingest_monitor import IngestMonitor
 from emit_main.monitor.orbit_monitor import OrbitMonitor
-from emit_main.workflow.l0_tasks import L0StripHOSC, L0ProcessPlanningProduct, L0Deliver
+from emit_main.workflow.daac_helper_tasks import AssignDAACSceneNumbers, GetAdditionalMetadata, ReconciliationReport
+from emit_main.workflow.l0_tasks import L0StripHOSC, L0ProcessPlanningProduct, L0IngestBAD, L0Deliver
 from emit_main.workflow.l1a_tasks import L1ADepacketizeScienceFrames, L1AReassembleRaw, L1AReformatEDP, \
     L1AFrameReport, L1AReformatBAD, L1ADeliver
 from emit_main.workflow.l1b_tasks import L1BGeolocate, L1BCalibrate, L1BRdnFormat, L1BRdnDeliver, L1BAttDeliver
@@ -36,10 +37,12 @@ logger = logging.getLogger("emit-main")
 
 
 def parse_args():
-    product_choices = ["l0hosc", "l0daac", "l0plan", "l1aeng", "l1aframe", "l1aframereport", "l1araw", "l1adaac",
-                       "l1abad", "l1bcal", "l1bgeo", "l1brdnformat", "l1brdndaac", "l1battdaac", "l2arefl", "l2amask",
-                       "l2aformat", "l2adaac", "l2babun", "l2bformat", "l2bdaac", "l3unmix"]
-    monitor_choices = ["ingest", "frames", "edp", "cal", "bad", "geo", "l2", "email"]
+    product_choices = ["l0hosc", "l0daac", "l0plan", "l0bad", "l1aeng", "l1aframe", "l1aframereport", "l1araw",
+                       "l1adaac", "l1abad", "l1bcal", "l1bgeo", "l1brdnformat", "l1brdndaac", "l1battdaac", "l2arefl",
+                       "l2amask", "l2aformat", "l2adaac", "l2babun", "l2bformat", "l2bdaac", "l3unmix", "daacscenes",
+                       "daacaddl", "recon"]
+    monitor_choices = ["ingest", "frames", "edp", "cal", "bad", "geo", "l2", "l2b", "l3", "email", "daacscenes", "dl0",
+                       "dl1a", "dl1brdn", "dl1batt", "dl2a", "dl2b", "reconresp"]
     parser = argparse.ArgumentParser(
         description="Description: This is the top-level run script for executing the various EMIT SDS workflow and "
                     "monitor tasks.\n"
@@ -57,9 +60,11 @@ def parse_args():
     parser.add_argument("-s", "--stream_path", default="",
                         help="Path to HOSC or CCSDS stream file")
     parser.add_argument("-o", "--orbit_id", default="",
-                        help="Orbit number in the padded format XXXXX")
+                        help="Orbit number in the padded format XXXXXXX")
     parser.add_argument("--plan_prod_path", default="",
                         help="Path to planning product file")
+    parser.add_argument("--recon_resp_path",
+                        help="Path to reconciliation response file")
     parser.add_argument("-p", "--products",
                         help=("Comma delimited list of products to create (no spaces). "
                               "Choose from " + ", ".join(product_choices)))
@@ -71,7 +76,13 @@ def parse_args():
                         help="The start time to use for any monitor calls (YYYY-MM-DDTHH:MM:SS)")
     parser.add_argument("--stop_time",
                         help="The stop time to use for any monitor calls (YYYY-MM-DDTHH:MM:SS)")
-    parser.add_argument("--miss_pkt_thresh", default="0.1",
+    parser.add_argument("--date_field", default="last_modified",
+                        help="The date field for the monitors to query")
+    parser.add_argument("--retry_failed", action="store_true",
+                        help="A flag to tell the monitors to retry failed tasks.")
+    parser.add_argument("--pkt_format", default="1.3",
+                        help="Flight software version to use for CCSDS depacketization format")
+    parser.add_argument("--miss_pkt_thresh", default="0.01",
                         help="The threshold of missing packets to total packets which will cause a task to fail")
     parser.add_argument("--ignore_missing_frames", action="store_true",
                         help="Ignore missing frames when reasssembling raw cube")
@@ -79,10 +90,14 @@ def parse_args():
                         help="The number of lines in which to split acquisitions")
     parser.add_argument("--dark_path", default="",
                         help="Path to dark file to use for L1B calibration")
+    parser.add_argument("--use_future_flat", action="store_true",
+                        help="Use future flat fields for destriping")
     parser.add_argument("--ignore_missing_bad", action="store_true",
                         help="Ignore missing BAD data in an orbit when reformatting BAD")
     parser.add_argument("--ignore_missing_radiance", action="store_true",
                         help="Ignore missing radiance files in an orbit when doing geolocation")
+    parser.add_argument("--daac_ingest_queue", default="forward",
+                        help="Options are 'forward' or 'backward' depending on which DAAC ingestion queue to use.")
     parser.add_argument("--dry_run", action="store_true",
                         help="Just return a list of paths to process from the ingest folder, but take no action")
     parser.add_argument("--test_mode", action="store_true",
@@ -102,6 +117,11 @@ def parse_args():
         sys.exit(1)
 
     args.config_path = os.path.abspath(args.config_path)
+
+    # Add 2-digit year to orbit id if only 5 digits
+    if args.orbit_id and len(args.orbit_id) == 5:
+        year = datetime.datetime.now().strftime("%y")
+        args.orbit_id = year + args.orbit_id
 
     # Upper case the log level
     args.level = args.level.upper()
@@ -157,11 +177,14 @@ def get_tasks_from_product_args(args):
     prod_task_map = {
         "l0hosc": L0StripHOSC(stream_path=args.stream_path, miss_pkt_thresh=args.miss_pkt_thresh,
                               **kwargs),
-        "l0daac": L0Deliver(stream_path=args.stream_path, miss_pkt_thresh=args.miss_pkt_thresh, **kwargs),
-        "l0plan": L0ProcessPlanningProduct(plan_prod_path=args.plan_prod_path, **kwargs),
-        "l1aeng": L1AReformatEDP(stream_path=args.stream_path, miss_pkt_thresh=args.miss_pkt_thresh,
-                                 **kwargs),
+        "l0daac": L0Deliver(stream_path=args.stream_path, daac_ingest_queue=args.daac_ingest_queue,
+                            override_output=args.override_output, **kwargs),
+        "l0plan": L0ProcessPlanningProduct(plan_prod_path=args.plan_prod_path, test_mode=args.test_mode, **kwargs),
+        "l0bad": L0IngestBAD(stream_path=args.stream_path, **kwargs),
+        "l1aeng": L1AReformatEDP(stream_path=args.stream_path, pkt_format=args.pkt_format,
+                                 miss_pkt_thresh=args.miss_pkt_thresh, **kwargs),
         "l1aframe": L1ADepacketizeScienceFrames(stream_path=args.stream_path,
+                                                pkt_format=args.pkt_format,
                                                 miss_pkt_thresh=args.miss_pkt_thresh,
                                                 override_output=args.override_output,
                                                 **kwargs),
@@ -169,22 +192,32 @@ def get_tasks_from_product_args(args):
                                          acq_chunksize=args.acq_chunksize, test_mode=args.test_mode, **kwargs),
         "l1araw": L1AReassembleRaw(dcid=args.dcid, ignore_missing_frames=args.ignore_missing_frames,
                                    acq_chunksize=args.acq_chunksize, test_mode=args.test_mode, **kwargs),
-        "l1adaac": L1ADeliver(acquisition_id=args.acquisition_id, **kwargs),
+        "l1adaac": L1ADeliver(acquisition_id=args.acquisition_id, daac_ingest_queue=args.daac_ingest_queue,
+                              override_output=args.override_output, **kwargs),
         "l1abad": L1AReformatBAD(orbit_id=args.orbit_id, ignore_missing_bad=args.ignore_missing_bad, **kwargs),
-        "l1bcal": L1BCalibrate(acquisition_id=args.acquisition_id, dark_path=args.dark_path, **kwargs),
+        "l1bcal": L1BCalibrate(acquisition_id=args.acquisition_id, dark_path=args.dark_path,
+                               use_future_flat=args.use_future_flat, **kwargs),
         "l1bgeo": L1BGeolocate(orbit_id=args.orbit_id, ignore_missing_radiance=args.ignore_missing_radiance, **kwargs),
         "l1brdnformat": L1BRdnFormat(acquisition_id=args.acquisition_id, **kwargs),
-        "l1brdndaac": L1BRdnDeliver(acquisition_id=args.acquisition_id, **kwargs),
-        "l1battdaac": L1BAttDeliver(orbit_id=args.orbit_id, **kwargs),
+        "l1brdndaac": L1BRdnDeliver(acquisition_id=args.acquisition_id, daac_ingest_queue=args.daac_ingest_queue,
+                                    override_output=args.override_output, **kwargs),
+        "l1battdaac": L1BAttDeliver(orbit_id=args.orbit_id, daac_ingest_queue=args.daac_ingest_queue,
+                                    override_output=args.override_output, **kwargs),
         "l2arefl": L2AReflectance(acquisition_id=args.acquisition_id, **kwargs),
         "l2amask": L2AMask(acquisition_id=args.acquisition_id, **kwargs),
         "l2aformat": L2AFormat(acquisition_id=args.acquisition_id, **kwargs),
-        "l2adaac": L2ADeliver(acquisition_id=args.acquisition_id, **kwargs),
+        "l2adaac": L2ADeliver(acquisition_id=args.acquisition_id, daac_ingest_queue=args.daac_ingest_queue,
+                              override_output=args.override_output, **kwargs),
         "l2babun": L2BAbundance(acquisition_id=args.acquisition_id, **kwargs),
         "l2bformat": L2BFormat(acquisition_id=args.acquisition_id, **kwargs),
-        "l2bdaac": L2BDeliver(acquisition_id=args.acquisition_id, **kwargs),
+        "l2bdaac": L2BDeliver(acquisition_id=args.acquisition_id, daac_ingest_queue=args.daac_ingest_queue,
+                              override_output=args.override_output, **kwargs),
         "l3unmix": L3Unmix(acquisition_id=args.acquisition_id, **kwargs),
         # "l3unmixformat": L3UnmixFormat(acquisition_id=args.acquisition_id, **kwargs)
+        "daacscenes": AssignDAACSceneNumbers(orbit_id=args.orbit_id, override_output=args.override_output, **kwargs),
+        "daacaddl": GetAdditionalMetadata(acquisition_id=args.acquisition_id, **kwargs),
+        "recon": ReconciliationReport(start_time=args.start_time.strftime("%Y%m%dT%H%M%S"),
+                                      stop_time=args.stop_time.strftime("%Y%m%dT%H%M%S"), **kwargs)
     }
     tasks = []
     for prod in products:
@@ -195,6 +228,16 @@ def get_tasks_from_product_args(args):
 @SlurmJobTask.event_handler(luigi.Event.SUCCESS)
 def task_success(task):
     logger.info("SUCCESS: %s" % task)
+    wm = WorkflowManager(config_path=task.config_path)
+
+    # If running L0ProcessPlanningProduct then copy the job.out file back to /store
+    if task.task_family == "emit.L0ProcessPlanningProduct":
+        tmp_log_path = os.path.join(task.tmp_dir, "job.out")
+        target_pge_log_path = os.path.join(wm.planning_products_dir,
+                                           os.path.basename(task.plan_prod_path).replace(
+                                               ".json", f"_b{wm.config['build_num']}_pge.log"))
+        if os.path.exists(tmp_log_path):
+            wm.copy(tmp_log_path, target_pge_log_path)
 
     # If not in DEBUG mode, clean up scratch tmp and local tmp dirs
     if task.level != "DEBUG":
@@ -259,8 +302,9 @@ def task_failure(task, e):
     data_collection_tasks = ("emit.L1AReassembleRaw", "emit.L1AFrameReport")
     acquisition_tasks = ("emit.L1ADeliver", "emit.L1BCalibrate", "emit.L1BRdnFormat", "emit.L1BRdnDeliver",
                          "emit.L2AReflectance", "emit.L2AMask", "emit.L2AFormat", "emit.L2ADeliver",
-                         "emit.L2BAbundance", "emit.L2BFormat", "emit.L2BDeliver", "emit.L3Unmix")
-    orbit_tasks = ("emit.L1AReformatBAD", "emit.L1BGeolocate", "emit.L1BAttDeliver")
+                         "emit.L2BAbundance", "emit.L2BFormat", "emit.L2BDeliver", "emit.L3Unmix",
+                         "emit.GetAdditionalMetadata")
+    orbit_tasks = ("emit.L1AReformatBAD", "emit.L1BGeolocate", "emit.L1BAttDeliver", "emit.AssignDAACSceneNumbers")
 
     dm = wm.database_manager
     if task.task_family in acquisition_tasks and dm.find_acquisition_by_id(task.acquisition_id) is not None:
@@ -320,10 +364,19 @@ def main():
     # Initialize tasks list
     tasks = []
 
+    if args.monitor and args.monitor == "reconresp":
+        em = EmailMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
+                          daac_ingest_queue=args.daac_ingest_queue)
+        em_tasks = em.process_daac_reconciliation_responses(
+            reconciliation_response_path=args.recon_resp_path, retry_failed=args.retry_failed)
+        em_tasks_str = "\n".join([str(t) for t in em_tasks])
+        logger.info(f"Email monitor reconciliation response tasks to run:\n{em_tasks_str}")
+        tasks += em_tasks
+
     # Get tasks from ingest monitor
     if args.monitor and args.monitor == "ingest":
         im = IngestMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
-                           miss_pkt_thresh=args.miss_pkt_thresh, test_mode=args.test_mode)
+                           pkt_format=args.pkt_format, miss_pkt_thresh=args.miss_pkt_thresh, test_mode=args.test_mode)
         im_tasks = im.ingest_files()
         im_tasks_str = "\n".join([str(t) for t in im_tasks])
         logger.info(f"Ingest monitor tasks to run:\n{im_tasks_str}")
@@ -333,7 +386,8 @@ def main():
     if args.monitor and args.monitor == "frames":
         fm = FramesMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
                            acq_chunksize=args.acq_chunksize, test_mode=args.test_mode)
-        fm_tasks = fm.get_reassembly_tasks(start_time=args.start_time, stop_time=args.stop_time)
+        fm_tasks = fm.get_reassembly_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                           date_field=args.date_field, retry_failed=args.retry_failed)
         fm_tasks_str = "\n".join([str(t) for t in fm_tasks])
         logger.info(f"Frames monitor tasks to run:\n{fm_tasks_str}")
         tasks += fm_tasks
@@ -341,8 +395,9 @@ def main():
     # Get tasks from edp monitor
     if args.monitor and args.monitor == "edp":
         im = IngestMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
-                           miss_pkt_thresh=args.miss_pkt_thresh, test_mode=args.test_mode)
-        im_edp_tasks = im.get_edp_reformatting_tasks(start_time=args.start_time, stop_time=args.stop_time)
+                           pkt_format=args.pkt_format, miss_pkt_thresh=args.miss_pkt_thresh, test_mode=args.test_mode)
+        im_edp_tasks = im.get_edp_reformatting_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                                     date_field=args.date_field, retry_failed=args.retry_failed)
         im_edp_tasks_str = "\n".join([str(t) for t in im_edp_tasks])
         logger.info(f"Ingest monitor EDP tasks to run:\n{im_edp_tasks_str}")
         tasks += im_edp_tasks
@@ -350,7 +405,8 @@ def main():
     # Get tasks from orbit monitor for BAD tasks
     if args.monitor and args.monitor == "bad":
         om = OrbitMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
-        om_bad_tasks = om.get_bad_reformatting_tasks(start_time=args.start_time, stop_time=args.stop_time)
+        om_bad_tasks = om.get_bad_reformatting_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                                     date_field=args.date_field, retry_failed=args.retry_failed)
         om_bad_tasks_str = "\n".join([str(t) for t in om_bad_tasks])
         logger.info(f"Orbit monitor BAD tasks to run:\n{om_bad_tasks_str}")
         tasks += om_bad_tasks
@@ -358,7 +414,8 @@ def main():
     # Get tasks from orbit monitor for geolocation tasks
     if args.monitor and args.monitor == "geo":
         om = OrbitMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
-        om_geo_tasks = om.get_geolocation_tasks(start_time=args.start_time, stop_time=args.stop_time)
+        om_geo_tasks = om.get_geolocation_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                                date_field=args.date_field, retry_failed=args.retry_failed)
         om_geo_tasks_str = "\n".join([str(t) for t in om_geo_tasks])
         logger.info(f"Orbit monitor geolocation tasks to run:\n{om_geo_tasks_str}")
         tasks += om_geo_tasks
@@ -366,18 +423,107 @@ def main():
     # Get tasks from acquisition monitor for calibration tasks
     if args.monitor and args.monitor == "cal":
         am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
-        am_cal_tasks = am.get_calibration_tasks(start_time=args.start_time, stop_time=args.stop_time)
+        am_cal_tasks = am.get_calibration_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                                date_field=args.date_field, retry_failed=args.retry_failed)
         am_cal_tasks_str = "\n".join([str(t) for t in am_cal_tasks])
         logger.info(f"Acquisition monitor calibration tasks to run:\n{am_cal_tasks_str}")
         tasks += am_cal_tasks
 
-    # Get tasks from acquisition monitor for L2+ tasks
+    # Get tasks from acquisition monitor for L2 tasks
     if args.monitor and args.monitor == "l2":
         am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
-        am_l2_tasks = am.get_l2_tasks(start_time=args.start_time, stop_time=args.stop_time)
+        am_l2_tasks = am.get_l2_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                      date_field=args.date_field, retry_failed=args.retry_failed)
         am_l2_tasks_str = "\n".join([str(t) for t in am_l2_tasks])
         logger.info(f"Acquisition monitor L2 tasks to run:\n{am_l2_tasks_str}")
         tasks += am_l2_tasks
+
+    # Get tasks from acquisition monitor for L2b tasks
+    if args.monitor and args.monitor == "l2b":
+        am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
+        am_l2b_tasks = am.get_l2b_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                        date_field=args.date_field, retry_failed=args.retry_failed)
+        am_l2b_tasks_str = "\n".join([str(t) for t in am_l2b_tasks])
+        logger.info(f"Acquisition monitor L2B tasks to run:\n{am_l2b_tasks_str}")
+        tasks += am_l2b_tasks
+
+    # Get tasks from acquisition monitor for L3 tasks
+    if args.monitor and args.monitor == "l3":
+        am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
+        am_l3_tasks = am.get_l3_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                      date_field=args.date_field, retry_failed=args.retry_failed)
+        am_l3_tasks_str = "\n".join([str(t) for t in am_l3_tasks])
+        logger.info(f"Acquisition monitor L3 tasks to run:\n{am_l3_tasks_str}")
+        tasks += am_l3_tasks
+
+    # Get tasks from daacscenes monitor
+    if args.monitor and args.monitor == "daacscenes":
+        om = OrbitMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
+        om_scenes_tasks = om.get_daac_scenes_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                                   date_field=args.date_field, retry_failed=args.retry_failed)
+        om_scenes_tasks_str = "\n".join([str(t) for t in om_scenes_tasks])
+        logger.info(f"Orbit monitor DAAC scene number tasks to run:\n{om_scenes_tasks_str}")
+        tasks += om_scenes_tasks
+
+    # Get tasks from dl0 (deliver l0) monitor
+    if args.monitor and args.monitor == "dl0":
+        im = IngestMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
+                           daac_ingest_queue=args.daac_ingest_queue)
+        im_dl0_tasks = im.get_l0_delivery_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                                date_field=args.date_field, retry_failed=args.retry_failed)
+        im_dl0_tasks_str = "\n".join([str(t) for t in im_dl0_tasks])
+        logger.info(f"Ingest monitor deliver l0 tasks to run:\n{im_dl0_tasks_str}")
+        tasks += im_dl0_tasks
+
+    # Get tasks from dl1a (deliver l1a) monitor
+    if args.monitor and args.monitor == "dl1a":
+        am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
+                                daac_ingest_queue=args.daac_ingest_queue)
+        am_dl1a_tasks = am.get_l1a_delivery_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                                  date_field=args.date_field, retry_failed=args.retry_failed)
+        am_dl1a_tasks_str = "\n".join([str(t) for t in am_dl1a_tasks])
+        logger.info(f"Acquisition monitor deliver l1a tasks to run:\n{am_dl1a_tasks_str}")
+        tasks += am_dl1a_tasks
+
+    # Get tasks from dl1brdn (deliver dl1brdn) monitor
+    if args.monitor and args.monitor == "dl1brdn":
+        am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
+                                daac_ingest_queue=args.daac_ingest_queue)
+        am_dl1brdn_tasks = am.get_l1brdn_delivery_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                                        date_field=args.date_field, retry_failed=args.retry_failed)
+        am_dl1brdn_tasks_str = "\n".join([str(t) for t in am_dl1brdn_tasks])
+        logger.info(f"Acquisition monitor deliver l1b radiance tasks to run:\n{am_dl1brdn_tasks_str}")
+        tasks += am_dl1brdn_tasks
+
+    # Get tasks from dl1batt (deliver l1b att/eph) monitor
+    if args.monitor and args.monitor == "dl1batt":
+        om = OrbitMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
+                          daac_ingest_queue=args.daac_ingest_queue)
+        om_dl1batt_tasks = om.get_l1batt_delivery_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                                        date_field=args.date_field, retry_failed=args.retry_failed)
+        om_dl1batt_tasks_str = "\n".join([str(t) for t in om_dl1batt_tasks])
+        logger.info(f"Orbit monitor deliver l1batt tasks to run:\n{om_dl1batt_tasks_str}")
+        tasks += om_dl1batt_tasks
+
+    # Get tasks from dl2a (deliver l2a) monitor
+    if args.monitor and args.monitor == "dl2a":
+        am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
+                                daac_ingest_queue=args.daac_ingest_queue)
+        am_dl2a_tasks = am.get_l2a_delivery_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                                  date_field=args.date_field, retry_failed=args.retry_failed)
+        am_dl2a_tasks_str = "\n".join([str(t) for t in am_dl2a_tasks])
+        logger.info(f"Acquisition monitor deliver l2a reflectance tasks to run:\n{am_dl2a_tasks_str}")
+        tasks += am_dl2a_tasks
+
+    # Get tasks from dl2b (deliver l2b) monitor
+    if args.monitor and args.monitor == "dl2b":
+        am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
+                                daac_ingest_queue=args.daac_ingest_queue)
+        am_dl2b_tasks = am.get_l2b_delivery_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                                  date_field=args.date_field, retry_failed=args.retry_failed)
+        am_dl2b_tasks_str = "\n".join([str(t) for t in am_dl2b_tasks])
+        logger.info(f"Acquisition monitor deliver l2b abundance tasks to run:\n{am_dl2b_tasks_str}")
+        tasks += am_dl2b_tasks
 
     # Get tasks from products args
     if args.products:
@@ -390,14 +536,14 @@ def main():
     if args.workers:
         workers = int(args.workers)
     elif len(tasks) > 0:
-        workers = min(30, len(tasks))
+        workers = min(60, len(tasks))
     else:
         workers = wm.config["luigi_workers"]
 
     # If it's a dry run just print the tasks and exit
     if args.dry_run:
         tasks_str = "\n".join([str(t) for t in tasks])
-        logger.info(f"Dry run flag set. Below are the tasks that Luigi would run:\n{tasks_str}")
+        logger.info(f"Dry run flag set. Below are the {len(tasks)} tasks that Luigi would run:\n{tasks_str}")
         sys.exit(0)
 
     # Build luigi logging.conf path

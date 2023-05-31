@@ -39,6 +39,9 @@ class Acquisition:
         self.start_time_with_tz = pytz.utc.localize(self.start_time)
         self.stop_time_with_tz = pytz.utc.localize(self.stop_time)
 
+        # Define short orbit string
+        self.short_orb = self.orbit[2:] if len(self.orbit) == 7 else self.orbit
+
         # Create base directories and add to list to create directories later
         self.dirs = []
         self.instrument_dir = os.path.join(self.config["local_store_dir"], self.config["instrument"])
@@ -68,14 +71,16 @@ class Acquisition:
         # Build granule ur and paths for DAAC delivery on staging server
         self.collection_version = f"0{self.config['processing_version']}"
         daac_start_time_str = self.start_time.strftime("%Y%m%dT%H%M%S")
-        self.raw_granule_ur = f"EMIT_L1A_RAW_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.scene}"
-        self.rdn_granule_ur = f"EMIT_L1B_RAD_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.scene}"
-        self.obs_granule_ur = f"EMIT_L1B_OBS_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.scene}"
-        self.rfl_granule_ur = f"EMIT_L2A_RFL_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.scene}"
-        self.rfluncert_granule_ur = f"EMIT_L2A_RFLUNCERT_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.scene}"
-        self.mask_granule_ur = f"EMIT_L2A_MASK_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.scene}"
-        self.abun_granule_ur = f"EMIT_L2B_MIN_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.scene}"
-        self.abununcert_granule_ur = f"EMIT_L2B_MINUNCERT_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.scene}"
+
+        if "daac_scene" in self.metadata:
+            self.raw_granule_ur = f"EMIT_L1A_RAW_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.rdn_granule_ur = f"EMIT_L1B_RAD_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.obs_granule_ur = f"EMIT_L1B_OBS_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.rfl_granule_ur = f"EMIT_L2A_RFL_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.rfluncert_granule_ur = f"EMIT_L2A_RFLUNCERT_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.mask_granule_ur = f"EMIT_L2A_MASK_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.abun_granule_ur = f"EMIT_L2B_MIN_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.abununcert_granule_ur = f"EMIT_L2B_MINUNCERT_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
         self.daac_staging_dir = os.path.join(self.config["daac_base_dir"], wm.config['environment'], "products",
                                              self.start_time.strftime("%Y%m%d"))
         self.daac_uri_base = f"https://{self.config['daac_server_external']}/emit/lpdaac/{wm.config['environment']}/" \
@@ -109,22 +114,33 @@ class Acquisition:
             },
             "l1b": {
                 "rdn": ["img", "hdr", "png", "kmz", "nc"],
+                "destripedark": ["img", "hdr"],
+                "destripeff": ["img", "hdr"],
+                "bandmask": ["img", "hdr"],
+                "ffupdate": ["img", "hdr"],
+                "ffmedian": ["img", "hdr"],
                 "loc": ["img", "hdr"],
                 "obs": ["img", "hdr", "nc"],
                 "glt": ["img", "hdr"],
                 "daac": ["nc", "json"]
             },
             "l2a": {
-                "rfl": ["img", "hdr", "nc"],
+                "rfl": ["img", "hdr", "nc", "png"],
                 "rfluncert": ["img", "hdr", "nc"],
                 "lbl": ["img", "hdr"],
                 "lblort": ["img", "hdr"],
                 "statesubs": ["img", "hdr"],
-                "mask": ["img", "hdr", "nc"]
+                "statesubsuncert": ["img", "hdr"],
+                "radsubs": ["img", "hdr"],
+                "obssubs": ["img", "hdr"],
+                "locsubs": ["img", "hdr"],
+                "atm": ["img", "hdr"],
+                "mask": ["img", "hdr", "nc"],
+                "quality": ["txt"],
             },
             "l2b": {
                 "tetra": ["dir"],
-                "abun": ["img", "hdr", "nc"],
+                "abun": ["img", "hdr", "nc", "png"],
                 "abununcert": ["img", "hdr", "nc"]
             },
             "l3": {
@@ -141,7 +157,7 @@ class Acquisition:
                 for format in formats:
                     prod_key = prod + "_" + format + "_path"
                     prod_prefix = "_".join([self.acquisition_id,
-                                            "o" + self.orbit,
+                                            "o" + self.short_orb,
                                             "s" + self.scene,
                                             level,
                                             prod,

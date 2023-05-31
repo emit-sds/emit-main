@@ -4,6 +4,7 @@ import os
 import pickle
 import subprocess
 import time
+import random
 
 import luigi
 
@@ -23,6 +24,12 @@ def _build_sbatch_script(tmp_dir, cmd, job_name, partition, outfile, errfile, n_
     conda_exe = os.getenv("CONDA_EXE")
     conda_env = os.getenv("CONDA_DEFAULT_ENV")
 
+    # Only run one instance of these types of jobs at a time
+    singleton_flag = ""
+    # TODO: If you want to run only one instance of these job types, uncomment these lines
+    # if job_name in ("emit.L0StripHOSC", "emit.L1ADepacketizeScienceFrames"):
+    #     singleton_flag = "#SBATCH --dependency=singleton"
+
     sbatch_template = """#!/bin/bash
 #SBATCH -J {job_name}
 #SBATCH --partition={partition}
@@ -33,6 +40,7 @@ def _build_sbatch_script(tmp_dir, cmd, job_name, partition, outfile, errfile, n_
 #SBATCH --cpus-per-task={n_cores}
 #SBATCH --mem={memory}
 #SBATCH --tmp={local_tmp_space}
+{singleton_flag}
 {conda_exe} run -n {conda_env} {cmd}
     """
     sbatch_script = os.path.join(tmp_dir, job_name + ".sh")
@@ -49,6 +57,7 @@ def _build_sbatch_script(tmp_dir, cmd, job_name, partition, outfile, errfile, n_
                 n_cores=n_cores,
                 memory=memory,
                 local_tmp_space=local_tmp_space,
+                singleton_flag=singleton_flag,
                 conda_exe=conda_exe,
                 conda_env=conda_env)
         )
