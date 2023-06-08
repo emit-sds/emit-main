@@ -126,6 +126,15 @@ class L1BCalibrate(SlurmJobTask):
                 instrument_mode=acq.instrument_mode,
                 min_valid_lines=512,
                 sort=1)
+
+            # Trim out any cases where darks were not processed to l1a
+            for dark_ind in range(len(future_darks)-1,-1,-1):
+                if 'products' not in list(future_darks[dark_ind].keys()):
+                    future_darks.pop(dark_ind)
+            for dark_ind in range(len(recent_darks)-1,-1,-1):
+                if 'products' not in list(recent_darks[dark_ind].keys()):
+                    recent_darks.pop(dark_ind)
+
             if (recent_darks is None or len(recent_darks) == 0) and (future_darks is None or len(future_darks) == 0):
                 raise RuntimeError(f"Unable to find any darks for acquisition {acq.acquisition_id} within 800 minutes.")
 
