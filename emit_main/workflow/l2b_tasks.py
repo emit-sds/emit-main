@@ -81,6 +81,7 @@ class L2BAbundance(SlurmJobTask):
 
         # This has to be a bit truncated because of character limitations
         tmp_tetra_output_path = os.path.join(self.local_tmp_dir, os.path.basename(acq.abun_img_path).split('_')[0] + '_tetra')
+        tmp_tetra_output_path_tar = tmp_tetra_output_path + '.tar'
 
         cmd_tetra_setup = [os.path.join(wm.config["tetracorder_cmds_path"], 'cmd-setup-tetrun'), tmp_tetra_output_path,
                            wm.config["tetracorder_library_cmdname"], "cube", tmp_rfl_path, "1", "-T", "-20", "80", "C",
@@ -131,8 +132,12 @@ class L2BAbundance(SlurmJobTask):
         ql_cmd = ['python', os.path.join(pge.repo_dir, 'quicklook.py'), tmp_abun_path, tmp_quicklook_path, '--unc_file', tmp_abun_unc_path]
         pge.run(ql_cmd, cwd=pge.repo_dir, tmp_dir=self.tmp_dir, env=env)
 
+        # tar l2b
+        tar_cmd = ['tar', 'cf', tmp_tetra_output_path_tar, tmp_tetra_output_path]
+        pge.run(tar_cmd, cwd=pge.repo_dir, tmp_dir=self.tmp_dir, env=env)
+
         # Copy mask files to l2a dir
-        wm.copytree(tmp_tetra_output_path, acq.tetra_dir_path)
+        wm.copytree(tmp_tetra_output_path_tar, acq.tetra_dir_path)
         wm.copy(tmp_abun_path, acq.abun_img_path)
         wm.copy(envi_header(tmp_abun_path), acq.abun_hdr_path)
         wm.copy(tmp_abun_unc_path, acq.abununcert_img_path)
