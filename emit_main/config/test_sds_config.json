@@ -35,7 +35,7 @@
   },
 
   "build_config": {
-    "extended_build_num": "010616",
+    "extended_build_num": "010617",
     "conda_base_dir": "/beegfs/store/shared/anaconda3/"
   },
 
@@ -74,7 +74,7 @@
     "tetracorder_path": "/beegfs/store/shared/spectroscopy-tetracorder/tetracorder5.27",
     "tetracorder_cmds_path": "/beegfs/store/shared/spectroscopy-tetracorder/tetracorder.cmds/tetracorder5.27c.cmds",
     "tetracorder_library_dir": "/beegfs/store/shared/tetracorder_libraries",
-    "unmixing_library": "/beegfs/store/shared/unmixing_libraries/pc-endmember_before-split_num-dims_3_num-samples_8_library.csv",
+    "unmixing_library": "/beegfs/store/shared/unmixing_libraries/convex_hull__n_dims_4_unmix_library.csv",
     "versions": []
   }
 }
