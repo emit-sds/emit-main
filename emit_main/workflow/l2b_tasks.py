@@ -133,7 +133,7 @@ class L2BAbundance(SlurmJobTask):
         pge.run(ql_cmd, cwd=pge.repo_dir, tmp_dir=self.tmp_dir, env=env)
 
         # tar l2b
-        tar_cmd = ['tar', 'cf', tmp_tetra_output_path_tar, tmp_tetra_output_path]
+        tar_cmd = ['tar', '-C', self.local_tmp_dir, '-cf', tmp_tetra_output_path_tar, os.path.basename(tmp_tetra_output_path)]
         pge.run(tar_cmd, cwd=pge.repo_dir, tmp_dir=self.tmp_dir, env=env)
 
         # Copy mask files to l2a dir
