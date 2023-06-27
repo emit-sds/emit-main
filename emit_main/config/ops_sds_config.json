@@ -35,7 +35,7 @@
   },
 
   "build_config": {
-    "extended_build_num": "010616",
+    "extended_build_num": "010617",
     "conda_base_dir": "/beegfs/store/shared/anaconda3/"
   },
 
