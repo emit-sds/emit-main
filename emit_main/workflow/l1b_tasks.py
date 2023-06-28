@@ -987,7 +987,10 @@ class L1BAttDeliver(SlurmJobTask):
         # Update NetCDF with software_delivery_version and get software_build_version
         nc_ds = netCDF4.Dataset(nc_path, 'r+')
         software_build_version = nc_ds.software_build_version
-        nc_ds.software_delivery_version = wm.config["extended_build_num"]
+        if 'software_delivery_version' in nc_ds.ncattrs() and nc_ds.software_delivery_version == wm.config["extended_build_num"]:
+            logging.info('Skipping software_delivery_version assignment, because it already exists and matches') 
+        else:
+            nc_ds.software_delivery_version = wm.config["extended_build_num"]
         nc_ds.sync()
         nc_ds.close()
 
