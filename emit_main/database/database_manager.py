@@ -70,9 +70,9 @@ class DatabaseManager:
     def find_nearby_acquisitions_with_ffupdate(self, start_time, use_future_flat, limit=350):
         if use_future_flat:
             q_start = start_time
-            q_stop = start_time + datetime.timedelta(days=60)
+            q_stop = start_time + datetime.timedelta(days=30)
         else:
-            q_start = start_time - datetime.timedelta(days=60)
+            q_start = start_time - datetime.timedelta(days=30)
             q_stop = start_time
         acquisitions_coll = self.db.acquisitions
         query = {
@@ -80,10 +80,16 @@ class DatabaseManager:
             "products.l1b.ffupdate": {"$exists": 1},
             "build_num": self.config["build_num"]
         }
+        projection = {
+            "acquisition_id": 1,
+            "start_time": 1,
+            "products.l1b.ffupdate": 1,
+            "build_num": 1
+        }
         if use_future_flat:
-            return list(acquisitions_coll.find(query).sort("start_time", 1).limit(limit))
+            return list(acquisitions_coll.find(query, projection).sort("start_time", 1).limit(limit))
         else:
-            return list(acquisitions_coll.find(query).sort("start_time", -1).limit(limit))
+            return list(acquisitions_coll.find(query, projection).sort("start_time", -1).limit(limit))
 
     def find_acquisitions_for_calibration(self, start, stop, date_field="last_modified", retry_failed=False):
         acquisitions_coll = self.db.acquisitions

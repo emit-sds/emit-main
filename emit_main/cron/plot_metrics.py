@@ -345,8 +345,8 @@ def main():
         eff_missing_clouds = total_cloudy / 40
         # 1486 is the number of missing frames due to IOC timing issues
         MISSING_FRAMES_IOC_TIMING = 1486
-        # 7972 is the number missing frames due to H/S overflow as of 4/8/23
-        MISSING_FRAMES_HS_OVERFLOW = 7972
+        # 13117 is the number missing frames due to H/S overflow as of 6/25/23
+        MISSING_FRAMES_HS_OVERFLOW = 13117
         eff_missing_pkt_loss = (total_missing_frames + total_corrupt - MISSING_FRAMES_IOC_TIMING - MISSING_FRAMES_HS_OVERFLOW) / 40
         eff_missing_hs_overflow = MISSING_FRAMES_HS_OVERFLOW / 40
         eff_missing_ioc_timing = MISSING_FRAMES_IOC_TIMING / 40
@@ -394,12 +394,28 @@ def main():
         }
         num_rfl = len(list(acq_coll.find(query)))
 
+        query = {
+            "build_num": "0106",
+            "start_time": {"$gte": start_time},
+            "products.l2b.abun.img_path": {"$exists": 1}
+        }
+        num_minid = len(list(acq_coll.find(query)))
+
+        query = {
+            "build_num": "0106",
+            "start_time": {"$gte": start_time},
+            "products.l3.cover.img_path": {"$exists": 1}
+        }
+        num_frcov = len(list(acq_coll.find(query)))
+
         print(f"""
 Number of raw: {num_raw}
 Number of raw science: {num_science}
 Number of raw dark: {num_dark}
 Number of radiance: {num_rdn}
 Number of reflectance: {num_rfl}
+Number of mineral identifications: {num_minid}
+Number of fractional covers: {num_frcov}
 
 Percent clouds screened on orbit: {percent_clouds_screened:.1f}%
 Percent clouds in scenes: {cloud_percent:.1f}%

@@ -899,7 +899,7 @@ class L1ADeliver(SlurmJobTask):
         }
 
         for path in paths:
-            cmd_rsync = ["rsync", "-azv", partial_dir_arg, log_file_arg, path, target]
+            cmd_rsync = ["rsync", "-av", partial_dir_arg, log_file_arg, path, target]
             pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
 
         # Build notification dictionary

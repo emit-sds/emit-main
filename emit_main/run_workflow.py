@@ -536,7 +536,7 @@ def main():
     if args.workers:
         workers = int(args.workers)
     elif len(tasks) > 0:
-        workers = min(60, len(tasks))
+        workers = min(40, len(tasks))
     else:
         workers = wm.config["luigi_workers"]
 
