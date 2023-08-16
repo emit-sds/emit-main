@@ -145,6 +145,18 @@ class DatabaseManager:
             "build_num": self.config["build_num"]
         }
         results = list(acquisitions_coll.find(query))
+        # Also query for case where rfl exists but not mask
+        query = {
+            "products.l1b.rdn.img_path": {"$exists": 1},
+            "products.l1b.glt.img_path": {"$exists": 1},
+            "products.l1b.loc.img_path": {"$exists": 1},
+            "products.l1b.obs.img_path": {"$exists": 1},
+            "products.l2a.rfl.img_path": {"$exists": 1},
+            "products.l2a.mask.img_path": {"$exists": 0},
+            date_field: {"$gte": start, "$lte": stop},
+            "build_num": self.config["build_num"]
+        }
+        results += list(acquisitions_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L2AReflectance", "emit.L2AMask"])
         return results
