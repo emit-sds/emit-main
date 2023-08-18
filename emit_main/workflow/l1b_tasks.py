@@ -169,9 +169,7 @@ class L1BCalibrate(SlurmJobTask):
             if os.path.exists(acq_obj["products"]["l1b"]["ffupdate"]["img_path"]):
                 flat_field_update_paths.append(acq_obj["products"]["l1b"]["ffupdate"]["img_path"])
         # If the number of paths is less than 100, then set to empty because we can't use them
-        if len(flat_field_update_paths) >= 100:
-            input_files["flat_field_update_paths"] = flat_field_update_paths
-        else:
+        if len(flat_field_update_paths) < 100:
             flat_field_update_paths = []
 
         # Create runconfig
@@ -284,6 +282,10 @@ class L1BCalibrate(SlurmJobTask):
             dm.update_orbit_metadata(orbit.orbit_id, {"radiance_status": "complete"})
         else:
             dm.update_orbit_metadata(orbit.orbit_id, {"radiance_status": "incomplete"})
+
+        # Add flat field paths here for database log entry
+        if len(flat_field_update_paths) >= 100:
+            input_files["flat_field_update_paths"] = flat_field_update_paths
 
         log_entry = {
             "task": self.task_family,
