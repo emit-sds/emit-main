@@ -345,8 +345,8 @@ def main():
         eff_missing_clouds = total_cloudy / 40
         # 1486 is the number of missing frames due to IOC timing issues
         MISSING_FRAMES_IOC_TIMING = 1486
-        # 13117 is the number missing frames due to H/S overflow as of 6/25/23
-        MISSING_FRAMES_HS_OVERFLOW = 13117
+        # 17266 is the number missing frames due to H/S overflow as of 8/19/23
+        MISSING_FRAMES_HS_OVERFLOW = 17266
         eff_missing_pkt_loss = (total_missing_frames + total_corrupt - MISSING_FRAMES_IOC_TIMING - MISSING_FRAMES_HS_OVERFLOW) / 40
         eff_missing_hs_overflow = MISSING_FRAMES_HS_OVERFLOW / 40
         eff_missing_ioc_timing = MISSING_FRAMES_IOC_TIMING / 40

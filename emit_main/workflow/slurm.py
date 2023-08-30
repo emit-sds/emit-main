@@ -205,13 +205,13 @@ class SlurmJobTask(luigi.Task):
         while True:
             # Sleep for a little bit
             # time.sleep(random.randint(POLL_TIME_RANGE[0], POLL_TIME_RANGE[1]))
-            time.sleep(random.randint(30, 40))
+            time.sleep(random.randint(25, 40))
 
             # See what the job's up to
             logger.info("Checking status of job %i..." % self.job_id)
             try:
                 squeue_out = subprocess.check_output(["squeue", "-j", str(self.job_id)]).decode("utf-8")
-            except RuntimeError as e:
+            except Exception as e:
                 logger.warning(f"squeue failed for job {self.job_id}")
                 continue
             logger.debug("squeue_out is\n %s" % squeue_out)

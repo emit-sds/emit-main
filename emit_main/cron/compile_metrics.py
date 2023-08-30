@@ -30,17 +30,24 @@ def main():
     outfile = open(args.output, "w")
     outfile.write("TIMESTAMP,APID,PACKETS,PSC_GAPS,MISSING_PACKETS,DUPLICATE_PACKETS\n")
 
-    for apid in ["1675"]:
+    for apid in ["1674", "1675", "1676"]:
+        # Set up outfile based on APID
+        apid_outfile = args.output.replace(".csv", f"_{apid}.csv")
+        outfile = open(apid_outfile, "w")
+        outfile.write(f"TIMESTAMP,APID,{apid}_PACKETS,{apid}_PSC_GAPS,{apid}_MISSING_PACKETS,{apid}_DUPLICATE_PACKETS,"
+                      f"{apid}_TIMING_ERRORS\n")
+
         date_dirs = glob.glob(f"/store/emit/{env}/data/streams/{apid}/*")
         start_dir = f"/store/emit/{env}/data/streams/{apid}/{start}"
         stop_dir = f"/store/emit/{env}/data/streams/{apid}/{stop}"
         date_dirs = [dir for dir in date_dirs if start_dir <= dir <= stop_dir]
         date_dirs.sort()
-        print(f"The filtered list of dirs to check is {date_dirs}")
+        # print(f"The filtered list of dirs to check is {date_dirs}")
 
         for dir in date_dirs:
             l0_reports = glob.glob(f"{dir}/l0/*report.txt")
             for report in l0_reports:
+                packet_count, missing_packets, psc_gaps, duplicate_packets, timing_errors = 0, 0, 0, 0, 0
                 with open(report, "r") as f:
                     for line in f.readlines():
                         if "Packet Count" in line and "Duplicate" not in line:
@@ -51,11 +58,13 @@ def main():
                             psc_gaps = int(line.rstrip("\n").split(" ")[-1])
                         if "Duplicate Packet Count" in line:
                             duplicate_packets = int(line.rstrip("\n").split(" ")[-1])
+                        if "Timing Errors Count" in line:
+                            timing_errors = int(line.rstrip("\n").split(" ")[-1])
                 timestamp_str = os.path.basename(report).split("_")[2]
                 timestamp = dt.datetime.strptime(timestamp_str, "%Y%m%dt%H%M%S")
                 timestamp_utc = timestamp.strftime("%Y-%m-%dT%H:%M:%SZ")
                 outfile.write(",".join([timestamp_utc, apid, str(packet_count), str(psc_gaps), str(missing_packets),
-                                        str(duplicate_packets)]) + "\n")
+                                        str(duplicate_packets), str(timing_errors)]) + "\n")
 
     outfile.close()
 
