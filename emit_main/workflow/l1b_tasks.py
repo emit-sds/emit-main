@@ -128,10 +128,10 @@ class L1BCalibrate(SlurmJobTask):
                 sort=1)
 
             # Trim out any cases where darks were not processed to l1a
-            for dark_ind in range(len(future_darks)-1,-1,-1):
+            for dark_ind in range(len(future_darks) - 1, -1, -1):
                 if 'products' not in list(future_darks[dark_ind].keys()):
                     future_darks.pop(dark_ind)
-            for dark_ind in range(len(recent_darks)-1,-1,-1):
+            for dark_ind in range(len(recent_darks) - 1, -1, -1):
                 if 'products' not in list(recent_darks[dark_ind].keys()):
                     recent_darks.pop(dark_ind)
 
@@ -990,7 +990,7 @@ class L1BAttDeliver(SlurmJobTask):
         nc_ds = netCDF4.Dataset(nc_path, 'r+')
         software_build_version = nc_ds.software_build_version
         if 'software_delivery_version' in nc_ds.ncattrs() and nc_ds.software_delivery_version == wm.config["extended_build_num"]:
-            logging.info('Skipping software_delivery_version assignment, because it already exists and matches') 
+            logging.info('Skipping software_delivery_version assignment, because it already exists and matches')
         else:
             nc_ds.software_delivery_version = wm.config["extended_build_num"]
         nc_ds.sync()

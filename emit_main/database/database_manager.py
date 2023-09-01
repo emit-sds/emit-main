@@ -105,7 +105,7 @@ class DatabaseManager:
         }
         # Get acquistions for calibration - sort by start time to nominally forward process (
         # not technically necessary, but helps destriping stay somewhat ordered)
-        results = list(acquisitions_coll.find(query).sort("start_time",1)) 
+        results = list(acquisitions_coll.find(query).sort("start_time", 1))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L1BCalibrate"])
         acqs_ready_for_cal = []

@@ -120,13 +120,13 @@ class L2BAbundance(SlurmJobTask):
         emit_utils_pge = wm.pges["emit-utils"]
         env["PYTHONPATH"] = f"$PYTHONPATH:{emit_utils_pge.repo_dir}"
         agg_cmd = ["python", aggregator_exe, tmp_tetra_output_path, min_group_mat_file, tmp_abun_path, tmp_abun_unc_path,
-               "--calculate_uncertainty",
-               "--reflectance_file", acq.rfl_img_path,
-               "--reflectance_uncertainty_file", acq.rfluncert_img_path,
-               "--reference_library", standard_library,
-               "--research_library", research_library,
-               "--expert_system_file", tetracorder_config_file,
-               ]
+                   "--calculate_uncertainty",
+                   "--reflectance_file", acq.rfl_img_path,
+                   "--reflectance_uncertainty_file", acq.rfluncert_img_path,
+                   "--reference_library", standard_library,
+                   "--research_library", research_library,
+                   "--expert_system_file", tetracorder_config_file,
+                   ]
         pge.run(agg_cmd, cwd=pge.repo_dir, tmp_dir=self.tmp_dir, env=env)
 
         ql_cmd = ['python', os.path.join(pge.repo_dir, 'quicklook.py'), tmp_abun_path, tmp_quicklook_path, '--unc_file', tmp_abun_unc_path]
