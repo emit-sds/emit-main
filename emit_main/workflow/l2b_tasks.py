@@ -120,13 +120,13 @@ class L2BAbundance(SlurmJobTask):
         emit_utils_pge = wm.pges["emit-utils"]
         env["PYTHONPATH"] = f"$PYTHONPATH:{emit_utils_pge.repo_dir}"
         agg_cmd = ["python", aggregator_exe, tmp_tetra_output_path, min_group_mat_file, tmp_abun_path, tmp_abun_unc_path,
-               "--calculate_uncertainty",
-               "--reflectance_file", acq.rfl_img_path,
-               "--reflectance_uncertainty_file", acq.rfluncert_img_path,
-               "--reference_library", standard_library,
-               "--research_library", research_library,
-               "--expert_system_file", tetracorder_config_file,
-               ]
+                   "--calculate_uncertainty",
+                   "--reflectance_file", acq.rfl_img_path,
+                   "--reflectance_uncertainty_file", acq.rfluncert_img_path,
+                   "--reference_library", standard_library,
+                   "--research_library", research_library,
+                   "--expert_system_file", tetracorder_config_file,
+                   ]
         pge.run(agg_cmd, cwd=pge.repo_dir, tmp_dir=self.tmp_dir, env=env)
 
         ql_cmd = ['python', os.path.join(pge.repo_dir, 'quicklook.py'), tmp_abun_path, tmp_quicklook_path, '--unc_file', tmp_abun_unc_path]
@@ -403,7 +403,7 @@ class L2BDeliver(SlurmJobTask):
         pge.run(cmd_make_target, tmp_dir=self.tmp_dir)
 
         for path in (daac_abun_nc_path, daac_abununcert_nc_path, daac_browse_path, daac_ummg_path):
-            cmd_rsync = ["rsync", "-azv", partial_dir_arg, log_file_arg, path, target]
+            cmd_rsync = ["rsync", "-av", partial_dir_arg, log_file_arg, path, target]
             pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
 
         # Build notification dictionary

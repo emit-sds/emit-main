@@ -584,7 +584,7 @@ class L2ADeliver(SlurmJobTask):
         pge.run(cmd_make_target, tmp_dir=self.tmp_dir)
 
         for path in (daac_rfl_nc_path, daac_rfluncert_nc_path, daac_mask_nc_path, daac_browse_path, daac_ummg_path):
-            cmd_rsync = ["rsync", "-azv", partial_dir_arg, log_file_arg, path, target]
+            cmd_rsync = ["rsync", "-av", partial_dir_arg, log_file_arg, path, target]
             pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
 
         # Build notification dictionary

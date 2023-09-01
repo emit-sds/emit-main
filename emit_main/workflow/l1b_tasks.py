@@ -128,10 +128,10 @@ class L1BCalibrate(SlurmJobTask):
                 sort=1)
 
             # Trim out any cases where darks were not processed to l1a
-            for dark_ind in range(len(future_darks)-1,-1,-1):
+            for dark_ind in range(len(future_darks) - 1, -1, -1):
                 if 'products' not in list(future_darks[dark_ind].keys()):
                     future_darks.pop(dark_ind)
-            for dark_ind in range(len(recent_darks)-1,-1,-1):
+            for dark_ind in range(len(recent_darks) - 1, -1, -1):
                 if 'products' not in list(recent_darks[dark_ind].keys()):
                     recent_darks.pop(dark_ind)
 
@@ -169,9 +169,7 @@ class L1BCalibrate(SlurmJobTask):
             if os.path.exists(acq_obj["products"]["l1b"]["ffupdate"]["img_path"]):
                 flat_field_update_paths.append(acq_obj["products"]["l1b"]["ffupdate"]["img_path"])
         # If the number of paths is less than 100, then set to empty because we can't use them
-        if len(flat_field_update_paths) >= 100:
-            input_files["flat_field_update_paths"] = flat_field_update_paths
-        else:
+        if len(flat_field_update_paths) < 100:
             flat_field_update_paths = []
 
         # Create runconfig
@@ -284,6 +282,10 @@ class L1BCalibrate(SlurmJobTask):
             dm.update_orbit_metadata(orbit.orbit_id, {"radiance_status": "complete"})
         else:
             dm.update_orbit_metadata(orbit.orbit_id, {"radiance_status": "incomplete"})
+
+        # Add flat field paths here for database log entry
+        if len(flat_field_update_paths) >= 100:
+            input_files["flat_field_update_paths"] = flat_field_update_paths
 
         log_entry = {
             "task": self.task_family,
@@ -803,7 +805,7 @@ class L1BRdnDeliver(SlurmJobTask):
         pge.run(cmd_make_target, tmp_dir=self.tmp_dir)
 
         for path in (daac_rdn_nc_path, daac_obs_nc_path, daac_browse_path, daac_ummg_path):
-            cmd_rsync = ["rsync", "-azv", partial_dir_arg, log_file_arg, path, target]
+            cmd_rsync = ["rsync", "-av", partial_dir_arg, log_file_arg, path, target]
             pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
 
         # Build notification dictionary
@@ -988,7 +990,7 @@ class L1BAttDeliver(SlurmJobTask):
         nc_ds = netCDF4.Dataset(nc_path, 'r+')
         software_build_version = nc_ds.software_build_version
         if 'software_delivery_version' in nc_ds.ncattrs() and nc_ds.software_delivery_version == wm.config["extended_build_num"]:
-            logging.info('Skipping software_delivery_version assignment, because it already exists and matches') 
+            logging.info('Skipping software_delivery_version assignment, because it already exists and matches')
         else:
             nc_ds.software_delivery_version = wm.config["extended_build_num"]
         nc_ds.sync()
@@ -1036,7 +1038,7 @@ class L1BAttDeliver(SlurmJobTask):
         pge.run(cmd_make_target, tmp_dir=self.tmp_dir)
 
         for path in (daac_nc_path, daac_ummg_path):
-            cmd_rsync = ["rsync", "-azv", partial_dir_arg, log_file_arg, path, target]
+            cmd_rsync = ["rsync", "-av", partial_dir_arg, log_file_arg, path, target]
             pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
 
         # Build notification dictionary

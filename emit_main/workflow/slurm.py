@@ -205,11 +205,15 @@ class SlurmJobTask(luigi.Task):
         while True:
             # Sleep for a little bit
             # time.sleep(random.randint(POLL_TIME_RANGE[0], POLL_TIME_RANGE[1]))
-            time.sleep(30)
+            time.sleep(random.randint(25, 40))
 
             # See what the job's up to
             logger.info("Checking status of job %i..." % self.job_id)
-            squeue_out = subprocess.check_output(["squeue", "-j", str(self.job_id)]).decode("utf-8")
+            try:
+                squeue_out = subprocess.check_output(["squeue", "-j", str(self.job_id)]).decode("utf-8")
+            except Exception as e:
+                logger.warning(f"squeue failed for job {self.job_id}")
+                continue
             logger.debug("squeue_out is\n %s" % squeue_out)
             slurm_status = _parse_squeue_state(squeue_out, self.job_id)
             if slurm_status == "PD":

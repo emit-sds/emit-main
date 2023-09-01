@@ -256,6 +256,10 @@ class L0IngestBAD(SlurmJobTask):
         dm = wm.database_manager
         start_time = datetime.datetime.strptime(timing["start_time"], "%Y-%m-%dT%H:%M:%S")
         stop_time = datetime.datetime.strptime(timing["stop_time"], "%Y-%m-%dT%H:%M:%S")
+        no_earlier_than = "2022-01-01"  # Replace this with your given date in "YYYY-MM-DD" format
+        no_earlier_than_date = datetime.datetime.strptime(no_earlier_than, "%Y-%m-%d")
+        if start_time < no_earlier_than_date or stop_time < no_earlier_than_date:
+            raise RuntimeError("The BAD start or stop time is earlier than 2022-01-01!")
         bad_name = os.path.basename(self.stream_path)
         suffix = f"_{start_time.strftime('%Y%m%dT%H%M%S')}_{stop_time.strftime('%Y%m%dT%H%M%S')}.sto"
         extended_bad_name = os.path.basename(self.stream_path).replace(".sto", suffix)
@@ -698,7 +702,7 @@ class L0Deliver(SlurmJobTask):
         pge.run(cmd_make_target, tmp_dir=self.tmp_dir)
         # Rsync the files
         for path in (daac_ccsds_path, daac_ummg_path):
-            cmd_rsync = ["rsync", "-azv", partial_dir_arg, log_file_arg, path, target]
+            cmd_rsync = ["rsync", "-av", partial_dir_arg, log_file_arg, path, target]
             pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
 
         # Build notification dictionary
