@@ -11,6 +11,7 @@ import os
 import re
 
 from exchangelib import Account, Configuration, Credentials, FaultTolerance, DELEGATE
+from exchangelib.protocol import BaseProtocol, NoVerifyHTTPAdapter
 
 from emit_main.workflow.l0_tasks import L0Deliver
 from emit_main.workflow.l1a_tasks import L1ADeliver
@@ -28,6 +29,8 @@ class EmailMonitor:
         """
         :param config_path: Path to config file containing environment settings
         """
+
+        BaseProtocol.HTTP_ADAPTER_CLS = NoVerifyHTTPAdapter
 
         self.config_path = os.path.abspath(config_path)
         self.level = level
