@@ -695,7 +695,6 @@ class L0Deliver(SlurmJobTask):
                           wm.config["aws_profile"]]
             pge.run(cmd_aws_s3, tmp_dir=self.tmp_dir)
 
-
         # Build notification dictionary
         utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
         cnm_submission_id = f"{granule_ur}_{utc_now.strftime('%Y%m%dt%H%M%S')}"
