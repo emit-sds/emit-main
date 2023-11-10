@@ -36,11 +36,13 @@
 
   "build_config": {
     "extended_build_num": "010618",
-    "conda_base_dir": "/beegfs/store/shared/anaconda3/"
+    "conda_base_dir": "/tmp/miniconda3/"
   },
 
   "daac_config": {
     "aws_cli_exe": "/beegfs/store/shared/aws-cli/v2/current/bin/aws",
+    "aws_s3_bucket": "jpl-ngis",
+    "aws_s3_base_dir": "/lpdaac",
     "aws_profile": "default",
     "cnm_version": "1.4",
     "daac_submission_url_forward": "https://sqs.us-west-2.amazonaws.com/560130786230/lp-uat-ingest-forward-processing",
