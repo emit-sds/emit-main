@@ -693,6 +693,7 @@ class L0Deliver(SlurmJobTask):
         for path in (daac_ccsds_path, daac_ummg_path):
             cmd_aws_s3 = [wm.config["aws_cli_exe"], "s3", "cp", path, stream.aws_s3_uri_base, "--profile",
                           wm.config["aws_profile"]]
+            pge.run(cmd_aws_s3, tmp_dir=self.tmp_dir)
 
 
         # Build notification dictionary
