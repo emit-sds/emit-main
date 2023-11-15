@@ -55,6 +55,7 @@ def main():
     to_wm = WorkflowManager(config_path=args.to_config)
     from_dm = from_wm.database_manager
     to_dm = to_wm.database_manager
+    pge = from_wm.pges["emit-main"]
 
     if from_wm.config["build_num"] == to_wm.config["build_num"]:
         logger.error("Both from and to build numbers are the same. No need to migrate. Exiting...")
@@ -69,13 +70,24 @@ def main():
         to_dc["build_num"] = to_wm.config["build_num"]
         to_dc["processing_version"] = to_wm.config["processing_version"]
         to_dc["processing_log"] = []
+        migration_entry = {
+            "timestamp": dt.datetime.now(tz=dt.timezone.utc),
+            "from_config": args.from_config,
+            "to_config": args.to_config,
+            "from_build": from_wm.config["build_num"],
+            "to_build": to_wm.config["build_num"]
+        }
+        if "migration_history" in to_dc:
+            to_dc["migration_history"].append(migration_entry)
+        else:
+            to_dc["migration_history"] = [migration_entry]
 
         # Insert or update data collection in DB
         dcid = to_dc["dcid"]
         if to_dm.find_data_collection_by_id(dcid):
             # TODO: Skip if already exists???
             # to_dm.update_data_collection_metadata(dcid, to_dc)
-            logger.info(f"- Updated data collection in DB with {to_dc}")
+            logger.info(f"- Skipped data collection with DCID {dcid}. Already exists.")
         else:
             # to_dm.insert_data_collection(to_dc)
             logger.info(f"- Inserted data collection in DB with {to_dc}")
