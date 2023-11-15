@@ -8,6 +8,7 @@ import argparse
 import datetime as dt
 import logging
 import os
+import sys
 
 from emit_main.workflow.workflow_manager import WorkflowManager
 
@@ -55,22 +56,29 @@ def main():
     from_dm = from_wm.database_manager
     to_dm = to_wm.database_manager
 
+    if from_wm.config["build_num"] == to_wm.config["build_num"]:
+        logger.error("Both from and to build numbers are the same. No need to migrate. Exiting...")
+        sys.exit()
+
     # Migrate data_collections in DB
     from_dcs = from_dm.find_data_collections_touching_date_range("planning_product.datetime", start_time, stop_time)
     logger.info(f"Found {len(from_dcs)} data collections to migrate!")
     for from_dc in from_dcs:
         # Prep metadata for migrated entry
-        from_dc = remove_keys_from_dict(("_id", "created", "products"), from_dc)
-        from_dc["processing_log"] = []
+        to_dc = remove_keys_from_dict(("_id", "created", "products"), from_dc)
+        to_dc["build_num"] = to_wm.config["build_num"]
+        to_dc["processing_version"] = to_wm.config["processing_version"]
+        to_dc["processing_log"] = []
 
         # Insert or update data collection in DB
-        dcid = from_dc["dcid"]
+        dcid = to_dc["dcid"]
         if to_dm.find_data_collection_by_id(dcid):
-            # to_dm.update_data_collection_metadata(dcid, from_dc)
-            logger.info(f"- Updated data collection in DB with {from_dc}")
+            # TODO: Skip if already exists???
+            # to_dm.update_data_collection_metadata(dcid, to_dc)
+            logger.info(f"- Updated data collection in DB with {to_dc}")
         else:
-            # to_dm.insert_data_collection(from_dc)
-            logger.info(f"- Inserted data collection in DB with {from_dc}")
+            # to_dm.insert_data_collection(to_dc)
+            logger.info(f"- Inserted data collection in DB with {to_dc}")
 
     # Migrate orbits
 
