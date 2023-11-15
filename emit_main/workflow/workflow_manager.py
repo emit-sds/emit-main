@@ -117,11 +117,16 @@ class WorkflowManager:
         self.pges = {}
         for repo in self.config["repositories"]:
             conda_env = None
+            env = None
+            if self.config["environment"].startswith("test"):
+                env = "test"
+            if self.config["environment"].startswith("ops"):
+                env = "ops"
             if "conda_env" in repo and len(repo["conda_env"]) > 0:
                 if repo["conda_env"].startswith("/"):
                     conda_env = repo["conda_env"]
-                elif self.config["environment"] in ("test", "ops"):
-                    conda_env = repo["conda_env"] + "-" + self.config["environment"]
+                elif env is not None and env in ("test", "ops"):
+                    conda_env = repo["conda_env"] + "-" + env
                 else:
                     conda_env = repo["conda_env"] + "-dev"
             if "tag" in repo and len(repo["tag"]) > 0:
@@ -184,9 +189,16 @@ class WorkflowManager:
 
     def change_group_ownership(self, path):
         # Change group ownership in shared environments
-        if self.config["environment"] in ["dev", "test", "ops"]:
+        env = None
+        if self.config["environment"].startswith("dev"):
+            env = "dev"
+        if self.config["environment"].startswith("test"):
+            env = "test"
+        if self.config["environment"].startswith("ops"):
+            env = "ops"
+        if env is not None:
             uid = pwd.getpwnam(pwd.getpwuid(os.getuid())[0]).pw_uid
-            gid = grp.getgrnam(self.config["instrument"] + "-" + self.config["environment"]).gr_gid
+            gid = grp.getgrnam(self.config["instrument"] + "-" + env).gr_gid
             # Only the owner of a file or directory can change the group ownership
             owner = pwd.getpwuid(os.stat(path, follow_symlinks=False).st_uid).pw_name
             current_user = pwd.getpwuid(os.getuid()).pw_name

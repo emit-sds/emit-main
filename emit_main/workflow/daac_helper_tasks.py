@@ -265,7 +265,12 @@ class ReconciliationReport(SlurmJobTask):
         log_file_arg = f"--log-file={os.path.join(self.tmp_dir, 'rsync.log')}"
         target = f"{wm.config['daac_server_internal']}:{wm.daac_recon_staging_dir}/"
         # First set up permissions if needed
-        group = f"emit-{wm.config['environment']}" if wm.config["environment"] in ("test", "ops") else "emit-dev"
+        env = "dev"
+        if wm.config['environment'].startswith("test"):
+            env = "test"
+        if wm.config['environment'].startswith("ops"):
+            env = "ops"
+        group = f"emit-{env}"
         # This command only makes the directory and changes ownership if the directory doesn't exist
         cmd_make_target = ["ssh", wm.config["daac_server_internal"], "\"if", "[", "!", "-d",
                            f"'{wm.daac_recon_staging_dir}'", "];", "then", "mkdir", f"{wm.daac_recon_staging_dir};",
