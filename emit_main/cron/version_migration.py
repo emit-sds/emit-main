@@ -98,7 +98,9 @@ def main():
         to_dc["processing_log"] = []
         # Update associated_ccsds paths to new build number and remove processing version from filename
         if "associated_ccsds" in to_dc:
-            to_dc["associated_ccsds"] = [update_filename_versions(p) for p in to_dc["associated_ccsds"]]
+            to_dc["associated_ccsds"] = [
+                update_filename_versions(p, from_wm.config["build_num"], to_wm.config["build_num"],
+                                         from_wm.config["processing_version"]) for p in to_dc["associated_ccsds"]]
         to_dc = add_migration_entry(to_dc, args.from_config, args.to_config, from_wm.config["build_num"],
                                     to_wm.config["build_num"])
 
@@ -125,7 +127,10 @@ def main():
         to_orbit["processing_log"] = []
         # Update associated_bad_netcdf path to new build number and remove processing version from filename
         if "associated_bad_netcdf" in to_orbit:
-            to_orbit["associated_bad_netcdf"] = update_filename_versions(to_orbit["associated_bad_netcdf"])
+            to_orbit["associated_bad_netcdf"] = update_filename_versions(to_orbit["associated_bad_netcdf"],
+                                                                         from_wm.config["build_num"],
+                                                                         to_wm.config["build_num"],
+                                                                         from_wm.config["processing_version"])
         to_orbit = add_migration_entry(to_orbit, args.from_config, args.to_config, from_wm.config["build_num"],
                                        to_wm.config["build_num"])
 
