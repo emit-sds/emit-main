@@ -85,7 +85,54 @@ def main():
         logger.error("Both from and to build numbers are the same. No need to migrate. Exiting...")
         sys.exit()
 
-    # Migrate
+    # Migrate streams - 1675 CCSDS files and APID 1675 in DB
+    from_streams = from_dm.find_streams_touching_date_range("1675", "start_time", start_time, stop_time)
+    logger.info(f"Found {len(from_streams)} 1675 streams to migrate!")
+    for from_stream in from_streams:
+        if "ccsds_name" not in from_stream:
+            logger.warning(f"- Skipped stream with hosc_name {from_stream['hosc_name']} because it had no CCSDS name")
+            continue
+        stream_name = from_stream["ccsds_name"]
+        if to_dm.find_stream_by_named(stream_name):
+            # Skip if already exists
+            logger.info(f"- Skipped stream with name {stream_name}. Already exists.")
+            continue
+
+        # Prep metadata for migrated entry
+        to_stream = remove_keys_from_dict(("_id", "created"), from_stream)
+        if "products" in to_stream and "raw" in to_stream["products"]:
+            to_stream["products"].pop("raw")
+        if "products" in to_stream and "l1a" in to_stream["products"]:
+            to_stream["products"].pop("l1a")
+        to_stream["build_num"] = to_wm.config["build_num"]
+        to_stream["processing_version"] = to_wm.config["processing_version"]
+        to_stream["processing_log"] = []
+        # Update products in DB and move/copy on filesystem
+        if "products" in to_stream and "l0" in to_stream["products"]:
+            try:
+                from_path = from_stream["products"]["l0"]["ccsds_path"]
+                to_path = update_filename_versions(from_path,
+                                                   from_wm.config["build_num"],
+                                                   to_wm.config["build_num"],
+                                                   from_wm.config["processing_version"])
+                # TODO: Copy in place?  If not, then need to create destination paths before copy or move
+                # Since we are copying to a temporary folder, use tmp path for copy
+                # tmp_to_path = to_path.replace(f"/{from_wm.config['environment']}/", f"/{to_wm.config['environment']}/")
+                if args.move_not_copy:
+                    from_wm.move(from_path, to_path)
+                else:
+                    from_wm.copy(from_path, to_path)
+                to_stream["products"]["l0"]["ccsds_path"] = to_path
+            except Exception as e:
+                logger.warning(f"Issue while migrating L0 CCSDS product for stream {stream_name}")
+                # TODO: Take out the continue?  Is it better to add the DB entry or fail it entirely?
+                continue
+
+        to_stream = add_migration_entry(to_stream, args.from_config, args.to_config, from_wm.config["build_num"],
+                                        to_wm.config["build_num"])
+        # Insert or update stream in DB
+        # to_dm.insert_stream(stream_name, to_stream)
+        logger.info(f"- Inserted stream in DB with {to_stream}")
 
     # Migrate data_collections in DB
     from_dcs = from_dm.find_data_collections_touching_date_range("planning_product.datetime", start_time, stop_time)
@@ -144,12 +191,13 @@ def main():
                                                    from_wm.config["build_num"],
                                                    to_wm.config["build_num"],
                                                    from_wm.config["processing_version"])
+                # TODO: Copy in place?  If not, then need to create destination paths before copy or move
                 # Since we are copying to a temporary folder, use tmp path for copy
-                tmp_to_path = to_path.replace(f"/{from_wm.config['environment']}/", f"/{to_wm.config['environment']}/")
+                # tmp_to_path = to_path.replace(f"/{from_wm.config['environment']}/", f"/{to_wm.config['environment']}/")
                 if args.move_not_copy:
-                    from_wm.move(from_path, tmp_to_path)
+                    from_wm.move(from_path, to_path)
                 else:
-                    from_wm.copy(from_path, tmp_to_path)
+                    from_wm.copy(from_path, to_path)
                 to_orbit["products"]["l1a"]["uncorr_att_eph_path"] = to_path
             except Exception as e:
                 logger.warning(f"Issue while migrating L1A uncorrected att/eph product for orbit id {orbit_id}")
