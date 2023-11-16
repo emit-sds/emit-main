@@ -144,10 +144,12 @@ def main():
                                                    from_wm.config["build_num"],
                                                    to_wm.config["build_num"],
                                                    from_wm.config["processing_version"])
+                # Since we are copying to a temporary folder, use tmp path for copy
+                tmp_to_path = to_path.replace(f"/{from_wm.config['environment']}/", f"/{to_wm.config['environment']}/")
                 if args.move_not_copy:
-                    from_wm.move(from_path, to_path)
+                    from_wm.move(from_path, tmp_to_path)
                 else:
-                    from_wm.copy(from_path, to_path)
+                    from_wm.copy(from_path, tmp_to_path)
                 to_orbit["products"]["l1a"]["uncorr_att_eph_path"] = to_path
             except Exception as e:
                 logger.warning(f"Issue while migrating L1A uncorrected att/eph product for orbit id {orbit_id}")
