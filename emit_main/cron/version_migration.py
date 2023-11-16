@@ -91,6 +91,13 @@ def main():
     from_dcs = from_dm.find_data_collections_touching_date_range("planning_product.datetime", start_time, stop_time)
     logger.info(f"Found {len(from_dcs)} data collections to migrate!")
     for from_dc in from_dcs:
+        dcid = from_dc["dcid"]
+        if to_dm.find_data_collection_by_id(dcid):
+            # Skip if already exists
+            # to_dm.update_data_collection_metadata(dcid, to_dc)
+            logger.info(f"- Skipped data collection with DCID {dcid}. Already exists.")
+            continue
+
         # Prep metadata for migrated entry
         to_dc = remove_keys_from_dict(("_id", "created", "products"), from_dc)
         to_dc["build_num"] = to_wm.config["build_num"]
@@ -103,21 +110,19 @@ def main():
                                          from_wm.config["processing_version"]) for p in to_dc["associated_ccsds"]]
         to_dc = add_migration_entry(to_dc, args.from_config, args.to_config, from_wm.config["build_num"],
                                     to_wm.config["build_num"])
+        # to_dm.insert_data_collection(to_dc)
+        logger.info(f"- Inserted data collection in DB with {to_dc}")
 
-        # Insert or update data collection in DB
-        dcid = to_dc["dcid"]
-        if to_dm.find_data_collection_by_id(dcid):
-            # Skip if already exists
-            # to_dm.update_data_collection_metadata(dcid, to_dc)
-            logger.info(f"- Skipped data collection with DCID {dcid}. Already exists.")
-        else:
-            # to_dm.insert_data_collection(to_dc)
-            logger.info(f"- Inserted data collection in DB with {to_dc}")
-
-    # Migrate orbits
+    # Migrate orbits - Uncorrected att/eph files and in DB
     from_orbits = from_dm.find_orbits_touching_date_range("start_time", start_time, stop_time)
     logger.info(f"Found {len(from_orbits)} orbits to migrate!")
     for from_orbit in from_orbits:
+        orbit_id = from_orbit["orbit_id"]
+        if to_dm.find_orbit_by_id(orbit_id):
+            # Skip if already exists
+            logger.info(f"- Skipped orbit with id {orbit_id}. Already exists.")
+            continue
+
         # Prep metadata for migrated entry
         to_orbit = remove_keys_from_dict(("_id", "created", "bad_status", "associated_bad_sto"), from_orbit)
         if "products" in to_orbit and "l1b" in to_orbit["products"]:
@@ -127,33 +132,33 @@ def main():
         to_orbit["processing_log"] = []
         # Update associated_bad_netcdf path to new build number and remove processing version from filename
         if "associated_bad_netcdf" in to_orbit:
-            to_orbit["associated_bad_netcdf"] = update_filename_versions(to_orbit["associated_bad_netcdf"],
+            to_orbit["associated_bad_netcdf"] = update_filename_versions(from_orbit["associated_bad_netcdf"],
                                                                          from_wm.config["build_num"],
                                                                          to_wm.config["build_num"],
                                                                          from_wm.config["processing_version"])
-        # Update products - if product doesn't exist on filesystem issue a warning
-        orbit_id = to_orbit["orbit_id"]
-        if "products" in to_orbit:
+        # Update products in DB and move/copy on filesystem
+        if "products" in to_orbit and "l1a" in to_orbit["products"]:
             try:
-                path = update_filename_versions(to_orbit["products"]["l1a"]["uncorr_att_eph_path"],
-                                                from_wm.config["build_num"],
-                                                to_wm.config["build_num"],
-                                                from_wm.config["processing_version"])
-                creation_time = dt.datetime.fromtimestamp(os.path.getmtime(path), tz=dt.timezone.utc)
-                to_orbit["products"]["l1a"] = {"uncorr_att_eph_path": path, "created": creation_time}
+                from_path = from_orbit["products"]["l1a"]["uncorr_att_eph_path"]
+                to_path = update_filename_versions(from_path,
+                                                   from_wm.config["build_num"],
+                                                   to_wm.config["build_num"],
+                                                   from_wm.config["processing_version"])
+                if args.move_not_copy:
+                    from_wm.move(from_path, to_path)
+                else:
+                    from_wm.copy(from_path, to_path)
+                to_orbit["products"]["l1a"]["uncorr_att_eph_path"] = to_path
             except Exception as e:
-                logger.warning(f"Could not find uncorrected att/eph product for orbit id {orbit_id}")
+                logger.warning(f"Issue while migrating L1A uncorrected att/eph product for orbit id {orbit_id}")
+                # TODO: Take out the continue?  Is it better to add the DB entry or fail it entirely?
+                continue
 
         to_orbit = add_migration_entry(to_orbit, args.from_config, args.to_config, from_wm.config["build_num"],
                                        to_wm.config["build_num"])
-
         # Insert or update orbit in DB
-        if to_dm.find_orbit_by_id(orbit_id):
-            # Skip if already exists
-            logger.info(f"- Skipped orbit with id {orbit_id}. Already exists.")
-        else:
-            # to_dm.insert_orbit(to_orbit)
-            logger.info(f"- Inserted orbit in DB with {to_orbit}")
+        # to_dm.insert_orbit(to_orbit)
+        logger.info(f"- Inserted orbit in DB with {to_orbit}")
 
     # Migrate acquisitions
 
