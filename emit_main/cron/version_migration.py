@@ -26,7 +26,7 @@ def remove_keys_from_dict(keys, d):
 
 
 def update_filename_versions(path, from_build, to_build, from_processing_version):
-    path = path.replace(f"_b{from_build}_", f"_b{to_build}_").replace(f"_v{from_processing_version}", "")
+    return path.replace(f"_b{from_build}_", f"_b{to_build}_").replace(f"_v{from_processing_version}", "")
 
 
 def add_migration_entry(metadata, from_config, to_config, from_build, to_build):
@@ -131,11 +131,23 @@ def main():
                                                                          from_wm.config["build_num"],
                                                                          to_wm.config["build_num"],
                                                                          from_wm.config["processing_version"])
+        # Update products - if product doesn't exist on filesystem issue a warning
+        orbit_id = to_orbit["orbit_id"]
+        if "products" in to_orbit:
+            try:
+                path = update_filename_versions(to_orbit["products"]["l1a"]["uncorr_att_eph_path"],
+                                                from_wm.config["build_num"],
+                                                to_wm.config["build_num"],
+                                                from_wm.config["processing_version"])
+                creation_time = dt.datetime.fromtimestamp(os.path.getmtime(path), tz=dt.timezone.utc)
+                to_orbit["products"]["l1a"] = {"uncorr_att_eph_path": path, "created": creation_time}
+            except Exception as e:
+                logger.warning(f"Could not find uncorrected att/eph product for orbit id {orbit_id}")
+
         to_orbit = add_migration_entry(to_orbit, args.from_config, args.to_config, from_wm.config["build_num"],
                                        to_wm.config["build_num"])
 
         # Insert or update orbit in DB
-        orbit_id = to_orbit["orbit_id"]
         if to_dm.find_orbit_by_id(orbit_id):
             # Skip if already exists
             logger.info(f"- Skipped orbit with id {orbit_id}. Already exists.")
