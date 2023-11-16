@@ -118,7 +118,8 @@ def main():
     for from_orbit in from_orbits:
         # Prep metadata for migrated entry
         to_orbit = remove_keys_from_dict(("_id", "created", "bad_status", "associated_bad_sto"), from_orbit)
-        to_orbit["products"].pop("l1b")
+        if "products" in to_orbit and "l1b" in to_orbit["products"]:
+            to_orbit["products"].pop("l1b")
         to_orbit["build_num"] = to_wm.config["build_num"]
         to_orbit["processing_version"] = to_wm.config["processing_version"]
         to_orbit["processing_log"] = []
