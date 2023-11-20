@@ -103,13 +103,22 @@ class L1BCalibrate(SlurmJobTask):
                         if key == instrument_mode:
                             input_files[k] = l1b_config["modes"][key][k]
 
-        # Get nearby darks
+        # Get raw input path
         dm = wm.database_manager
+        build_nums = wm.config["product_versions"]["l1brdn"]["compatible_input_builds"]
+        raw_acq = dm.find_acquisition_by_id_and_product(acq.acquisition_id, "products.l1a.raw.img_path",
+                                                        build_nums=build_nums)
+        raw_img_path = raw_acq["products"]["l1a"]["raw"]["img_path"]
+        if raw_img_path is None:
+            raise RuntimeError(f"Unable to find compatible raw_img_path for acquisition {acq.acquisition_id} using "
+                               f"build numbers {build_nums}.")
+
+        # Get nearby darks
         dark_img_path = ""
         if len(self.dark_path) > 0:
             dark_img_path = self.dark_path
         else:
-            # Find dark image - Get most nearest dark image, but throw error if not within last 800 minutes
+            # Find dark image - Get nearest dark image, but throw error if not within last 800 minutes
             recent_darks = dm.find_acquisitions_touching_date_range(
                 "dark",
                 "stop_time",
@@ -117,7 +126,8 @@ class L1BCalibrate(SlurmJobTask):
                 acq.start_time,
                 instrument_mode=acq.instrument_mode,
                 min_valid_lines=512,
-                sort=-1)
+                sort=-1,
+                build_nums=build_nums)
             future_darks = dm.find_acquisitions_touching_date_range(
                 "dark",
                 "start_time",
@@ -125,7 +135,8 @@ class L1BCalibrate(SlurmJobTask):
                 acq.stop_time + datetime.timedelta(minutes=800),
                 instrument_mode=acq.instrument_mode,
                 min_valid_lines=512,
-                sort=1)
+                sort=1,
+                build_nums=build_nums)
 
             # Trim out any cases where darks were not processed to l1a
             for dark_ind in range(len(future_darks) - 1, -1, -1):
@@ -158,7 +169,7 @@ class L1BCalibrate(SlurmJobTask):
 
         # Add to input files
         input_files["dark_file"] = dark_img_path
-        input_files["raw_file"] = acq.raw_img_path
+        input_files["raw_file"] = raw_img_path
 
         # Get recent ffupdate paths (returns the 350 most recent in descending order)
         ffupdate_acqs = dm.find_nearby_acquisitions_with_ffupdate(acq.start_time, self.use_future_flat, 350)
@@ -178,7 +189,7 @@ class L1BCalibrate(SlurmJobTask):
             "tmp_dir": tmp_dir,
             "level": self.level,
             "instrument_mode": instrument_mode,
-            "raw_img_path": acq.raw_img_path,
+            "raw_img_path": raw_img_path,
             "dark_img_path": dark_img_path,
             "l1b_config": l1b_config,
             "flat_field_update_paths": flat_field_update_paths

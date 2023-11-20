@@ -120,8 +120,11 @@ def main():
                 # tmp_to_path = to_path.replace(f"/{from_wm.config['environment']}/", f"/{to_wm.config['environment']}/")
                 if args.move_not_copy:
                     from_wm.move(from_path, to_path)
+                    logger.info(f"Moved file: {from_path} to {to_path}")
                 else:
                     from_wm.copy(from_path, to_path)
+                    logger.info(f"Copied file: {from_path} to {to_path}")
+
                 to_stream["products"]["l0"]["ccsds_path"] = to_path
             except Exception as e:
                 logger.warning(f"Issue while migrating L0 CCSDS product for stream {stream_name}")
@@ -196,8 +199,10 @@ def main():
                 # tmp_to_path = to_path.replace(f"/{from_wm.config['environment']}/", f"/{to_wm.config['environment']}/")
                 if args.move_not_copy:
                     from_wm.move(from_path, to_path)
+                    logger.info(f"Moved file: {from_path} to {to_path}")
                 else:
                     from_wm.copy(from_path, to_path)
+                    logger.info(f"Copied file: {from_path} to {to_path}")
                 to_orbit["products"]["l1a"]["uncorr_att_eph_path"] = to_path
             except Exception as e:
                 logger.warning(f"Issue while migrating L1A uncorrected att/eph product for orbit id {orbit_id}")
@@ -211,7 +216,62 @@ def main():
         logger.info(f"- Inserted orbit in DB with {to_orbit}")
 
     # Migrate acquisitions
+    from_acqs = from_dm.find_all_acquisitions_touching_date_range("start_time", start_time, stop_time)
+    logger.info(f"Found {len(from_acqs)} acquisitions to migrate!")
+    for from_acq in from_acqs:
+        acquisition_id = from_acq["acquisition_id"]
+        if to_dm.find_acquisition_by_id(acquisition_id):
+            # Skip if already exists
+            logger.info(f"- Skipped acquisition with id {acquisition_id}. Already exists.")
+            continue
 
+        # Prep metadata for migrated entry
+        to_acq = remove_keys_from_dict(("_id", "created"), from_acq)
+        if "products" in to_acq and "l1b" in to_acq["products"]:
+            to_acq["products"].pop("l1b")
+        if "products" in to_acq and "l2a" in to_acq["products"]:
+            to_acq["products"].pop("l2a")
+        if "products" in to_acq and "l2b" in to_acq["products"]:
+            to_acq["products"].pop("l2b")
+        to_acq["build_num"] = to_wm.config["build_num"]
+        to_acq["processing_version"] = to_wm.config["processing_version"]
+        to_acq["processing_log"] = []
+       # Update products in DB and move/copy on filesystem
+        if "products" in to_acq and "l1a" in to_acq["products"]:
+            try:
+                # First remove some of unneeded entries (frames)
+                if "frames" in to_acq["products"]["l1a"]:
+                    to_acq["products"]["l1a"].pop("frames")
+                if "decompressed_frames" in to_acq["products"]["l1a"]:
+                    to_acq["products"]["l1a"].pop("decompressed_frames")
+
+                # TODO: Turn this into a function like this
+                # TODO: to_path = migrate_paths_fs_and_db(from_orbit["products"]["l1a"]["uncorr_att_eph_path"])
+                from_path = from_orbit["products"]["l1a"]["uncorr_att_eph_path"]
+                to_path = update_filename_versions(from_path,
+                                                   from_wm.config["build_num"],
+                                                   to_wm.config["build_num"],
+                                                   from_wm.config["processing_version"])
+                # TODO: Copy in place?  If not, then need to create destination paths before copy or move
+                # Since we are copying to a temporary folder, use tmp path for copy
+                # tmp_to_path = to_path.replace(f"/{from_wm.config['environment']}/", f"/{to_wm.config['environment']}/")
+                if args.move_not_copy:
+                    from_wm.move(from_path, to_path)
+                    logger.info(f"Moved file: {from_path} to {to_path}")
+                else:
+                    from_wm.copy(from_path, to_path)
+                    logger.info(f"Copied file: {from_path} to {to_path}")
+                to_orbit["products"]["l1a"]["uncorr_att_eph_path"] = to_path
+            except Exception as e:
+                logger.warning(f"Issue while migrating L1A uncorrected att/eph product for orbit id {orbit_id}")
+                # TODO: Take out the continue?  Is it better to add the DB entry or fail it entirely?
+                continue
+
+        to_orbit = add_migration_entry(to_orbit, args.from_config, args.to_config, from_wm.config["build_num"],
+                                       to_wm.config["build_num"])
+        # Insert or update orbit in DB
+        # to_dm.insert_orbit(to_orbit)
+        logger.info(f"- Inserted orbit in DB with {to_orbit}")
 
 if __name__ == '__main__':
     main()

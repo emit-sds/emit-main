@@ -75,5 +75,31 @@
       "tag": "emit-sds-0.6.0",
       "conda_env": "emit-check-line-frame"
     }
-  ]
+  ],
+  "product_versions": {
+    "l0": {
+      "processing_version": "01",
+      "compatible_input_builds": ["0200"]
+    },
+    "l1a": {
+      "processing_version": "01",
+      "compatible_input_builds": ["0200"]
+    },
+    "l1brdn": {
+      "processing_version": "02",
+      "compatible_input_builds": ["0200", "0106"]
+    },
+    "l1batt": {
+      "processing_version": "02",
+      "compatible_input_builds": ["0200", "0106"]
+    },
+    "l2a": {
+      "processing_version": "02",
+      "compatible_input_builds": ["0200"]
+    },
+    "l2b": {
+      "processing_version": "02",
+      "compatible_input_builds": ["0200"]
+    }
+  }
 }

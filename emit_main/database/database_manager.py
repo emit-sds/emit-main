@@ -45,6 +45,25 @@ class DatabaseManager:
         acquisitions_coll = self.db.acquisitions
         return acquisitions_coll.find_one({"acquisition_id": acquisition_id, "build_num": self.config["build_num"]})
 
+    def find_acquisition_by_id_and_product(self, acquisition_id, product, build_nums=None):
+        acquisitions_coll = self.db.acquisitions
+        if build_nums is None:
+            build_nums = [self.config["build_num"]]
+        build_nums.reverse()
+
+        result = None
+        for build_num in build_nums:
+            query = {
+                "acquisition_id": acquisition_id,
+                product: {"$exists": 1},
+                "build_num": build_num
+            }
+            result = acquisitions_coll.find_one(query)
+            if result is not None:
+                return result
+        # If we make it this far, then there was no match so just return it
+        return result
+
     def find_acquisitions_by_orbit_id(self, orbit_id, submode, min_valid_lines=0):
         acquisitions_coll = self.db.acquisitions
         query = {
@@ -56,12 +75,30 @@ class DatabaseManager:
         return list(acquisitions_coll.find(query).sort("acquisition_id", 1))
 
     def find_acquisitions_touching_date_range(self, submode, field, start, stop, instrument_mode="cold_img",
-                                              min_valid_lines=0, sort=1):
+                                              min_valid_lines=0, sort=1, build_nums=None):
+        acquisitions_coll = self.db.acquisitions
+        if build_nums is None:
+            build_nums = [self.config["build_num"]]
+        build_nums.reverse()
+
+        results = []
+        for build_num in build_nums:
+            query = {
+                "submode": submode,
+                "instrument_mode": instrument_mode,
+                "num_valid_lines": {"$gte": min_valid_lines},
+                field: {"$gte": start, "$lte": stop},
+                "build_num": build_num
+            }
+            results = list(acquisitions_coll.find(query).sort(field, sort))
+            if len(results) > 0:
+                return results
+        # If we make it this far, then just return the last results which should be a zero length list
+        return results
+
+    def find_all_acquisitions_touching_date_range(self, field, start, stop, sort=1):
         acquisitions_coll = self.db.acquisitions
         query = {
-            "submode": submode,
-            "instrument_mode": instrument_mode,
-            "num_valid_lines": {"$gte": min_valid_lines},
             field: {"$gte": start, "$lte": stop},
             "build_num": self.config["build_num"]
         }
