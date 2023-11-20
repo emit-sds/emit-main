@@ -70,7 +70,8 @@ class L1BCalibrate(SlurmJobTask):
                 if compat_acq is not None:
                     compat_acq.pop("_id")
                     compat_acq["build_num"] = wm.config["build_num"]
-                    compat_acq["processing_version"] = wm.config["processing_version"]
+                    # TODO: Does processing version even belong in the DB like this?  What about different ones for different product levels?
+                    compat_acq["processing_version"] = wm.config["product_versions"]["l1brdn"]["processing_version"]
                     compat_acq["processing_log"] = []
                     compat_acq["products"] = {}
                     dm.insert_acquisition(compat_acq)
