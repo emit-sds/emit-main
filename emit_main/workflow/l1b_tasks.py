@@ -60,6 +60,24 @@ class L1BCalibrate(SlurmJobTask):
         logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        dm = wm.database_manager
+        build_nums = wm.config["product_versions"]["l1brdn"]["compatible_input_builds"]
+        build_nums.reverse()
+        # Insert new acquisition if it doesn't exist
+        if wm.acquisition is None and len(build_nums) > 1:
+            for build_num in build_nums:
+                compat_acq = dm.find_acquisition_by_id(self.acquisition_id, build_num)
+                if compat_acq is not None:
+                    compat_acq.pop("_id")
+                    compat_acq["build_num"] = wm.config["build_num"]
+                    compat_acq["processing_version"] = wm.config["processing_version"]
+                    compat_acq["processing_log"] = []
+                    compat_acq["products"] = {}
+                    dm.insert_acquisition(compat_acq)
+                    wm.print(__name__, f"Inserted acquisition from build {build_num} as {compat_acq}")
+                    wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+                    break
+
         acq = wm.acquisition
         pge = wm.pges["emit-sds-l1b"]
 
@@ -104,8 +122,6 @@ class L1BCalibrate(SlurmJobTask):
                             input_files[k] = l1b_config["modes"][key][k]
 
         # Get raw input path
-        dm = wm.database_manager
-        build_nums = wm.config["product_versions"]["l1brdn"]["compatible_input_builds"]
         raw_acq = dm.find_acquisition_by_id_and_product(acq.acquisition_id, "products.l1a.raw.img_path",
                                                         build_nums=build_nums)
         raw_img_path = raw_acq["products"]["l1a"]["raw"]["img_path"]
