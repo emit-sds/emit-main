@@ -498,9 +498,11 @@ class DatabaseManager:
         set_value = {"$set": metadata}
         data_collections_coll.update_one(query, set_value, upsert=True)
 
-    def find_orbit_by_id(self, orbit_id):
+    def find_orbit_by_id(self, orbit_id, build_num=None):
+        if build_num is None:
+            build_num = self.config["build_num"]
         orbits_coll = self.db.orbits
-        return orbits_coll.find_one({"orbit_id": orbit_id, "build_num": self.config["build_num"]})
+        return orbits_coll.find_one({"orbit_id": orbit_id, "build_num": build_num})
 
     def find_orbits_touching_date_range(self, field, start, stop, sort=1):
         orbits_coll = self.db.orbits

@@ -153,10 +153,7 @@ class Acquisition:
         }
         paths = {}
         for level, prod_map in product_map.items():
-            if level == "l1b":
-                processing_version = self.config["product_versions"]["l1brdn"]["processing_version"]
-            else:
-                processing_version =  self.config["product_versions"][level]["processing_version"]
+            processing_version =  self.config["product_versions"][level]["processing_version"]
             level_data_dir = os.path.join(self.acquisition_id_dir, level)
             self.__dict__.update({level + "_data_dir": level_data_dir})
             self.dirs.append(level_data_dir)

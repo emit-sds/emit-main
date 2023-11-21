@@ -61,7 +61,7 @@ class L1BCalibrate(SlurmJobTask):
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         dm = wm.database_manager
-        build_nums = wm.config["product_versions"]["l1brdn"]["compatible_input_builds"]
+        build_nums = wm.config["product_versions"]["l1b"]["compatible_input_builds"]
         build_nums.reverse()
         # Insert new acquisition if it doesn't exist
         if wm.acquisition is None and len(build_nums) > 1:
@@ -72,9 +72,10 @@ class L1BCalibrate(SlurmJobTask):
                     compat_acq["build_num"] = wm.config["build_num"]
                     # TODO: Does processing version even belong in the DB like this?  What about different ones for different product levels?
                     # TODO: Remove mean solar zenith and azimuth?
-                    compat_acq["processing_version"] = wm.config["product_versions"]["l1brdn"]["processing_version"]
+                    compat_acq["processing_version"] = wm.config["product_versions"]["l1b"]["processing_version"]
                     compat_acq["processing_log"] = []
                     compat_acq["products"] = {}
+                    compat_acq["copied_from"] = build_num
                     if not dm.find_acquisition_by_id(self.acquisition_id):
                         dm.insert_acquisition(compat_acq)
                         wm.print(__name__, f"Inserted acquisition from build {build_num} as {compat_acq}")
@@ -308,6 +309,24 @@ class L1BCalibrate(SlurmJobTask):
 
         # Check if orbit now has complete set of radiance files and update orbit metadata
         wm_orbit = WorkflowManager(config_path=self.config_path, orbit_id=acq.orbit)
+        # Insert new orbit if it doesn't exist
+        if wm_orbit.orbit is None and len(build_nums) > 1:
+            for build_num in build_nums:
+                compat_orbit = dm.find_orbit_by_id(acq.orbit, build_num)
+                if compat_orbit is not None:
+                    compat_orbit.pop("_id")
+                    compat_orbit["build_num"] = wm.config["build_num"]
+                    # TODO: Does processing version even belong in the DB like this?  What about different ones for different product levels?
+                    compat_orbit["processing_version"] = wm.config["product_versions"]["l1b"]["processing_version"]
+                    compat_orbit["processing_log"] = []
+                    compat_orbit["products"] = {}
+                    compat_orbit["copied_from"] = build_num
+                    if not dm.find_orbit_by_id(acq.orbit):
+                        dm.insert_orbit(compat_orbit)
+                        wm.print(__name__, f"Inserted orbit from build {build_num} as {compat_orbit}")
+                        wm_orbit = WorkflowManager(config_path=self.config_path, orbit_id=acq.orbit)
+                        break
+
         orbit = wm_orbit.orbit
         if orbit.has_complete_radiance():
             dm.update_orbit_metadata(orbit.orbit_id, {"radiance_status": "complete"})

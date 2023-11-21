@@ -85,11 +85,7 @@
       "processing_version": "01",
       "compatible_input_builds": ["0200"]
     },
-    "l1brdn": {
-      "processing_version": "02",
-      "compatible_input_builds": ["0200", "0106"]
-    },
-    "l1batt": {
+    "l1b": {
       "processing_version": "02",
       "compatible_input_builds": ["0200", "0106"]
     },
