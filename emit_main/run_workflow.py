@@ -536,7 +536,7 @@ def main():
                                 daac_ingest_queue=args.daac_ingest_queue)
         am_reprocess_tasks = am.get_reprocessing_tasks(start_time=args.start_time, stop_time=args.stop_time,
                                                        from_build=args.from_build, to_build=wm.config["build_num"],
-                                                       product_arg=args.product, date_field=args.date_field,
+                                                       product_arg=args.products, date_field=args.date_field,
                                                        retry_failed=args.retry_failed)
         am_reprocess_tasks_str = "\n".join([str(t) for t in am_reprocess_tasks])
         logger.info(f"Acquisition monitor reprocess tasks to run:\n{am_reprocess_tasks_str}")
