@@ -324,9 +324,7 @@ class L1BCalibrate(SlurmJobTask):
                 compat_orbit["processing_log"] = []
                 products = compat_orbit["products"]
                 compat_acq["products"] = {
-                    "products": {
-                        "l1a": products["l1a"]
-                    }
+                    "l1a": products["l1a"]
                 }
                 compat_orbit["copied_from"] = compat_build_num
                 if not dm.find_orbit_by_id(acq.orbit):
