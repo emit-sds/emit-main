@@ -406,6 +406,7 @@ class L1BGeolocate(SlurmJobTask):
         wm = WorkflowManager(config_path=self.config_path, orbit_id=self.orbit_id)
         orbit = wm.orbit
         dm = wm.database_manager
+        build_nums = wm.config["product_versions"]["l1b"]["compatible_input_builds"]
 
         # Check for missing radiance files before proceeding. Override with --ignore_missing_radiance arg
         if self.ignore_missing_radiance is False and orbit.has_complete_radiance() is False:
@@ -414,14 +415,6 @@ class L1BGeolocate(SlurmJobTask):
 
         # Get acquisitions in orbit (only science with at least 1 valid line, not dark) - radiance and line timestamps
         acquisitions_in_orbit = dm.find_acquisitions_by_orbit_id(orbit.orbit_id, "science", min_valid_lines=2)
-
-        # TODO: Get uncorr att/eph file from compatible builds
-        # uncorr_att_eph_path = dm.find_orbit_by_id_and_product(self.orbit_id, "products.l1a.raw.img_path",
-        #                                                 build_nums=build_nums)
-        # raw_img_path = raw_acq["products"]["l1a"]["raw"]["img_path"]
-        # if raw_img_path is None:
-        #     raise RuntimeError(f"Unable to find compatible raw_img_path for acquisition {acq.acquisition_id} using "
-        #                        f"build numbers {build_nums}.")
 
         # Build input_files dictionary
         input_files = {

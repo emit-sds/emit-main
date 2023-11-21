@@ -307,6 +307,47 @@ class DatabaseManager:
             results = self._remove_results_with_failed_tasks(results, ["emit.L2BFormat", "emit.L2BDeliver"])
         return results
 
+    def find_acquisitions_for_reprocessing(self, start, stop, from_build, to_build, product_arg,
+                                           date_field="start_time", retry_failed=False):
+        acquisitions_coll = self.db.acquisitions
+        # Map product arg to product field in DB
+        # TODO: Finish this for all products
+        if product_arg == "l1bcal":
+            product = "products.l1b.rdn.img_path"
+        # Query for acquisitions in both build numbers and find the difference
+        from_query = {
+            date_field: {"$gte": start, "$lte": stop},
+            product: {"$exists": 1},
+            "build_num": from_build
+        }
+        from_results = list(acquisitions_coll.find(from_query))
+        from_acqs = []
+        if len(from_results) > 0:
+            from_acqs = [acq["acquisition_id"] for acq in from_results]
+        to_query = {
+            date_field: {"$gte": start, "$lte": stop},
+            product: {"$exists": 1},
+            "build_num": to_build
+        }
+        to_results = list(acquisitions_coll.find(to_query))
+        # Remove results in destination build that have already failed
+        if not retry_failed:
+            tasks = []
+            if "l1b.rdn" in product:
+                tasks += ["emit.L1BCalibrate"]
+            # TODO: Finish adding tasks as we add more reprocessing
+            to_results = self._remove_results_with_failed_tasks(to_results, tasks)
+        to_acqs = []
+        if len(to_results) > 0:
+            to_acqs = [acq["acquisition_id"] for acq in to_results]
+        reproc_acqs = set(from_acqs) - set(to_acqs)
+        # Now filter the from_build entries down to the ones that are missing
+        results = []
+        for r in from_results:
+            if r["acquisition_id"] in reproc_acqs:
+                results.append(r)
+        return results
+
     def insert_acquisition(self, metadata):
         if self.find_acquisition_by_id(metadata["acquisition_id"]) is None:
             utc_now = datetime.datetime.now(tz=datetime.timezone.utc)

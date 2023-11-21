@@ -42,7 +42,7 @@ def parse_args():
                        "l2amask", "l2aformat", "l2adaac", "l2babun", "l2bformat", "l2bdaac", "l3unmix", "daacscenes",
                        "daacaddl", "recon"]
     monitor_choices = ["ingest", "frames", "edp", "cal", "bad", "geo", "l2", "l2b", "l3", "email", "daacscenes", "dl0",
-                       "dl1a", "dl1brdn", "dl1batt", "dl2a", "dl2b", "reconresp"]
+                       "dl1a", "dl1brdn", "dl1batt", "dl2a", "dl2b", "reconresp", "reprocess"]
     parser = argparse.ArgumentParser(
         description="Description: This is the top-level run script for executing the various EMIT SDS workflow and "
                     "monitor tasks.\n"
@@ -98,6 +98,8 @@ def parse_args():
                         help="Ignore missing radiance files in an orbit when doing geolocation")
     parser.add_argument("--daac_ingest_queue", default="forward",
                         help="Options are 'forward' or 'backward' depending on which DAAC ingestion queue to use.")
+    parser.add_argument("--from_build",
+                        help="The previous build number to use as a base to reprocess from.")
     parser.add_argument("--dry_run", action="store_true",
                         help="Just return a list of paths to process from the ingest folder, but take no action")
     parser.add_argument("--test_mode", action="store_true",
@@ -524,6 +526,21 @@ def main():
         am_dl2b_tasks_str = "\n".join([str(t) for t in am_dl2b_tasks])
         logger.info(f"Acquisition monitor deliver l2b abundance tasks to run:\n{am_dl2b_tasks_str}")
         tasks += am_dl2b_tasks
+
+    # Get tasks for reprocess monitor
+    if args.monitor and args.monitor == "reprocess":
+        if not args.products or "," in args.product:
+            print("You must specify one product argument for the reprocessing monitor")
+            sys.exit(1)
+        am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
+                                daac_ingest_queue=args.daac_ingest_queue)
+        am_reprocess_tasks = am.get_reprocessing_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                                       from_build=args.from_build, to_build=wm.config["build_num"],
+                                                       product_arg=args.product, date_field=args.date_field,
+                                                       retry_failed=args.retry_failed)
+        am_reprocess_tasks_str = "\n".join([str(t) for t in am_reprocess_tasks])
+        logger.info(f"Acquisition monitor reprocess tasks to run:\n{am_reprocess_tasks_str}")
+        tasks += am_reprocess_tasks
 
     # Get tasks from products args
     if args.products:

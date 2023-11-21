@@ -212,3 +212,30 @@ class AcquisitionMonitor:
                                     daac_ingest_queue=self.daac_ingest_queue))
 
         return tasks
+
+    def get_reprocessing_tasks(self, start_time, stop_time, from_build, to_build, product_arg, date_field="start_time",
+                               retry_failed=False):
+        tasks = []
+        # Find acquisitions within time range that are missing DB entries
+        dm = self.wm.database_manager
+        acquisitions = dm.find_acquisitions_for_reprocessing(start=start_time, stop=stop_time, from_build=from_build,
+                                                             to_build=to_build, product_arg=product_arg,
+                                                             date_field=date_field, retry_failed=retry_failed)
+
+        # If no results, just return empty list
+        if len(acquisitions) == 0:
+            logger.info(f"Did not find any acquisitions with {date_field} between {start_time} and {stop_time} needing "
+                        f"reprocessing from build {from_build} to build {to_build} for product {product_arg}.")
+            return tasks
+
+        for acq in acquisitions:
+            # Map tasks based on product arg
+            # TODO: Add other product levels
+            if product_arg == "l1bcal":
+                logger.info(f"Creating L1BCalibrate task for acquisition {acq['acquisition_id']}")
+                tasks.append(L1BCalibrate(config_path=self.config_path,
+                                          acquisition_id=acq["acquisition_id"],
+                                          level=self.level,
+                                          partition=self.partition))
+
+        return tasks
