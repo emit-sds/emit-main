@@ -71,6 +71,7 @@ class L1BCalibrate(SlurmJobTask):
                     compat_acq.pop("_id")
                     compat_acq["build_num"] = wm.config["build_num"]
                     # TODO: Does processing version even belong in the DB like this?  What about different ones for different product levels?
+                    # TODO: Remove mean solar zenith and azimuth?
                     compat_acq["processing_version"] = wm.config["product_versions"]["l1brdn"]["processing_version"]
                     compat_acq["processing_log"] = []
                     compat_acq["products"] = {}
@@ -210,7 +211,8 @@ class L1BCalibrate(SlurmJobTask):
             "raw_img_path": raw_img_path,
             "dark_img_path": dark_img_path,
             "l1b_config": l1b_config,
-            "flat_field_update_paths": flat_field_update_paths
+            "flat_field_update_paths": flat_field_update_paths,
+            "rdn_img_path": tmp_rdn_img_path
         }
         with open(tmp_runconfig_path, "w") as f:
             f.write(json.dumps(runconfig, indent=4))
