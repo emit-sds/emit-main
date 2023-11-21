@@ -308,7 +308,7 @@ class DatabaseManager:
         return results
 
     def find_acquisitions_for_reprocessing(self, start, stop, from_build, to_build, product_arg,
-                                           date_field="start_time", retry_failed=False):
+                                           date_field="last_modified", retry_failed=False):
         acquisitions_coll = self.db.acquisitions
         # Map product arg to product field in DB
         # TODO: Finish this for all products

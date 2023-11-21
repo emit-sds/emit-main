@@ -213,8 +213,8 @@ class AcquisitionMonitor:
 
         return tasks
 
-    def get_reprocessing_tasks(self, start_time, stop_time, from_build, to_build, product_arg, date_field="start_time",
-                               retry_failed=False):
+    def get_reprocessing_tasks(self, start_time, stop_time, from_build, to_build, product_arg,
+                               date_field="last_modified", retry_failed=False):
         tasks = []
         # Find acquisitions within time range that are missing DB entries
         dm = self.wm.database_manager
