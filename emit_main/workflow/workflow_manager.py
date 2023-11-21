@@ -259,3 +259,9 @@ class WorkflowManager:
     def print(self, module, msg, level="INFO"):
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         print(f"{timestamp} {level.upper()} [{module.split('.')[-1]}]: {msg}")
+
+    def remove_keys_from_dict(self, keys, d):
+        for k in keys:
+            if k in d:
+                d.pop(k)
+        return d

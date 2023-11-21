@@ -504,6 +504,25 @@ class DatabaseManager:
         orbits_coll = self.db.orbits
         return orbits_coll.find_one({"orbit_id": orbit_id, "build_num": build_num})
 
+    def find_orbit_by_id_and_product(self, orbit_id, product, build_nums=None):
+        orbits_coll = self.db.orbits
+        if build_nums is None:
+            build_nums = [self.config["build_num"]]
+        build_nums.reverse()
+
+        result = None
+        for build_num in build_nums:
+            query = {
+                "orbit_id": orbit_id,
+                product: {"$exists": 1},
+                "build_num": build_num
+            }
+            result = orbits_coll.find_one(query)
+            if result is not None:
+                return result
+        # If we make it this far, then there was no match so just return it
+        return result
+
     def find_orbits_touching_date_range(self, field, start, stop, sort=1):
         orbits_coll = self.db.orbits
         query = {

@@ -62,25 +62,32 @@ class L1BCalibrate(SlurmJobTask):
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         dm = wm.database_manager
         build_nums = wm.config["product_versions"]["l1b"]["compatible_input_builds"]
-        build_nums.reverse()
         # Insert new acquisition if it doesn't exist
         if wm.acquisition is None and len(build_nums) > 1:
-            for build_num in build_nums:
-                compat_acq = dm.find_acquisition_by_id(self.acquisition_id, build_num)
-                if compat_acq is not None:
-                    compat_acq.pop("_id")
-                    compat_acq["build_num"] = wm.config["build_num"]
-                    # TODO: Does processing version even belong in the DB like this?  What about different ones for different product levels?
-                    # TODO: Remove mean solar zenith and azimuth?
-                    compat_acq["processing_version"] = wm.config["product_versions"]["l1b"]["processing_version"]
-                    compat_acq["processing_log"] = []
-                    compat_acq["products"] = {}
-                    compat_acq["copied_from"] = build_num
-                    if not dm.find_acquisition_by_id(self.acquisition_id):
-                        dm.insert_acquisition(compat_acq)
-                        wm.print(__name__, f"Inserted acquisition from build {build_num} as {compat_acq}")
-                        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
-                        break
+            compat_acq = dm.find_acquisition_by_id_and_product(self.acquisition_id, "products.l1a.raw.img_path",
+                                                               build_nums=build_nums)
+            if compat_acq:
+                compat_acq = wm.remove_keys_from_dict("_id", "gring", "mean_solar_azimuth", "mean_solar_zenith",
+                                                      "cloud_fraction", compat_acq)
+                compat_build_num = compat_acq["build_num"]
+                compat_acq["build_num"] = wm.config["build_num"]
+                # TODO: Remove processing_version everywhere
+                compat_acq["product_versions"] = wm.config["product_versions"]
+                compat_acq["processing_log"] = []
+                products = compat_acq["products"]
+                compat_acq["products"] = {
+                    "products": {
+                        "l1a": products["l1a"]
+                    }
+                }
+                compat_acq["copied_from"] = compat_build_num
+                if not dm.find_acquisition_by_id(self.acquisition_id):
+                    dm.insert_acquisition(compat_acq)
+                    wm.print(__name__, f"Inserted acquisition from build {compat_build_num} as {compat_acq}")
+                    wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+            else:
+                raise RuntimeError(f"Unable to find compatible acquisition for {self.acquisition_id} using build_nums "
+                                   f"{build_nums}")
 
         acq = wm.acquisition
         pge = wm.pges["emit-sds-l1b"]
@@ -126,12 +133,7 @@ class L1BCalibrate(SlurmJobTask):
                             input_files[k] = l1b_config["modes"][key][k]
 
         # Get raw input path
-        raw_acq = dm.find_acquisition_by_id_and_product(acq.acquisition_id, "products.l1a.raw.img_path",
-                                                        build_nums=build_nums)
-        raw_img_path = raw_acq["products"]["l1a"]["raw"]["img_path"]
-        if raw_img_path is None:
-            raise RuntimeError(f"Unable to find compatible raw_img_path for acquisition {acq.acquisition_id} using "
-                               f"build numbers {build_nums}.")
+        raw_img_path = acq["products"]["l1a"]["raw"]["img_path"]
 
         # Get nearby darks
         dark_img_path = ""
@@ -311,21 +313,28 @@ class L1BCalibrate(SlurmJobTask):
         wm_orbit = WorkflowManager(config_path=self.config_path, orbit_id=acq.orbit)
         # Insert new orbit if it doesn't exist
         if wm_orbit.orbit is None and len(build_nums) > 1:
-            for build_num in build_nums:
-                compat_orbit = dm.find_orbit_by_id(acq.orbit, build_num)
-                if compat_orbit is not None:
-                    compat_orbit.pop("_id")
-                    compat_orbit["build_num"] = wm.config["build_num"]
-                    # TODO: Does processing version even belong in the DB like this?  What about different ones for different product levels?
-                    compat_orbit["processing_version"] = wm.config["product_versions"]["l1b"]["processing_version"]
-                    compat_orbit["processing_log"] = []
-                    compat_orbit["products"] = {}
-                    compat_orbit["copied_from"] = build_num
-                    if not dm.find_orbit_by_id(acq.orbit):
-                        dm.insert_orbit(compat_orbit)
-                        wm.print(__name__, f"Inserted orbit from build {build_num} as {compat_orbit}")
-                        wm_orbit = WorkflowManager(config_path=self.config_path, orbit_id=acq.orbit)
-                        break
+            compat_orbit = dm.find_orbit_by_id_and_product(acq.orbit, "products.l1a.uncorr_att_eph_path",
+                                                           build_nums=build_nums)
+            if compat_orbit:
+                compat_orbit = wm.remove_keys_from_dict("_id", "radiance_status",  compat_orbit)
+                compat_build_num = compat_orbit["build_num"]
+                compat_orbit["build_num"] = wm.config["build_num"]
+                # TODO: Remove processing version everywhere
+                compat_orbit["product_versions"] = wm.config["product_versions"]
+                compat_orbit["processing_log"] = []
+                products = compat_orbit["products"]
+                compat_acq["products"] = {
+                    "products": {
+                        "l1a": products["l1a"]
+                    }
+                }
+                compat_orbit["copied_from"] = compat_build_num
+                if not dm.find_orbit_by_id(acq.orbit):
+                    dm.insert_orbit(compat_orbit)
+                    wm.print(__name__, f"Inserted orbit from build {compat_build_num} as {compat_orbit}")
+                    wm_orbit = WorkflowManager(config_path=self.config_path, orbit_id=acq.orbit)
+            else:
+                raise RuntimeError(f"Unable to find compatible orbit for {acq.orbit} using build_nums {build_nums}")
 
         orbit = wm_orbit.orbit
         if orbit.has_complete_radiance():
@@ -409,6 +418,14 @@ class L1BGeolocate(SlurmJobTask):
 
         # Get acquisitions in orbit (only science with at least 1 valid line, not dark) - radiance and line timestamps
         acquisitions_in_orbit = dm.find_acquisitions_by_orbit_id(orbit.orbit_id, "science", min_valid_lines=2)
+
+        # TODO: Get uncorr att/eph file from compatible builds
+        # uncorr_att_eph_path = dm.find_orbit_by_id_and_product(self.orbit_id, "products.l1a.raw.img_path",
+        #                                                 build_nums=build_nums)
+        # raw_img_path = raw_acq["products"]["l1a"]["raw"]["img_path"]
+        # if raw_img_path is None:
+        #     raise RuntimeError(f"Unable to find compatible raw_img_path for acquisition {acq.acquisition_id} using "
+        #                        f"build numbers {build_nums}.")
 
         # Build input_files dictionary
         input_files = {
