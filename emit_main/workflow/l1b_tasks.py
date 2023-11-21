@@ -67,8 +67,8 @@ class L1BCalibrate(SlurmJobTask):
             compat_acq = dm.find_acquisition_by_id_and_product(self.acquisition_id, "products.l1a.raw.img_path",
                                                                build_nums=build_nums)
             if compat_acq:
-                compat_acq = wm.remove_keys_from_dict("_id", "gring", "mean_solar_azimuth", "mean_solar_zenith",
-                                                      "cloud_fraction", compat_acq)
+                compat_acq = wm.remove_keys_from_dict(["_id", "gring", "mean_solar_azimuth", "mean_solar_zenith",
+                                                      "cloud_fraction"], compat_acq)
                 compat_build_num = compat_acq["build_num"]
                 compat_acq["build_num"] = wm.config["build_num"]
                 # TODO: Remove processing_version everywhere
@@ -133,7 +133,7 @@ class L1BCalibrate(SlurmJobTask):
                             input_files[k] = l1b_config["modes"][key][k]
 
         # Get raw input path
-        raw_img_path = acq["products"]["l1a"]["raw"]["img_path"]
+        raw_img_path = acq.products["l1a"]["raw"]["img_path"]
 
         # Get nearby darks
         dark_img_path = ""
@@ -316,7 +316,7 @@ class L1BCalibrate(SlurmJobTask):
             compat_orbit = dm.find_orbit_by_id_and_product(acq.orbit, "products.l1a.uncorr_att_eph_path",
                                                            build_nums=build_nums)
             if compat_orbit:
-                compat_orbit = wm.remove_keys_from_dict("_id", "radiance_status",  compat_orbit)
+                compat_orbit = wm.remove_keys_from_dict(["_id", "radiance_status"],  compat_orbit)
                 compat_build_num = compat_orbit["build_num"]
                 compat_orbit["build_num"] = wm.config["build_num"]
                 # TODO: Remove processing version everywhere
