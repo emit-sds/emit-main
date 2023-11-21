@@ -74,10 +74,11 @@ class L1BCalibrate(SlurmJobTask):
                     compat_acq["processing_version"] = wm.config["product_versions"]["l1brdn"]["processing_version"]
                     compat_acq["processing_log"] = []
                     compat_acq["products"] = {}
-                    dm.insert_acquisition(compat_acq)
-                    wm.print(__name__, f"Inserted acquisition from build {build_num} as {compat_acq}")
-                    wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
-                    break
+                    if not dm.find_acquisition_by_id(self.acquisition_id):
+                        dm.insert_acquisition(compat_acq)
+                        wm.print(__name__, f"Inserted acquisition from build {build_num} as {compat_acq}")
+                        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+                        break
 
         acq = wm.acquisition
         pge = wm.pges["emit-sds-l1b"]

@@ -100,6 +100,10 @@
     "l2b": {
       "processing_version": "02",
       "compatible_input_builds": ["0200"]
+    },
+    "l3": {
+      "processing_version": "02",
+      "compatible_input_builds": ["0200"]
     }
   }
 }
