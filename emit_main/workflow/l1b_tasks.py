@@ -76,9 +76,7 @@ class L1BCalibrate(SlurmJobTask):
                 compat_acq["processing_log"] = []
                 products = compat_acq["products"]
                 compat_acq["products"] = {
-                    "products": {
-                        "l1a": products["l1a"]
-                    }
+                    "l1a": products["l1a"]
                 }
                 compat_acq["copied_from"] = compat_build_num
                 if not dm.find_acquisition_by_id(self.acquisition_id):
@@ -323,7 +321,7 @@ class L1BCalibrate(SlurmJobTask):
                 compat_orbit["product_versions"] = wm.config["product_versions"]
                 compat_orbit["processing_log"] = []
                 products = compat_orbit["products"]
-                compat_acq["products"] = {
+                compat_orbit["products"] = {
                     "l1a": products["l1a"]
                 }
                 compat_orbit["copied_from"] = compat_build_num
