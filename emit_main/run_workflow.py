@@ -529,8 +529,8 @@ def main():
 
     # Get tasks for reprocess monitor
     if args.monitor and args.monitor == "reprocess":
-        if not args.products or "," in args.product:
-            print("You must specify one product argument for the reprocessing monitor")
+        if not args.products or "," in args.products:
+            print("You must specify one and only one product argument for the reprocessing monitor")
             sys.exit(1)
         am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
                                 daac_ingest_queue=args.daac_ingest_queue)
