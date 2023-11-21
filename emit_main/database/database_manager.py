@@ -320,7 +320,7 @@ class DatabaseManager:
             product: {"$exists": 1},
             "build_num": from_build
         }
-        from_results = list(acquisitions_coll.find(from_query))
+        from_results = list(acquisitions_coll.find(from_query).sort("start_time", 1))
         from_acqs = []
         if len(from_results) > 0:
             from_acqs = [acq["acquisition_id"] for acq in from_results]
