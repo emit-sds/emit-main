@@ -542,8 +542,8 @@ def main():
         logger.info(f"Acquisition monitor reprocess tasks to run:\n{am_reprocess_tasks_str}")
         tasks += am_reprocess_tasks
 
-    # Get tasks from products args
-    if args.products:
+    # Get tasks from products args (only if monitor is not set)
+    if args.products and not args.monitor:
         prod_tasks = get_tasks_from_product_args(args)
         prod_tasks_str = "\n".join([str(t) for t in prod_tasks])
         logger.info(f"Product tasks to run:\n{prod_tasks_str}")

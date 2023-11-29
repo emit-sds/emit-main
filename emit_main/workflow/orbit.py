@@ -139,10 +139,11 @@ class Orbit:
         # Check to see if all the radiance files for this orbit have been generated
         from emit_main.workflow.workflow_manager import WorkflowManager
         wm = WorkflowManager(config_path=self.config_path)
+        build_nums = wm.config["product_versions"]["l1b"]["compatible_input_builds"]
 
         # First find all the DCIDs in an orbit
         dm = DatabaseManager(self.config_path)
-        data_collections = dm.find_data_collections_by_orbit_id(self.orbit_id)
+        data_collections = dm.find_data_collections_by_orbit_id(self.orbit_id, build_nums=build_nums)
 
         if len(data_collections) == 0:
             wm.print(__name__, f"Did not find any data collections associated with orbit {self.orbit_id}")
