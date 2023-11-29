@@ -261,7 +261,7 @@ class L1BCalibrate(SlurmJobTask):
         hdr["emit documentation version"] = doc_version
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rdn_img_path), tz=datetime.timezone.utc)
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
-        hdr["emit data product version"] = wm.config["processing_version"]
+        hdr["emit data product version"] = wm.config["product_versions"]["l1b"]["processing_version"]
         hdr["emit acquisition daynight"] = acq.daynight
         if os.path.exists(tmp_ffmedian_img_path):
             hdr["emit flat field median-based destriping"] = 1
@@ -406,7 +406,6 @@ class L1BGeolocate(SlurmJobTask):
         wm = WorkflowManager(config_path=self.config_path, orbit_id=self.orbit_id)
         orbit = wm.orbit
         dm = wm.database_manager
-        build_nums = wm.config["product_versions"]["l1b"]["compatible_input_builds"]
 
         # Check for missing radiance files before proceeding. Override with --ignore_missing_radiance arg
         if self.ignore_missing_radiance is False and orbit.has_complete_radiance() is False:
@@ -418,7 +417,7 @@ class L1BGeolocate(SlurmJobTask):
 
         # Build input_files dictionary
         input_files = {
-            "attitude_ephemeris_file": orbit.uncorr_att_eph_path,
+            "attitude_ephemeris_file": orbit.products["l1a"]["uncorr_att_eph_path"],
             "timestamp_radiance_pairs": []
         }
         for acq in acquisitions_in_orbit:
@@ -551,9 +550,9 @@ class L1BGeolocate(SlurmJobTask):
             # Update acquisition header files and DB
             # Update hdr files
             acq_input_files = {
-                "attitude_ephemeris_file": orbit.uncorr_att_eph_path,
-                "timestamp_file": acq.raw_img_path.replace(".img", "_line_timestamps.txt"),
-                "radiance_file": acq.rdn_img_path
+                "attitude_ephemeris_file": orbit.products["l1a"]["uncorr_att_eph_path"],
+                "timestamp_file": acq.products["l1a"]["raw_line_timestamps"]["txt_path"],
+                "radiance_file": acq.products["l1b"]["rdn"]["img_path"]
             }
             input_files_arr = ["{}={}".format(key, value) for key, value in acq_input_files.items()]
             doc_version = "EMIT SDS L1B JPL-D 104187, Initial"
@@ -580,7 +579,7 @@ class L1BGeolocate(SlurmJobTask):
                     creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.obs_img_path),
                                                                     tz=datetime.timezone.utc)
                 hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
-                hdr["emit data product version"] = wm.config["processing_version"]
+                hdr["emit data product version"] = wm.config["product_versions"]["l1b"]["processing_version"]
                 hdr["emit acquisition daynight"] = acq.daynight
 
                 envi.write_envi_header(hdr_path, hdr)
@@ -608,9 +607,10 @@ class L1BGeolocate(SlurmJobTask):
         tmp_corr_att_eph_path = glob.glob(os.path.join(tmp_output_dir, "*l1b_att*nc"))[0]
 
         # Update attitude/ephemeris netcdf metadata before copy
+        l1b_processing_version = wm.config["product_versions"]["l1b"]["processing_version"]
         ae_nc = netCDF4.Dataset(tmp_corr_att_eph_path, 'r+')
         daac_converter.makeGlobalAttrBase(ae_nc)
-        ae_nc.title = f"EMIT L1B Corrected Spacecraft Attitude and Ephemeris V0{wm.config['processing_version']}"
+        ae_nc.title = f"EMIT L1B Corrected Spacecraft Attitude and Ephemeris V0{l1b_processing_version}"
         ae_nc.summary = ae_nc.summary + \
             f"\\n\\nThis collection contains L1B Corrected Spacecraft Attitude and Ephemeris (ATT). \
 ATT contains the uncorrected Broadcast Ancillary Data (BAD) ephemeris and attitude quaternions \
@@ -619,9 +619,9 @@ This product is generated at the orbit level."
         ae_nc.time_coverage_start = orbit.start_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         ae_nc.time_coverage_end = orbit.stop_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         ae_nc.software_build_version = wm.config["extended_build_num"]
-        ae_nc.product_version = "V0" + wm.config["processing_version"]
+        ae_nc.product_version = "V0" + l1b_processing_version
         run_command = "PGE Run Command: {" + " ".join(cmd) + "}"
-        nc_input_files = "PGE Input Files: {" + orbit.uncorr_att_eph_path + "}"
+        nc_input_files = "PGE Input Files: {" + orbit.products["l1a"]["uncorr_att_eph_path"] + "}"
         ae_nc.history = run_command + ", " + nc_input_files
 
         ae_nc.sync()
@@ -709,8 +709,9 @@ class L1BRdnFormat(SlurmJobTask):
         tmp_daac_rdn_nc_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l1b_rdn.nc")
         tmp_daac_obs_nc_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l1b_obs.nc")
         tmp_log_path = os.path.join(self.local_tmp_dir, "output_conversion_pge.log")
+        l1b_processing_version = wm.config["product_versions"]["l1b"]["processing_version"]
         cmd = ["python", output_generator_exe, tmp_daac_rdn_nc_path, tmp_daac_obs_nc_path, acq.rdn_img_path, acq.obs_img_path, acq.loc_img_path,
-               acq.glt_img_path, "V0" + str(wm.config["processing_version"]), wm.config["extended_build_num"],
+               acq.glt_img_path, "V0" + str(l1b_processing_version), wm.config["extended_build_num"],
                "--log_file", tmp_log_path]
         # If we have the flat field update median file, then add it to NetCDF
         if os.path.exists(acq.ffmedian_img_path):
@@ -1044,7 +1045,8 @@ class L1BAttDeliver(SlurmJobTask):
         nc_ds.close()
 
         # Create local/tmp daac names and paths
-        collection_version = f"0{wm.config['processing_version']}"
+        l1b_processing_version = wm.config["product_versions"]["l1b"]["processing_version"]
+        collection_version = f"0{l1b_processing_version}"
         start_time_str = orbit.start_time.strftime("%Y%m%dT%H%M%S")
         granule_ur = f"EMIT_L1B_ATT_{collection_version}_{start_time_str}_{orbit.orbit_id}"
         daac_nc_name = f"{granule_ur}.nc"
