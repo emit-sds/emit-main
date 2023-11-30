@@ -36,6 +36,7 @@ class L1BCalibrate(SlurmJobTask):
     acquisition_id = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
+    reproc_from_build = luigi.BoolParameter(default="")
     dark_path = luigi.Parameter(default="")
     use_future_flat = luigi.BoolParameter(default=False)
 
@@ -61,9 +62,12 @@ class L1BCalibrate(SlurmJobTask):
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         dm = wm.database_manager
-        build_nums = wm.config["product_versions"]["l1b"]["compatible_input_builds"]
+        # build_nums = wm.config["product_versions"]["l1b"]["compatible_input_builds"]
+        build_nums = None
+        if len(self.reproc_from_build) > 0:
+            build_nums = self.reproc_from_build.split(",")
         # Insert new acquisition if it doesn't exist
-        if wm.acquisition is None and len(build_nums) > 1:
+        if wm.acquisition is None and build_nums is not None:
             compat_acq = dm.find_acquisition_by_id_and_product(self.acquisition_id, "products.l1a.raw.img_path",
                                                                build_nums=build_nums)
             if compat_acq:
@@ -71,7 +75,6 @@ class L1BCalibrate(SlurmJobTask):
                                                        "mean_solar_zenith", "cloud_fraction"], compat_acq)
                 compat_build_num = compat_acq["build_num"]
                 compat_acq["build_num"] = wm.config["build_num"]
-                # TODO: Remove processing_version everywhere
                 compat_acq["product_versions"] = wm.config["product_versions"]
                 compat_acq["processing_log"] = []
                 products = compat_acq["products"]
@@ -84,8 +87,8 @@ class L1BCalibrate(SlurmJobTask):
                     wm.print(__name__, f"Inserted acquisition from build {compat_build_num} as {compat_acq}")
                     wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
             else:
-                raise RuntimeError(f"Unable to find compatible acquisition for {self.acquisition_id} using build_nums "
-                                   f"{build_nums}")
+                raise RuntimeError(f"Unable to find acquisition {self.acquisition_id} for reprocessing  using "
+                                   f"build_nums {build_nums}")
 
         acq = wm.acquisition
         pge = wm.pges["emit-sds-l1b"]
@@ -261,7 +264,7 @@ class L1BCalibrate(SlurmJobTask):
         hdr["emit documentation version"] = doc_version
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rdn_img_path), tz=datetime.timezone.utc)
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
-        hdr["emit data product version"] = wm.config["product_versions"]["l1b"]["processing_version"]
+        hdr["emit data product version"] = wm.config["product_versions"]["l1b"]
         hdr["emit acquisition daynight"] = acq.daynight
         if os.path.exists(tmp_ffmedian_img_path):
             hdr["emit flat field median-based destriping"] = 1
@@ -317,7 +320,6 @@ class L1BCalibrate(SlurmJobTask):
                 compat_orbit = wm.remove_keys_from_dict(["_id", "processing_version", "radiance_status"],  compat_orbit)
                 compat_build_num = compat_orbit["build_num"]
                 compat_orbit["build_num"] = wm.config["build_num"]
-                # TODO: Remove processing version everywhere
                 compat_orbit["product_versions"] = wm.config["product_versions"]
                 compat_orbit["processing_log"] = []
                 products = compat_orbit["products"]
@@ -333,7 +335,7 @@ class L1BCalibrate(SlurmJobTask):
                 raise RuntimeError(f"Unable to find compatible orbit for {acq.orbit} using build_nums {build_nums}")
 
         orbit = wm_orbit.orbit
-        if orbit.has_complete_radiance():
+        if orbit.has_complete_radiance(build_nums=build_nums):
             dm.update_orbit_metadata(orbit.orbit_id, {"radiance_status": "complete"})
         else:
             dm.update_orbit_metadata(orbit.orbit_id, {"radiance_status": "incomplete"})
@@ -579,7 +581,7 @@ class L1BGeolocate(SlurmJobTask):
                     creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.obs_img_path),
                                                                     tz=datetime.timezone.utc)
                 hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
-                hdr["emit data product version"] = wm.config["product_versions"]["l1b"]["processing_version"]
+                hdr["emit data product version"] = wm.config["product_versions"]["l1b"]
                 hdr["emit acquisition daynight"] = acq.daynight
 
                 envi.write_envi_header(hdr_path, hdr)
@@ -607,7 +609,7 @@ class L1BGeolocate(SlurmJobTask):
         tmp_corr_att_eph_path = glob.glob(os.path.join(tmp_output_dir, "*l1b_att*nc"))[0]
 
         # Update attitude/ephemeris netcdf metadata before copy
-        l1b_processing_version = wm.config["product_versions"]["l1b"]["processing_version"]
+        l1b_processing_version = wm.config["product_versions"]["l1b"]
         ae_nc = netCDF4.Dataset(tmp_corr_att_eph_path, 'r+')
         daac_converter.makeGlobalAttrBase(ae_nc)
         ae_nc.title = f"EMIT L1B Corrected Spacecraft Attitude and Ephemeris V0{l1b_processing_version}"

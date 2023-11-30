@@ -1,4 +1,12 @@
 {
+  "product_versions": {
+    "l0": "01",
+    "l1a": "01",
+    "l1b": "02",
+    "l2a": "02",
+    "l2b": "02",
+    "l3": "02"
+  },
   "repositories": [
     {
       "url": "git@github.com:emit-sds/emit-main.git",
@@ -75,31 +83,5 @@
       "tag": "emit-sds-0.6.0",
       "conda_env": "emit-check-line-frame"
     }
-  ],
-  "product_versions": {
-    "l0": {
-      "processing_version": "01",
-      "compatible_input_builds": ["0200"]
-    },
-    "l1a": {
-      "processing_version": "01",
-      "compatible_input_builds": ["0200"]
-    },
-    "l1b": {
-      "processing_version": "02",
-      "compatible_input_builds": ["0200", "0106"]
-    },
-    "l2a": {
-      "processing_version": "02",
-      "compatible_input_builds": ["0200"]
-    },
-    "l2b": {
-      "processing_version": "02",
-      "compatible_input_builds": ["0200"]
-    },
-    "l3": {
-      "processing_version": "02",
-      "compatible_input_builds": ["0200"]
-    }
-  }
+  ]
 }

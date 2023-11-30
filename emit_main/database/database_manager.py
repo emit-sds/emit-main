@@ -41,11 +41,9 @@ class DatabaseManager:
                 non_failed_results.append(r)
         return non_failed_results
 
-    def find_acquisition_by_id(self, acquisition_id, build_num=None):
-        if build_num is None:
-            build_num = self.config["build_num"]
+    def find_acquisition_by_id(self, acquisition_id):
         acquisitions_coll = self.db.acquisitions
-        return acquisitions_coll.find_one({"acquisition_id": acquisition_id, "build_num": build_num})
+        return acquisitions_coll.find_one({"acquisition_id": acquisition_id, "build_num": self.config["build_num"]})
 
     def find_acquisition_by_id_and_product(self, acquisition_id, product, build_nums=None):
         acquisitions_coll = self.db.acquisitions
@@ -551,11 +549,9 @@ class DatabaseManager:
         set_value = {"$set": metadata}
         data_collections_coll.update_one(query, set_value, upsert=True)
 
-    def find_orbit_by_id(self, orbit_id, build_num=None):
-        if build_num is None:
-            build_num = self.config["build_num"]
+    def find_orbit_by_id(self, orbit_id):
         orbits_coll = self.db.orbits
-        return orbits_coll.find_one({"orbit_id": orbit_id, "build_num": build_num})
+        return orbits_coll.find_one({"orbit_id": orbit_id, "build_num": self.config["build_num"]})
 
     def find_orbit_by_id_and_product(self, orbit_id, product, build_nums=None):
         orbits_coll = self.db.orbits

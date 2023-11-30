@@ -98,7 +98,7 @@ def parse_args():
                         help="Ignore missing radiance files in an orbit when doing geolocation")
     parser.add_argument("--daac_ingest_queue", default="forward",
                         help="Options are 'forward' or 'backward' depending on which DAAC ingestion queue to use.")
-    parser.add_argument("--from_build",
+    parser.add_argument("--reproc_from_build", default="",
                         help="The previous build number to use as a base to reprocess from.")
     parser.add_argument("--dry_run", action="store_true",
                         help="Just return a list of paths to process from the ingest folder, but take no action")
@@ -532,12 +532,15 @@ def main():
         if not args.products or "," in args.products:
             print("You must specify one and only one product argument for the reprocessing monitor")
             sys.exit(1)
+        if len(args.reproc_from_build) == 0:
+            print("You must specify a previous build number in the --reproc_from_build argument")
+            sys.exit(1)
         am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
                                 daac_ingest_queue=args.daac_ingest_queue)
         am_reprocess_tasks = am.get_reprocessing_tasks(start_time=args.start_time, stop_time=args.stop_time,
-                                                       from_build=args.from_build, to_build=wm.config["build_num"],
-                                                       product_arg=args.products, date_field=args.date_field,
-                                                       retry_failed=args.retry_failed)
+                                                       from_build=args.reproc_from_build,
+                                                       to_build=wm.config["build_num"], product_arg=args.products,
+                                                       date_field=args.date_field, retry_failed=args.retry_failed)
         am_reprocess_tasks_str = "\n".join([str(t) for t in am_reprocess_tasks])
         logger.info(f"Acquisition monitor reprocess tasks to run:\n{am_reprocess_tasks_str}")
         tasks += am_reprocess_tasks

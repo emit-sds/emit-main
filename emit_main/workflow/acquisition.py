@@ -153,7 +153,7 @@ class Acquisition:
         }
         paths = {}
         for level, prod_map in product_map.items():
-            processing_version =  self.config["product_versions"][level]["processing_version"]
+            product_version =  self.config["product_versions"][level]
             level_data_dir = os.path.join(self.acquisition_id_dir, level)
             self.__dict__.update({level + "_data_dir": level_data_dir})
             self.dirs.append(level_data_dir)
@@ -166,7 +166,7 @@ class Acquisition:
                                             level,
                                             prod,
                                             "b" + self.config["build_num"],
-                                            "v" + processing_version])
+                                            "v" + product_version])
                     prod_name = prod_prefix + "." + format
                     prod_path = os.path.join(self.acquisition_id_dir, level, prod_name)
                     paths[prod_key] = prod_path

@@ -236,6 +236,7 @@ class AcquisitionMonitor:
                 tasks.append(L1BCalibrate(config_path=self.config_path,
                                           acquisition_id=acq["acquisition_id"],
                                           level=self.level,
-                                          partition=self.partition))
+                                          partition=self.partition,
+                                          reproc_from_build=from_build))
 
         return tasks

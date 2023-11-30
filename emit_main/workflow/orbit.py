@@ -135,11 +135,10 @@ class Orbit:
         # If we made it this far, then we have a complete set
         return True
 
-    def has_complete_radiance(self):
+    def has_complete_radiance(self, build_nums=None):
         # Check to see if all the radiance files for this orbit have been generated
         from emit_main.workflow.workflow_manager import WorkflowManager
         wm = WorkflowManager(config_path=self.config_path)
-        build_nums = wm.config["product_versions"]["l1b"]["compatible_input_builds"]
 
         # First find all the DCIDs in an orbit
         dm = DatabaseManager(self.config_path)
