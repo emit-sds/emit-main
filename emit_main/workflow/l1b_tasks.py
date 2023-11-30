@@ -36,9 +36,9 @@ class L1BCalibrate(SlurmJobTask):
     acquisition_id = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
-    reproc_from_build = luigi.Parameter(default="")
     dark_path = luigi.Parameter(default="")
     use_future_flat = luigi.BoolParameter(default=False)
+    reproc_from_build = luigi.Parameter(default="")
 
     n_cores = 40
     memory = 180000
@@ -62,10 +62,12 @@ class L1BCalibrate(SlurmJobTask):
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         dm = wm.database_manager
-        # build_nums = wm.config["product_versions"]["l1b"]["compatible_input_builds"]
+
+        # Use build_nums as a proxy for reprocessing
         build_nums = None
         if len(self.reproc_from_build) > 0:
             build_nums = self.reproc_from_build.split(",")
+
         # Insert new acquisition if it doesn't exist and we are reprocessing (build_nums exist)
         if wm.acquisition is None and build_nums is not None:
             compat_acq = dm.find_acquisition_by_id_and_product(self.acquisition_id, "products.l1a.raw.img_path",
@@ -383,6 +385,7 @@ class L1BGeolocate(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
     ignore_missing_radiance = luigi.BoolParameter(default=False)
+    reproc_from_build = luigi.Parameter(default="")
 
     n_cores = 40
     memory = 180000
@@ -409,8 +412,13 @@ class L1BGeolocate(SlurmJobTask):
         orbit = wm.orbit
         dm = wm.database_manager
 
+        # Use build_nums as a proxy for reprocessing
+        build_nums = None
+        if len(self.reproc_from_build) > 0:
+            build_nums = self.reproc_from_build.split(",")
+
         # Check for missing radiance files before proceeding. Override with --ignore_missing_radiance arg
-        if self.ignore_missing_radiance is False and orbit.has_complete_radiance() is False:
+        if self.ignore_missing_radiance is False and orbit.has_complete_radiance(build_nums=build_nums) is False:
             raise RuntimeError(f"Unable to run {self.task_family} on {self.orbit_id} due to missing radiance files in "
                                f"orbit.")
 
