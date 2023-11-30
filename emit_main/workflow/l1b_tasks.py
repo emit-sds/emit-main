@@ -36,7 +36,7 @@ class L1BCalibrate(SlurmJobTask):
     acquisition_id = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
-    reproc_from_build = luigi.BoolParameter(default="")
+    reproc_from_build = luigi.Parameter(default="")
     dark_path = luigi.Parameter(default="")
     use_future_flat = luigi.BoolParameter(default=False)
 
