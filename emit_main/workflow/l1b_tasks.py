@@ -313,7 +313,7 @@ class L1BCalibrate(SlurmJobTask):
         # Check if orbit now has complete set of radiance files and update orbit metadata
         wm_orbit = WorkflowManager(config_path=self.config_path, orbit_id=acq.orbit)
         # Insert new orbit if it doesn't exist
-        if wm_orbit.orbit is None and len(build_nums) > 1:
+        if wm_orbit.orbit is None and build_nums is not None:
             compat_orbit = dm.find_orbit_by_id_and_product(acq.orbit, "products.l1a.uncorr_att_eph_path",
                                                            build_nums=build_nums)
             if compat_orbit:
