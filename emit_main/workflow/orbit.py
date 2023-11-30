@@ -183,6 +183,11 @@ class Orbit:
                     wm.print(__name__, f"Acquisition {id} in orbit {self.orbit_id} has rdn_img_path of {rdn_img_path} "
                              f"but file does not exist.")
                     return False
+            elif acq is None:
+                # If we didn't find the acquisition, then it hasn't been created yet (probably due to reprocessing)
+                wm.print(__name__, f"Acquisition {id} in orbit {self.orbit_id} was not found for build number "
+                                   f"{wm.config['build_num']}")
+                return False
 
         if num_science == 0:
             wm.print(__name__, f"Did not find any science acquisitions while checking acquisitions in orbit "

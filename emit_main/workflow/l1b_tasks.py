@@ -66,7 +66,7 @@ class L1BCalibrate(SlurmJobTask):
         build_nums = None
         if len(self.reproc_from_build) > 0:
             build_nums = self.reproc_from_build.split(",")
-        # Insert new acquisition if it doesn't exist
+        # Insert new acquisition if it doesn't exist and we are reprocessing (build_nums exist)
         if wm.acquisition is None and build_nums is not None:
             compat_acq = dm.find_acquisition_by_id_and_product(self.acquisition_id, "products.l1a.raw.img_path",
                                                                build_nums=build_nums)
@@ -312,7 +312,7 @@ class L1BCalibrate(SlurmJobTask):
 
         # Check if orbit now has complete set of radiance files and update orbit metadata
         wm_orbit = WorkflowManager(config_path=self.config_path, orbit_id=acq.orbit)
-        # Insert new orbit if it doesn't exist
+        # Insert new orbit if it doesn't exist and we are reprocessing (build_nums exist)
         if wm_orbit.orbit is None and build_nums is not None:
             compat_orbit = dm.find_orbit_by_id_and_product(acq.orbit, "products.l1a.uncorr_att_eph_path",
                                                            build_nums=build_nums)
