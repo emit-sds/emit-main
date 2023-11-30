@@ -529,11 +529,8 @@ def main():
         logger.info(f"Acquisition monitor deliver l2b abundance tasks to run:\n{am_dl2b_tasks_str}")
         tasks += am_dl2b_tasks
 
-    # Get tasks for reprocess monitor
-    if args.monitor and args.monitor == "reprocess":
-        if not args.products or "," in args.products:
-            print("You must specify one and only one product argument for the reprocessing monitor")
-            sys.exit(1)
+    # Get tasks for reprocess monitor (acquisitions)
+    if args.monitor and args.monitor == "reprocess" and args.products in ["l1bcal"]:
         if len(args.reproc_from_build) == 0:
             print("You must specify a previous build number in the --reproc_from_build argument")
             sys.exit(1)
@@ -546,6 +543,21 @@ def main():
         am_reprocess_tasks_str = "\n".join([str(t) for t in am_reprocess_tasks])
         logger.info(f"Acquisition monitor reprocess tasks to run:\n{am_reprocess_tasks_str}")
         tasks += am_reprocess_tasks
+
+    # Get tasks for reprocess monitor (orbits)
+    if args.monitor and args.monitor == "reprocess" and args.products in ["l1bgeo"]:
+        if len(args.reproc_from_build) == 0:
+            print("You must specify a previous build number in the --reproc_from_build argument")
+            sys.exit(1)
+
+        om = OrbitMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
+        om_reprocess_tasks = om.get_reprocessing_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                                       from_build=args.reproc_from_build,
+                                                       to_build=wm.config["build_num"], product_arg=args.products,
+                                                       date_field=args.date_field, retry_failed=args.retry_failed)
+        om_reprocess_tasks_str = "\n".join([str(t) for t in om_reprocess_tasks])
+        logger.info(f"Orbit monitor reprocess tasks to run:\n{om_reprocess_tasks_str}")
+        tasks += om_reprocess_tasks
 
     # Get tasks from products args (only if monitor is not set)
     if args.products and not args.monitor:

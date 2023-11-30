@@ -660,6 +660,47 @@ class DatabaseManager:
             results = self._remove_results_with_failed_tasks(results, ["emit.L1BAttDeliver"])
         return results
 
+    def find_orbits_for_reprocessing(self, start, stop, from_build, to_build, product_arg,
+                                     date_field="last_modified", retry_failed=False):
+        orbits_coll = self.db.orbits
+        # Map product arg to product field in DB
+        # TODO: Finish this for all products
+        if product_arg == "l1bgeo":
+            product = "products.l1b.corr_att_eph.nc_path"
+        # Query for orbits in both build numbers and find the difference
+        from_query = {
+            date_field: {"$gte": start, "$lte": stop},
+            product: {"$exists": 1},
+            "build_num": from_build
+        }
+        from_results = list(orbits_coll.find(from_query).sort("start_time", 1))
+        from_orbits = []
+        if len(from_results) > 0:
+            from_orbits = [orbit["orbit_id"] for orbit in from_results]
+        to_query = {
+            date_field: {"$gte": start, "$lte": stop},
+            product: {"$exists": 1},
+            "build_num": to_build
+        }
+        to_results = list(orbits_coll.find(to_query))
+        # Remove results in destination build that have already failed
+        if not retry_failed:
+            tasks = []
+            if "l1b.corr_att_eph" in product:
+                tasks += ["emit.L1BGeolocate"]
+            # TODO: Finish adding tasks as we add more reprocessing
+            to_results = self._remove_results_with_failed_tasks(to_results, tasks)
+        to_orbits = []
+        if len(to_results) > 0:
+            to_orbits = [orbit["orbit_id"] for orbit in to_results]
+        reproc_orbits = set(from_orbits) - set(to_orbits)
+        # Now filter the from_build entries down to the ones that are missing
+        results = []
+        for r in from_results:
+            if r["orbit_id"] in reproc_orbits:
+                results.append(r)
+        return results
+
     def insert_orbit(self, metadata):
         if self.find_orbit_by_id(metadata["orbit_id"]) is None:
             utc_now = datetime.datetime.now(tz=datetime.timezone.utc)

@@ -48,15 +48,18 @@ class Orbit:
         self.l1a_dir = os.path.join(self.orbit_id_dir, "l1a")
         self.l1b_dir = os.path.join(self.orbit_id_dir, "l1b")
         self.l1b_geo_work_dir = os.path.join(
-            self.l1b_dir, f"o{orbit_id}_l1b_geo_b{self.config['build_num']}_v{self.config['processing_version']}_work")
+            self.l1b_dir, f"o{orbit_id}_l1b_geo_b{self.config['build_num']}_v{self.config['product_versions']['l1b']}_work")
         self.dirs.extend([self.orbits_dir, self.date_dir, self.orbit_id_dir, self.raw_dir, self.l1a_dir, self.l1b_dir])
 
         # Create product names
         uncorr_fname = "_".join([f"emit{self.start_time.strftime('%Y%m%dt%H%M%S')}", f"o{self.short_oid}",
                                  "l1a", "att", f"b{self.config['build_num']}",
-                                 f"v{self.config['processing_version']}.nc"])
+                                 f"v{self.config['product_versions']['l1a']}.nc"])
         self.uncorr_att_eph_path = os.path.join(self.l1a_dir, uncorr_fname)
-        self.corr_att_eph_path = self.uncorr_att_eph_path.replace("l1a", "l1b")
+        corr_fname = "_".join([f"emit{self.start_time.strftime('%Y%m%dt%H%M%S')}", f"o{self.short_oid}",
+                                 "l1b", "att", f"b{self.config['build_num']}",
+                                 f"v{self.config['product_versions']['l1b']}.nc"])
+        self.corr_att_eph_path = os.path.join(self.l1b_dir, corr_fname)
 
         # Make directories and symlinks if they don't exist
         from emit_main.workflow.workflow_manager import WorkflowManager
