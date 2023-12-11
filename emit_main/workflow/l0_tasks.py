@@ -655,7 +655,7 @@ class L0Deliver(SlurmJobTask):
 
         # Create GranuleUR and DAAC paths
         # Delivery file format: EMIT_L0_<VVV>_<APID>_<YYYYMMDDTHHMMSS>.bin
-        collection_version = f"0{wm.config['processing_version']}"
+        collection_version = f"0{wm.config['product_versions']['l0']}"
         start_time_str = stream.start_time.strftime("%Y%m%dT%H%M%S")
         granule_ur = f"EMIT_L0_{collection_version}_{stream.apid}_{start_time_str}"
         daac_ccsds_name = f"{granule_ur}.bin"

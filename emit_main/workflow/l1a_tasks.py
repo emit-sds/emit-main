@@ -831,9 +831,9 @@ class L1ADeliver(SlurmJobTask):
         ummg_path = acq.raw_img_path.replace(".img", ".cmr.json")
 
         # Create local/tmp daac names and paths
+        collection_version = f"0{wm.config['product_versions']['l1a']}"
         daac_raw_name = f"{acq.raw_granule_ur}.img"
         daac_raw_hdr_name = f"{acq.raw_granule_ur}.hdr"
-        daac_browse_name = f"{acq.raw_granule_ur}.png"
         daac_ummg_name = f"{acq.raw_granule_ur}.cmr.json"
         daac_raw_path = os.path.join(self.tmp_dir, daac_raw_name)
         daac_raw_hdr_path = os.path.join(self.tmp_dir, daac_raw_hdr_name)
@@ -852,7 +852,7 @@ class L1ADeliver(SlurmJobTask):
         l1a_pge = wm.pges["emit-sds-l1a"]
         if is_science:
             ummg = daac_converter.initialize_ummg(acq.raw_granule_ur, creation_time, "EMITL1ARAW",
-                                                  acq.collection_version, acq.start_time,
+                                                  collection_version, acq.start_time,
                                                   acq.stop_time, l1a_pge.repo_name, l1a_pge.version_tag,
                                                   software_build_version=software_build_version,
                                                   software_delivery_version=wm.config["extended_build_num"],
@@ -865,7 +865,7 @@ class L1ADeliver(SlurmJobTask):
             # ummg = daac_converter.add_boundary_ummg(ummg, acq.gring)
         else:
             ummg = daac_converter.initialize_ummg(acq.raw_granule_ur, creation_time, "EMITL1ARAW",
-                                                  acq.collection_version, acq.start_time,
+                                                  collection_version, acq.start_time,
                                                   acq.stop_time, l1a_pge.repo_name, l1a_pge.version_tag,
                                                   software_build_version=software_build_version,
                                                   software_delivery_version=wm.config["extended_build_num"],
@@ -909,7 +909,7 @@ class L1ADeliver(SlurmJobTask):
             "version": wm.config["cnm_version"],
             "product": {
                 "name": acq.raw_granule_ur,
-                "dataVersion": acq.collection_version,
+                "dataVersion": collection_version,
                 "files": [
                     {
                         "name": daac_raw_name,
