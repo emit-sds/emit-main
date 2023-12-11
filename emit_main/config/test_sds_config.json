@@ -2,7 +2,6 @@
   "general_config": {
     "instrument": "emit",
     "environment": "test",
-    "processing_version": "01",
     "luigi_local_scheduler": false,
     "luigi_workers": 2,
     "tetracorder_library_basename": "06emite",
@@ -35,8 +34,8 @@
   },
 
   "build_config": {
-    "extended_build_num": "010618",
-    "conda_base_dir": "/tmp/miniconda3/"
+    "extended_build_num": "020000",
+    "conda_base_dir": "/beegfs/store/shared/anaconda3/"
   },
 
   "daac_config": {
