@@ -154,7 +154,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
                 dc_meta = {
                     "dcid": dcid,
                     "build_num": wm.config["build_num"],
-                    "processing_version": wm.config["processing_version"],
+                    "product_versions": wm.config["product_versions"],
                     "start_time": start_time,
                     "stop_time": stop_time,
                     "frames_status": ""
@@ -482,7 +482,7 @@ class L1AReassembleRaw(SlurmJobTask):
             acq_meta = {
                 "acquisition_id": acq_id,
                 "build_num": wm.config["build_num"],
-                "processing_version": wm.config["processing_version"],
+                "product_versions": wm.config["product_versions"],
                 "start_time": start_time,
                 "stop_time": stop_time,
                 "orbit": orbit,
@@ -575,7 +575,7 @@ class L1AReassembleRaw(SlurmJobTask):
             creation_time = datetime.datetime.fromtimestamp(
                 os.path.getmtime(acq.raw_img_path), tz=datetime.timezone.utc)
             hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
-            hdr["emit data product version"] = wm.config["processing_version"]
+            hdr["emit data product version"] = wm.config["product_versions"]["l1a"]
             hdr["emit acquisition daynight"] = acq.daynight
             envi.write_envi_header(acq.raw_hdr_path, hdr)
 

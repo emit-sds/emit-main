@@ -113,7 +113,7 @@ class L0StripHOSC(SlurmJobTask):
             "start_time": datetime.datetime.strptime(timing["start_time"], "%Y-%m-%dT%H:%M:%S"),
             "stop_time": datetime.datetime.strptime(timing["stop_time"], "%Y-%m-%dT%H:%M:%S"),
             "build_num": wm.config["build_num"],
-            "processing_version": wm.config["processing_version"],
+            "product_versions": wm.config["product_versions"],
             "hosc_name": hosc_name,
             "processing_log": []
         }
@@ -131,7 +131,7 @@ class L0StripHOSC(SlurmJobTask):
             "l0",
             "ccsds",
             "b" + wm.config["build_num"],
-            "v" + wm.config["processing_version"]
+            "v" + wm.config["product_versions"]["l0"]
         ]) + ".bin"
         ccsds_path = os.path.join(stream.l0_dir, ccsds_name)
         report_path = ccsds_path.replace(".bin", "_report.txt")
@@ -268,7 +268,7 @@ class L0IngestBAD(SlurmJobTask):
             "start_time": start_time,
             "stop_time": stop_time,
             "build_num": wm.config["build_num"],
-            "processing_version": wm.config["processing_version"],
+            "product_versions": wm.config["product_versions"],
             "bad_name": bad_name,
             "extended_bad_name": extended_bad_name,
             "processing_log": []
@@ -337,7 +337,7 @@ class L0IngestBAD(SlurmJobTask):
 
         # Copy CSV file to l0 dir
         # l0_bad_csv_name = "_".join(["emit", start_time.strftime("%Y%m%dt%H%M%S"), "l0", "bad",
-        #                             "b" + wm.config["build_num"], "v" + wm.config["processing_version"]]) + ".csv"
+        #                             "b" + wm.config["build_num"], "v" + wm.config["product_versions"]["l0"]]) + ".csv"
         l0_bad_csv_path = os.path.join(stream.l0_dir, extended_bad_name.replace(".sto", ".csv"))
         wm.copy(tmp_csv_path, l0_bad_csv_path)
 
@@ -345,7 +345,7 @@ class L0IngestBAD(SlurmJobTask):
         # for dir in q:
         #     orbit_id = os.path.basename(os.path.basename((dir)))
         #     dir_symlink = os.path.join(stream.l1a_dir, f"orbit_{orbit_id}_l1a_b{stream.config['build_num']}_"
-        #     f"v{stream.config['processing_version']}")
+        #     f"v{stream.config['product_versions']['l1a']}")
         #     wm.symlink(dir, dir_symlink)
 
         # Update DB
@@ -503,7 +503,7 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                 orbit_meta = {
                     "orbit_id": orbit_id,
                     "build_num": wm.config["build_num"],
-                    "processing_version": wm.config["processing_version"],
+                    "product_versions": wm.config["product_versions"],
                     "start_time": start_time
                 }
 
@@ -552,7 +552,7 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                 dc_meta = {
                     "dcid": dcid,
                     "build_num": wm.config["build_num"],
-                    "processing_version": wm.config["processing_version"],
+                    "product_versions": wm.config["product_versions"],
                     "orbit": year + str(e["orbit number"]).zfill(5),
                     "scene": str(e["scene number"]).zfill(3),
                     "submode": submode,
