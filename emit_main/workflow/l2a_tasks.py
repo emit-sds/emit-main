@@ -201,7 +201,7 @@ class L2AReflectance(SlurmJobTask):
             creation_time = datetime.datetime.fromtimestamp(
                 os.path.getmtime(img_path), tz=datetime.timezone.utc)
             hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
-            hdr["emit data product version"] = wm.config["processing_version"]
+            hdr["emit data product version"] = wm.config["product_versions"]["l2a"]
             daynight = "Day" if acq.submode == "science" else "Night"
             hdr["emit acquisition daynight"] = daynight
             hdr["emit spectral quality"] = '{' + ', '.join(quality_results.astype(str).tolist()) + '}'
@@ -340,7 +340,7 @@ class L2AMask(SlurmJobTask):
         creation_time = datetime.datetime.fromtimestamp(
             os.path.getmtime(acq.mask_img_path), tz=datetime.timezone.utc)
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
-        hdr["emit data product version"] = wm.config["processing_version"]
+        hdr["emit data product version"] = wm.config["product_versions"]["l2a"]
         hdr["emit acquisition daynight"] = acq.daynight
         hdr["emit acquisition cloudfraction"] = cloud_fraction
         envi.write_envi_header(acq.mask_hdr_path, hdr)
@@ -427,7 +427,7 @@ class L2AFormat(SlurmJobTask):
         cmd = ["python", output_generator_exe, tmp_daac_rfl_nc_path, tmp_daac_rfl_unc_nc_path,
                tmp_daac_mask_nc_path, acq.rfl_img_path, acq.rfluncert_img_path,
                acq.mask_img_path, acq.bandmask_img_path, acq.loc_img_path, acq.glt_img_path,
-               "V0" + str(wm.config["processing_version"]), wm.config["extended_build_num"],
+               "V0" + str(wm.config["product_versions"]["l2a"]), wm.config["extended_build_num"],
                "--log_file", tmp_log_path]
 
         # Run this inside the emit-main conda environment to include emit-utils and other requirements
@@ -524,6 +524,7 @@ class L2ADeliver(SlurmJobTask):
         ummg_path = acq.rfl_nc_path.replace(".nc", ".cmr.json")
 
         # Create local/tmp daac names and paths
+        collection_version = f"0{wm.config['product_versions']['l2a']}"
         daac_rfl_nc_name = f"{acq.rfl_granule_ur}.nc"
         daac_rfluncert_nc_name = f"{acq.rfluncert_granule_ur}.nc"
         daac_mask_nc_name = f"{acq.mask_granule_ur}.nc"
@@ -550,7 +551,7 @@ class L2ADeliver(SlurmJobTask):
         daynight = "Day" if acq.submode == "science" else "Night"
         l2a_pge = wm.pges["emit-sds-l2a"]
         ummg = daac_converter.initialize_ummg(acq.rfl_granule_ur, nc_creation_time, "EMITL2ARFL",
-                                              acq.collection_version, acq.start_time,
+                                              collection_version, acq.start_time,
                                               acq.stop_time, l2a_pge.repo_name, l2a_pge.version_tag,
                                               software_build_version=software_build_version,
                                               software_delivery_version=wm.config["extended_build_num"],
@@ -601,7 +602,7 @@ class L2ADeliver(SlurmJobTask):
             "version": wm.config["cnm_version"],
             "product": {
                 "name": acq.rfl_granule_ur,
-                "dataVersion": acq.collection_version,
+                "dataVersion": collection_version,
                 "files": [
                     {
                         "name": daac_rfl_nc_name,

@@ -617,10 +617,10 @@ class L1BGeolocate(SlurmJobTask):
         tmp_corr_att_eph_path = glob.glob(os.path.join(tmp_output_dir, "*l1b_att*nc"))[0]
 
         # Update attitude/ephemeris netcdf metadata before copy
-        l1b_processing_version = wm.config["product_versions"]["l1b"]
+        l1b_product_version = wm.config["product_versions"]["l1b"]
         ae_nc = netCDF4.Dataset(tmp_corr_att_eph_path, 'r+')
         daac_converter.makeGlobalAttrBase(ae_nc)
-        ae_nc.title = f"EMIT L1B Corrected Spacecraft Attitude and Ephemeris V0{l1b_processing_version}"
+        ae_nc.title = f"EMIT L1B Corrected Spacecraft Attitude and Ephemeris V0{l1b_product_version}"
         ae_nc.summary = ae_nc.summary + \
             f"\\n\\nThis collection contains L1B Corrected Spacecraft Attitude and Ephemeris (ATT). \
 ATT contains the uncorrected Broadcast Ancillary Data (BAD) ephemeris and attitude quaternions \
@@ -629,7 +629,7 @@ This product is generated at the orbit level."
         ae_nc.time_coverage_start = orbit.start_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         ae_nc.time_coverage_end = orbit.stop_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         ae_nc.software_build_version = wm.config["extended_build_num"]
-        ae_nc.product_version = "V0" + l1b_processing_version
+        ae_nc.product_version = "V0" + l1b_product_version
         run_command = "PGE Run Command: {" + " ".join(cmd) + "}"
         nc_input_files = "PGE Input Files: {" + orbit.products["l1a"]["uncorr_att_eph_path"] + "}"
         ae_nc.history = run_command + ", " + nc_input_files
@@ -719,9 +719,9 @@ class L1BRdnFormat(SlurmJobTask):
         tmp_daac_rdn_nc_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l1b_rdn.nc")
         tmp_daac_obs_nc_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l1b_obs.nc")
         tmp_log_path = os.path.join(self.local_tmp_dir, "output_conversion_pge.log")
-        l1b_processing_version = wm.config["product_versions"]["l1b"]["processing_version"]
+        l1b_product_version = wm.config["product_versions"]["l1b"]
         cmd = ["python", output_generator_exe, tmp_daac_rdn_nc_path, tmp_daac_obs_nc_path, acq.rdn_img_path, acq.obs_img_path, acq.loc_img_path,
-               acq.glt_img_path, "V0" + str(l1b_processing_version), wm.config["extended_build_num"],
+               acq.glt_img_path, "V0" + str(l1b_product_version), wm.config["extended_build_num"],
                "--log_file", tmp_log_path]
         # If we have the flat field update median file, then add it to NetCDF
         if os.path.exists(acq.ffmedian_img_path):
@@ -816,6 +816,7 @@ class L1BRdnDeliver(SlurmJobTask):
         ummg_path = acq.rdn_nc_path.replace(".nc", ".cmr.json")
 
         # Create local/tmp daac names and paths
+        collection_version = f"0{wm.config['product_versions']['l1b']}"
         daac_rdn_nc_name = f"{acq.rdn_granule_ur}.nc"
         daac_obs_nc_name = f"{acq.obs_granule_ur}.nc"
         daac_browse_name = f"{acq.rdn_granule_ur}.png"
@@ -840,7 +841,7 @@ class L1BRdnDeliver(SlurmJobTask):
         l1b_pge = wm.pges["emit-sds-l1b"]
         cloud_fraction = acq.cloud_fraction if "cloud_fraction" in acq.metadata else None
         ummg = daac_converter.initialize_ummg(acq.rdn_granule_ur, nc_creation_time, "EMITL1BRAD",
-                                              acq.collection_version, acq.start_time,
+                                              collection_version, acq.start_time,
                                               acq.stop_time, l1b_pge.repo_name, l1b_pge.version_tag,
                                               software_build_version=software_build_version,
                                               software_delivery_version=wm.config["extended_build_num"],
@@ -888,7 +889,7 @@ class L1BRdnDeliver(SlurmJobTask):
             "version": wm.config["cnm_version"],
             "product": {
                 "name": acq.rdn_granule_ur,
-                "dataVersion": acq.collection_version,
+                "dataVersion": collection_version,
                 "files": [
                     {
                         "name": daac_rdn_nc_name,
@@ -1055,8 +1056,8 @@ class L1BAttDeliver(SlurmJobTask):
         nc_ds.close()
 
         # Create local/tmp daac names and paths
-        l1b_processing_version = wm.config["product_versions"]["l1b"]["processing_version"]
-        collection_version = f"0{l1b_processing_version}"
+        l1b_product_version = wm.config["product_versions"]["l1b"]
+        collection_version = f"0{l1b_product_version}"
         start_time_str = orbit.start_time.strftime("%Y%m%dT%H%M%S")
         granule_ur = f"EMIT_L1B_ATT_{collection_version}_{start_time_str}_{orbit.orbit_id}"
         daac_nc_name = f"{granule_ur}.nc"

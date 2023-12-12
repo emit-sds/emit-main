@@ -160,7 +160,7 @@ class Acquisition:
         }
         paths = {}
         for level, prod_map in product_map.items():
-            product_version =  self.config["product_versions"][level]
+            product_version = self.config["product_versions"][level]
             level_data_dir = os.path.join(self.acquisition_id_dir, level)
             self.__dict__.update({level + "_data_dir": level_data_dir})
             self.dirs.append(level_data_dir)
