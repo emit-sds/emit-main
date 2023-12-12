@@ -61,8 +61,8 @@ class Stream:
         if self.ccsds_name:
             self.ccsds_path = os.path.join(self.l0_dir, self.ccsds_name)
             if self.apid == "1675":
-                self.frames_dir = os.path.join(
-                    self.l1a_dir, self.ccsds_name.replace("l0_ccsds", "l1a_frames").replace(".bin", ""))
+                self.frames_dir = os.path.join(self.l1a_dir, self.ccsds_name.replace("l0_ccsds", "l1a_frames")[:-8] +
+                                               f"_v{self.config['product_versions']['l1a']}")
                 self.dirs.append(self.frames_dir)
         if self.bad_name:
             self.bad_path = os.path.join(self.raw_dir, self.bad_name)

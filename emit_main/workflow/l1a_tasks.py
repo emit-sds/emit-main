@@ -249,7 +249,8 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
         dm.update_stream_metadata(stream.ccsds_name, {"products.l1a.data_collections": dcid_frames_map})
 
         # Copy log file and report file into the stream's l1a directory
-        sdp_log_name = stream.ccsds_name.replace("l0_ccsds", "l1a_frames").replace(".bin", "_pge.log")
+        sdp_log_name = stream.ccsds_name.replace("l0_ccsds", "l1a_frames")[:-8] + \
+                       f"_v{wm.config['product_versions']['l1a']}_pge.log"
         sdp_log_path = os.path.join(stream.l1a_dir, sdp_log_name)
         sdp_report_path = sdp_log_path.replace("_pge.log", "_report.txt")
         wm.copy(tmp_log_path, sdp_log_path)
