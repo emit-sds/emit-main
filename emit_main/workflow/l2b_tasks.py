@@ -161,7 +161,7 @@ class L2BAbundance(SlurmJobTask):
             creation_time = datetime.datetime.fromtimestamp(
                 os.path.getmtime(img_path), tz=datetime.timezone.utc)
             hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
-            hdr["emit data product version"] = wm.config["product_version"]["l2b"]
+            hdr["emit data product version"] = wm.config["product_versions"]["l2b"]
             daynight = "Day" if acq.submode == "science" else "Night"
             hdr["emit acquisition daynight"] = daynight
             envi.write_envi_header(hdr_path, hdr)
@@ -256,7 +256,7 @@ class L2BFormat(SlurmJobTask):
         env["PYTHONPATH"] = f"$PYTHONPATH:{emit_utils_pge.repo_dir}"
         cmd = ["python", output_generator_exe, tmp_daac_nc_abun_path, tmp_daac_nc_abununcert_path,
                acq.abun_img_path, acq.abununcert_img_path, acq.loc_img_path, acq.glt_img_path,
-               "V0" + str(wm.config["product_version"]["l2b"]), wm.config["extended_build_num"],
+               "V0" + str(wm.config["product_versions"]["l2b"]), wm.config["extended_build_num"],
                "--log_file", tmp_log_path]
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
