@@ -161,7 +161,7 @@ class L2BAbundance(SlurmJobTask):
             creation_time = datetime.datetime.fromtimestamp(
                 os.path.getmtime(img_path), tz=datetime.timezone.utc)
             hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
-            hdr["emit data product version"] = wm.config["processing_version"]
+            hdr["emit data product version"] = wm.config["product_version"]["l2b"]
             daynight = "Day" if acq.submode == "science" else "Night"
             hdr["emit acquisition daynight"] = daynight
             envi.write_envi_header(hdr_path, hdr)
@@ -256,7 +256,7 @@ class L2BFormat(SlurmJobTask):
         env["PYTHONPATH"] = f"$PYTHONPATH:{emit_utils_pge.repo_dir}"
         cmd = ["python", output_generator_exe, tmp_daac_nc_abun_path, tmp_daac_nc_abununcert_path,
                acq.abun_img_path, acq.abununcert_img_path, acq.loc_img_path, acq.glt_img_path,
-               "V0" + str(wm.config["processing_version"]), wm.config["extended_build_num"],
+               "V0" + str(wm.config["product_version"]["l2b"]), wm.config["extended_build_num"],
                "--log_file", tmp_log_path]
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
@@ -346,6 +346,7 @@ class L2BDeliver(SlurmJobTask):
         ummg_path = acq.abun_nc_path.replace(".nc", ".cmr.json")
 
         # Create local/tmp daac names and paths
+        collection_version = f"0{wm.config['product_versions']['l2b']}"
         daac_abun_nc_name = f"{acq.abun_granule_ur}.nc"
         daac_abununcert_nc_name = f"{acq.abununcert_granule_ur}.nc"
         daac_ummg_name = f"{acq.abun_granule_ur}.cmr.json"
@@ -369,7 +370,7 @@ class L2BDeliver(SlurmJobTask):
         daynight = "Day" if acq.submode == "science" else "Night"
         l2b_pge = wm.pges["emit-sds-l2b"]
         ummg = daac_converter.initialize_ummg(acq.abun_granule_ur, nc_creation_time, "EMITL2BMIN",
-                                              acq.collection_version, acq.start_time,
+                                              collection_version, acq.start_time,
                                               acq.stop_time, l2b_pge.repo_name, l2b_pge.version_tag,
                                               software_build_version=software_build_version,
                                               software_delivery_version=wm.config["extended_build_num"],
@@ -419,7 +420,7 @@ class L2BDeliver(SlurmJobTask):
             "version": wm.config["cnm_version"],
             "product": {
                 "name": acq.abun_granule_ur,
-                "dataVersion": acq.collection_version,
+                "dataVersion": collection_version,
                 "files": [
                     {
                         "name": daac_abun_nc_name,

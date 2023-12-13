@@ -109,7 +109,7 @@ class L3Unmix(SlurmJobTask):
             creation_time = datetime.datetime.fromtimestamp(
                 os.path.getmtime(acq.cover_img_path), tz=datetime.timezone.utc)
             hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
-            hdr["emit data product version"] = wm.config["processing_version"]
+            hdr["emit data product version"] = wm.config["product_version"]["l3"]
             daynight = "Day" if acq.submode == "science" else "Night"
             hdr["emit acquisition daynight"] = daynight
             envi.write_envi_header(header_to_update, hdr)

@@ -34,7 +34,7 @@ def test_acquisition_insert(config_path):
     metadata = {
         "acquisition_id": "emit20200101t000000",
         "build_num": dm.config["build_num"],
-        "processing_version": dm.config["processing_version"],
+        "product_versions": dm.config["product_versions"],
         "start_time": datetime.datetime(2020, 1, 1, 0, 0, 0),
         "stop_time": datetime.datetime(2020, 1, 1, 0, 11, 26),
         "orbit": "0000000",
@@ -89,7 +89,7 @@ def test_stream_insert(config_path):
     metadata = {
         "apid": "1675",
         "build_num": dm.config["build_num"],
-        "processing_version": dm.config["processing_version"],
+        "product_versions": dm.config["product_versions"],
         "start_time": datetime.datetime(2020, 1, 1, 0, 0, 0),
         "stop_time": datetime.datetime(2020, 1, 1, 2, 0, 0),
         "hosc_name": "emit_1675_200101000000_200101020000_200101084102_hsc.bin"
