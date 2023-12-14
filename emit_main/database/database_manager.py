@@ -179,8 +179,10 @@ class DatabaseManager:
                 acqs_ready_for_cal.append(acq)
         return acqs_ready_for_cal
 
-    def find_acquisitions_for_l2(self, start, stop, date_field="last_modified", retry_failed=False):
+    def find_acquisitions_for_l2(self, start, stop, date_field="last_modified", retry_failed=False,
+                                 processing_direction="forward"):
         acquisitions_coll = self.db.acquisitions
+        copied_from_exists = 1 if processing_direction == "backward" else 0
         # Query for acquisitions with complete l1b outputs but no rfl outputs in time range
         query = {
             "products.l1b.rdn.img_path": {"$exists": 1},
@@ -190,7 +192,8 @@ class DatabaseManager:
             "products.l2a.rfl.img_path": {"$exists": 0},
             "products.l2a.mask.img_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop},
-            "build_num": self.config["build_num"]
+            "build_num": self.config["build_num"],
+            "copied_from": {"$exists": copied_from_exists}
         }
         results = list(acquisitions_coll.find(query))
         # Also query for case where rfl exists but not mask
@@ -202,37 +205,44 @@ class DatabaseManager:
             "products.l2a.rfl.img_path": {"$exists": 1},
             "products.l2a.mask.img_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop},
-            "build_num": self.config["build_num"]
+            "build_num": self.config["build_num"],
+            "copied_from": {"$exists": copied_from_exists}
         }
         results += list(acquisitions_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L2AReflectance", "emit.L2AMask"])
         return results
 
-    def find_acquisitions_for_l2b(self, start, stop, date_field="last_modified", retry_failed=False):
+    def find_acquisitions_for_l2b(self, start, stop, date_field="last_modified", retry_failed=False,
+                                  processing_direction="forward"):
         acquisitions_coll = self.db.acquisitions
         # Query for acquisitions with complete l2a outputs but no l2b abun outputs in time range
+        copied_from_exists = 1 if processing_direction == "backward" else 0
         query = {
             "products.l2a.rfl.img_path": {"$exists": 1},
             "products.l2a.mask.img_path": {"$exists": 1},
             "products.l2b.abun.img_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop},
-            "build_num": self.config["build_num"]
+            "build_num": self.config["build_num"],
+            "copied_from": {"$exists": copied_from_exists}
         }
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L2BAbundance"])
         return results
 
-    def find_acquisitions_for_l3(self, start, stop, date_field="last_modified", retry_failed=False):
+    def find_acquisitions_for_l3(self, start, stop, date_field="last_modified", retry_failed=False,
+                                 processing_direction="forward"):
         acquisitions_coll = self.db.acquisitions
         # Query for acquisitions with complete l2a outputs but no l3 cover outputs in time range
+        copied_from_exists = 1 if processing_direction == "backward" else 0
         query = {
             "products.l2a.rfl.img_path": {"$exists": 1},
             "products.l2a.mask.img_path": {"$exists": 1},
             "products.l3.cover.img_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop},
-            "build_num": self.config["build_num"]
+            "build_num": self.config["build_num"],
+            "copied_from": {"$exists": copied_from_exists}
         }
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
@@ -255,10 +265,12 @@ class DatabaseManager:
             results = self._remove_results_with_failed_tasks(results, ["emit.L1ADeliver"])
         return results
 
-    def find_acquisitions_for_l1brdn_delivery(self, start, stop, date_field="last_modified", retry_failed=False):
+    def find_acquisitions_for_l1brdn_delivery(self, start, stop, date_field="last_modified", retry_failed=False,
+                                              processing_direction="forward"):
         acquisitions_coll = self.db.acquisitions
         # Query for acquisitions with daac scene numbers but no daac ummg products. We also need the
         # l1b browse image
+        copied_from_exists = 1 if processing_direction == "backward" else 0
         query = {
             "products.l1b.rdn.img_path": {"$exists": 1},
             "products.l1b.glt.img_path": {"$exists": 1},
@@ -269,17 +281,20 @@ class DatabaseManager:
             "daac_scene": {"$exists": 1},
             "products.l1b.rdn_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop},
-            "build_num": self.config["build_num"]
+            "build_num": self.config["build_num"],
+            "copied_from": {"$exists": copied_from_exists}
         }
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L1BRdnFormat", "emit.L1BRdnDeliver"])
         return results
 
-    def find_acquisitions_for_l2a_delivery(self, start, stop, date_field="last_modified", retry_failed=False):
+    def find_acquisitions_for_l2a_delivery(self, start, stop, date_field="last_modified", retry_failed=False,
+                                           processing_direction="forward"):
         acquisitions_coll = self.db.acquisitions
         # Query for acquisitions with daac scene numbers but no daac ummg products. We also need the
         # l2a browse image
+        copied_from_exists = 1 if processing_direction == "backward" else 0
         query = {
             "products.l2a.rfl.img_path": {"$exists": 1},
             "products.l2a.rfluncert.img_path": {"$exists": 1},
@@ -290,16 +305,19 @@ class DatabaseManager:
             "daac_scene": {"$exists": 1},
             "products.l2a.rfl_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop},
-            "build_num": self.config["build_num"]
+            "build_num": self.config["build_num"],
+            "copied_from": {"$exists": copied_from_exists}
         }
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L2AFormat", "emit.L2ADeliver"])
         return results
 
-    def find_acquisitions_for_l2b_delivery(self, start, stop, date_field="last_modified", retry_failed=False):
+    def find_acquisitions_for_l2b_delivery(self, start, stop, date_field="last_modified", retry_failed=False,
+                                           processing_direction="forward"):
         acquisitions_coll = self.db.acquisitions
         # Query for acquisitions with daac scene numbers but no daac ummg products.
+        copied_from_exists = 1 if processing_direction == "backward" else 0
         query = {
             "products.l2b.abun.img_path": {"$exists": 1},
             "products.l2b.abununcert.img_path": {"$exists": 1},
@@ -309,7 +327,8 @@ class DatabaseManager:
             "daac_scene": {"$exists": 1},
             "products.l2b.abun_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop},
-            "build_num": self.config["build_num"]
+            "build_num": self.config["build_num"],
+            "copied_from": {"$exists": copied_from_exists}
         }
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
@@ -632,16 +651,15 @@ class DatabaseManager:
         orbits_coll = self.db.orbits
         # Query for orbits with complete set of radiance files, an associated BAD netcdf file, last modified within
         # start/stop range, and no products.l1b.acquisitions
+        copied_from_exists = 1 if processing_direction == "backward" else 0
         query = {
             "radiance_status": "complete",
             date_field: {"$gte": start, "$lte": stop},
             "associated_bad_netcdf": {"$exists": 1},
             "products.l1b.acquisitions": {"$exists": 0},
             "build_num": self.config["build_num"],
-            "copied_from": {"$exists": 0}
+            "copied_from": {"$exists": copied_from_exists}
         }
-        if processing_direction == "backward":
-            query["copied_from"] = {"$exists": 1}
         results = list(orbits_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L1BGeolocate"])
@@ -661,14 +679,17 @@ class DatabaseManager:
             results = self._remove_results_with_failed_tasks(results, ["emit.AssignDAACSceneNumbers"])
         return results
 
-    def find_orbits_for_l1batt_delivery(self, start, stop, date_field="last_modified", retry_failed=False):
+    def find_orbits_for_l1batt_delivery(self, start, stop, date_field="last_modified", retry_failed=False,
+                                        processing_direction="forward"):
         orbits_coll = self.db.orbits
         # Query for orbits with complete set of raw files.
+        copied_from_exists = 1 if processing_direction == "backward" else 0
         query = {
             "products.l1b.corr_att_eph.nc_path": {"$exists": 1},
             "products.l1b.att_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop},
-            "build_num": self.config["build_num"]
+            "build_num": self.config["build_num"],
+            "copied_from": {"$exists": copied_from_exists}
         }
         results = list(orbits_coll.find(query))
         if not retry_failed:

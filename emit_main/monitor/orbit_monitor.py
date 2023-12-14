@@ -103,7 +103,8 @@ class OrbitMonitor:
         # Find orbits within time range
         dm = self.wm.database_manager
         orbits = dm.find_orbits_for_l1batt_delivery(start=start_time, stop=stop_time, date_field=date_field,
-                                                    retry_failed=retry_failed)
+                                                    retry_failed=retry_failed,
+                                                    processing_direction=self.processing_direction)
 
         # If no results, just return empty list
         if len(orbits) == 0:

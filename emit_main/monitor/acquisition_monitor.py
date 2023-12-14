@@ -60,7 +60,8 @@ class AcquisitionMonitor:
         # Find acquisitions within time range
         dm = self.wm.database_manager
         acquisitions = dm.find_acquisitions_for_l2(start=start_time, stop=stop_time, date_field=date_field,
-                                                   retry_failed=retry_failed)
+                                                   retry_failed=retry_failed,
+                                                   processing_direction=self.processing_direction)
 
         # If no results, just return empty list
         if len(acquisitions) == 0:
@@ -82,7 +83,8 @@ class AcquisitionMonitor:
         # Find acquisitions within time range
         dm = self.wm.database_manager
         acquisitions = dm.find_acquisitions_for_l2b(start=start_time, stop=stop_time, date_field=date_field,
-                                                    retry_failed=retry_failed)
+                                                    retry_failed=retry_failed,
+                                                    processing_direction=self.processing_direction)
 
         # If no results, just return empty list
         if len(acquisitions) == 0:
@@ -104,7 +106,8 @@ class AcquisitionMonitor:
         # Find acquisitions within time range
         dm = self.wm.database_manager
         acquisitions = dm.find_acquisitions_for_l3(start=start_time, stop=stop_time, date_field=date_field,
-                                                   retry_failed=retry_failed)
+                                                   retry_failed=retry_failed,
+                                                   processing_direction=self.processing_direction)
 
         # If no results, just return empty list
         if len(acquisitions) == 0:
@@ -149,7 +152,8 @@ class AcquisitionMonitor:
         # Find acquisitions within time range
         dm = self.wm.database_manager
         acquisitions = dm.find_acquisitions_for_l1brdn_delivery(start=start_time, stop=stop_time,
-                                                                date_field=date_field, retry_failed=retry_failed)
+                                                                date_field=date_field, retry_failed=retry_failed,
+                                                                processing_direction=self.processing_direction)
 
         # If no results, just return empty list
         if len(acquisitions) == 0:
@@ -172,7 +176,8 @@ class AcquisitionMonitor:
         # Find acquisitions within time range
         dm = self.wm.database_manager
         acquisitions = dm.find_acquisitions_for_l2a_delivery(start=start_time, stop=stop_time,
-                                                             date_field=date_field, retry_failed=retry_failed)
+                                                             date_field=date_field, retry_failed=retry_failed,
+                                                             processing_direction=self.processing_direction)
 
         # If no results, just return empty list
         if len(acquisitions) == 0:
@@ -195,7 +200,8 @@ class AcquisitionMonitor:
         # Find acquisitions within time range
         dm = self.wm.database_manager
         acquisitions = dm.find_acquisitions_for_l2b_delivery(start=start_time, stop=stop_time,
-                                                             date_field=date_field, retry_failed=retry_failed)
+                                                             date_field=date_field, retry_failed=retry_failed,
+                                                             processing_direction=self.processing_direction)
 
         # If no results, just return empty list
         if len(acquisitions) == 0:

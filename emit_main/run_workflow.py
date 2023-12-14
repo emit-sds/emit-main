@@ -439,7 +439,8 @@ def main():
 
     # Get tasks from acquisition monitor for L2 tasks
     if args.monitor and args.monitor == "l2":
-        am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
+        am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
+                                processing_direction=args.processing_direction)
         am_l2_tasks = am.get_l2_tasks(start_time=args.start_time, stop_time=args.stop_time,
                                       date_field=args.date_field, retry_failed=args.retry_failed)
         am_l2_tasks_str = "\n".join([str(t) for t in am_l2_tasks])
@@ -448,7 +449,8 @@ def main():
 
     # Get tasks from acquisition monitor for L2b tasks
     if args.monitor and args.monitor == "l2b":
-        am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
+        am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
+                                processing_direction=args.processing_direction)
         am_l2b_tasks = am.get_l2b_tasks(start_time=args.start_time, stop_time=args.stop_time,
                                         date_field=args.date_field, retry_failed=args.retry_failed)
         am_l2b_tasks_str = "\n".join([str(t) for t in am_l2b_tasks])
@@ -457,7 +459,8 @@ def main():
 
     # Get tasks from acquisition monitor for L3 tasks
     if args.monitor and args.monitor == "l3":
-        am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
+        am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
+                                processing_direction=args.processing_direction)
         am_l3_tasks = am.get_l3_tasks(start_time=args.start_time, stop_time=args.stop_time,
                                       date_field=args.date_field, retry_failed=args.retry_failed)
         am_l3_tasks_str = "\n".join([str(t) for t in am_l3_tasks])
@@ -538,8 +541,7 @@ def main():
         if len(args.reproc_from_build) == 0:
             print("You must specify a previous build number in the --reproc_from_build argument")
             sys.exit(1)
-        am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
-                                processing_direction=args.processing_direction)
+        am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
         am_reprocess_tasks = am.get_reprocessing_tasks(start_time=args.start_time, stop_time=args.stop_time,
                                                        from_build=args.reproc_from_build,
                                                        to_build=wm.config["build_num"], product_arg=args.products,
