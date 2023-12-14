@@ -616,7 +616,8 @@ class DatabaseManager:
             results = self._remove_results_with_failed_tasks(results, ["emit.L1AReformatBAD"])
         return results
 
-    def find_orbits_for_geolocation(self, start, stop, date_field="last_modified", retry_failed=False):
+    def find_orbits_for_geolocation(self, start, stop, date_field="last_modified", retry_failed=False,
+                                    get_reprocessed_results=False):
         orbits_coll = self.db.orbits
         # Query for orbits with complete set of radiance files, an associated BAD netcdf file, last modified within
         # start/stop range, and no products.l1b.acquisitions
@@ -625,8 +626,11 @@ class DatabaseManager:
             date_field: {"$gte": start, "$lte": stop},
             "associated_bad_netcdf": {"$exists": 1},
             "products.l1b.acquisitions": {"$exists": 0},
-            "build_num": self.config["build_num"]
+            "build_num": self.config["build_num"],
+            "copied_from": {"$exists": 0}
         }
+        if get_reprocessed_results:
+            query["copied_from"] = {"$exists": 1}
         results = list(orbits_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L1BGeolocate"])

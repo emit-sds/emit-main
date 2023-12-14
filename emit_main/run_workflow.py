@@ -100,6 +100,9 @@ def parse_args():
                         help="Options are 'forward' or 'backward' depending on which DAAC ingestion queue to use.")
     parser.add_argument("--reproc_from_build", default="",
                         help="The previous build number to use as a base to reprocess from.")
+    parser.add_argument("--get_reprocessed_results", action="store_true",
+                        help="A flag for the monitors that indicates whether to return reprocessed data in the results "
+                             "or not.  By default only forward processed data are included in monitor results.")
     parser.add_argument("--dry_run", action="store_true",
                         help="Just return a list of paths to process from the ingest folder, but take no action")
     parser.add_argument("--test_mode", action="store_true",
@@ -419,7 +422,8 @@ def main():
     if args.monitor and args.monitor == "geo":
         om = OrbitMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
         om_geo_tasks = om.get_geolocation_tasks(start_time=args.start_time, stop_time=args.stop_time,
-                                                date_field=args.date_field, retry_failed=args.retry_failed)
+                                                date_field=args.date_field, retry_failed=args.retry_failed,
+                                                get_reprocessed_results=args.get_reprocessed_results)
         om_geo_tasks_str = "\n".join([str(t) for t in om_geo_tasks])
         logger.info(f"Orbit monitor geolocation tasks to run:\n{om_geo_tasks_str}")
         tasks += om_geo_tasks

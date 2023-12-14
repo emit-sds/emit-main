@@ -53,12 +53,14 @@ class OrbitMonitor:
 
         return tasks
 
-    def get_geolocation_tasks(self, start_time, stop_time, date_field="last_modified", retry_failed=False):
+    def get_geolocation_tasks(self, start_time, stop_time, date_field="last_modified", retry_failed=False,
+                              get_reprocessed_results=False):
         tasks = []
         # Find orbits within time range
         dm = self.wm.database_manager
         orbits = dm.find_orbits_for_geolocation(start=start_time, stop=stop_time, date_field=date_field,
-                                                retry_failed=retry_failed)
+                                                retry_failed=retry_failed,
+                                                get_reprocessed_results=get_reprocessed_results)
 
         # If no results, just return empty list
         if len(orbits) == 0:
