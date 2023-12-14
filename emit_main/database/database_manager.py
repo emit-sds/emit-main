@@ -45,7 +45,7 @@ class DatabaseManager:
         acquisitions_coll = self.db.acquisitions
         if build_nums is None:
             build_nums = [self.config["build_num"]]
-        build_nums.reverse()
+        build_nums.sort(reverse=True)
 
         result = None
         for build_num in build_nums:
@@ -60,7 +60,7 @@ class DatabaseManager:
         acquisitions_coll = self.db.acquisitions
         if build_nums is None:
             build_nums = [self.config["build_num"]]
-        build_nums.reverse()
+        build_nums.sort(reverse=True)
 
         result = None
         for build_num in build_nums:
@@ -90,7 +90,7 @@ class DatabaseManager:
         acquisitions_coll = self.db.acquisitions
         if build_nums is None:
             build_nums = [self.config["build_num"]]
-        build_nums.reverse()
+        build_nums.sort(reverse=True)
 
         results = []
         for build_num in build_nums:
@@ -500,7 +500,7 @@ class DatabaseManager:
         data_collections_coll = self.db.data_collections
         if build_nums is None:
             build_nums = [self.config["build_num"]]
-        build_nums.reverse()
+        build_nums.sort(reverse=True)
 
         results = []
         for build_num in build_nums:
@@ -568,7 +568,7 @@ class DatabaseManager:
         orbits_coll = self.db.orbits
         if build_nums is None:
             build_nums = [self.config["build_num"]]
-        build_nums.reverse()
+        build_nums.sort(reverse=True)
 
         result = None
         for build_num in build_nums:
