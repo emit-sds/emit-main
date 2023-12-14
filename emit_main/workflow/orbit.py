@@ -178,24 +178,27 @@ class Orbit:
         num_science = 0
         for id in acquisition_ids:
             acq = dm.find_acquisition_by_id(id, build_nums=build_nums)
-            if acq is not None and acq["submode"] == "science" and acq["num_valid_lines"] >= 2 and \
-                    acq["build_num"] == wm.config["build_num"]:
+            if acq is not None and acq["submode"] == "science" and acq["num_valid_lines"] >= 2:
+                # If the returned science acquisition is not from the current build, then fail because not complete
+                if acq["build_num"] != wm.config["build_num"]:
+                    wm.print(__name__, f"Acquisition {id} in orbit {self.orbit_id} does not have a radiance product "
+                                       f"yet for build {wm.config['build_num']}.")
+                    return False
                 num_science += 1
                 try:
                     rdn_img_path = acq["products"]["l1b"]["rdn"]["img_path"]
                 except KeyError:
                     wm.print(__name__, f"Acquisition {id} in orbit {self.orbit_id} does not have a radiance product "
-                             f"yet.")
+                             f"yet for build {wm.config['build_num']}.")
                     return False
                 if not os.path.exists(rdn_img_path):
                     wm.print(__name__, f"Acquisition {id} in orbit {self.orbit_id} has rdn_img_path of {rdn_img_path} "
                              f"but file does not exist.")
                     return False
             elif acq is None:
-                # If we didn't find the acquisition, then it hasn't been created yet (probably due to reprocessing)
-                wm.print(__name__, f"Acquisition {id} in orbit {self.orbit_id} was not found for build number "
-                                   f"{wm.config['build_num']}")
-                return False
+                # If we didn't find the acquisition, then it doesn't exist
+                wm.print(__name__, f"Acquisition {id} in orbit {self.orbit_id} was not found for build numbers "
+                                   f"{build_nums}")
 
         if num_science == 0:
             wm.print(__name__, f"Did not find any science acquisitions while checking acquisitions in orbit "
