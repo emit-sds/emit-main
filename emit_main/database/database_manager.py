@@ -41,9 +41,20 @@ class DatabaseManager:
                 non_failed_results.append(r)
         return non_failed_results
 
-    def find_acquisition_by_id(self, acquisition_id):
+    def find_acquisition_by_id(self, acquisition_id, build_nums=None):
         acquisitions_coll = self.db.acquisitions
-        return acquisitions_coll.find_one({"acquisition_id": acquisition_id, "build_num": self.config["build_num"]})
+        if build_nums is None:
+            build_nums = [self.config["build_num"]]
+        build_nums.reverse()
+
+        result = None
+        for build_num in build_nums:
+            query = {"acquisition_id": acquisition_id, "build_num": build_num}
+            result = acquisitions_coll.find_one(query)
+            if result is not None:
+                return result
+        # If we make it this far, then there was no match so just return it
+        return result
 
     def find_acquisition_by_id_and_product(self, acquisition_id, product, build_nums=None):
         acquisitions_coll = self.db.acquisitions
