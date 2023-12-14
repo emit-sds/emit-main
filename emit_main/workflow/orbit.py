@@ -171,10 +171,15 @@ class Orbit:
 
         # Look up acquisitions to see if it is science data and rdn product has been generated. Return False if not.
         # Keep track of number of science acquisitions
+        # NOTE: We have to lookup both previous build_num values and the current one since some acquisitions will not
+        # get calibrated due to clouds, but we still need to check them for completion
+        if build_nums is not None and wm.config["build_num"] not in build_nums:
+            build_nums.append(wm.config["build_num"])
         num_science = 0
         for id in acquisition_ids:
             acq = dm.find_acquisition_by_id(id, build_nums=build_nums)
-            if acq is not None and acq["submode"] == "science" and acq["num_valid_lines"] >= 2:
+            if acq is not None and acq["submode"] == "science" and acq["num_valid_lines"] >= 2 and \
+                    acq["build_num"] == wm.config["build_num"]:
                 num_science += 1
                 try:
                     rdn_img_path = acq["products"]["l1b"]["rdn"]["img_path"]
