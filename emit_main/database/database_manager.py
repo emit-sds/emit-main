@@ -617,7 +617,7 @@ class DatabaseManager:
         return results
 
     def find_orbits_for_geolocation(self, start, stop, date_field="last_modified", retry_failed=False,
-                                    get_reprocessed_results=False):
+                                    processing_direction="forward"):
         orbits_coll = self.db.orbits
         # Query for orbits with complete set of radiance files, an associated BAD netcdf file, last modified within
         # start/stop range, and no products.l1b.acquisitions
@@ -629,7 +629,7 @@ class DatabaseManager:
             "build_num": self.config["build_num"],
             "copied_from": {"$exists": 0}
         }
-        if get_reprocessed_results:
+        if processing_direction == "backward":
             query["copied_from"] = {"$exists": 1}
         results = list(orbits_coll.find(query))
         if not retry_failed:

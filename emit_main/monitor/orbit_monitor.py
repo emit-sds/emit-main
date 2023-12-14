@@ -18,7 +18,7 @@ logger = logging.getLogger("emit-main")
 
 class OrbitMonitor:
 
-    def __init__(self, config_path, level="INFO", partition="emit", daac_ingest_queue="forward"):
+    def __init__(self, config_path, level="INFO", partition="emit", processing_direction="forward"):
         """
         :param config_path: Path to config file containing environment settings
         """
@@ -26,7 +26,7 @@ class OrbitMonitor:
         self.config_path = os.path.abspath(config_path)
         self.level = level
         self.partition = partition
-        self.daac_ingest_queue = daac_ingest_queue
+        self.processing_direction = processing_direction
 
         # Get workflow manager
         self.wm = WorkflowManager(config_path=config_path)
@@ -53,14 +53,13 @@ class OrbitMonitor:
 
         return tasks
 
-    def get_geolocation_tasks(self, start_time, stop_time, date_field="last_modified", retry_failed=False,
-                              get_reprocessed_results=False):
+    def get_geolocation_tasks(self, start_time, stop_time, date_field="last_modified", retry_failed=False):
         tasks = []
         # Find orbits within time range
         dm = self.wm.database_manager
         orbits = dm.find_orbits_for_geolocation(start=start_time, stop=stop_time, date_field=date_field,
                                                 retry_failed=retry_failed,
-                                                get_reprocessed_results=get_reprocessed_results)
+                                                processing_direction=self.processing_direction)
 
         # If no results, just return empty list
         if len(orbits) == 0:
@@ -118,7 +117,7 @@ class OrbitMonitor:
                                        orbit_id=orbit['orbit_id'],
                                        level=self.level,
                                        partition=self.partition,
-                                       daac_ingest_queue=self.daac_ingest_queue))
+                                       daac_ingest_queue=self.processing_direction))
 
         return tasks
 

@@ -18,7 +18,7 @@ logger = logging.getLogger("emit-main")
 class IngestMonitor:
 
     def __init__(self, config_path, level="INFO", partition="emit", pkt_format="1.3", miss_pkt_thresh=0.01,
-                 test_mode=False, daac_ingest_queue="forward"):
+                 test_mode=False, processing_direction="forward"):
         """
         :param config_path: Path to config file containing environment settings
         """
@@ -29,7 +29,7 @@ class IngestMonitor:
         self.pkt_format = pkt_format
         self.miss_pkt_thresh = miss_pkt_thresh
         self.test_mode = test_mode
-        self.daac_ingest_queue = daac_ingest_queue
+        self.processing_direction = processing_direction
 
         # Get config properties
         self.config = Config(config_path).get_dictionary()
@@ -105,7 +105,7 @@ class IngestMonitor:
                                    stream_path=stream_path,
                                    level=self.level,
                                    partition=self.partition,
-                                   daac_ingest_queue=self.daac_ingest_queue))
+                                   daac_ingest_queue=self.processing_direction))
 
         return tasks
 

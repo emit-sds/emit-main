@@ -25,7 +25,7 @@ logger = logging.getLogger("emit-main")
 
 class EmailMonitor:
 
-    def __init__(self, config_path, level="INFO", partition="emit", daac_ingest_queue="forward"):
+    def __init__(self, config_path, level="INFO", partition="emit", processing_direction="forward"):
         """
         :param config_path: Path to config file containing environment settings
         """
@@ -35,7 +35,7 @@ class EmailMonitor:
         self.config_path = os.path.abspath(config_path)
         self.level = level
         self.partition = partition
-        self.daac_ingest_queue = daac_ingest_queue
+        self.processing_direction = processing_direction
         # Get workflow manager
         self.wm = WorkflowManager(config_path=config_path)
 
@@ -254,7 +254,7 @@ class EmailMonitor:
                                                stream_path=stream_path,
                                                level=self.level,
                                                partition=self.partition,
-                                               daac_ingest_queue=self.daac_ingest_queue,
+                                               daac_ingest_queue=self.processing_direction,
                                                override_output=True))
                 if g.startswith("EMIT_L1A_RAW"):
                     # Get acquisition id
@@ -265,7 +265,7 @@ class EmailMonitor:
                                             acquisition_id=acquisition_id,
                                             level=self.level,
                                             partition=self.partition,
-                                            daac_ingest_queue=self.daac_ingest_queue,
+                                            daac_ingest_queue=self.processing_direction,
                                             override_output=True))
 
                 if g.startswith("EMIT_L1B_RAD"):
@@ -277,7 +277,7 @@ class EmailMonitor:
                                                acquisition_id=acquisition_id,
                                                level=self.level,
                                                partition=self.partition,
-                                               daac_ingest_queue=self.daac_ingest_queue,
+                                               daac_ingest_queue=self.processing_direction,
                                                override_output=True))
 
                 if g.startswith("EMIT_L1B_ATT"):
@@ -288,7 +288,7 @@ class EmailMonitor:
                                                orbit_id=orbit_id,
                                                level=self.level,
                                                partition=self.partition,
-                                               daac_ingest_queue=self.daac_ingest_queue,
+                                               daac_ingest_queue=self.processing_direction,
                                                override_output=True))
 
                 if g.startswith("EMIT_L2A_RFL"):
@@ -300,7 +300,7 @@ class EmailMonitor:
                                             acquisition_id=acquisition_id,
                                             level=self.level,
                                             partition=self.partition,
-                                            daac_ingest_queue=self.daac_ingest_queue,
+                                            daac_ingest_queue=self.processing_direction,
                                             override_output=True))
 
                 if g.startswith("EMIT_L2B_MIN"):
@@ -312,7 +312,7 @@ class EmailMonitor:
                                             acquisition_id=acquisition_id,
                                             level=self.level,
                                             partition=self.partition,
-                                            daac_ingest_queue=self.daac_ingest_queue,
+                                            daac_ingest_queue=self.processing_direction,
                                             override_output=True))
 
         return tasks

@@ -96,8 +96,8 @@ def parse_args():
                         help="Ignore missing BAD data in an orbit when reformatting BAD")
     parser.add_argument("--ignore_missing_radiance", action="store_true",
                         help="Ignore missing radiance files in an orbit when doing geolocation")
-    parser.add_argument("--daac_ingest_queue", default="forward",
-                        help="Options are 'forward' or 'backward' depending on which DAAC ingestion queue to use.")
+    parser.add_argument("--processing_direction", default="forward",
+                        help="Options are 'forward' or 'backward' depending on which direction we are processing.")
     parser.add_argument("--reproc_from_build", default="",
                         help="The previous build number to use as a base to reprocess from.")
     parser.add_argument("--get_reprocessed_results", action="store_true",
@@ -182,7 +182,7 @@ def get_tasks_from_product_args(args):
     prod_task_map = {
         "l0hosc": L0StripHOSC(stream_path=args.stream_path, miss_pkt_thresh=args.miss_pkt_thresh,
                               **kwargs),
-        "l0daac": L0Deliver(stream_path=args.stream_path, daac_ingest_queue=args.daac_ingest_queue,
+        "l0daac": L0Deliver(stream_path=args.stream_path, daac_ingest_queue=args.processing_direction,
                             override_output=args.override_output, **kwargs),
         "l0plan": L0ProcessPlanningProduct(plan_prod_path=args.plan_prod_path, test_mode=args.test_mode, **kwargs),
         "l0bad": L0IngestBAD(stream_path=args.stream_path, **kwargs),
@@ -197,7 +197,7 @@ def get_tasks_from_product_args(args):
                                          acq_chunksize=args.acq_chunksize, test_mode=args.test_mode, **kwargs),
         "l1araw": L1AReassembleRaw(dcid=args.dcid, ignore_missing_frames=args.ignore_missing_frames,
                                    acq_chunksize=args.acq_chunksize, test_mode=args.test_mode, **kwargs),
-        "l1adaac": L1ADeliver(acquisition_id=args.acquisition_id, daac_ingest_queue=args.daac_ingest_queue,
+        "l1adaac": L1ADeliver(acquisition_id=args.acquisition_id, daac_ingest_queue=args.processing_direction,
                               override_output=args.override_output, **kwargs),
         "l1abad": L1AReformatBAD(orbit_id=args.orbit_id, ignore_missing_bad=args.ignore_missing_bad, **kwargs),
         "l1bcal": L1BCalibrate(acquisition_id=args.acquisition_id, dark_path=args.dark_path,
@@ -206,18 +206,18 @@ def get_tasks_from_product_args(args):
         "l1bgeo": L1BGeolocate(orbit_id=args.orbit_id, ignore_missing_radiance=args.ignore_missing_radiance,
                                reproc_from_build=args.reproc_from_build, **kwargs),
         "l1brdnformat": L1BRdnFormat(acquisition_id=args.acquisition_id, **kwargs),
-        "l1brdndaac": L1BRdnDeliver(acquisition_id=args.acquisition_id, daac_ingest_queue=args.daac_ingest_queue,
+        "l1brdndaac": L1BRdnDeliver(acquisition_id=args.acquisition_id, daac_ingest_queue=args.processing_direction,
                                     override_output=args.override_output, **kwargs),
-        "l1battdaac": L1BAttDeliver(orbit_id=args.orbit_id, daac_ingest_queue=args.daac_ingest_queue,
+        "l1battdaac": L1BAttDeliver(orbit_id=args.orbit_id, daac_ingest_queue=args.processing_direction,
                                     override_output=args.override_output, **kwargs),
         "l2arefl": L2AReflectance(acquisition_id=args.acquisition_id, **kwargs),
         "l2amask": L2AMask(acquisition_id=args.acquisition_id, **kwargs),
         "l2aformat": L2AFormat(acquisition_id=args.acquisition_id, **kwargs),
-        "l2adaac": L2ADeliver(acquisition_id=args.acquisition_id, daac_ingest_queue=args.daac_ingest_queue,
+        "l2adaac": L2ADeliver(acquisition_id=args.acquisition_id, daac_ingest_queue=args.processing_direction,
                               override_output=args.override_output, **kwargs),
         "l2babun": L2BAbundance(acquisition_id=args.acquisition_id, **kwargs),
         "l2bformat": L2BFormat(acquisition_id=args.acquisition_id, **kwargs),
-        "l2bdaac": L2BDeliver(acquisition_id=args.acquisition_id, daac_ingest_queue=args.daac_ingest_queue,
+        "l2bdaac": L2BDeliver(acquisition_id=args.acquisition_id, daac_ingest_queue=args.processing_direction,
                               override_output=args.override_output, **kwargs),
         "l3unmix": L3Unmix(acquisition_id=args.acquisition_id, **kwargs),
         # "l3unmixformat": L3UnmixFormat(acquisition_id=args.acquisition_id, **kwargs)
@@ -373,7 +373,7 @@ def main():
 
     if args.monitor and args.monitor == "reconresp":
         em = EmailMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
-                          daac_ingest_queue=args.daac_ingest_queue)
+                          processing_direction=args.processing_direction)
         em_tasks = em.process_daac_reconciliation_responses(
             reconciliation_response_path=args.recon_resp_path, retry_failed=args.retry_failed)
         em_tasks_str = "\n".join([str(t) for t in em_tasks])
@@ -420,10 +420,10 @@ def main():
 
     # Get tasks from orbit monitor for geolocation tasks
     if args.monitor and args.monitor == "geo":
-        om = OrbitMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
+        om = OrbitMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
+                          processing_direction=args.processing_direction)
         om_geo_tasks = om.get_geolocation_tasks(start_time=args.start_time, stop_time=args.stop_time,
-                                                date_field=args.date_field, retry_failed=args.retry_failed,
-                                                get_reprocessed_results=args.get_reprocessed_results)
+                                                date_field=args.date_field, retry_failed=args.retry_failed)
         om_geo_tasks_str = "\n".join([str(t) for t in om_geo_tasks])
         logger.info(f"Orbit monitor geolocation tasks to run:\n{om_geo_tasks_str}")
         tasks += om_geo_tasks
@@ -476,7 +476,7 @@ def main():
     # Get tasks from dl0 (deliver l0) monitor
     if args.monitor and args.monitor == "dl0":
         im = IngestMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
-                           daac_ingest_queue=args.daac_ingest_queue)
+                           processing_direction=args.processing_direction)
         im_dl0_tasks = im.get_l0_delivery_tasks(start_time=args.start_time, stop_time=args.stop_time,
                                                 date_field=args.date_field, retry_failed=args.retry_failed)
         im_dl0_tasks_str = "\n".join([str(t) for t in im_dl0_tasks])
@@ -486,7 +486,7 @@ def main():
     # Get tasks from dl1a (deliver l1a) monitor
     if args.monitor and args.monitor == "dl1a":
         am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
-                                daac_ingest_queue=args.daac_ingest_queue)
+                                processing_direction=args.processing_direction)
         am_dl1a_tasks = am.get_l1a_delivery_tasks(start_time=args.start_time, stop_time=args.stop_time,
                                                   date_field=args.date_field, retry_failed=args.retry_failed)
         am_dl1a_tasks_str = "\n".join([str(t) for t in am_dl1a_tasks])
@@ -496,7 +496,7 @@ def main():
     # Get tasks from dl1brdn (deliver dl1brdn) monitor
     if args.monitor and args.monitor == "dl1brdn":
         am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
-                                daac_ingest_queue=args.daac_ingest_queue)
+                                processing_direction=args.processing_direction)
         am_dl1brdn_tasks = am.get_l1brdn_delivery_tasks(start_time=args.start_time, stop_time=args.stop_time,
                                                         date_field=args.date_field, retry_failed=args.retry_failed)
         am_dl1brdn_tasks_str = "\n".join([str(t) for t in am_dl1brdn_tasks])
@@ -506,7 +506,7 @@ def main():
     # Get tasks from dl1batt (deliver l1b att/eph) monitor
     if args.monitor and args.monitor == "dl1batt":
         om = OrbitMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
-                          daac_ingest_queue=args.daac_ingest_queue)
+                          processing_direction=args.processing_direction)
         om_dl1batt_tasks = om.get_l1batt_delivery_tasks(start_time=args.start_time, stop_time=args.stop_time,
                                                         date_field=args.date_field, retry_failed=args.retry_failed)
         om_dl1batt_tasks_str = "\n".join([str(t) for t in om_dl1batt_tasks])
@@ -516,7 +516,7 @@ def main():
     # Get tasks from dl2a (deliver l2a) monitor
     if args.monitor and args.monitor == "dl2a":
         am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
-                                daac_ingest_queue=args.daac_ingest_queue)
+                                processing_direction=args.processing_direction)
         am_dl2a_tasks = am.get_l2a_delivery_tasks(start_time=args.start_time, stop_time=args.stop_time,
                                                   date_field=args.date_field, retry_failed=args.retry_failed)
         am_dl2a_tasks_str = "\n".join([str(t) for t in am_dl2a_tasks])
@@ -526,7 +526,7 @@ def main():
     # Get tasks from dl2b (deliver l2b) monitor
     if args.monitor and args.monitor == "dl2b":
         am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
-                                daac_ingest_queue=args.daac_ingest_queue)
+                                processing_direction=args.processing_direction)
         am_dl2b_tasks = am.get_l2b_delivery_tasks(start_time=args.start_time, stop_time=args.stop_time,
                                                   date_field=args.date_field, retry_failed=args.retry_failed)
         am_dl2b_tasks_str = "\n".join([str(t) for t in am_dl2b_tasks])
@@ -539,7 +539,7 @@ def main():
             print("You must specify a previous build number in the --reproc_from_build argument")
             sys.exit(1)
         am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
-                                daac_ingest_queue=args.daac_ingest_queue)
+                                processing_direction=args.processing_direction)
         am_reprocess_tasks = am.get_reprocessing_tasks(start_time=args.start_time, stop_time=args.stop_time,
                                                        from_build=args.reproc_from_build,
                                                        to_build=wm.config["build_num"], product_arg=args.products,
