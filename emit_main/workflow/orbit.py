@@ -173,7 +173,7 @@ class Orbit:
         # Keep track of number of science acquisitions
         num_science = 0
         for id in acquisition_ids:
-            acq = dm.find_acquisition_by_id(id)
+            acq = dm.find_acquisition_by_id(id, build_nums=build_nums)
             if acq is not None and acq["submode"] == "science" and acq["num_valid_lines"] >= 2:
                 num_science += 1
                 try:
