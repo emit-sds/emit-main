@@ -195,7 +195,7 @@ class DatabaseManager:
             "build_num": self.config["build_num"],
             "copied_from": {"$exists": copied_from_exists}
         }
-        results = list(acquisitions_coll.find(query))
+        results = list(acquisitions_coll.find(query).sort("start_time", 1))
         # Also query for case where rfl exists but not mask
         query = {
             "products.l1b.rdn.img_path": {"$exists": 1},
@@ -208,7 +208,7 @@ class DatabaseManager:
             "build_num": self.config["build_num"],
             "copied_from": {"$exists": copied_from_exists}
         }
-        results += list(acquisitions_coll.find(query))
+        results += list(acquisitions_coll.find(query).sort("start_time", 1))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L2AReflectance", "emit.L2AMask"])
         return results
@@ -226,7 +226,7 @@ class DatabaseManager:
             "build_num": self.config["build_num"],
             "copied_from": {"$exists": copied_from_exists}
         }
-        results = list(acquisitions_coll.find(query))
+        results = list(acquisitions_coll.find(query).sort("start_time", 1))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L2BAbundance"])
         return results
@@ -244,7 +244,7 @@ class DatabaseManager:
             "build_num": self.config["build_num"],
             "copied_from": {"$exists": copied_from_exists}
         }
-        results = list(acquisitions_coll.find(query))
+        results = list(acquisitions_coll.find(query).sort("start_time", 1))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L3Unmix"])
         return results
@@ -260,7 +260,7 @@ class DatabaseManager:
             date_field: {"$gte": start, "$lte": stop},
             "build_num": self.config["build_num"]
         }
-        results = list(acquisitions_coll.find(query))
+        results = list(acquisitions_coll.find(query).sort("start_time", 1))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L1ADeliver"])
         return results
@@ -284,7 +284,7 @@ class DatabaseManager:
             "build_num": self.config["build_num"],
             "copied_from": {"$exists": copied_from_exists}
         }
-        results = list(acquisitions_coll.find(query))
+        results = list(acquisitions_coll.find(query).sort("start_time", 1))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L1BRdnFormat", "emit.L1BRdnDeliver"])
         return results
@@ -308,7 +308,7 @@ class DatabaseManager:
             "build_num": self.config["build_num"],
             "copied_from": {"$exists": copied_from_exists}
         }
-        results = list(acquisitions_coll.find(query))
+        results = list(acquisitions_coll.find(query).sort("start_time", 1))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L2AFormat", "emit.L2ADeliver"])
         return results
@@ -330,7 +330,7 @@ class DatabaseManager:
             "build_num": self.config["build_num"],
             "copied_from": {"$exists": copied_from_exists}
         }
-        results = list(acquisitions_coll.find(query))
+        results = list(acquisitions_coll.find(query).sort("start_time", 1))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L2BFormat", "emit.L2BDeliver"])
         return results
@@ -691,7 +691,7 @@ class DatabaseManager:
             "build_num": self.config["build_num"],
             "copied_from": {"$exists": copied_from_exists}
         }
-        results = list(orbits_coll.find(query))
+        results = list(orbits_coll.find(query).sort("start_time", 1))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L1BAttDeliver"])
         return results
