@@ -90,6 +90,7 @@ def main():
     parser.add_argument("--dates", help="Comma separated dates (YYYYMMDD,YYYYMMDD)")
     parser.add_argument("--date", help="A single date - YYYYMMDD")
     parser.add_argument("--month", help="Start date of month - YYYYMMDD")
+    # parser.add_argument("--since", help="Start date of month - YYYYMMDD")
     parser.add_argument("--metrics", default="streams,scenes,cmr", help="Which metrics to collect (streams,scenes,cmr)")
     parser.add_argument("--tracking_json", default="/scratch/brodrick/emit/emit-visuals/track_coverage.json",
                         help="JSON containing scene metrics")
@@ -116,12 +117,14 @@ def main():
     if stop is None:
         if args.month is not None:
             stop_date = start_date + relativedelta(months=1)
+            stop = stop_date.strftime("%Y%m%d")
         if args.date is not None:
             stop_date = start_date + datetime.timedelta(days=1)
+            stop = stop_date.strftime("%Y%m%d")
     else:
         stop_date = dt.datetime.strptime(stop, "%Y%m%d")
 
-    print(f"Using start_date and stop_date of {start_date} and {stop_date}")
+    print(f"Using start and stop of {start} and {stop}, and start_date and stop_date of {start_date} and {stop_date}")
 
     metrics_flags = args.metrics.split(",")
 
@@ -188,9 +191,9 @@ def main():
                     start_time = os.path.basename(ccsds_file).split("_")[2].upper()
                     hosc_files = glob.glob(f"{dir}/raw/{apid}_{start_time}_*hsc.bin")
                     if os.path.exists(ccsds_file):
-                        df["ccsds_size_bytes"] = os.path.getsize(ccsds_file)
+                        df[f"{apid}_ccsds_size_bytes"] = os.path.getsize(ccsds_file)
                     if len(hosc_files) > 0:
-                        df["hosc_size_bytes"] = os.path.getsize(hosc_files[0])
+                        df[f"{apid}_hosc_size_bytes"] = os.path.getsize(hosc_files[0])
 
                     if apid == "1674":
                         apid_coll = dm.db.trending_1674
@@ -393,7 +396,7 @@ def main():
         while cur_date < stop_date:
             cur_plus_one = cur_date + datetime.timedelta(days=1)
             prod_range = f"{cur_date.strftime('%Y-%m-%dT%H:%M:%SZ')},{cur_plus_one.strftime('%Y-%m-%dT%H:%M:%SZ')}"
-            print(f"### prod_range: {prod_range}")
+            print(f"### CMR prod_range: {prod_range}")
             # Loop through collections
             for level, coll in collections.items():
                 response = requests.get(url, params={'concept_id': coll, 'page_size': 500, 'temporal': prod_range},
