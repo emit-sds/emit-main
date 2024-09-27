@@ -70,6 +70,9 @@ class Orbit:
         self.daac_uri_base = f"https://{self.config['daac_server_external']}/emit/lpdaac/{wm.config['environment']}/" \
             f"products/{self.start_time.strftime('%Y%m%d')}/"
         self.daac_partial_dir = os.path.join(self.config["daac_base_dir"], wm.config['environment'], "partial_transfers")
+        self.aws_staging_dir = os.path.join(self.config["aws_s3_base_dir"], wm.config['environment'], "products",
+                                            self.start_time.strftime("%Y%m%d"))
+        self.aws_s3_uri_base = f"s3://{self.config['aws_s3_bucket']}{self.aws_staging_dir}/"
 
     def _initialize_metadata(self):
         # Insert some placeholder fields so that we don't get missing keys on updates

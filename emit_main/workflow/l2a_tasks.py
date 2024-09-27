@@ -572,20 +572,11 @@ class L2ADeliver(SlurmJobTask):
         # Copy ummg file to tmp dir and rename
         wm.copy(ummg_path, daac_ummg_path)
 
-        # Copy files to staging server
-        partial_dir_arg = f"--partial-dir={acq.daac_partial_dir}"
-        log_file_arg = f"--log-file={os.path.join(self.tmp_dir, 'rsync.log')}"
-        target = f"{wm.config['daac_server_internal']}:{acq.daac_staging_dir}/"
-        group = f"emit-{wm.config['environment']}" if wm.config["environment"] in ("test", "ops") else "emit-dev"
-        # This command only makes the directory and changes ownership if the directory doesn't exist
-        cmd_make_target = ["ssh", wm.config["daac_server_internal"], "\"if", "[", "!", "-d",
-                           f"'{acq.daac_staging_dir}'", "];", "then", "mkdir", f"{acq.daac_staging_dir};", "chgrp",
-                           group, f"{acq.daac_staging_dir};", "fi\""]
-        pge.run(cmd_make_target, tmp_dir=self.tmp_dir)
-
+        # Copy files to S3 for staging
         for path in (daac_rfl_nc_path, daac_rfluncert_nc_path, daac_mask_nc_path, daac_browse_path, daac_ummg_path):
-            cmd_rsync = ["rsync", "-av", partial_dir_arg, log_file_arg, path, target]
-            pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
+            cmd_aws_s3 = [wm.config["aws_cli_exe"], "s3", "cp", path, acq.aws_s3_uri_base, "--profile",
+                          wm.config["aws_profile"]]
+            pge.run(cmd_aws_s3, tmp_dir=self.tmp_dir)
 
         # Build notification dictionary
         utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
@@ -614,7 +605,7 @@ class L2ADeliver(SlurmJobTask):
                 "files": [
                     {
                         "name": daac_rfl_nc_name,
-                        "uri": acq.daac_uri_base + daac_rfl_nc_name,
+                        "uri": acq.aws_s3_uri_base + daac_rfl_nc_name,
                         "type": "data",
                         "size": os.path.getsize(daac_rfl_nc_name),
                         "checksumType": "sha512",
@@ -622,7 +613,7 @@ class L2ADeliver(SlurmJobTask):
                     },
                     {
                         "name": daac_rfluncert_nc_name,
-                        "uri": acq.daac_uri_base + daac_rfluncert_nc_name,
+                        "uri": acq.aws_s3_uri_base + daac_rfluncert_nc_name,
                         "type": "data",
                         "size": os.path.getsize(daac_rfluncert_nc_name),
                         "checksumType": "sha512",
@@ -630,7 +621,7 @@ class L2ADeliver(SlurmJobTask):
                     },
                     {
                         "name": daac_mask_nc_name,
-                        "uri": acq.daac_uri_base + daac_mask_nc_name,
+                        "uri": acq.aws_s3_uri_base + daac_mask_nc_name,
                         "type": "data",
                         "size": os.path.getsize(daac_mask_nc_name),
                         "checksumType": "sha512",
@@ -638,7 +629,7 @@ class L2ADeliver(SlurmJobTask):
                     },
                     {
                         "name": daac_browse_name,
-                        "uri": acq.daac_uri_base + daac_browse_name,
+                        "uri": acq.aws_s3_uri_base + daac_browse_name,
                         "type": "browse",
                         "size": os.path.getsize(daac_browse_path),
                         "checksumType": "sha512",
@@ -646,7 +637,7 @@ class L2ADeliver(SlurmJobTask):
                     },
                     {
                         "name": daac_ummg_name,
-                        "uri": acq.daac_uri_base + daac_ummg_name,
+                        "uri": acq.aws_s3_uri_base + daac_ummg_name,
                         "type": "metadata",
                         "size": os.path.getsize(daac_ummg_path),
                         "checksumType": "sha512",
