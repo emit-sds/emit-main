@@ -345,8 +345,8 @@ def main():
         eff_missing_clouds = total_cloudy / 40
         # 1486 is the number of missing frames due to IOC timing issues
         MISSING_FRAMES_IOC_TIMING = 1486
-        # 19636 is the number missing frames due to H/S overflow as of 10/9/23
-        MISSING_FRAMES_HS_OVERFLOW = 19636
+        # 23468 is the number missing frames due to H/S overflow as of 9/4/24
+        MISSING_FRAMES_HS_OVERFLOW = 23468
         eff_missing_pkt_loss = (total_missing_frames + total_corrupt - MISSING_FRAMES_IOC_TIMING - MISSING_FRAMES_HS_OVERFLOW) / 40
         eff_missing_hs_overflow = MISSING_FRAMES_HS_OVERFLOW / 40
         eff_missing_ioc_timing = MISSING_FRAMES_IOC_TIMING / 40
@@ -409,8 +409,8 @@ def main():
         num_frcov = len(list(acq_coll.find(query)))
 
         print(f"""
-Number of raw: {num_raw}
-Number of raw science: {num_science}
+Number of raw: {num_raw:,}
+Number of raw science: {num_science:,}
 Number of raw dark: {num_dark}
 Number of radiance: {num_rdn}
 Number of reflectance: {num_rfl}
