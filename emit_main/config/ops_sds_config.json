@@ -35,18 +35,20 @@
   },
 
   "build_config": {
-    "extended_build_num": "010618",
+    "extended_build_num": "010619",
     "conda_base_dir": "/beegfs/store/shared/anaconda3/"
   },
 
   "daac_config": {
     "aws_cli_exe": "/beegfs/store/shared/aws-cli/v2/current/bin/aws",
+    "aws_s3_bucket": "jpl-ngis",
+    "aws_s3_base_dir": "/lpdaac",
     "aws_profile": "default",
     "cnm_version": "1.4",
     "daac_submission_url_forward": "https://sqs.us-west-2.amazonaws.com/643705676985/lp-prod-ingest-forward-processing",
     "daac_submission_url_backward": "https://sqs.us-west-2.amazonaws.com/643705676985/lp-prod-ingest-backward-processing",
-    "daac_provider_forward": "EMIT_FORWARD_PROCESSED",
-    "daac_provider_backward": "EMIT_BACKWARD_PROCESSED",
+    "daac_provider_forward": "EMIT_FORWARD_PROCESSED_S3",
+    "daac_provider_backward": "EMIT_BACKWARD_PROCESSED_S3",
     "daac_reconciliation_arn": "arn:aws:sns:us-west-2:643705676985:lp-prod-reconciliation-notification",
     "daac_server_internal": "ngis-data.jpl.nasa.gov",
     "daac_server_external": "popo.jpl.nasa.gov",
