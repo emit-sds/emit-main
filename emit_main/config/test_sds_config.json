@@ -35,7 +35,7 @@
   },
 
   "build_config": {
-    "extended_build_num": "010619",
+    "extended_build_num": "010620",
     "conda_base_dir": "/beegfs/store/shared/anaconda3/"
   },
 
@@ -66,9 +66,9 @@
   "ancillary_paths": {
     "decompression_constants_path": "repos/emit-sds-l1a/decompression/constants.txt",
     "decompression_init_data_path": "repos/emit-sds-l1a/decompression/FPGA_Data_Initialization_File_CREATE_COMPRESSION_INIT_DATA_328_e0.bin",
-    "l1b_config_path": "repos/emit-sds-l1b/config/EMIT_20230119.json",
-    "l1b_geo_install_dir": "/store/emit/ops/repos/emit_l1b_geo_installs/1.6.15",
-    "l1b_geo_osp_dir": "/store/emit/ops/repos/emit_l1b_osp_installs/1.6.15",
+    "l1b_config_path": "repos/emit-sds-l1b/config/EMIT_20241025.json",
+    "l1b_geo_install_dir": "/store/emit/ops/repos/emit_l1b_geo_installs/1.6.19",
+    "l1b_geo_osp_dir": "/store/emit/ops/repos/emit_l1b_osp_installs/1.6.19",
     "isofit_surface_config": "repos/emit-sds-l2a/surface/surface_20221020.json",
     "isofit_emulator_base": "/beegfs/store/shared/sRTMnet_v120.h5",
     "isofit_sixs_dir": "/beegfs/store/shared/sixs",
