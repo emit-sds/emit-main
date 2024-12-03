@@ -188,8 +188,9 @@ class L1BCalibrate(SlurmJobTask):
 
         emitrdn_wrapper_exe = os.path.join(pge.repo_dir, "emitrdn_wrapper.py")
         utils_path = os.path.join(pge.repo_dir, "utils")
+        isofit_pge = wm.pges["isofit"]
         env = os.environ.copy()
-        env["PYTHONPATH"] = f"$PYTHONPATH:{utils_path}"
+        env["PYTHONPATH"] = f"$PYTHONPATH:{utils_path}:{isofit_pge.repo_dir}"
         env["RAY_worker_register_timeout_seconds"] = "600"
         cmd = ["python", emitrdn_wrapper_exe, tmp_runconfig_path]
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
