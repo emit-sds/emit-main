@@ -92,7 +92,7 @@ class WorkflowManager:
                                             self.config["environment"], "tmp")
         self.scratch_error_dir = os.path.join(self.config["local_scratch_dir"], self.config["instrument"],
                                               self.config["environment"], "error")
-        self.local_tmp_dir = os.path.join("/tmp", self.config["instrument"], self.config["environment"])
+        self.local_tmp_dir = os.path.join("/local", self.config["instrument"], self.config["environment"])
         self.planning_products_dir = os.path.join(self.data_dir, "planning_products")
         self.reconciliation_dir = os.path.join(self.data_dir, "reconciliation")
 

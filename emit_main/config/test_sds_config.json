@@ -12,12 +12,12 @@
   },
 
   "filesystem_config": {
-    "local_store_dir": "/beegfs/store/",
-    "local_scratch_dir": "/beegfs/scratch/"
+    "local_store_dir": "/store/",
+    "local_scratch_dir": "/store/scratch/"
   },
 
   "database_config": {
-    "db_host": "128.149.52.213",
+    "db_host": "128.149.12.85",
     "db_port": 27017,
     "db_name": "emitTestDB",
     "db_user": "emit-test"
@@ -35,12 +35,12 @@
   },
 
   "build_config": {
-    "extended_build_num": "010620",
-    "conda_base_dir": "/beegfs/store/shared/anaconda3/"
+    "extended_build_num": "010619",
+    "conda_base_dir": "/store/local/miniconda3/"
   },
 
   "daac_config": {
-    "aws_cli_exe": "/beegfs/store/shared/aws-cli/v2/current/bin/aws",
+    "aws_cli_exe": "/store/shared/aws-cli/v2/current/bin/aws",
     "aws_s3_bucket": "jpl-ngis",
     "aws_s3_base_dir": "/lpdaac",
     "aws_profile": "default",
@@ -66,17 +66,17 @@
   "ancillary_paths": {
     "decompression_constants_path": "repos/emit-sds-l1a/decompression/constants.txt",
     "decompression_init_data_path": "repos/emit-sds-l1a/decompression/FPGA_Data_Initialization_File_CREATE_COMPRESSION_INIT_DATA_328_e0.bin",
-    "l1b_config_path": "repos/emit-sds-l1b/config/EMIT_20241025.json",
+    "l1b_config_path": "repos/emit-sds-l1b/config/EMIT_20230119.json",
     "l1b_geo_install_dir": "/store/emit/ops/repos/emit_l1b_geo_installs/1.6.19",
     "l1b_geo_osp_dir": "/store/emit/ops/repos/emit_l1b_osp_installs/1.6.19",
     "isofit_surface_config": "repos/emit-sds-l2a/surface/surface_20221020.json",
-    "isofit_emulator_base": "/beegfs/store/shared/sRTMnet_v120.h5",
-    "isofit_sixs_dir": "/beegfs/store/shared/sixs",
-    "specpr_path": "/beegfs/store/shared/specpr",
-    "tetracorder_path": "/beegfs/store/shared/spectroscopy-tetracorder/tetracorder5.27",
-    "tetracorder_cmds_path": "/beegfs/store/shared/spectroscopy-tetracorder/tetracorder.cmds/tetracorder5.27c.cmds",
-    "tetracorder_library_dir": "/beegfs/store/shared/tetracorder_libraries",
-    "unmixing_library": "/beegfs/store/shared/unmixing_libraries/convex_hull__n_dims_4_unmix_library.csv",
+    "isofit_emulator_base": "/store/shared/sRTMnet_v120.h5",
+    "isofit_sixs_dir": "/store/shared/sixs",
+    "specpr_path": "/store/shared/specpr",
+    "tetracorder_path": "/store/shared/spectroscopy-tetracorder/tetracorder5.27",
+    "tetracorder_cmds_path": "/store/shared/spectroscopy-tetracorder/tetracorder.cmds/tetracorder5.27c.cmds",
+    "tetracorder_library_dir": "/store/shared/tetracorder_libraries",
+    "unmixing_library": "/store/shared/unmixing_libraries/convex_hull__n_dims_4_unmix_library.csv",
     "versions": []
   }
 }
