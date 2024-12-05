@@ -39,8 +39,8 @@ class L1BCalibrate(SlurmJobTask):
     dark_path = luigi.Parameter(default="")
     use_future_flat = luigi.BoolParameter(default=False)
 
-    n_cores = 40
-    memory = 180000
+    n_cores = 64
+    memory = 360000
 
     task_namespace = "emit"
 
@@ -328,8 +328,8 @@ class L1BGeolocate(SlurmJobTask):
     partition = luigi.Parameter()
     ignore_missing_radiance = luigi.BoolParameter(default=False)
 
-    n_cores = 40
-    memory = 180000
+    n_cores = 64
+    memory = 360000
 
     task_namespace = "emit"
 

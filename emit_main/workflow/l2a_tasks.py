@@ -36,8 +36,8 @@ class L2AReflectance(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
 
-    n_cores = 40
-    memory = 180000
+    n_cores = 64
+    memory = 360000
 
     task_namespace = "emit"
 
@@ -261,8 +261,8 @@ class L2AMask(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
 
-    n_cores = 40
-    memory = 180000
+    n_cores = 64
+    memory = 360000
 
     task_namespace = "emit"
 

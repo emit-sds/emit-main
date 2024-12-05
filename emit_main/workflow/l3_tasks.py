@@ -32,8 +32,8 @@ class L3Unmix(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
 
-    n_cores = 40
-    memory = 180000
+    n_cores = 64
+    memory = 360000
 
     task_namespace = "emit"
 
