@@ -889,8 +889,8 @@ class L1ADeliver(SlurmJobTask):
 
         # Copy files to S3 for staging
         for path in paths:
-            cmd_aws_s3 = [wm.config["aws_cli_exe"], "s3", "cp", path, acq.aws_s3_uri_base, "--profile",
-                          wm.config["aws_profile"]]
+            cmd_aws_s3 = ["ssh", "ngishpc1", "'" + wm.config["aws_cli_exe"], "s3", "cp", path, acq.aws_s3_uri_base,
+                          "--profile", wm.config["aws_profile"] + "'"]
             pge.run(cmd_aws_s3, tmp_dir=self.tmp_dir)
 
         # Build notification dictionary
