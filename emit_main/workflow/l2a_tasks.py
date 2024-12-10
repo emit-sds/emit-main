@@ -36,8 +36,8 @@ class L2AReflectance(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
 
-    n_cores = 40
-    memory = 180000
+    n_cores = 64
+    memory = 360000
 
     task_namespace = "emit"
 
@@ -114,7 +114,7 @@ class L2AReflectance(SlurmJobTask):
                "--emulator_base=" + emulator_base,
                "--n_cores", str(self.n_cores),
                "--surface_path", tmp_surface_path,
-               "--ray_temp_dir", "/tmp/ray",
+               "--ray_temp_dir", "/local/ray",
                "--log_file", tmp_log_path,
                "--logging_level", self.level,
                "--num_neighbors=10",
@@ -261,8 +261,8 @@ class L2AMask(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
 
-    n_cores = 40
-    memory = 180000
+    n_cores = 64
+    memory = 360000
 
     task_namespace = "emit"
 
@@ -574,8 +574,8 @@ class L2ADeliver(SlurmJobTask):
 
         # Copy files to S3 for staging
         for path in (daac_rfl_nc_path, daac_rfluncert_nc_path, daac_mask_nc_path, daac_browse_path, daac_ummg_path):
-            cmd_aws_s3 = [wm.config["aws_cli_exe"], "s3", "cp", path, acq.aws_s3_uri_base, "--profile",
-                          wm.config["aws_profile"]]
+            cmd_aws_s3 = ["ssh", "ngishpc1", "'" + wm.config["aws_cli_exe"], "s3", "cp", path, acq.aws_s3_uri_base,
+                          "--profile", wm.config["aws_profile"] + "'"]
             pge.run(cmd_aws_s3, tmp_dir=self.tmp_dir)
 
         # Build notification dictionary

@@ -24,8 +24,8 @@ def _do_work_on_compute_node(work_dir):
 
     # Set up local tmp dir
     wm = WorkflowManager(config_path=job.config_path)
-    tmp_instrument_dir = os.path.join("/tmp", wm.config["instrument"])
-    # Must make top-level /tmp/emit folder writeable by all
+    tmp_instrument_dir = os.path.join("/local", wm.config["instrument"])
+    # Must make top-level /local/emit folder writeable by all
     if not os.path.exists(tmp_instrument_dir):
         try:
             os.makedirs(tmp_instrument_dir)
@@ -45,7 +45,7 @@ def _do_work_on_compute_node(work_dir):
     except RuntimeError as e:
         # Move local tmp folder to "error" subfolder under "scratch"
         print("Encountered error with task:  %s" % job)
-        error_task_dir = job.tmp_dir.replace("/tmp/", "/error/")
+        error_task_dir = job.tmp_dir.replace("/local/", "/error/")
         error_tmp_dir = error_task_dir + "_tmp"
         print(f"Copying local tmp folder {job.local_tmp_dir} to {error_tmp_dir}")
         wm.copytree(job.local_tmp_dir, error_tmp_dir)

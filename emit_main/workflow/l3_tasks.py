@@ -32,8 +32,8 @@ class L3Unmix(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
 
-    n_cores = 40
-    memory = 180000
+    n_cores = 64
+    memory = 360000
 
     task_namespace = "emit"
 
@@ -69,8 +69,8 @@ class L3Unmix(SlurmJobTask):
 
         # Set up environment variables
         env = os.environ.copy()
-        env["PATH"] = "/beegfs/store/shared/julia-1.9.1/bin:${PATH}"
-        env["JULIA_DEPOT_PATH"] = "/beegfs/store/shared/.julia/"
+        env["PATH"] = "/store/shared/julia-1.11.0/bin:${PATH}"
+        env["JULIA_DEPOT_PATH"] = "/store/shared/.julia_111_shared/"
         env["JULIA_PROJECT"] = pge.repo_dir
 
         # Build command

@@ -39,8 +39,8 @@ class L1BCalibrate(SlurmJobTask):
     dark_path = luigi.Parameter(default="")
     use_future_flat = luigi.BoolParameter(default=False)
 
-    n_cores = 40
-    memory = 180000
+    n_cores = 64
+    memory = 360000
 
     task_namespace = "emit"
 
@@ -188,8 +188,9 @@ class L1BCalibrate(SlurmJobTask):
 
         emitrdn_wrapper_exe = os.path.join(pge.repo_dir, "emitrdn_wrapper.py")
         utils_path = os.path.join(pge.repo_dir, "utils")
+        isofit_pge = wm.pges["isofit"]
         env = os.environ.copy()
-        env["PYTHONPATH"] = f"$PYTHONPATH:{utils_path}"
+        env["PYTHONPATH"] = f"$PYTHONPATH:{utils_path}:{isofit_pge.repo_dir}"
         env["RAY_worker_register_timeout_seconds"] = "600"
         cmd = ["python", emitrdn_wrapper_exe, tmp_runconfig_path]
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
@@ -327,8 +328,8 @@ class L1BGeolocate(SlurmJobTask):
     partition = luigi.Parameter()
     ignore_missing_radiance = luigi.BoolParameter(default=False)
 
-    n_cores = 40
-    memory = 180000
+    n_cores = 64
+    memory = 360000
 
     task_namespace = "emit"
 
@@ -795,8 +796,8 @@ class L1BRdnDeliver(SlurmJobTask):
 
         # Copy files to S3 for staging
         for path in (daac_rdn_nc_path, daac_obs_nc_path, daac_browse_path, daac_ummg_path):
-            cmd_aws_s3 = [wm.config["aws_cli_exe"], "s3", "cp", path, acq.aws_s3_uri_base, "--profile",
-                          wm.config["aws_profile"]]
+            cmd_aws_s3 = ["ssh", "ngishpc1", "'" + wm.config["aws_cli_exe"], "s3", "cp", path, acq.aws_s3_uri_base,
+                          "--profile", wm.config["aws_profile"] + "'"]
             pge.run(cmd_aws_s3, tmp_dir=self.tmp_dir)
 
         # Build notification dictionary
@@ -1019,8 +1020,8 @@ class L1BAttDeliver(SlurmJobTask):
 
         # Copy files to S3 for staging
         for path in (daac_nc_path, daac_ummg_path):
-            cmd_aws_s3 = [wm.config["aws_cli_exe"], "s3", "cp", path, orbit.aws_s3_uri_base, "--profile",
-                          wm.config["aws_profile"]]
+            cmd_aws_s3 = ["ssh", "ngishpc1", "'" + wm.config["aws_cli_exe"], "s3", "cp", path, acq.aws_s3_uri_base,
+                          "--profile", wm.config["aws_profile"] + "'"]
             pge.run(cmd_aws_s3, tmp_dir=self.tmp_dir)
 
         # Build notification dictionary
