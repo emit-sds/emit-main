@@ -35,7 +35,7 @@
   },
 
   "build_config": {
-    "extended_build_num": "010619",
+    "extended_build_num": "010620",
     "conda_base_dir": "/store/local/miniconda3/"
   },
 
