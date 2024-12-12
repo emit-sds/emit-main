@@ -2,7 +2,7 @@
   "repositories": [
     {
       "url": "git@github.com:emit-sds/emit-main.git",
-      "tag": "v1.6.20",
+      "tag": "v1.6.21",
       "conda_env": "emit-main-20241122"
     },
     {
