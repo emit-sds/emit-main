@@ -32,8 +32,8 @@ class L3Unmix(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
 
-    n_cores = 40
-    memory = 180000
+    n_cores = 64
+    memory = 360000
 
     task_namespace = "emit"
 
@@ -69,15 +69,15 @@ class L3Unmix(SlurmJobTask):
 
         # Set up environment variables
         env = os.environ.copy()
-        env["PATH"] = "/beegfs/store/shared/julia-1.6.5/bin:${PATH}"
-        env["JULIA_DEPOT_PATH"] = "/beegfs/store/shared/.julia-1.6.5/"
+        env["PATH"] = "/store/shared/julia-1.11.0/bin:${PATH}"
+        env["JULIA_DEPOT_PATH"] = "/store/shared/.julia_111_shared/"
         env["JULIA_PROJECT"] = pge.repo_dir
 
         # Build command
         cmd_unmix = ['julia', '-p', str(self.n_cores), unmix_exe, acq.rfl_img_path, wm.config["unmixing_library"],
                      endmember_key, output_base, "--normalization", "brightness", "--mode", "sma-best",
-                     "--n_mc", "50", "--reflectance_uncertainty_file", acq.rfluncert_img_path,
-                     "--spectral_starting_column", "8", "--num_endmembers", "20", "--log_file", tmp_log_path]
+                     "--n_mc", "20", "--reflectance_uncertainty_file", acq.rfluncert_img_path,
+                     "--spectral_starting_column", "8", "--num_endmembers", "30", "--log_file", tmp_log_path]
 
         pge.run(cmd_unmix, tmp_dir=self.tmp_dir, env=env, use_conda_run=False)
 

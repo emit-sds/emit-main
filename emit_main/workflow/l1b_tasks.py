@@ -39,8 +39,8 @@ class L1BCalibrate(SlurmJobTask):
     dark_path = luigi.Parameter(default="")
     use_future_flat = luigi.BoolParameter(default=False)
 
-    n_cores = 40
-    memory = 180000
+    n_cores = 64
+    memory = 360000
 
     task_namespace = "emit"
 
@@ -126,6 +126,15 @@ class L1BCalibrate(SlurmJobTask):
                 instrument_mode=acq.instrument_mode,
                 min_valid_lines=512,
                 sort=1)
+
+            # Trim out any cases where darks were not processed to l1a
+            for dark_ind in range(len(future_darks) - 1, -1, -1):
+                if 'products' not in list(future_darks[dark_ind].keys()):
+                    future_darks.pop(dark_ind)
+            for dark_ind in range(len(recent_darks) - 1, -1, -1):
+                if 'products' not in list(recent_darks[dark_ind].keys()):
+                    recent_darks.pop(dark_ind)
+
             if (recent_darks is None or len(recent_darks) == 0) and (future_darks is None or len(future_darks) == 0):
                 raise RuntimeError(f"Unable to find any darks for acquisition {acq.acquisition_id} within 800 minutes.")
 
@@ -160,9 +169,7 @@ class L1BCalibrate(SlurmJobTask):
             if os.path.exists(acq_obj["products"]["l1b"]["ffupdate"]["img_path"]):
                 flat_field_update_paths.append(acq_obj["products"]["l1b"]["ffupdate"]["img_path"])
         # If the number of paths is less than 100, then set to empty because we can't use them
-        if len(flat_field_update_paths) >= 100:
-            input_files["flat_field_update_paths"] = flat_field_update_paths
-        else:
+        if len(flat_field_update_paths) < 100:
             flat_field_update_paths = []
 
         # Create runconfig
@@ -181,8 +188,9 @@ class L1BCalibrate(SlurmJobTask):
 
         emitrdn_wrapper_exe = os.path.join(pge.repo_dir, "emitrdn_wrapper.py")
         utils_path = os.path.join(pge.repo_dir, "utils")
+        isofit_pge = wm.pges["isofit"]
         env = os.environ.copy()
-        env["PYTHONPATH"] = f"$PYTHONPATH:{utils_path}"
+        env["PYTHONPATH"] = f"$PYTHONPATH:{utils_path}:{isofit_pge.repo_dir}"
         env["RAY_worker_register_timeout_seconds"] = "600"
         cmd = ["python", emitrdn_wrapper_exe, tmp_runconfig_path]
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
@@ -276,6 +284,10 @@ class L1BCalibrate(SlurmJobTask):
         else:
             dm.update_orbit_metadata(orbit.orbit_id, {"radiance_status": "incomplete"})
 
+        # Add flat field paths here for database log entry
+        if len(flat_field_update_paths) >= 100:
+            input_files["flat_field_update_paths"] = flat_field_update_paths
+
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -316,8 +328,8 @@ class L1BGeolocate(SlurmJobTask):
     partition = luigi.Parameter()
     ignore_missing_radiance = luigi.BoolParameter(default=False)
 
-    n_cores = 40
-    memory = 180000
+    n_cores = 64
+    memory = 360000
 
     task_namespace = "emit"
 
@@ -782,20 +794,11 @@ class L1BRdnDeliver(SlurmJobTask):
         # Copy ummg file to tmp dir and rename
         wm.copy(ummg_path, daac_ummg_path)
 
-        # Copy files to staging server
-        partial_dir_arg = f"--partial-dir={acq.daac_partial_dir}"
-        log_file_arg = f"--log-file={os.path.join(self.tmp_dir, 'rsync.log')}"
-        target = f"{wm.config['daac_server_internal']}:{acq.daac_staging_dir}/"
-        group = f"emit-{wm.config['environment']}" if wm.config["environment"] in ("test", "ops") else "emit-dev"
-        # This command only makes the directory and changes ownership if the directory doesn't exist
-        cmd_make_target = ["ssh", wm.config["daac_server_internal"], "\"if", "[", "!", "-d",
-                           f"'{acq.daac_staging_dir}'", "];", "then", "mkdir", f"{acq.daac_staging_dir};", "chgrp",
-                           group, f"{acq.daac_staging_dir};", "fi\""]
-        pge.run(cmd_make_target, tmp_dir=self.tmp_dir)
-
+        # Copy files to S3 for staging
         for path in (daac_rdn_nc_path, daac_obs_nc_path, daac_browse_path, daac_ummg_path):
-            cmd_rsync = ["rsync", "-azv", partial_dir_arg, log_file_arg, path, target]
-            pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
+            cmd_aws_s3 = ["ssh", "ngishpc1", "'" + wm.config["aws_cli_exe"], "s3", "cp", path, acq.aws_s3_uri_base,
+                          "--profile", wm.config["aws_profile"] + "'"]
+            pge.run(cmd_aws_s3, tmp_dir=self.tmp_dir)
 
         # Build notification dictionary
         utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
@@ -823,7 +826,7 @@ class L1BRdnDeliver(SlurmJobTask):
                 "files": [
                     {
                         "name": daac_rdn_nc_name,
-                        "uri": acq.daac_uri_base + daac_rdn_nc_name,
+                        "uri": acq.aws_s3_uri_base + daac_rdn_nc_name,
                         "type": "data",
                         "size": os.path.getsize(daac_rdn_nc_name),
                         "checksumType": "sha512",
@@ -831,7 +834,7 @@ class L1BRdnDeliver(SlurmJobTask):
                     },
                     {
                         "name": daac_obs_nc_name,
-                        "uri": acq.daac_uri_base + daac_obs_nc_name,
+                        "uri": acq.aws_s3_uri_base + daac_obs_nc_name,
                         "type": "data",
                         "size": os.path.getsize(daac_obs_nc_name),
                         "checksumType": "sha512",
@@ -839,7 +842,7 @@ class L1BRdnDeliver(SlurmJobTask):
                     },
                     {
                         "name": daac_browse_name,
-                        "uri": acq.daac_uri_base + daac_browse_name,
+                        "uri": acq.aws_s3_uri_base + daac_browse_name,
                         "type": "browse",
                         "size": os.path.getsize(daac_browse_path),
                         "checksumType": "sha512",
@@ -847,7 +850,7 @@ class L1BRdnDeliver(SlurmJobTask):
                     },
                     {
                         "name": daac_ummg_name,
-                        "uri": acq.daac_uri_base + daac_ummg_name,
+                        "uri": acq.aws_s3_uri_base + daac_ummg_name,
                         "type": "metadata",
                         "size": os.path.getsize(daac_ummg_path),
                         "checksumType": "sha512",
@@ -978,7 +981,10 @@ class L1BAttDeliver(SlurmJobTask):
         # Update NetCDF with software_delivery_version and get software_build_version
         nc_ds = netCDF4.Dataset(nc_path, 'r+')
         software_build_version = nc_ds.software_build_version
-        nc_ds.software_delivery_version = wm.config["extended_build_num"]
+        if 'software_delivery_version' in nc_ds.ncattrs() and nc_ds.software_delivery_version == wm.config["extended_build_num"]:
+            logging.info('Skipping software_delivery_version assignment, because it already exists and matches')
+        else:
+            nc_ds.software_delivery_version = wm.config["extended_build_num"]
         nc_ds.sync()
         nc_ds.close()
 
@@ -1012,20 +1018,11 @@ class L1BAttDeliver(SlurmJobTask):
         # Copy ummg file to tmp dir and rename
         wm.copy(ummg_path, daac_ummg_path)
 
-        # Copy files to staging server
-        partial_dir_arg = f"--partial-dir={orbit.daac_partial_dir}"
-        log_file_arg = f"--log-file={os.path.join(self.tmp_dir, 'rsync.log')}"
-        target = f"{wm.config['daac_server_internal']}:{orbit.daac_staging_dir}/"
-        group = f"emit-{wm.config['environment']}" if wm.config["environment"] in ("test", "ops") else "emit-dev"
-        # This command only makes the directory and changes ownership if the directory doesn't exist
-        cmd_make_target = ["ssh", wm.config["daac_server_internal"], "\"if", "[", "!", "-d",
-                           f"'{orbit.daac_staging_dir}'", "];", "then", "mkdir", f"{orbit.daac_staging_dir};", "chgrp",
-                           group, f"{orbit.daac_staging_dir};", "fi\""]
-        pge.run(cmd_make_target, tmp_dir=self.tmp_dir)
-
+        # Copy files to S3 for staging
         for path in (daac_nc_path, daac_ummg_path):
-            cmd_rsync = ["rsync", "-azv", partial_dir_arg, log_file_arg, path, target]
-            pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
+            cmd_aws_s3 = ["ssh", "ngishpc1", "'" + wm.config["aws_cli_exe"], "s3", "cp", path, acq.aws_s3_uri_base,
+                          "--profile", wm.config["aws_profile"] + "'"]
+            pge.run(cmd_aws_s3, tmp_dir=self.tmp_dir)
 
         # Build notification dictionary
         utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
@@ -1051,7 +1048,7 @@ class L1BAttDeliver(SlurmJobTask):
                 "files": [
                     {
                         "name": daac_nc_name,
-                        "uri": orbit.daac_uri_base + daac_nc_name,
+                        "uri": orbit.aws_s3_uri_base + daac_nc_name,
                         "type": "data",
                         "size": os.path.getsize(daac_nc_name),
                         "checksumType": "sha512",
@@ -1059,7 +1056,7 @@ class L1BAttDeliver(SlurmJobTask):
                     },
                     {
                         "name": daac_ummg_name,
-                        "uri": orbit.daac_uri_base + daac_ummg_name,
+                        "uri": orbit.aws_s3_uri_base + daac_ummg_name,
                         "type": "metadata",
                         "size": os.path.getsize(daac_ummg_path),
                         "checksumType": "sha512",

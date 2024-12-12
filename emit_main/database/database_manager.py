@@ -70,9 +70,9 @@ class DatabaseManager:
     def find_nearby_acquisitions_with_ffupdate(self, start_time, use_future_flat, limit=350):
         if use_future_flat:
             q_start = start_time
-            q_stop = start_time + datetime.timedelta(days=60)
+            q_stop = start_time + datetime.timedelta(days=30)
         else:
-            q_start = start_time - datetime.timedelta(days=60)
+            q_start = start_time - datetime.timedelta(days=30)
             q_stop = start_time
         acquisitions_coll = self.db.acquisitions
         query = {
@@ -80,10 +80,16 @@ class DatabaseManager:
             "products.l1b.ffupdate": {"$exists": 1},
             "build_num": self.config["build_num"]
         }
+        projection = {
+            "acquisition_id": 1,
+            "start_time": 1,
+            "products.l1b.ffupdate": 1,
+            "build_num": 1
+        }
         if use_future_flat:
-            return list(acquisitions_coll.find(query).sort("start_time", 1).limit(limit))
+            return list(acquisitions_coll.find(query, projection).sort("start_time", 1).limit(limit))
         else:
-            return list(acquisitions_coll.find(query).sort("start_time", -1).limit(limit))
+            return list(acquisitions_coll.find(query, projection).sort("start_time", -1).limit(limit))
 
     def find_acquisitions_for_calibration(self, start, stop, date_field="last_modified", retry_failed=False):
         acquisitions_coll = self.db.acquisitions
@@ -97,7 +103,9 @@ class DatabaseManager:
             date_field: {"$gte": start, "$lte": stop},
             "build_num": self.config["build_num"]
         }
-        results = list(acquisitions_coll.find(query))
+        # Get acquistions for calibration - sort by start time to nominally forward process (
+        # not technically necessary, but helps destriping stay somewhat ordered)
+        results = list(acquisitions_coll.find(query).sort("start_time", 1))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L1BCalibrate"])
         acqs_ready_for_cal = []
@@ -137,6 +145,18 @@ class DatabaseManager:
             "build_num": self.config["build_num"]
         }
         results = list(acquisitions_coll.find(query))
+        # Also query for case where rfl exists but not mask
+        query = {
+            "products.l1b.rdn.img_path": {"$exists": 1},
+            "products.l1b.glt.img_path": {"$exists": 1},
+            "products.l1b.loc.img_path": {"$exists": 1},
+            "products.l1b.obs.img_path": {"$exists": 1},
+            "products.l2a.rfl.img_path": {"$exists": 1},
+            "products.l2a.mask.img_path": {"$exists": 0},
+            date_field: {"$gte": start, "$lte": stop},
+            "build_num": self.config["build_num"]
+        }
+        results += list(acquisitions_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L2AReflectance", "emit.L2AMask"])
         return results

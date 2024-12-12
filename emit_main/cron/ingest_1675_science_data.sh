@@ -12,7 +12,8 @@ source /beegfs/store/shared/anaconda3/etc/profile.d/conda.sh
 conda activate ${2}
 
 cd /store/emit/${1}/repos/emit-main/emit_main
-for file in $(ls -1tr /store/emit/${1}/ingest/1675*); do
+# for file in $(find /store/emit/${1}/ingest -maxdepth 1 -type f -name "1675*hsc.bin" | sort -t '_' -k3); do
+for file in `ls -1tr /store/emit/ops/ingest/1675*`; do
   echo "Ingesting HOSC file $file"
   python run_workflow.py -c config/${1}_sds_config.json -p l1aframe --partition cron --miss_pkt_thresh 0.1 -s $file
 done

@@ -81,6 +81,7 @@ class L2BAbundance(SlurmJobTask):
 
         # This has to be a bit truncated because of character limitations
         tmp_tetra_output_path = os.path.join(self.local_tmp_dir, os.path.basename(acq.abun_img_path).split('_')[0] + '_tetra')
+        tmp_tetra_output_path_tar = tmp_tetra_output_path + '.tar'
 
         cmd_tetra_setup = [os.path.join(wm.config["tetracorder_cmds_path"], 'cmd-setup-tetrun'), tmp_tetra_output_path,
                            wm.config["tetracorder_library_cmdname"], "cube", tmp_rfl_path, "1", "-T", "-20", "80", "C",
@@ -119,20 +120,24 @@ class L2BAbundance(SlurmJobTask):
         emit_utils_pge = wm.pges["emit-utils"]
         env["PYTHONPATH"] = f"$PYTHONPATH:{emit_utils_pge.repo_dir}"
         agg_cmd = ["python", aggregator_exe, tmp_tetra_output_path, min_group_mat_file, tmp_abun_path, tmp_abun_unc_path,
-               "--calculate_uncertainty",
-               "--reflectance_file", acq.rfl_img_path,
-               "--reflectance_uncertainty_file", acq.rfluncert_img_path,
-               "--reference_library", standard_library,
-               "--research_library", research_library,
-               "--expert_system_file", tetracorder_config_file,
-               ]
+                   "--calculate_uncertainty",
+                   "--reflectance_file", acq.rfl_img_path,
+                   "--reflectance_uncertainty_file", acq.rfluncert_img_path,
+                   "--reference_library", standard_library,
+                   "--research_library", research_library,
+                   "--expert_system_file", tetracorder_config_file,
+                   ]
         pge.run(agg_cmd, cwd=pge.repo_dir, tmp_dir=self.tmp_dir, env=env)
 
         ql_cmd = ['python', os.path.join(pge.repo_dir, 'quicklook.py'), tmp_abun_path, tmp_quicklook_path, '--unc_file', tmp_abun_unc_path]
         pge.run(ql_cmd, cwd=pge.repo_dir, tmp_dir=self.tmp_dir, env=env)
 
+        # tar l2b
+        tar_cmd = ['tar', '-C', self.local_tmp_dir, '-cf', tmp_tetra_output_path_tar, os.path.basename(tmp_tetra_output_path)]
+        pge.run(tar_cmd, cwd=pge.repo_dir, tmp_dir=self.tmp_dir, env=env)
+
         # Copy mask files to l2a dir
-        wm.copytree(tmp_tetra_output_path, acq.tetra_dir_path)
+        wm.copy(tmp_tetra_output_path_tar, acq.tetra_dir_path)
         wm.copy(tmp_abun_path, acq.abun_img_path)
         wm.copy(envi_header(tmp_abun_path), acq.abun_hdr_path)
         wm.copy(tmp_abun_unc_path, acq.abununcert_img_path)
@@ -386,20 +391,11 @@ class L2BDeliver(SlurmJobTask):
         # Copy ummg file to tmp dir and rename
         wm.copy(ummg_path, daac_ummg_path)
 
-        # Copy files to staging server
-        partial_dir_arg = f"--partial-dir={acq.daac_partial_dir}"
-        log_file_arg = f"--log-file={os.path.join(self.tmp_dir, 'rsync.log')}"
-        target = f"{wm.config['daac_server_internal']}:{acq.daac_staging_dir}/"
-        group = f"emit-{wm.config['environment']}" if wm.config["environment"] in ("test", "ops") else "emit-dev"
-        # This command only makes the directory and changes ownership if the directory doesn't exist
-        cmd_make_target = ["ssh", wm.config["daac_server_internal"], "\"if", "[", "!", "-d",
-                           f"'{acq.daac_staging_dir}'", "];", "then", "mkdir", f"{acq.daac_staging_dir};", "chgrp",
-                           group, f"{acq.daac_staging_dir};", "fi\""]
-        pge.run(cmd_make_target, tmp_dir=self.tmp_dir)
-
+        # Copy files to S3 for staging
         for path in (daac_abun_nc_path, daac_abununcert_nc_path, daac_browse_path, daac_ummg_path):
-            cmd_rsync = ["rsync", "-azv", partial_dir_arg, log_file_arg, path, target]
-            pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
+            cmd_aws_s3 = ["ssh", "ngishpc1", "'" + wm.config["aws_cli_exe"], "s3", "cp", path, acq.aws_s3_uri_base,
+                          "--profile", wm.config["aws_profile"] + "'"]
+            pge.run(cmd_aws_s3, tmp_dir=self.tmp_dir)
 
         # Build notification dictionary
         utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
@@ -427,7 +423,7 @@ class L2BDeliver(SlurmJobTask):
                 "files": [
                     {
                         "name": daac_abun_nc_name,
-                        "uri": acq.daac_uri_base + daac_abun_nc_name,
+                        "uri": acq.aws_s3_uri_base + daac_abun_nc_name,
                         "type": "data",
                         "size": os.path.getsize(daac_abun_nc_name),
                         "checksumType": "sha512",
@@ -435,7 +431,7 @@ class L2BDeliver(SlurmJobTask):
                     },
                     {
                         "name": daac_abununcert_nc_name,
-                        "uri": acq.daac_uri_base + daac_abununcert_nc_name,
+                        "uri": acq.aws_s3_uri_base + daac_abununcert_nc_name,
                         "type": "data",
                         "size": os.path.getsize(daac_abununcert_nc_name),
                         "checksumType": "sha512",
@@ -443,7 +439,7 @@ class L2BDeliver(SlurmJobTask):
                     },
                     {
                         "name": daac_browse_name,
-                        "uri": acq.daac_uri_base + daac_browse_name,
+                        "uri": acq.aws_s3_uri_base + daac_browse_name,
                         "type": "browse",
                         "size": os.path.getsize(daac_browse_path),
                         "checksumType": "sha512",
@@ -451,7 +447,7 @@ class L2BDeliver(SlurmJobTask):
                     },
                     {
                         "name": daac_ummg_name,
-                        "uri": acq.daac_uri_base + daac_ummg_name,
+                        "uri": acq.aws_s3_uri_base + daac_ummg_name,
                         "type": "metadata",
                         "size": os.path.getsize(daac_ummg_path),
                         "checksumType": "sha512",

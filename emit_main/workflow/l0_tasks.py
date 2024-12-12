@@ -256,6 +256,10 @@ class L0IngestBAD(SlurmJobTask):
         dm = wm.database_manager
         start_time = datetime.datetime.strptime(timing["start_time"], "%Y-%m-%dT%H:%M:%S")
         stop_time = datetime.datetime.strptime(timing["stop_time"], "%Y-%m-%dT%H:%M:%S")
+        no_earlier_than = "2022-01-01"  # Replace this with your given date in "YYYY-MM-DD" format
+        no_earlier_than_date = datetime.datetime.strptime(no_earlier_than, "%Y-%m-%d")
+        if start_time < no_earlier_than_date or stop_time < no_earlier_than_date:
+            raise RuntimeError("The BAD start or stop time is earlier than 2022-01-01!")
         bad_name = os.path.basename(self.stream_path)
         suffix = f"_{start_time.strftime('%Y%m%dT%H%M%S')}_{stop_time.strftime('%Y%m%dT%H%M%S')}.sto"
         extended_bad_name = os.path.basename(self.stream_path).replace(".sto", suffix)
@@ -685,21 +689,11 @@ class L0Deliver(SlurmJobTask):
         # Copy ummg file to tmp dir and rename
         wm.copy(ummg_path, daac_ummg_path)
 
-        # Copy files to staging server
-        partial_dir_arg = f"--partial-dir={stream.daac_partial_dir}"
-        log_file_arg = f"--log-file={os.path.join(self.tmp_dir, 'rsync.log')}"
-        target = f"{wm.config['daac_server_internal']}:{stream.daac_staging_dir}/"
-        # First set up permissions if needed
-        group = f"emit-{wm.config['environment']}" if wm.config["environment"] in ("test", "ops") else "emit-dev"
-        # This command only makes the directory and changes ownership if the directory doesn't exist
-        cmd_make_target = ["ssh", wm.config["daac_server_internal"], "\"if", "[", "!", "-d",
-                           f"'{stream.daac_staging_dir}'", "];", "then", "mkdir", f"{stream.daac_staging_dir};",
-                           "chgrp", group, f"{stream.daac_staging_dir};", "fi\""]
-        pge.run(cmd_make_target, tmp_dir=self.tmp_dir)
-        # Rsync the files
+        # Copy files to S3 for staging
         for path in (daac_ccsds_path, daac_ummg_path):
-            cmd_rsync = ["rsync", "-azv", partial_dir_arg, log_file_arg, path, target]
-            pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
+            cmd_aws_s3 = ["ssh", "ngishpc1", "'" + wm.config["aws_cli_exe"], "s3", "cp", path, stream.aws_s3_uri_base,
+                          "--profile", wm.config["aws_profile"] + "'"]
+            pge.run(cmd_aws_s3, tmp_dir=self.tmp_dir)
 
         # Build notification dictionary
         utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
@@ -725,7 +719,7 @@ class L0Deliver(SlurmJobTask):
                 "files": [
                     {
                         "name": daac_ccsds_name,
-                        "uri": stream.daac_uri_base + daac_ccsds_name,
+                        "uri": stream.aws_s3_uri_base + daac_ccsds_name,
                         "type": "data",
                         "size": os.path.getsize(daac_ccsds_path),
                         "checksumType": "sha512",
@@ -733,7 +727,7 @@ class L0Deliver(SlurmJobTask):
                     },
                     {
                         "name": daac_ummg_name,
-                        "uri": stream.daac_uri_base + daac_ummg_name,
+                        "uri": stream.aws_s3_uri_base + daac_ummg_name,
                         "type": "metadata",
                         "size": os.path.getsize(daac_ummg_path),
                         "checksumType": "sha512",

@@ -272,7 +272,7 @@ class ReconciliationReport(SlurmJobTask):
                            "chgrp", group, f"{wm.daac_recon_staging_dir};", "fi\""]
         pge.run(cmd_make_target, tmp_dir=self.tmp_dir)
         # Rsync the files
-        cmd_rsync = ["rsync", "-azv", partial_dir_arg, log_file_arg, tmp_report_path, target]
+        cmd_rsync = ["rsync", "-av", partial_dir_arg, log_file_arg, tmp_report_path, target]
         pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
 
         # Create a submission file
