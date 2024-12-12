@@ -69,8 +69,8 @@ class L3Unmix(SlurmJobTask):
 
         # Set up environment variables
         env = os.environ.copy()
-        env["PATH"] = "/store/shared/julia-1.11.0/bin:${PATH}"
-        env["JULIA_DEPOT_PATH"] = "/store/shared/.julia_111_shared/"
+        env["PATH"] = "/store/shared/julia-1.9.1/bin:${PATH}"
+        env["JULIA_DEPOT_PATH"] = "/store/shared/.julia_191_shared"
         env["JULIA_PROJECT"] = pge.repo_dir
 
         # Build command
