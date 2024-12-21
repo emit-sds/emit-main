@@ -77,6 +77,8 @@
     "tetracorder_cmds_path": "/store/shared/tetracorder5.27c.cmds",
     "tetracorder_library_dir": "/store/shared/tetracorder_libraries",
     "unmixing_library": "/store/shared/unmixing_libraries/convex_hull__n_dims_4_unmix_library.csv",
+    "ch4_lut_file": "/store/shared/ghg/dataset_ch4_full.hdf5",
+    "co2_lut_file": "/store/shared/ghg/dataset_co2_full.hdf5",
     "versions": []
   }
 }

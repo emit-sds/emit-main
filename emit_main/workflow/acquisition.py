@@ -151,12 +151,20 @@ class Acquisition:
                 "coveruncert": ["img", "hdr"]
             },
             "ghg": {
+                "targetch4": ["txt"],
+                "targetco2": ["txt"],
                 "ch4": ["img","hdr"],
                 "co2": ["img","hdr"],
                 "ortch4": ["tif","kmz"],
                 "ortco2": ["tif","kmz"],
-                "ortfiltch4": ["tif","kmz"],
-                "ortfiltco2": ["tif","kmz"]
+                "sensch4": ["img","hdr"],
+                "sensco2": ["img","hdr"],
+                "sensortch4": ["tif","kmz"],
+                "sensortco2": ["tif","kmz"],
+                "uncertch4": ["img","hdr"],
+                "uncertco2": ["img","hdr"],
+                "uncertortch4": ["tif","kmz"],
+                "uncertortco2": ["tif","kmz"],
             }
         }
         paths = {}
