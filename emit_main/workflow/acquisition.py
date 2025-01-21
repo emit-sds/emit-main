@@ -107,6 +107,8 @@ class Acquisition:
             self.metadata["products"]["l2b"] = {}
         if "l3" not in self.metadata["products"]:
             self.metadata["products"]["l3"] = {}
+        if "ghg" not in self.metadata["products"]:
+            self.metadata["products"]["ghg"] = {}
 
     def _build_acquisition_paths(self):
         product_map = {
@@ -149,6 +151,22 @@ class Acquisition:
             "l3": {
                 "cover": ["img", "hdr"],
                 "coveruncert": ["img", "hdr"]
+            },
+            "ghg": {
+                "targetch4": ["txt"],
+                "targetco2": ["txt"],
+                "ch4": ["img","hdr"],
+                "co2": ["img","hdr"],
+                "ortch4": ["tif"],
+                "ortco2": ["tif",],
+                "sensch4": ["img","hdr"],
+                "sensco2": ["img","hdr"],
+                "sensortch4": ["tif"],
+                "sensortco2": ["tif"],
+                "uncertch4": ["img","hdr"],
+                "uncertco2": ["img","hdr"],
+                "uncertortch4": ["tif"],
+                "uncertortco2": ["tif"],
             }
         }
         paths = {}
