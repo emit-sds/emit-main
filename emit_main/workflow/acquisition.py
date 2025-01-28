@@ -157,16 +157,16 @@ class Acquisition:
                 "targetco2": ["txt"],
                 "ch4": ["img","hdr"],
                 "co2": ["img","hdr"],
-                "ortch4": ["tif"],
-                "ortco2": ["tif",],
+                "ortch4": ["tif","png"],
+                "ortco2": ["tif","png"],
                 "sensch4": ["img","hdr"],
                 "sensco2": ["img","hdr"],
-                "sensortch4": ["tif"],
-                "sensortco2": ["tif"],
+                "ortsensch4": ["tif",],
+                "ortsensco2": ["tif"],
                 "uncertch4": ["img","hdr"],
                 "uncertco2": ["img","hdr"],
-                "uncertortch4": ["tif"],
-                "uncertortco2": ["tif"],
+                "ortuncertch4": ["tif"],
+                "ortuncertco2": ["tif"],
             }
         }
         paths = {}
