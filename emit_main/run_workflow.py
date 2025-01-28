@@ -28,6 +28,7 @@ from emit_main.workflow.l1b_tasks import L1BGeolocate, L1BCalibrate, L1BRdnForma
 from emit_main.workflow.l2a_tasks import L2AMask, L2AReflectance, L2AFormat, L2ADeliver
 from emit_main.workflow.l2b_tasks import L2BAbundance, L2BFormat, L2BDeliver
 from emit_main.workflow.l3_tasks import L3Unmix
+from emit_main.workflow.ghg_tasks import GHG
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_main.workflow.workflow_manager import WorkflowManager
 
@@ -39,9 +40,9 @@ logger = logging.getLogger("emit-main")
 def parse_args():
     product_choices = ["l0hosc", "l0daac", "l0plan", "l0bad", "l1aeng", "l1aframe", "l1aframereport", "l1araw",
                        "l1adaac", "l1abad", "l1bcal", "l1bgeo", "l1brdnformat", "l1brdndaac", "l1battdaac", "l2arefl",
-                       "l2amask", "l2aformat", "l2adaac", "l2babun", "l2bformat", "l2bdaac", "l3unmix", "daacscenes",
+                       "l2amask", "l2aformat", "l2adaac", "l2babun", "l2bformat", "l2bdaac", "l2bghg", "l3unmix", "daacscenes",
                        "daacaddl", "recon"]
-    monitor_choices = ["ingest", "frames", "edp", "cal", "bad", "geo", "l2", "l2b", "l3", "email", "daacscenes", "dl0",
+    monitor_choices = ["ingest", "frames", "edp", "cal", "bad", "geo", "l2", "l2b", "ghg", "l3", "email", "daacscenes", "dl0",
                        "dl1a", "dl1brdn", "dl1batt", "dl2a", "dl2b", "reconresp"]
     parser = argparse.ArgumentParser(
         description="Description: This is the top-level run script for executing the various EMIT SDS workflow and "
@@ -212,6 +213,7 @@ def get_tasks_from_product_args(args):
         "l2bformat": L2BFormat(acquisition_id=args.acquisition_id, **kwargs),
         "l2bdaac": L2BDeliver(acquisition_id=args.acquisition_id, daac_ingest_queue=args.daac_ingest_queue,
                               override_output=args.override_output, **kwargs),
+        "l2bghg":  GHG(acquisition_id=args.acquisition_id, **kwargs),
         "l3unmix": L3Unmix(acquisition_id=args.acquisition_id, **kwargs),
         # "l3unmixformat": L3UnmixFormat(acquisition_id=args.acquisition_id, **kwargs)
         "daacscenes": AssignDAACSceneNumbers(orbit_id=args.orbit_id, override_output=args.override_output, **kwargs),
@@ -446,6 +448,15 @@ def main():
         am_l2b_tasks_str = "\n".join([str(t) for t in am_l2b_tasks])
         logger.info(f"Acquisition monitor L2B tasks to run:\n{am_l2b_tasks_str}")
         tasks += am_l2b_tasks
+
+    # Get tasks from acquisition monitor for ghg tasks
+    if args.monitor and args.monitor == "ghg":
+        am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
+        am_ghg_tasks = am.get_ghg_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                        date_field=args.date_field, retry_failed=args.retry_failed)
+        am_ghg_tasks_str = "\n".join([str(t) for t in am_ghg_tasks])
+        logger.info(f"Acquisition monitor GHG tasks to run:\n{am_ghg_tasks_str}")
+        tasks += am_ghg_tasks
 
     # Get tasks from acquisition monitor for L3 tasks
     if args.monitor and args.monitor == "l3":
