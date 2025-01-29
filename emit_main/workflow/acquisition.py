@@ -181,7 +181,10 @@ class Acquisition:
         }
         paths = {}
         for level, prod_map in product_map.items():
-            level_data_dir = os.path.join(self.acquisition_id_dir, level)
+            if level in ['co2','ch4']: # Nest GHG products
+                level_data_dir = os.path.join(self.acquisition_id_dir, f'ghg/{level}')
+            else:
+                level_data_dir = os.path.join(self.acquisition_id_dir, level)
             self.__dict__.update({level + "_data_dir": level_data_dir})
             self.dirs.append(level_data_dir)
             for prod, formats in prod_map.items():
@@ -195,6 +198,6 @@ class Acquisition:
                                             "b" + self.config["build_num"],
                                             "v" + self.config["processing_version"]])
                     prod_name = prod_prefix + "." + format
-                    prod_path = os.path.join(self.acquisition_id_dir, level, prod_name)
+                    prod_path = os.path.join(level_data_dir, prod_name)
                     paths[prod_key] = prod_path
         return paths

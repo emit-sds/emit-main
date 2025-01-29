@@ -57,7 +57,7 @@ class CH4(SlurmJobTask):
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
-        pge = wm.pges["emit-ch4"]
+        pge = wm.pges["emit-ghg"]
         emit_utils_pge = wm.pges["emit-utils"]
         dm = wm.database_manager
 
@@ -213,7 +213,7 @@ class CO2(SlurmJobTask):
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
-        pge = wm.pges["emit-co2"]
+        pge = wm.pges["emit-ghg"]
         emit_utils_pge = wm.pges["emit-utils"]
         dm = wm.database_manager
 
