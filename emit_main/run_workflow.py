@@ -28,7 +28,7 @@ from emit_main.workflow.l1b_tasks import L1BGeolocate, L1BCalibrate, L1BRdnForma
 from emit_main.workflow.l2a_tasks import L2AMask, L2AReflectance, L2AFormat, L2ADeliver
 from emit_main.workflow.l2b_tasks import L2BAbundance, L2BFormat, L2BDeliver
 from emit_main.workflow.l3_tasks import L3Unmix
-from emit_main.workflow.ghg_tasks import CH4, CO2
+from emit_main.workflow.ghg_tasks import CH4, CO2, CH4Deliver
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_main.workflow.workflow_manager import WorkflowManager
 
@@ -215,6 +215,7 @@ def get_tasks_from_product_args(args):
         "l2bdaac": L2BDeliver(acquisition_id=args.acquisition_id, daac_ingest_queue=args.daac_ingest_queue,
                               override_output=args.override_output, **kwargs),
         "l2bch4":  CH4(acquisition_id=args.acquisition_id, **kwargs),
+        "l2bch4daac":  CH4Deliver(acquisition_id=args.acquisition_id, **kwargs),
         "l2bco2":  CO2(acquisition_id=args.acquisition_id, **kwargs),
         "l3unmix": L3Unmix(acquisition_id=args.acquisition_id, **kwargs),
         # "l3unmixformat": L3UnmixFormat(acquisition_id=args.acquisition_id, **kwargs)
@@ -547,6 +548,16 @@ def main():
         logger.info(f"Acquisition monitor deliver l2b abundance tasks to run:\n{am_dl2b_tasks_str}")
         tasks += am_dl2b_tasks
 
+    # Get tasks from dch4 (deliver ch4) monitor
+    if args.monitor and args.monitor == "dch4":
+        am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
+                                daac_ingest_queue=args.daac_ingest_queue)
+        am_dch4_tasks = am.get_ch4_delivery_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                                  date_field=args.date_field, retry_failed=args.retry_failed)
+        am_dch4_tasks_str = "\n".join([str(t) for t in am_dch4_tasks])
+        logger.info(f"Acquisition monitor deliver ch4 tasks to run:\n{am_dch4_tasks_str}")
+        tasks += am_dch4_tasks
+        
     # Get tasks from products args
     if args.products:
         prod_tasks = get_tasks_from_product_args(args)
