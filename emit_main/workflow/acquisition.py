@@ -4,8 +4,6 @@ This code contains the Acquisition class that manages acquisitions and their met
 Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
-import datetime
-import glob
 import logging
 import os
 import pytz
