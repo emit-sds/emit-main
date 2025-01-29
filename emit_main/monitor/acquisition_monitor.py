@@ -12,7 +12,7 @@ from emit_main.workflow.l1a_tasks import L1ADeliver
 from emit_main.workflow.l1b_tasks import L1BCalibrate, L1BRdnDeliver
 from emit_main.workflow.l2a_tasks import L2AMask, L2ADeliver
 from emit_main.workflow.l2b_tasks import L2BAbundance, L2BDeliver
-from emit_main.workflow.ghg_tasks import GHG
+from emit_main.workflow.ghg_tasks import CH4, CO2
 from emit_main.workflow.l3_tasks import L3Unmix
 from emit_main.workflow.workflow_manager import WorkflowManager
 
@@ -100,22 +100,44 @@ class AcquisitionMonitor:
 
         return tasks
 
-    def get_ghg_tasks(self, start_time, stop_time, date_field="last_modified", retry_failed=False):
+    def get_ch4_tasks(self, start_time, stop_time, date_field="last_modified", retry_failed=False):
         tasks = []
         # Find acquisitions within time range
         dm = self.wm.database_manager
-        acquisitions = dm.find_acquisitions_for_ghg(start=start_time, stop=stop_time, date_field=date_field,
+        acquisitions = dm.find_acquisitions_for_ch4(start=start_time, stop=stop_time, date_field=date_field,
                                                     retry_failed=retry_failed)
 
         # If no results, just return empty list
         if len(acquisitions) == 0:
             logger.info(f"Did not find any acquisitions with {date_field} between {start_time} and {stop_time} needing "
-                        f"ghg tasks. Not executing any tasks.")
+                        f"ch4 tasks. Not executing any tasks.")
             return tasks
 
         for acq in acquisitions:
-            logger.info(f"Creating L2BGHG task for acquisition {acq['acquisition_id']}")
-            tasks.append(GHG(config_path=self.config_path,
+            logger.info(f"Creating L2BCH4 task for acquisition {acq['acquisition_id']}")
+            tasks.append(CH4(config_path=self.config_path,
+                                      acquisition_id=acq["acquisition_id"],
+                                      level=self.level,
+                                      partition=self.partition))
+
+        return tasks
+
+    def get_co2_tasks(self, start_time, stop_time, date_field="last_modified", retry_failed=False):
+        tasks = []
+        # Find acquisitions within time range
+        dm = self.wm.database_manager
+        acquisitions = dm.find_acquisitions_for_co2(start=start_time, stop=stop_time, date_field=date_field,
+                                                    retry_failed=retry_failed)
+
+        # If no results, just return empty list
+        if len(acquisitions) == 0:
+            logger.info(f"Did not find any acquisitions with {date_field} between {start_time} and {stop_time} needing "
+                        f"co2 tasks. Not executing any tasks.")
+            return tasks
+
+        for acq in acquisitions:
+            logger.info(f"Creating L2BCO2 task for acquisition {acq['acquisition_id']}")
+            tasks.append(CO2(config_path=self.config_path,
                                       acquisition_id=acq["acquisition_id"],
                                       level=self.level,
                                       partition=self.partition))
