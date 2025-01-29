@@ -85,6 +85,7 @@ class Acquisition:
             self.co2_granule_ur = f"EMIT_L2B_CO2ENH_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.co2uncert_granule_ur = f"EMIT_L2B_CO2UNCERT_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.co2sens_granule_ur = f"EMIT_L2B_CO2SENS_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+        
         self.daac_staging_dir = os.path.join(self.config["daac_base_dir"], wm.config['environment'], "products",
                                              self.start_time.strftime("%Y%m%d"))
         self.daac_uri_base = f"https://{self.config['daac_server_external']}/emit/lpdaac/{wm.config['environment']}/" \

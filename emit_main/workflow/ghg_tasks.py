@@ -6,18 +6,22 @@ Authors:  Philip G. Brodrick, philip.brodrick@jpl.nasa.gov
 """
 
 import datetime
+import json
 import logging
 import os
 import sys
 import time
 
 import luigi
+import spectral.io.envi as envi
 
+from emit_main.workflow.acquisition import Acquisition
 from emit_main.workflow.output_targets import AcquisitionTarget
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.slurm import SlurmJobTask
 
 from emit_utils.file_checks import envi_header
+from emit_utils import daac_converter
 
 logger = logging.getLogger("emit-main")
 
@@ -336,235 +340,246 @@ class CO2(SlurmJobTask):
         dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
 
 
-# class CH4Deliver(SlurmJobTask):
-#     """
-#     Stages GH4 and UMM-G files and submits notification to DAAC interface
-#     :returns: Staged L2A files
-#     """
+class CH4Deliver(SlurmJobTask):
+    """
+    Stages GH4 and UMM-G files and submits notification to DAAC interface
+    :returns: Staged L2A files
+    """
 
-#     config_path = luigi.Parameter()
-#     acquisition_id = luigi.Parameter()
-#     level = luigi.Parameter()
-#     partition = luigi.Parameter()
-#     daac_ingest_queue = luigi.Parameter(default="forward")
-#     override_output = luigi.BoolParameter(default=False)
+    config_path = luigi.Parameter()
+    acquisition_id = luigi.Parameter()
+    level = luigi.Parameter()
+    partition = luigi.Parameter()
+    daac_ingest_queue = luigi.Parameter(default="forward")
+    override_output = luigi.BoolParameter(default=False)
 
-#     memory = 18000
+    memory = 18000
 
-#     task_namespace = "emit"
+    task_namespace = "emit"
 
-#     def requires(self):
+    def requires(self):
 
-#         logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
-#         return GHG(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
-#                          partition=self.partition)
+        logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
+        return CH4(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+                         partition=self.partition)
 
-#     def output(self):
+    def output(self):
 
-#         logger.debug(f"{self.task_family} output: {self.acquisition_id}")
+        logger.debug(f"{self.task_family} output: {self.acquisition_id}")
 
-#         if self.override_output:
-#             return None
+        if self.override_output:
+            return None
 
-#         acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
-#         return AcquisitionTarget(acquisition=acq, task_family=self.task_family)
+        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return AcquisitionTarget(acquisition=acq, task_family=self.task_family)
 
-#     def work(self):
+    def work(self):
 
-#         logger.debug(f"{self.task_family} work: {self.acquisition_id}")
+        logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
-#         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
-#         acq = wm.acquisition
-#         pge = wm.pges["emit-main"]
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        acq = wm.acquisition
+        pge = wm.pges["emit-main"]
 
-#         # Get local SDS names
-#         ummg_path = acq.ortch4_tif_path.replace(".tif", ".cmr.json")
+        # Get local SDS names
+        ummg_path = acq.ortch4_tif_path.replace(".tif", ".cmr.json")
 
-#         # Create local/tmp daac names and paths
-#         daac_ortch4_tif_name = f"{acq.ch4_granule_ur}.tif"
-#         daac_ortsensch4_tif_name = f"{acq.ch4uncert_granule_ur}.tif"
-#         daac_ortuncertch4_tif_name = f"{acq.ch4sens_granule_ur}.tif"
+        # Create local/tmp daac names and paths
+        daac_ortch4_tif_name = f"{acq.ch4_granule_ur}.tif"
+        daac_ortsensch4_tif_name = f"{acq.ch4uncert_granule_ur}.tif"
+        daac_ortuncertch4_tif_name = f"{acq.ch4sens_granule_ur}.tif"
 
-#         daac_ummg_name = f"{acq.ch4_granule_ur}.cmr.json"
-#         daac_browse_name = f"{acq.ch4_granule_ur}.png"
-#         daac_ortch4_tif_path = os.path.join(self.tmp_dir, daac_ortch4_tif_name)
-#         daac_ortsensch4_tif_path = os.path.join(self.tmp_dir, daac_ortsensch4_tif_name)
-#         daac_ortuncertch4_tif_path = os.path.join(self.tmp_dir, daac_ortuncertch4_tif_name)
+        daac_ummg_name = f"{acq.ch4_granule_ur}.cmr.json"
+        daac_browse_name = f"{acq.ch4_granule_ur}.png"
+        daac_ortch4_tif_path = os.path.join(self.tmp_dir, daac_ortch4_tif_name)
+        daac_ortsensch4_tif_path = os.path.join(self.tmp_dir, daac_ortsensch4_tif_name)
+        daac_ortuncertch4_tif_path = os.path.join(self.tmp_dir, daac_ortuncertch4_tif_name)
 
-#         daac_browse_path = os.path.join(self.tmp_dir, daac_browse_name)
-#         daac_ummg_path = os.path.join(self.tmp_dir, daac_ummg_name)
+        daac_browse_path = os.path.join(self.tmp_dir, daac_browse_name)
+        daac_ummg_path = os.path.join(self.tmp_dir, daac_ummg_name)
 
-#         # Copy files to tmp dir and rename
-#         wm.copy(acq.abun_nc_path, daac_abun_nc_path)
-#         wm.copy(acq.abununcert_nc_path, daac_abununcert_nc_path)
-#         wm.copy(acq.abun_png_path, daac_browse_path)
+        # Copy files to tmp dir and rename
+        wm.copy(acq.ortch4_tif_path, daac_ortch4_tif_path)
+        wm.copy(acq.ortsensch4_tif_path, daac_ortsensch4_tif_path)
+        wm.copy(acq.ortuncertch4_tif_path, daac_ortuncertch4_tif_path)
+        wm.copy(acq.ortch4ql_png_path, daac_browse_path)
 
-#         # Get the software_build_version (extended build num when product was created)
-#         hdr = envi.read_envi_header(acq.abun_hdr_path)
-#         software_build_version = hdr["emit software build version"]
+        # Get the software_build_version (extended build num when product was created)
+        hdr = envi.read_envi_header(acq.ch4_hdr_path)
+        software_build_version = hdr["emit software build version"]
 
-#         # Create the UMM-G file
-#         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.abun_nc_path), tz=datetime.timezone.utc)
-#         daynight = "Day" if acq.submode == "science" else "Night"
-#         l2b_pge = wm.pges["emit-sds-l2b"]
-#         ummg = daac_converter.initialize_ummg(acq.abun_granule_ur, nc_creation_time, "EMITL2BMIN",
-#                                               acq.collection_version, acq.start_time,
-#                                               acq.stop_time, l2b_pge.repo_name, l2b_pge.version_tag,
-#                                               software_build_version=software_build_version,
-#                                               software_delivery_version=wm.config["extended_build_num"],
-#                                               doi=wm.config["dois"]["EMITL2BMIN"], orbit=int(acq.orbit),
-#                                               orbit_segment=int(acq.scene), scene=int(acq.daac_scene),
-#                                               solar_zenith=acq.mean_solar_zenith,
-#                                               solar_azimuth=acq.mean_solar_azimuth,
-#                                               cloud_fraction=acq.cloud_fraction)
-#         ummg = daac_converter.add_data_files_ummg(
-#             ummg,
-#             [daac_abun_nc_path, daac_abununcert_nc_path, daac_browse_path],
-#             daynight,
-#             ["NETCDF-4", "NETCDF-4", "PNG"])
-#         # ummg = daac_converter.add_related_url(ummg, l2b_pge.repo_url, "DOWNLOAD SOFTWARE")
-#         ummg = daac_converter.add_boundary_ummg(ummg, acq.gring)
-#         daac_converter.dump_json(ummg, ummg_path)
-#         wm.change_group_ownership(ummg_path)
+        # Create the UMM-G file
+        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.ortch4_tif_paths), tz=datetime.timezone.utc)
+        daynight = "Day" if acq.submode == "science" else "Night"
+        ghg_pge = wm.pges["emit-ghg"]
+        ummg = daac_converter.initialize_ummg(acq.ch4_granule_ur, nc_creation_time, "EMITL2BCH4",
+                                              acq.collection_version, acq.start_time,
+                                              acq.stop_time, ghg_pge.repo_name, ghg_pge.version_tag,
+                                              software_build_version=software_build_version,
+                                              software_delivery_version=wm.config["extended_build_num"],
+                                              doi=wm.config["dois"]["EMITL2BCH4"], orbit=int(acq.orbit),
+                                              orbit_segment=int(acq.scene), scene=int(acq.daac_scene),
+                                              solar_zenith=acq.mean_solar_zenith,
+                                              solar_azimuth=acq.mean_solar_azimuth,
+                                              cloud_fraction=acq.cloud_fraction)
+        ummg = daac_converter.add_data_files_ummg(
+            ummg,
+            [daac_ortch4_tif_path, daac_ortsensch4_tif_path, daac_ortuncertch4_tif_path, daac_browse_path],
+            daynight,
+            ["GeoTIFF", "GeoTIFF", "GeoTIFF", "GeoTIFF", "PNG"])
+        # ummg = daac_converter.add_related_url(ummg, ghg_pge.repo_url, "DOWNLOAD SOFTWARE")
+        ummg = daac_converter.add_boundary_ummg(ummg, acq.gring)
+        daac_converter.dump_json(ummg, ummg_path)
+        wm.change_group_ownership(ummg_path)
 
-#         # Copy ummg file to tmp dir and rename
-#         wm.copy(ummg_path, daac_ummg_path)
+        # Copy ummg file to tmp dir and rename
+        wm.copy(ummg_path, daac_ummg_path)
 
-#         # Copy files to S3 for staging
-#         for path in (daac_abun_nc_path, daac_abununcert_nc_path, daac_browse_path, daac_ummg_path):
-#             cmd_aws_s3 = ["ssh", "ngishpc1", "'" + wm.config["aws_cli_exe"], "s3", "cp", path, acq.aws_s3_uri_base,
-#                           "--profile", wm.config["aws_profile"] + "'"]
-#             pge.run(cmd_aws_s3, tmp_dir=self.tmp_dir)
+        # Copy files to S3 for staging
+        for path in (daac_ortch4_tif_path, daac_ortsensch4_tif_path, daac_ortuncertch4_tif_path, daac_browse_path, daac_ummg_path):
+            cmd_aws_s3 = ["ssh", "ngishpc1", "'" + wm.config["aws_cli_exe"], "s3", "cp", path, acq.aws_s3_uri_base,
+                          "--profile", wm.config["aws_profile"] + "'"]
+            pge.run(cmd_aws_s3, tmp_dir=self.tmp_dir)
 
-#         # Build notification dictionary
-#         utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
-#         cnm_submission_id = f"{acq.abun_granule_ur}_{utc_now.strftime('%Y%m%dt%H%M%S')}"
-#         cnm_submission_path = os.path.join(acq.l2b_data_dir, cnm_submission_id + "_cnm.json")
-#         target_src_map = {
-#             daac_abun_nc_name: os.path.basename(acq.abun_nc_path),
-#             daac_abununcert_nc_name: os.path.basename(acq.abununcert_nc_path),
-#             daac_browse_name: os.path.basename(acq.abun_png_path),
-#             daac_ummg_name: os.path.basename(ummg_path)
-#         }
-#         provider = wm.config["daac_provider_forward"]
-#         queue_url = wm.config["daac_submission_url_forward"]
-#         if self.daac_ingest_queue == "backward":
-#             provider = wm.config["daac_provider_backward"]
-#             queue_url = wm.config["daac_submission_url_backward"]
-#         notification = {
-#             "collection": "EMITL2BMIN",
-#             "provider": provider,
-#             "identifier": cnm_submission_id,
-#             "version": wm.config["cnm_version"],
-#             "product": {
-#                 "name": acq.abun_granule_ur,
-#                 "dataVersion": acq.collection_version,
-#                 "files": [
-#                     {
-#                         "name": daac_abun_nc_name,
-#                         "uri": acq.aws_s3_uri_base + daac_abun_nc_name,
-#                         "type": "data",
-#                         "size": os.path.getsize(daac_abun_nc_name),
-#                         "checksumType": "sha512",
-#                         "checksum": daac_converter.calc_checksum(daac_abun_nc_path, "sha512")
-#                     },
-#                     {
-#                         "name": daac_abununcert_nc_name,
-#                         "uri": acq.aws_s3_uri_base + daac_abununcert_nc_name,
-#                         "type": "data",
-#                         "size": os.path.getsize(daac_abununcert_nc_name),
-#                         "checksumType": "sha512",
-#                         "checksum": daac_converter.calc_checksum(daac_abununcert_nc_path, "sha512")
-#                     },
-#                     {
-#                         "name": daac_browse_name,
-#                         "uri": acq.aws_s3_uri_base + daac_browse_name,
-#                         "type": "browse",
-#                         "size": os.path.getsize(daac_browse_path),
-#                         "checksumType": "sha512",
-#                         "checksum": daac_converter.calc_checksum(daac_browse_path, "sha512")
-#                     },
-#                     {
-#                         "name": daac_ummg_name,
-#                         "uri": acq.aws_s3_uri_base + daac_ummg_name,
-#                         "type": "metadata",
-#                         "size": os.path.getsize(daac_ummg_path),
-#                         "checksumType": "sha512",
-#                         "checksum": daac_converter.calc_checksum(daac_ummg_path, "sha512")
-#                     }
-#                 ]
-#             }
-#         }
+        # Build notification dictionary
+        utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
+        cnm_submission_id = f"{acq.ch4_granule_ur}_{utc_now.strftime('%Y%m%dt%H%M%S')}"
+        cnm_submission_path = os.path.join(acq.l2b_data_dir, cnm_submission_id + "_cnm.json")
+        target_src_map = {
+            daac_ortch4_tif_name: os.path.basename(acq.ortch4_tif_path),
+            daac_ortsensch4_tif_name: os.path.basename(acq.ortsensch4_ti_path),
+            daac_ortuncertch4_tif_name: os.path.basename(acq.ortuncertch4_tif_path),
+            daac_browse_name: os.path.basename(acq.ortch4ql_png_path),
+            daac_ummg_name: os.path.basename(ummg_path)
+        }
+        provider = wm.config["daac_provider_forward"]
+        queue_url = wm.config["daac_submission_url_forward"]
+        if self.daac_ingest_queue == "backward":
+            provider = wm.config["daac_provider_backward"]
+            queue_url = wm.config["daac_submission_url_backward"]
+        notification = {
+            "collection": "EMITL2BMIN",
+            "provider": provider,
+            "identifier": cnm_submission_id,
+            "version": wm.config["cnm_version"],
+            "product": {
+                "name": acq.ch4_granule_ur,
+                "dataVersion": acq.collection_version,
+                "files": [
+                    {
+                        "name": daac_ortch4_tif_name,
+                        "uri": acq.aws_s3_uri_base + daac_ortch4_tif_name,
+                        "type": "data",
+                        "size": os.path.getsize(daac_ortch4_tif_name),
+                        "checksumType": "sha512",
+                        "checksum": daac_converter.calc_checksum(daac_ortch4_tif_path, "sha512")
+                    },
+                    {
+                        "name": daac_ortsensch4_tif_name,
+                        "uri": acq.aws_s3_uri_base + daac_ortsensch4_tif_name,
+                        "type": "data",
+                        "size": os.path.getsize(daac_ortsensch4_tif_name),
+                        "checksumType": "sha512",
+                        "checksum": daac_converter.calc_checksum(daac_ortsensch4_tif_path, "sha512")
+                    },
+                    {
+                        "name": daac_ortuncertch4_tif_name,
+                        "uri": acq.aws_s3_uri_base + daac_ortuncertch4_tif_name,
+                        "type": "data",
+                        "size": os.path.getsize(daac_ortuncertch4_tif_name),
+                        "checksumType": "sha512",
+                        "checksum": daac_converter.calc_checksum(daac_ortuncertch4_tif_path, "sha512")
+                    },
+                    {
+                        "name": daac_browse_name,
+                        "uri": acq.aws_s3_uri_base + daac_browse_name,
+                        "type": "browse",
+                        "size": os.path.getsize(daac_browse_path),
+                        "checksumType": "sha512",
+                        "checksum": daac_converter.calc_checksum(daac_browse_path, "sha512")
+                    },
+                    {
+                        "name": daac_ummg_name,
+                        "uri": acq.aws_s3_uri_base + daac_ummg_name,
+                        "type": "metadata",
+                        "size": os.path.getsize(daac_ummg_path),
+                        "checksumType": "sha512",
+                        "checksum": daac_converter.calc_checksum(daac_ummg_path, "sha512")
+                    }
+                ]
+            }
+        }
 
-#         # Write notification submission to file
-#         with open(cnm_submission_path, "w") as f:
-#             f.write(json.dumps(notification, indent=4))
-#         wm.change_group_ownership(cnm_submission_path)
+        # Write notification submission to file
+        with open(cnm_submission_path, "w") as f:
+            f.write(json.dumps(notification, indent=4))
+        wm.change_group_ownership(cnm_submission_path)
 
-#         # Submit notification via AWS SQS
-#         cnm_submission_output = cnm_submission_path.replace(".json", ".out")
-#         cmd_aws = [wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", queue_url, "--message-body",
-#                    f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"], ">", cnm_submission_output]
-#         pge.run(cmd_aws, tmp_dir=self.tmp_dir)
-#         wm.change_group_ownership(cnm_submission_output)
-#         cnm_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(cnm_submission_path),
-#                                                             tz=datetime.timezone.utc)
+        # Submit notification via AWS SQS
+        cnm_submission_output = cnm_submission_path.replace(".json", ".out")
+        cmd_aws = [wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", queue_url, "--message-body",
+                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"], ">", cnm_submission_output]
+        pge.run(cmd_aws, tmp_dir=self.tmp_dir)
+        wm.change_group_ownership(cnm_submission_output)
+        cnm_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(cnm_submission_path),
+                                                            tz=datetime.timezone.utc)
 
-#         # Record delivery details in DB for reconciliation report
-#         dm = wm.database_manager
-#         for file in notification["product"]["files"]:
-#             delivery_report = {
-#                 "timestamp": utc_now,
-#                 "extended_build_num": wm.config["extended_build_num"],
-#                 "collection": notification["collection"],
-#                 "collection_version": notification["product"]["dataVersion"],
-#                 "granule_ur": acq.abun_granule_ur,
-#                 "sds_filename": target_src_map[file["name"]],
-#                 "daac_filename": file["name"],
-#                 "uri": file["uri"],
-#                 "type": file["type"],
-#                 "size": file["size"],
-#                 "checksum": file["checksum"],
-#                 "checksum_type": file["checksumType"],
-#                 "submission_id": cnm_submission_id,
-#                 "submission_queue": queue_url,
-#                 "submission_status": "submitted"
-#             }
-#             dm.insert_granule_report(delivery_report)
+        # Record delivery details in DB for reconciliation report
+        dm = wm.database_manager
+        for file in notification["product"]["files"]:
+            delivery_report = {
+                "timestamp": utc_now,
+                "extended_build_num": wm.config["extended_build_num"],
+                "collection": notification["collection"],
+                "collection_version": notification["product"]["dataVersion"],
+                "granule_ur": acq.ch4_granule_ur,
+                "sds_filename": target_src_map[file["name"]],
+                "daac_filename": file["name"],
+                "uri": file["uri"],
+                "type": file["type"],
+                "size": file["size"],
+                "checksum": file["checksum"],
+                "checksum_type": file["checksumType"],
+                "submission_id": cnm_submission_id,
+                "submission_queue": queue_url,
+                "submission_status": "submitted"
+            }
+            dm.insert_granule_report(delivery_report)
 
-#         # Update db with log entry
-#         product_dict_ummg = {
-#             "ummg_json_path": ummg_path,
-#             "created": datetime.datetime.fromtimestamp(os.path.getmtime(ummg_path), tz=datetime.timezone.utc)
-#         }
-#         dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2b.abun_ummg": product_dict_ummg})
+        # Update db with log entry
+        product_dict_ummg = {
+            "ummg_json_path": ummg_path,
+            "created": datetime.datetime.fromtimestamp(os.path.getmtime(ummg_path), tz=datetime.timezone.utc)
+        }
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.ch4.ch4_ummg": product_dict_ummg})
 
-#         if "abun_daac_submissions" in acq.metadata["products"]["l2b"] and \
-#                 acq.metadata["products"]["l2b"]["abun_daac_submissions"] is not None:
-#             acq.metadata["products"]["l2b"]["abun_daac_submissions"].append(cnm_submission_path)
-#         else:
-#             acq.metadata["products"]["l2b"]["abun_daac_submissions"] = [cnm_submission_path]
-#         dm.update_acquisition_metadata(
-#             acq.acquisition_id,
-#             {"products.l2b.abun_daac_submissions": acq.metadata["products"]["l2b"]["abun_daac_submissions"]})
+        if "ch4_daac_submissions" in acq.metadata["products"]["ch4"] and \
+                acq.metadata["products"]["ch4"]["ch4_daac_submissions"] is not None:
+            acq.metadata["products"]["ch4"]["ch4_daac_submissions"].append(cnm_submission_path)
+        else:
+            acq.metadata["products"]["ch4"]["ch4_daac_submissions"] = [cnm_submission_path]
+        dm.update_acquisition_metadata(
+            acq.acquisition_id,
+            {"products.ghg.ch4.ch4_daac_submissions": acq.metadata["products"]["ch4"]["ch4_daac_submissions"]})
 
-#         log_entry = {
-#             "task": self.task_family,
-#             "pge_name": pge.repo_url,
-#             "pge_version": pge.version_tag,
-#             "pge_input_files": {
-#                 "abun_netcdf_path": acq.abun_nc_path,
-#                 "abununcert_netcdf_path": acq.abununcert_nc_path,
-#                 "abun_png_path": acq.abun_png_path
-#             },
-#             "pge_run_command": " ".join(cmd_aws),
-#             "documentation_version": "TBD",
-#             "product_creation_time": cnm_creation_time,
-#             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
-#             "completion_status": "SUCCESS",
-#             "output": {
-#                 "l2b_abun_ummg_path:": ummg_path,
-#                 "l2b_abun_cnm_submission_path": cnm_submission_path
-#             }
-#         }
-#         dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
+        log_entry = {
+            "task": self.task_family,
+            "pge_name": pge.repo_url,
+            "pge_version": pge.version_tag,
+            "pge_input_files": {
+                "ortch4_tif_path": acq.ortch4_tif_path,
+                "ortsensch4_tif_path": acq.ortsensch4_tif_path,
+                "ortuncertch4_tif_path": acq.ortuncertch4_tif_path,
+                "ortch4ql_png_path": acq.ortch4ql_png_path
+            },
+            "pge_run_command": " ".join(cmd_aws),
+            "documentation_version": "TBD",
+            "product_creation_time": cnm_creation_time,
+            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
+            "completion_status": "SUCCESS",
+            "output": {
+                "l2b_ch4_ummg_path:": ummg_path,
+                "l2b_ch4_cnm_submission_path": cnm_submission_path
+            }
+        }
+        dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
