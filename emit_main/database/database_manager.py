@@ -326,6 +326,24 @@ class DatabaseManager:
             results = self._remove_results_with_failed_tasks(results, ["emit.CH4Deliver"])
         return results
 
+    def find_acquisitions_for_co2_delivery(self, start, stop, date_field="last_modified", retry_failed=False):
+        acquisitions_coll = self.db.acquisitions
+        # Query for acquisitions with daac scene numbers but no daac ummg products.
+        query = {
+            "products.ghg.co2.ortco2.tif_path": {"$exists": 1},
+            "products.ghg.co2.ortsensco2.tif_path": {"$exists": 1},
+            "products.ghg.co2.ortuncertco2.tif_path": {"$exists": 1},
+            "cloud_fraction": {"$exists": 1},
+            "daac_scene": {"$exists": 1},
+            "products.ghg.co2.co2_ummg.ummg_json_path": {"$exists": 0},
+            date_field: {"$gte": start, "$lte": stop},
+            "build_num": self.config["build_num"]
+        }
+        results = list(acquisitions_coll.find(query))
+        if not retry_failed:
+            results = self._remove_results_with_failed_tasks(results, ["emit.CO2Deliver"])
+        return results
+
     def insert_acquisition(self, metadata):
         if self.find_acquisition_by_id(metadata["acquisition_id"]) is None:
             utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
