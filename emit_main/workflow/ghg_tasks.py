@@ -402,22 +402,22 @@ class CH4Deliver(SlurmJobTask):
         wm.copy(acq.ortch4_tif_path, daac_ortch4_tif_path)
         wm.copy(acq.ortsensch4_tif_path, daac_ortsensch4_tif_path)
         wm.copy(acq.ortuncertch4_tif_path, daac_ortuncertch4_tif_path)
-        wm.copy(acq.ortch4ql_png_path, daac_browse_path)
+        wm.copy(acq.ortch4_png_path, daac_browse_path)
 
         # Get the software_build_version (extended build num when product was created)
         hdr = envi.read_envi_header(acq.ch4_hdr_path)
         software_build_version = hdr["emit software build version"]
 
         # Create the UMM-G file
-        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.ortch4_tif_paths), tz=datetime.timezone.utc)
+        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.ortch4_tif_path), tz=datetime.timezone.utc)
         daynight = "Day" if acq.submode == "science" else "Night"
         ghg_pge = wm.pges["emit-ghg"]
-        ummg = daac_converter.initialize_ummg(acq.ch4_granule_ur, nc_creation_time, "EMITL2BCH4",
+        ummg = daac_converter.initialize_ummg(acq.ch4_granule_ur, nc_creation_time, "EMITL2BCH4ENH",
                                               acq.collection_version, acq.start_time,
                                               acq.stop_time, ghg_pge.repo_name, ghg_pge.version_tag,
                                               software_build_version=software_build_version,
                                               software_delivery_version=wm.config["extended_build_num"],
-                                              doi=wm.config["dois"]["EMITL2BCH4"], orbit=int(acq.orbit),
+                                              doi=wm.config["dois"]["EMITL2BCH4ENH"], orbit=int(acq.orbit),
                                               orbit_segment=int(acq.scene), scene=int(acq.daac_scene),
                                               solar_zenith=acq.mean_solar_zenith,
                                               solar_azimuth=acq.mean_solar_azimuth,
@@ -426,7 +426,7 @@ class CH4Deliver(SlurmJobTask):
             ummg,
             [daac_ortch4_tif_path, daac_ortsensch4_tif_path, daac_ortuncertch4_tif_path, daac_browse_path],
             daynight,
-            ["GeoTIFF", "GeoTIFF", "GeoTIFF", "GeoTIFF", "PNG"])
+            ["GeoTIFF", "GeoTIFF", "GeoTIFF", "PNG"])
         # ummg = daac_converter.add_related_url(ummg, ghg_pge.repo_url, "DOWNLOAD SOFTWARE")
         ummg = daac_converter.add_boundary_ummg(ummg, acq.gring)
         daac_converter.dump_json(ummg, ummg_path)
@@ -447,9 +447,9 @@ class CH4Deliver(SlurmJobTask):
         cnm_submission_path = os.path.join(acq.l2b_data_dir, cnm_submission_id + "_cnm.json")
         target_src_map = {
             daac_ortch4_tif_name: os.path.basename(acq.ortch4_tif_path),
-            daac_ortsensch4_tif_name: os.path.basename(acq.ortsensch4_ti_path),
+            daac_ortsensch4_tif_name: os.path.basename(acq.ortsensch4_tif_path),
             daac_ortuncertch4_tif_name: os.path.basename(acq.ortuncertch4_tif_path),
-            daac_browse_name: os.path.basename(acq.ortch4ql_png_path),
+            daac_browse_name: os.path.basename(acq.ortch4_png_path),
             daac_ummg_name: os.path.basename(ummg_path)
         }
         provider = wm.config["daac_provider_forward"]
@@ -570,7 +570,7 @@ class CH4Deliver(SlurmJobTask):
                 "ortch4_tif_path": acq.ortch4_tif_path,
                 "ortsensch4_tif_path": acq.ortsensch4_tif_path,
                 "ortuncertch4_tif_path": acq.ortuncertch4_tif_path,
-                "ortch4ql_png_path": acq.ortch4ql_png_path
+                "ortch4_png_path": acq.ortch4_png_path
             },
             "pge_run_command": " ".join(cmd_aws),
             "documentation_version": "TBD",
@@ -646,22 +646,22 @@ class CO2Deliver(SlurmJobTask):
         wm.copy(acq.ortco2_tif_path, daac_ortco2_tif_path)
         wm.copy(acq.ortsensco2_tif_path, daac_ortsensco2_tif_path)
         wm.copy(acq.ortuncertco2_tif_path, daac_ortuncertco2_tif_path)
-        wm.copy(acq.ortco2ql_png_path, daac_browse_path)
+        wm.copy(acq.ortco2_png_path, daac_browse_path)
 
         # Get the software_build_version (extended build num when product was created)
         hdr = envi.read_envi_header(acq.co2_hdr_path)
         software_build_version = hdr["emit software build version"]
 
         # Create the UMM-G file
-        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.ortco2_tif_paths), tz=datetime.timezone.utc)
+        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.ortco2_tif_path), tz=datetime.timezone.utc)
         daynight = "Day" if acq.submode == "science" else "Night"
         ghg_pge = wm.pges["emit-ghg"]
-        ummg = daac_converter.initialize_ummg(acq.co2_granule_ur, nc_creation_time, "EMITL2Bco2",
+        ummg = daac_converter.initialize_ummg(acq.co2_granule_ur, nc_creation_time, "EMITL2BCO2ENH",
                                               acq.collection_version, acq.start_time,
                                               acq.stop_time, ghg_pge.repo_name, ghg_pge.version_tag,
                                               software_build_version=software_build_version,
                                               software_delivery_version=wm.config["extended_build_num"],
-                                              doi=wm.config["dois"]["EMITL2Bco2"], orbit=int(acq.orbit),
+                                              doi=wm.config["dois"]["EMITL2BCO2ENH"], orbit=int(acq.orbit),
                                               orbit_segment=int(acq.scene), scene=int(acq.daac_scene),
                                               solar_zenith=acq.mean_solar_zenith,
                                               solar_azimuth=acq.mean_solar_azimuth,
@@ -670,7 +670,7 @@ class CO2Deliver(SlurmJobTask):
             ummg,
             [daac_ortco2_tif_path, daac_ortsensco2_tif_path, daac_ortuncertco2_tif_path, daac_browse_path],
             daynight,
-            ["GeoTIFF", "GeoTIFF", "GeoTIFF", "GeoTIFF", "PNG"])
+            ["GeoTIFF", "GeoTIFF", "GeoTIFF", "PNG"])
         # ummg = daac_converter.add_related_url(ummg, ghg_pge.repo_url, "DOWNLOAD SOFTWARE")
         ummg = daac_converter.add_boundary_ummg(ummg, acq.gring)
         daac_converter.dump_json(ummg, ummg_path)
@@ -691,9 +691,9 @@ class CO2Deliver(SlurmJobTask):
         cnm_submission_path = os.path.join(acq.l2b_data_dir, cnm_submission_id + "_cnm.json")
         target_src_map = {
             daac_ortco2_tif_name: os.path.basename(acq.ortco2_tif_path),
-            daac_ortsensco2_tif_name: os.path.basename(acq.ortsensco2_ti_path),
+            daac_ortsensco2_tif_name: os.path.basename(acq.ortsensco2_tif_path),
             daac_ortuncertco2_tif_name: os.path.basename(acq.ortuncertco2_tif_path),
-            daac_browse_name: os.path.basename(acq.ortco2ql_png_path),
+            daac_browse_name: os.path.basename(acq.ortco2_png_path),
             daac_ummg_name: os.path.basename(ummg_path)
         }
         provider = wm.config["daac_provider_forward"]
@@ -814,7 +814,7 @@ class CO2Deliver(SlurmJobTask):
                 "ortco2_tif_path": acq.ortco2_tif_path,
                 "ortsensco2_tif_path": acq.ortsensco2_tif_path,
                 "ortuncertco2_tif_path": acq.ortuncertco2_tif_path,
-                "ortco2ql_png_path": acq.ortco2ql_png_path
+                "ortco2_png_path": acq.ortco2_png_path
             },
             "pge_run_command": " ".join(cmd_aws),
             "documentation_version": "TBD",
