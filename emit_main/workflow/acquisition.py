@@ -81,6 +81,12 @@ class Acquisition:
             self.mask_granule_ur = f"EMIT_L2A_MASK_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.abun_granule_ur = f"EMIT_L2B_MIN_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.abununcert_granule_ur = f"EMIT_L2B_MINUNCERT_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.ch4_granule_ur = f"EMIT_L2B_CH4ENH_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.ch4uncert_granule_ur = f"EMIT_L2B_CH4UNCERT_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.ch4sens_granule_ur = f"EMIT_L2B_CH4SENS_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.co2_granule_ur = f"EMIT_L2B_CO2ENH_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.co2uncert_granule_ur = f"EMIT_L2B_CO2UNCERT_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.co2sens_granule_ur = f"EMIT_L2B_CO2SENS_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
         self.daac_staging_dir = os.path.join(self.config["daac_base_dir"], wm.config['environment'], "products",
                                              self.start_time.strftime("%Y%m%d"))
         self.daac_uri_base = f"https://{self.config['daac_server_external']}/emit/lpdaac/{wm.config['environment']}/" \
@@ -107,8 +113,10 @@ class Acquisition:
             self.metadata["products"]["l2b"] = {}
         if "l3" not in self.metadata["products"]:
             self.metadata["products"]["l3"] = {}
-        if "ghg" not in self.metadata["products"]:
-            self.metadata["products"]["ghg"] = {}
+        if "ch4" not in self.metadata["products"]:
+            self.metadata["products"]["ch4"] = {}
+        if "co2" not in self.metadata["products"]:
+            self.metadata["products"]["co2"] = {}
 
     def _build_acquisition_paths(self):
         product_map = {
@@ -152,21 +160,23 @@ class Acquisition:
                 "cover": ["img", "hdr"],
                 "coveruncert": ["img", "hdr"]
             },
-            "ghg": {
+            "ch4": {
                 "targetch4": ["txt"],
-                "targetco2": ["txt"],
                 "ch4": ["img","hdr"],
-                "co2": ["img","hdr"],
                 "ortch4": ["tif","png"],
-                "ortco2": ["tif","png"],
                 "sensch4": ["img","hdr"],
-                "sensco2": ["img","hdr"],
                 "ortsensch4": ["tif",],
-                "ortsensco2": ["tif"],
                 "uncertch4": ["img","hdr"],
-                "uncertco2": ["img","hdr"],
                 "ortuncertch4": ["tif"],
-                "ortuncertco2": ["tif"],
+            },
+            "co2": {
+                "targetco2": ["txt"],
+                "co2": ["img","hdr"],
+                "ortco2": ["tif","png"],
+                "sensco2": ["img","hdr"],
+                "ortsensco2": ["tif"],
+                "uncertco2": ["img","hdr"],
+                "ortuncertco2": ["tif"]
             }
         }
         paths = {}

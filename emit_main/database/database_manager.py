@@ -176,9 +176,9 @@ class DatabaseManager:
             results = self._remove_results_with_failed_tasks(results, ["emit.L2BAbundance"])
         return results
 
-    def find_acquisitions_for_ghg(self, start, stop, date_field="last_modified", retry_failed=False):
+    def find_acquisitions_for_ch4(self, start, stop, date_field="last_modified", retry_failed=False):
         acquisitions_coll = self.db.acquisitions
-        # Query for acquisitions with complete l2a outputs but no l2b abun outputs in time range
+        # Query for acquisitions with complete l2a outputs but no l2b ch4 outputs in time range
         query = {
             "products.l1b.rdn.img_path": {"$exists": 1},
             "products.l1b.bandmask.img_path": {"$exists": 1},
@@ -187,14 +187,33 @@ class DatabaseManager:
             "products.l1b.obs.img_path": {"$exists": 1},
             "products.l2a.rfl.img_path": {"$exists": 1},
             "products.l2a.mask.img_path": {"$exists": 1},
-            "products.ghg.ortch4.img_path": {"$exists": 0},
-            "products.ghg.ortco2.img_path": {"$exists": 0},
+            "products.ghg.ch4.ortch4.img_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop},
             "build_num": self.config["build_num"]
         }
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
-            results = self._remove_results_with_failed_tasks(results, ["emit.GHG"])
+            results = self._remove_results_with_failed_tasks(results, ["emit.CH4"])
+        return results
+
+    def find_acquisitions_for_co2(self, start, stop, date_field="last_modified", retry_failed=False):
+        acquisitions_coll = self.db.acquisitions
+        # Query for acquisitions with complete l2a outputs but no l2b co2 outputs in time range
+        query = {
+            "products.l1b.rdn.img_path": {"$exists": 1},
+            "products.l1b.bandmask.img_path": {"$exists": 1},
+            "products.l1b.glt.img_path": {"$exists": 1},
+            "products.l1b.loc.img_path": {"$exists": 1},
+            "products.l1b.obs.img_path": {"$exists": 1},
+            "products.l2a.rfl.img_path": {"$exists": 1},
+            "products.l2a.mask.img_path": {"$exists": 1},
+            "products.ghg.co2.ortco2.img_path": {"$exists": 0},
+            date_field: {"$gte": start, "$lte": stop},
+            "build_num": self.config["build_num"]
+        }
+        results = list(acquisitions_coll.find(query))
+        if not retry_failed:
+            results = self._remove_results_with_failed_tasks(results, ["emit.CO2"])
         return results
 
     def find_acquisitions_for_l3(self, start, stop, date_field="last_modified", retry_failed=False):
