@@ -13,7 +13,7 @@ import sys
 import time
 
 import luigi
-import spectral.io.envi as envi
+from spectral.io import envi
 
 from emit_main.workflow.acquisition import Acquisition
 from emit_main.workflow.output_targets import AcquisitionTarget
@@ -102,7 +102,7 @@ class CH4(SlurmJobTask):
                '--state_subs', acq.statesubs_img_path,
                "--noise_file",noise_file,'--lut_file',
                wm.config["ch4_lut_file"], "--logfile", ch4_log_file]
-        
+
         # Run CH4
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
         ch4_of = Filenames(ch4_base)
@@ -181,7 +181,7 @@ class CH4(SlurmJobTask):
         }
 
         dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
-        
+
 class CO2(SlurmJobTask):
     """
     Performs carbon dioxide mapping on the EMIT SDS
@@ -336,7 +336,7 @@ class CO2(SlurmJobTask):
                 "ortuncertco2_tif_path": acq.ortuncertco2_tif_path,
             }
         }
-        
+
         dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
 
 
@@ -827,3 +827,4 @@ class CO2Deliver(SlurmJobTask):
             }
         }
         dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
+        
