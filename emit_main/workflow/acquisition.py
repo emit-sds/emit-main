@@ -79,13 +79,13 @@ class Acquisition:
             self.mask_granule_ur = f"EMIT_L2A_MASK_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.abun_granule_ur = f"EMIT_L2B_MIN_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.abununcert_granule_ur = f"EMIT_L2B_MINUNCERT_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.ch4_granule_ur = f"EMIT_L2B_CH4ENH_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.ch4uncert_granule_ur = f"EMIT_L2B_CH4UNCERT_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.ch4sens_granule_ur = f"EMIT_L2B_CH4SENS_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.co2_granule_ur = f"EMIT_L2B_CO2ENH_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.co2uncert_granule_ur = f"EMIT_L2B_CO2UNCERT_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.co2sens_granule_ur = f"EMIT_L2B_CO2SENS_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-        
+            self.ch4_granule_ur = f"EMIT_L2B_CH4ENH_002_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.ch4uncert_granule_ur = f"EMIT_L2B_CH4UNCERT_002_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.ch4sens_granule_ur = f"EMIT_L2B_CH4SENS_002_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.co2_granule_ur = f"EMIT_L2B_CO2ENH_002_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.co2uncert_granule_ur = f"EMIT_L2B_CO2UNCERT_002_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.co2sens_granule_ur = f"EMIT_L2B_CO2SENS_002_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+
         self.daac_staging_dir = os.path.join(self.config["daac_base_dir"], wm.config['environment'], "products",
                                              self.start_time.strftime("%Y%m%d"))
         self.daac_uri_base = f"https://{self.config['daac_server_external']}/emit/lpdaac/{wm.config['environment']}/" \
@@ -112,10 +112,12 @@ class Acquisition:
             self.metadata["products"]["l2b"] = {}
         if "l3" not in self.metadata["products"]:
             self.metadata["products"]["l3"] = {}
-        if "ch4" not in self.metadata["products"]:
-            self.metadata["products"]["ch4"] = {}
-        if "co2" not in self.metadata["products"]:
-            self.metadata["products"]["co2"] = {}
+        if "ghg" not in self.metadata["products"]:
+            self.metadata["products"]["ghg"] = {}
+        if "ch4" not in self.metadata["products"]["ghg"]:
+            self.metadata["products"]["ghg"]["ch4"] = {}
+        if "co2" not in self.metadata["products"]["ghg"]:
+            self.metadata["products"]["ghg"]["co2"] = {}
 
     def _build_acquisition_paths(self):
         product_map = {
@@ -182,9 +184,13 @@ class Acquisition:
         for level, prod_map in product_map.items():
             if level in ['co2','ch4']: # Nest GHG products
                 level_data_dir = os.path.join(self.acquisition_id_dir, f'ghg/{level}')
+                self.__dict__.update({f"{level}_data_dir": level_data_dir})
+                level = 'ghg'
+                processing_verion = '02'
             else:
                 level_data_dir = os.path.join(self.acquisition_id_dir, level)
-            self.__dict__.update({level + "_data_dir": level_data_dir})
+                self.__dict__.update({level + "_data_dir": level_data_dir})
+                processing_verion = self.config["processing_version"]
             self.dirs.append(level_data_dir)
             for prod, formats in prod_map.items():
                 for format in formats:
@@ -195,7 +201,7 @@ class Acquisition:
                                             level,
                                             prod,
                                             "b" + self.config["build_num"],
-                                            "v" + self.config["processing_version"]])
+                                            "v" + processing_verion])
                     prod_name = prod_prefix + "." + format
                     prod_path = os.path.join(level_data_dir, prod_name)
                     paths[prod_key] = prod_path

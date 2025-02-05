@@ -379,6 +379,7 @@ class CH4Deliver(SlurmJobTask):
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
+        collection_version = '002'
         pge = wm.pges["emit-main"]
 
         # Get local SDS names
@@ -413,7 +414,7 @@ class CH4Deliver(SlurmJobTask):
         daynight = "Day" if acq.submode == "science" else "Night"
         ghg_pge = wm.pges["emit-ghg"]
         ummg = daac_converter.initialize_ummg(acq.ch4_granule_ur, nc_creation_time, "EMITL2BCH4ENH",
-                                              acq.collection_version, acq.start_time,
+                                              collection_version, acq.start_time,
                                               acq.stop_time, ghg_pge.repo_name, ghg_pge.version_tag,
                                               software_build_version=software_build_version,
                                               software_delivery_version=wm.config["extended_build_num"],
@@ -444,7 +445,7 @@ class CH4Deliver(SlurmJobTask):
         # Build notification dictionary
         utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
         cnm_submission_id = f"{acq.ch4_granule_ur}_{utc_now.strftime('%Y%m%dt%H%M%S')}"
-        cnm_submission_path = os.path.join(acq.l2b_data_dir, cnm_submission_id + "_cnm.json")
+        cnm_submission_path = os.path.join(acq.ch4_data_dir, cnm_submission_id + "_cnm.json")
         target_src_map = {
             daac_ortch4_tif_name: os.path.basename(acq.ortch4_tif_path),
             daac_ortsensch4_tif_name: os.path.basename(acq.ortsensch4_tif_path),
@@ -458,13 +459,13 @@ class CH4Deliver(SlurmJobTask):
             provider = wm.config["daac_provider_backward"]
             queue_url = wm.config["daac_submission_url_backward"]
         notification = {
-            "collection": "EMITL2BMIN",
+            "collection": "EMITL2BCH4ENH",
             "provider": provider,
             "identifier": cnm_submission_id,
             "version": wm.config["cnm_version"],
             "product": {
                 "name": acq.ch4_granule_ur,
-                "dataVersion": acq.collection_version,
+                "dataVersion": collection_version,
                 "files": [
                     {
                         "name": daac_ortch4_tif_name,
@@ -553,14 +554,14 @@ class CH4Deliver(SlurmJobTask):
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.ch4.ch4_ummg": product_dict_ummg})
 
-        if "ch4_daac_submissions" in acq.metadata["products"]["ch4"] and \
-                acq.metadata["products"]["ch4"]["ch4_daac_submissions"] is not None:
-            acq.metadata["products"]["ch4"]["ch4_daac_submissions"].append(cnm_submission_path)
+        if "ch4_daac_submissions" in acq.metadata["products"]["ghg"]["ch4"] and \
+                acq.metadata["products"]["ghg"]["ch4"]["ch4_daac_submissions"] is not None:
+            acq.metadata["products"]["ghg"]["ch4"]["ch4_daac_submissions"].append(cnm_submission_path)
         else:
-            acq.metadata["products"]["ch4"]["ch4_daac_submissions"] = [cnm_submission_path]
+            acq.metadata["products"]["ghg"]["ch4"]["ch4_daac_submissions"] = [cnm_submission_path]
         dm.update_acquisition_metadata(
             acq.acquisition_id,
-            {"products.ghg.ch4.ch4_daac_submissions": acq.metadata["products"]["ch4"]["ch4_daac_submissions"]})
+            {"products.ghg.ch4.ch4_daac_submissions": acq.metadata["products"]["ghg"]["ch4"]["ch4_daac_submissions"]})
 
         log_entry = {
             "task": self.task_family,
@@ -623,6 +624,7 @@ class CO2Deliver(SlurmJobTask):
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
+        collection_version = '002'
         pge = wm.pges["emit-main"]
 
         # Get local SDS names
@@ -657,7 +659,7 @@ class CO2Deliver(SlurmJobTask):
         daynight = "Day" if acq.submode == "science" else "Night"
         ghg_pge = wm.pges["emit-ghg"]
         ummg = daac_converter.initialize_ummg(acq.co2_granule_ur, nc_creation_time, "EMITL2BCO2ENH",
-                                              acq.collection_version, acq.start_time,
+                                              collection_version, acq.start_time,
                                               acq.stop_time, ghg_pge.repo_name, ghg_pge.version_tag,
                                               software_build_version=software_build_version,
                                               software_delivery_version=wm.config["extended_build_num"],
@@ -688,7 +690,7 @@ class CO2Deliver(SlurmJobTask):
         # Build notification dictionary
         utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
         cnm_submission_id = f"{acq.co2_granule_ur}_{utc_now.strftime('%Y%m%dt%H%M%S')}"
-        cnm_submission_path = os.path.join(acq.l2b_data_dir, cnm_submission_id + "_cnm.json")
+        cnm_submission_path = os.path.join(acq.co2_data_dir, cnm_submission_id + "_cnm.json")
         target_src_map = {
             daac_ortco2_tif_name: os.path.basename(acq.ortco2_tif_path),
             daac_ortsensco2_tif_name: os.path.basename(acq.ortsensco2_tif_path),
@@ -702,13 +704,13 @@ class CO2Deliver(SlurmJobTask):
             provider = wm.config["daac_provider_backward"]
             queue_url = wm.config["daac_submission_url_backward"]
         notification = {
-            "collection": "EMITL2BMIN",
+            "collection": "EMITL2BCO2ENH",
             "provider": provider,
             "identifier": cnm_submission_id,
             "version": wm.config["cnm_version"],
             "product": {
                 "name": acq.co2_granule_ur,
-                "dataVersion": acq.collection_version,
+                "dataVersion": collection_version,
                 "files": [
                     {
                         "name": daac_ortco2_tif_name,
@@ -797,14 +799,14 @@ class CO2Deliver(SlurmJobTask):
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.co2.co2_ummg": product_dict_ummg})
 
-        if "co2_daac_submissions" in acq.metadata["products"]["co2"] and \
-                acq.metadata["products"]["co2"]["co2_daac_submissions"] is not None:
-            acq.metadata["products"]["co2"]["co2_daac_submissions"].append(cnm_submission_path)
+        if "co2_daac_submissions" in acq.metadata["products"]["ghg"]["co2"] and \
+                acq.metadata["products"]["ghg"]["co2"]["co2_daac_submissions"] is not None:
+            acq.metadata["products"]["ghg"]["co2"]["co2_daac_submissions"].append(cnm_submission_path)
         else:
-            acq.metadata["products"]["co2"]["co2_daac_submissions"] = [cnm_submission_path]
+            acq.metadata["products"]["ghg"]["co2"]["co2_daac_submissions"] = [cnm_submission_path]
         dm.update_acquisition_metadata(
             acq.acquisition_id,
-            {"products.ghg.co2.co2_daac_submissions": acq.metadata["products"]["co2"]["co2_daac_submissions"]})
+            {"products.ghg.co2.co2_daac_submissions": acq.metadata["products"]["ghg"]["co2"]["co2_daac_submissions"]})
 
         log_entry = {
             "task": self.task_family,
@@ -827,4 +829,3 @@ class CO2Deliver(SlurmJobTask):
             }
         }
         dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
-        
