@@ -13,7 +13,7 @@ import sys
 import time
 
 import luigi
-from spectral.io import envi
+from osgeo import gdal
 
 from emit_main.workflow.acquisition import Acquisition
 from emit_main.workflow.output_targets import AcquisitionTarget
@@ -25,6 +25,14 @@ from emit_utils import daac_converter
 
 logger = logging.getLogger("emit-main")
 
+
+def read_gdal_metadata(file_path, metadata_key):
+    dataset = gdal.Open(file_path)
+    if not dataset:
+        raise FileNotFoundError(f"Unable to open file: {file_path}")
+
+    metadata = dataset.GetMetadata()
+    return metadata.get(metadata_key)
 
 class CH4(SlurmJobTask):
     """
@@ -101,7 +109,10 @@ class CH4(SlurmJobTask):
                acq.bandmask_img_path, acq.mask_img_path, ch4_base,
                '--state_subs', acq.statesubs_img_path,
                "--noise_file",noise_file,'--lut_file',
-               wm.config["ch4_lut_file"], "--logfile", ch4_log_file]
+               wm.config["ch4_lut_file"],
+               "--logfile", ch4_log_file,
+               "--software_version", wm.config["extended_build_num"],
+               "--product_version", 'V002']
 
         # Run CH4
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
@@ -257,7 +268,9 @@ class CO2(SlurmJobTask):
                acq.bandmask_img_path, acq.mask_img_path, co2_base,
                '--state_subs', acq.statesubs_img_path,
                "--noise_file",noise_file, '--lut_file', wm.config["co2_lut_file"],
-               "--logfile", co2_log_file, "--co2"]
+               "--logfile", co2_log_file, "--co2",
+               "--software_version", wm.config["extended_build_num"],
+               "--product_version", 'V002']
 
         # Run CO2
         start_time = time.time()
@@ -405,9 +418,12 @@ class CH4Deliver(SlurmJobTask):
         wm.copy(acq.ortuncertch4_tif_path, daac_ortuncertch4_tif_path)
         wm.copy(acq.ortch4_png_path, daac_browse_path)
 
-        # Get the software_build_version (extended build num when product was created)
-        hdr = envi.read_envi_header(acq.ch4_hdr_path)
-        software_build_version = hdr["emit software build version"]
+        # Get the software_build_version (extended build num when product was created
+        software_build_version = read_gdal_metadata(acq.ortch4_tif_path, 'software_build_version')
+
+        if not software_build_version:
+            print('Could not read software build version from COG metadata')
+            sys.exit()
 
         # Create the UMM-G file
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.ortch4_tif_path), tz=datetime.timezone.utc)
@@ -651,8 +667,11 @@ class CO2Deliver(SlurmJobTask):
         wm.copy(acq.ortco2_png_path, daac_browse_path)
 
         # Get the software_build_version (extended build num when product was created)
-        hdr = envi.read_envi_header(acq.co2_hdr_path)
-        software_build_version = hdr["emit software build version"]
+        software_build_version = read_gdal_metadata(acq.ortco2_tif_path, 'software_build_version')
+
+        if not software_build_version:
+            print('Could not read software build version from COG metadata')
+            sys.exit()
 
         # Create the UMM-G file
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.ortco2_tif_path), tz=datetime.timezone.utc)
