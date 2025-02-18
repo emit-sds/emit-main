@@ -163,7 +163,7 @@ class CH4(SlurmJobTask):
         creation_time = datetime.datetime.fromtimestamp(
             os.path.getmtime(acq.ortuncertch4_tif_path), tz=datetime.timezone.utc)
 
-        doc_version = "EMIT SDS L2B JPL-D........."  #TODO: Placeholder
+        doc_version = "EMIT SDS GHG JPL-D 107866, v0.2"
 
         total_time = time.time() - start_time
         log_entry = {
@@ -322,7 +322,7 @@ class CO2(SlurmJobTask):
         creation_time = datetime.datetime.fromtimestamp(
             os.path.getmtime(acq.ortuncertco2_tif_path), tz=datetime.timezone.utc)
 
-        doc_version = "EMIT SDS L2B JPL-D........."  #TODO: Placeholder
+        doc_version = "EMIT SDS GHG JPL-D 107866, v0.2"
 
         total_time = time.time() - start_time
         log_entry = {
@@ -400,8 +400,8 @@ class CH4Deliver(SlurmJobTask):
 
         # Create local/tmp daac names and paths
         daac_ortch4_tif_name = f"{acq.ch4_granule_ur}.tif"
-        daac_ortsensch4_tif_name = f"{acq.ch4uncert_granule_ur}.tif"
-        daac_ortuncertch4_tif_name = f"{acq.ch4sens_granule_ur}.tif"
+        daac_ortsensch4_tif_name = f"{acq.ch4sens_granule_ur}.tif"
+        daac_ortuncertch4_tif_name = f"{acq.ch4uncert_granule_ur}.tif"
 
         daac_ummg_name = f"{acq.ch4_granule_ur}.cmr.json"
         daac_browse_name = f"{acq.ch4_granule_ur}.png"
@@ -648,8 +648,8 @@ class CO2Deliver(SlurmJobTask):
 
         # Create local/tmp daac names and paths
         daac_ortco2_tif_name = f"{acq.co2_granule_ur}.tif"
-        daac_ortsensco2_tif_name = f"{acq.co2uncert_granule_ur}.tif"
-        daac_ortuncertco2_tif_name = f"{acq.co2sens_granule_ur}.tif"
+        daac_ortsensco2_tif_name = f"{acq.co2sens_granule_ur}.tif"
+        daac_ortuncertco2_tif_name = f"{acq.co2uncert_granule_ur}.tif"
 
         daac_ummg_name = f"{acq.co2_granule_ur}.cmr.json"
         daac_browse_name = f"{acq.co2_granule_ur}.png"
