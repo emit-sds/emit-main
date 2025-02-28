@@ -59,7 +59,7 @@ class Config:
             if timestamp is not None:
                 date_ranges = product_config["date_ranges"]
                 # Look for matching date range and update top level dictionary with those key/value pairs
-                for date_range, values in date_ranges.items:
+                for date_range, values in date_ranges.items():
                     # These dates are all in UTC by default and do not require any timezone conversion
                     start_date = datetime.datetime.strptime(date_range.split('_to_')[0], "%Y-%m-%dT%H:%M:%S")
                     end_date = datetime.datetime.strptime(date_range.split('_to_')[1], "%Y-%m-%dT%H:%M:%S")
