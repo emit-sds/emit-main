@@ -55,47 +55,31 @@
             "EMITL2BCO2ENH": "10.5067/EMIT/EMITL2BCO2ENH.002"
         }
     },
-    "l1a_config": {
-        "2023-01-01T00:00:00_to_2030-01-01T00:00:00": {
-            "decompression_constants_path": "repos/emit-sds-l1a/decompression/constants.txt",
-            "decompression_init_data_path": "repos/emit-sds-l1a/decompression/FPGA_Data_Initialization_File_CREATE_COMPRESSION_INIT_DATA_328_e0.bin"
-        }
-    },
-    "l1b_config": {
-        "2023-01-01T00:00:00_to_2030-01-01T00:00:00": {
-            "l1b_config_path": "repos/emit-sds-l1b/config/EMIT_20230119.json",
-            "l1b_geo_install_dir": "/store/emit/ops/repos/emit_l1b_geo_installs/1.6.19",
-            "l1b_geo_osp_dir": "/store/emit/ops/repos/emit_l1b_osp_installs/1.6.19"
-        }
-    },
-    "l2a_config": {
-        "2023-01-01T00:00:00_to_2030-01-01T00:00:00": {
-            "isofit_surface_config": "repos/emit-sds-l2a/surface/surface_20221020.json",
-            "isofit_emulator_base": "/store/shared/sRTMnet_v120.h5",
-            "isofit_sixs_dir": "/store/shared/sixs"
-        }
-    },
-    "l2b_config": {
-        "2023-01-01T00:00:00_to_2030-01-01T00:00:00": {
-            "specpr_path": "/store/shared/spectroscopy-tetracorder/specpr",
-            "tetracorder_path": "/store/shared/spectroscopy-tetracorder/tetracorder5.27",
-            "tetracorder_cmds_path": "/store/shared/tetracorder5.27c.cmds",
-            "tetracorder_library_dir": "/store/shared/tetracorder_libraries",
-            "tetracorder_library_basename": "06emite",
-            "tetracorder_library_cmdname": "emit_e",
-            "mineral_matrix_name": "mineral_grouping_matrix_20230503.csv",
-            "tetracorder_config_filename": "cmd.lib.setup.t5.27d1"
-        }
-    },
-    "ghg_config": {
-        "2023-01-01T00:00:00_to_2030-01-01T00:00:00": {
-            "ch4_lut_file": "/store/shared/ghg/dataset_ch4_full.hdf5",
-            "co2_lut_file": "/store/shared/ghg/dataset_co2_full.hdf5"
-        }
-    },
-    "unmix_config": {
-        "2023-01-01T00:00:00_to_2030-01-01T00:00:00": {
-            "unmixing_library": "/store/shared/unmixing_libraries/convex_hull__n_dims_4_unmix_library.csv"
+    "product_config": {
+        "decompression_constants_path": "/store/emit/test/repos/emit-sds-l1a/decompression/constants.txt",
+        "decompression_init_data_path": "/store/emit/test/repos/emit-sds-l1a/decompression/FPGA_Data_Initialization_File_CREATE_COMPRESSION_INIT_DATA_328_e0.bin",
+        "l1b_config_path": "/store/emit/test/repos/emit-sds-l1b/config/EMIT_20230119.json",
+        "l1b_geo_install_dir": "/store/emit/ops/repos/emit_l1b_geo_installs/1.6.19",
+        "l1b_geo_osp_dir": "/store/emit/ops/repos/emit_l1b_osp_installs/1.6.19",
+        "isofit_surface_config": "/store/emit/test/repos/emit-sds-l2a/surface/surface_20221020.json",
+        "isofit_emulator_base": "/store/shared/sRTMnet_v120.h5",
+        "isofit_sixs_dir": "/store/shared/sixs",
+        "specpr_path": "/store/shared/spectroscopy-tetracorder/specpr",
+        "tetracorder_path": "/store/shared/spectroscopy-tetracorder/tetracorder5.27",
+        "tetracorder_cmds_path": "/store/shared/tetracorder5.27c.cmds",
+        "tetracorder_library_dir": "/store/shared/tetracorder_libraries",
+        "tetracorder_library_basename": "06emite",
+        "tetracorder_library_cmdname": "emit_e",
+        "mineral_matrix_name": "mineral_grouping_matrix_20230503.csv",
+        "tetracorder_config_filename": "cmd.lib.setup.t5.27d1",
+        "ch4_lut_file": "/store/shared/ghg/dataset_ch4_full.hdf5",
+        "co2_lut_file": "/store/shared/ghg/dataset_co2_full.hdf5",
+        "unmixing_library": "/store/shared/unmixing_libraries/convex_hull__n_dims_4_unmix_library.csv",
+
+        "date_ranges" : {
+            "2024-12-01T00:00:00_to_2030-01-01T00:00:00": {
+                "l1b_config_path": "/store/emit/test/repos/emit-sds-l1b/config/EMIT_20230119.json"
+            }
         }
     }
 }
