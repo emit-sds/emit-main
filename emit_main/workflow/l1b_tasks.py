@@ -181,6 +181,7 @@ class L1BCalibrate(SlurmJobTask):
             "raw_img_path": acq.raw_img_path,
             "dark_img_path": dark_img_path,
             "l1b_config": l1b_config,
+            "l1b_config_path": l1b_config_path,
             "flat_field_update_paths": flat_field_update_paths
         }
         with open(tmp_runconfig_path, "w") as f:
@@ -237,6 +238,7 @@ class L1BCalibrate(SlurmJobTask):
         else:
             hdr["emit flat field median-based destriping"] = 0
         hdr["data ignore value"] = -9999
+        hdr["l1b_config"] = l1b_config_path
 
         envi.write_envi_header(acq.rdn_hdr_path, hdr)
 
