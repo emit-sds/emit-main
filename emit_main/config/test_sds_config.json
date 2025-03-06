@@ -1,82 +1,85 @@
 {
-  "general_config": {
-    "instrument": "emit",
-    "environment": "test",
-    "processing_version": "01",
-    "luigi_local_scheduler": false,
-    "luigi_workers": 2,
-    "tetracorder_library_basename": "06emite",
-    "tetracorder_library_cmdname": "emit_e",
-    "mineral_matrix_name": "mineral_grouping_matrix_20230503.csv",
-    "tetracorder_config_filename": "cmd.lib.setup.t5.27d1"
-  },
+    "general_config": {
+        "instrument": "emit",
+        "environment": "test",
+        "processing_version": "01",
+        "luigi_local_scheduler": false,
+        "luigi_workers": 2
+    },
+    "filesystem_config": {
+        "local_store_dir": "/store/",
+        "local_scratch_dir": "/store/scratch/"
+    },
+    "database_config": {
+        "db_host": "128.149.12.85",
+        "db_port": 27017,
+        "db_name": "emitTestDB",
+        "db_user": "emit-test"
+    },
+    "email_config": {
+        "email_user": "emit-sds@jpl.nasa.gov",
+        "email_sender": "emit-sds@jpl.nasa.gov",
+        "email_recipient_list": [
+            "emit-sds-admins@jpl.nasa.gov"
+        ],
+        "smtp_host": "smtp.jpl.nasa.gov",
+        "smtp_port": 587,
+        "exchange_server": "ums.jpl.nasa.gov"
+    },
+    "build_config": {
+        "extended_build_num": "010621",
+        "conda_base_dir": "/store/local/miniconda3/"
+    },
+    "daac_config": {
+        "aws_cli_exe": "/store/shared/aws-cli/v2/current/bin/aws",
+        "aws_s3_bucket": "jpl-ngis",
+        "aws_s3_base_dir": "/lpdaac",
+        "aws_profile": "default",
+        "cnm_version": "1.4",
+        "daac_submission_url_forward": "https://sqs.us-west-2.amazonaws.com/560130786230/lp-uat-ingest-forward-processing",
+        "daac_submission_url_backward": "https://sqs.us-west-2.amazonaws.com/560130786230/lp-uat-ingest-backward-processing",
+        "daac_provider_forward": "EMIT_FORWARD_PROCESSED_S3_UAT",
+        "daac_provider_backward": "EMIT_BACKWARD_PROCESSED_S3_UAT",
+        "daac_reconciliation_arn": "arn:aws:sns:us-west-2:560130786230:lp-uat-reconciliation-notification",
+        "daac_server_internal": "ngis-data.jpl.nasa.gov",
+        "daac_server_external": "popo.jpl.nasa.gov",
+        "daac_base_dir": "/data/emit/lp_daac",
+        "dois": {
+            "EMITL1ARAW": "10.5067/EMIT/EMITL1ARAW.001",
+            "EMITL1BATT": "10.5067/EMIT/EMITL1BATT.001",
+            "EMITL1BRAD": "10.5067/EMIT/EMITL1BRAD.001",
+            "EMITL2ARFL": "10.5067/EMIT/EMITL2ARFL.001",
+            "EMITL2BMIN": "10.5067/EMIT/EMITL2BMIN.001",
+            "EMITL3ASA": "10.5067/EMIT/EMITL3ASA.001",
+            "EMITL2BCH4ENH": "10.5067/EMIT/EMITL2BCH4ENH.002",
+            "EMITL2BCO2ENH": "10.5067/EMIT/EMITL2BCO2ENH.002"
+        }
+    },
+    "product_config": {
+        "decompression_constants_path": "/store/emit/test/repos/emit-sds-l1a/decompression/constants.txt",
+        "decompression_init_data_path": "/store/emit/test/repos/emit-sds-l1a/decompression/FPGA_Data_Initialization_File_CREATE_COMPRESSION_INIT_DATA_328_e0.bin",
+        "l1b_config_path": "/store/emit/test/repos/emit-sds-l1b/config/EMIT_20230119.json",
+        "l1b_geo_install_dir": "/store/emit/ops/repos/emit_l1b_geo_installs/1.6.19",
+        "l1b_geo_osp_dir": "/store/emit/ops/repos/emit_l1b_osp_installs/1.6.19",
+        "isofit_surface_config": "/store/emit/test/repos/emit-sds-l2a/surface/surface_20221020.json",
+        "isofit_emulator_base": "/store/shared/sRTMnet_v120.h5",
+        "isofit_sixs_dir": "/store/shared/sixs",
+        "specpr_path": "/store/shared/spectroscopy-tetracorder/specpr",
+        "tetracorder_path": "/store/shared/spectroscopy-tetracorder/tetracorder5.27",
+        "tetracorder_cmds_path": "/store/shared/tetracorder5.27c.cmds",
+        "tetracorder_library_dir": "/store/shared/tetracorder_libraries",
+        "tetracorder_library_basename": "06emite",
+        "tetracorder_library_cmdname": "emit_e",
+        "mineral_matrix_name": "mineral_grouping_matrix_20230503.csv",
+        "tetracorder_config_filename": "cmd.lib.setup.t5.27d1",
+        "ch4_lut_file": "/store/shared/ghg/dataset_ch4_full.hdf5",
+        "co2_lut_file": "/store/shared/ghg/dataset_co2_full.hdf5",
+        "unmixing_library": "/store/shared/unmixing_libraries/convex_hull__n_dims_4_unmix_library.csv",
 
-  "filesystem_config": {
-    "local_store_dir": "/store/",
-    "local_scratch_dir": "/store/scratch/"
-  },
-
-  "database_config": {
-    "db_host": "128.149.12.85",
-    "db_port": 27017,
-    "db_name": "emitTestDB",
-    "db_user": "emit-test"
-  },
-
-  "email_config": {
-    "email_user": "emit-sds@jpl.nasa.gov",
-    "email_sender": "emit-sds@jpl.nasa.gov",
-    "email_recipient_list": [
-      "emit-sds-admins@jpl.nasa.gov"
-    ],
-    "smtp_host": "smtp.jpl.nasa.gov",
-    "smtp_port": 587,
-    "exchange_server": "ums.jpl.nasa.gov"
-  },
-
-  "build_config": {
-    "extended_build_num": "010621",
-    "conda_base_dir": "/store/local/miniconda3/"
-  },
-
-  "daac_config": {
-    "aws_cli_exe": "/store/shared/aws-cli/v2/current/bin/aws",
-    "aws_s3_bucket": "jpl-ngis",
-    "aws_s3_base_dir": "/lpdaac",
-    "aws_profile": "default",
-    "cnm_version": "1.4",
-    "daac_submission_url_forward": "https://sqs.us-west-2.amazonaws.com/560130786230/lp-uat-ingest-forward-processing",
-    "daac_submission_url_backward": "https://sqs.us-west-2.amazonaws.com/560130786230/lp-uat-ingest-backward-processing",
-    "daac_provider_forward": "EMIT_FORWARD_PROCESSED_S3_UAT",
-    "daac_provider_backward": "EMIT_BACKWARD_PROCESSED_S3_UAT",
-    "daac_reconciliation_arn": "arn:aws:sns:us-west-2:560130786230:lp-uat-reconciliation-notification",
-    "daac_server_internal": "ngis-data.jpl.nasa.gov",
-    "daac_server_external": "popo.jpl.nasa.gov",
-    "daac_base_dir": "/data/emit/lp_daac",
-    "dois": {
-      "EMITL1ARAW": "10.5067/EMIT/EMITL1ARAW.001",
-      "EMITL1BATT": "10.5067/EMIT/EMITL1BATT.001",
-      "EMITL1BRAD": "10.5067/EMIT/EMITL1BRAD.001",
-      "EMITL2ARFL": "10.5067/EMIT/EMITL2ARFL.001",
-      "EMITL2BMIN": "10.5067/EMIT/EMITL2BMIN.001",
-      "EMITL3ASA": "10.5067/EMIT/EMITL3ASA.001"
+        "date_ranges" : {
+            "2024-12-01T00:00:00_to_2030-01-01T00:00:00": {
+                "l1b_config_path": "/store/emit/test/repos/emit-sds-l1b/config/EMIT_20230119.json"
+            }
+        }
     }
-  },
-
-  "ancillary_paths": {
-    "decompression_constants_path": "repos/emit-sds-l1a/decompression/constants.txt",
-    "decompression_init_data_path": "repos/emit-sds-l1a/decompression/FPGA_Data_Initialization_File_CREATE_COMPRESSION_INIT_DATA_328_e0.bin",
-    "l1b_config_path": "repos/emit-sds-l1b/config/EMIT_20230119.json",
-    "l1b_geo_install_dir": "/store/emit/ops/repos/emit_l1b_geo_installs/1.6.19",
-    "l1b_geo_osp_dir": "/store/emit/ops/repos/emit_l1b_osp_installs/1.6.19",
-    "isofit_surface_config": "repos/emit-sds-l2a/surface/surface_20221020.json",
-    "isofit_emulator_base": "/store/shared/sRTMnet_v120.h5",
-    "isofit_sixs_dir": "/store/shared/sixs",
-    "specpr_path": "/store/shared/spectroscopy-tetracorder/specpr",
-    "tetracorder_path": "/store/shared/spectroscopy-tetracorder/tetracorder5.27",
-    "tetracorder_cmds_path": "/store/shared/tetracorder5.27c.cmds",
-    "tetracorder_library_dir": "/store/shared/tetracorder_libraries",
-    "unmixing_library": "/store/shared/unmixing_libraries/convex_hull__n_dims_4_unmix_library.csv",
-    "versions": []
-  }
 }

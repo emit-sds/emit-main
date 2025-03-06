@@ -46,36 +46,36 @@ class Config:
                 build_config = json.load(b)
                 self.dictionary.update(build_config)
 
-            # Read in ancillary paths
-            self.dictionary.update(self._get_ancillary_file_paths(config["ancillary_paths"], timestamp))
+            # Read in product specific paths
+            self.dictionary.update(self._get_product_config_paths(config["product_config"], timestamp))
 
             # Get passwords from resources/credentials directory
             self.dictionary.update(self._get_passwords())
 
-    def _get_ancillary_file_paths(self, anc_files_config, timestamp):
-        # Get the ancillary paths that are either absolute paths or relative to the environment directory
+    def _get_product_config_paths(self, product_config, timestamp):
+        # Get the products paths that are either absolute paths or relative to the environment directory
         # (eg. /store/emit/ops).
-        if "versions" in anc_files_config:
+        if "date_ranges" in product_config:
             if timestamp is not None:
-                versions = anc_files_config["versions"]
+                date_ranges = product_config["date_ranges"]
                 # Look for matching date range and update top level dictionary with those key/value pairs
-                for version in versions:
+                for date_range, values in date_ranges.items():
                     # These dates are all in UTC by default and do not require any timezone conversion
-                    start_date = datetime.datetime.strptime(version["version_date_range"][0], "%Y-%m-%dT%H:%M:%S")
-                    end_date = datetime.datetime.strptime(version["version_date_range"][1], "%Y-%m-%dT%H:%M:%S")
+                    start_date = datetime.datetime.strptime(date_range.split('_to_')[0], "%Y-%m-%dT%H:%M:%S")
+                    end_date = datetime.datetime.strptime(date_range.split('_to_')[1], "%Y-%m-%dT%H:%M:%S")
                     if start_date <= timestamp < end_date:
-                        anc_files_config.update(version)
+                        product_config.update(values)
 
-            # Remove "versions" and return dictionary
-            del anc_files_config["versions"]
+            # Remove "date_ranges" and return dictionary
+            del product_config["date_ranges"]
 
         # Convert file paths to absolute paths
         environment_dir = os.path.join(self.dictionary["local_store_dir"], self.dictionary["instrument"],
                                        self.dictionary["environment"])
-        for key, path in anc_files_config.items():
+        for key, path in product_config.items():
             if type(path) is str and not path.startswith("/"):
-                anc_files_config[key] = os.path.join(environment_dir, path)
-        return anc_files_config
+                product_config[key] = os.path.join(environment_dir, path)
+        return product_config
 
     def _get_passwords(self):
         # Get encrypted passwords
