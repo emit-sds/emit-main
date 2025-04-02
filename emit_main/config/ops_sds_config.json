@@ -77,14 +77,20 @@
         "unmixing_library": "/store/shared/unmixing_libraries/convex_hull__n_dims_4_unmix_library.csv",
         "date_ranges": {
             "2022-08-10T00:00:00_to_2024-02-20T00:00:00": {
+                "tetracorder_library_basename": "em2208a",
+                "tetracorder_library_cmdname": "em2208a",
                 "l1b_config_path": "/store/emit/ops/repos/emit-sds-l1b/config/EMIT_20230119.json",
                 "config_comments": "Post-IOC calibration solution to be applied to all scenes going back to the start of the mission."
             },
             "2024-02-20T00:00:00_to_2024-08-18T00:00:00": {
+                "tetracorder_library_basename": "em2402a",
+                "tetracorder_library_cmdname": "em2402a",
                 "l1b_config_path": "/store/emit/ops/repos/emit-sds-l1b/config/EMIT_20240227.json",
                 "config_comments": "Calibration change in response to FSW reboot on 2024-02-19T12:38:13Z."
             },
             "2024-08-18T00:00:00_to_2030-01-01T00:00:00": {
+                "tetracorder_library_basename": "em2410a",
+                "tetracorder_library_cmdname": "em2410a",
                 "l1b_config_path": "/store/emit/ops/repos/emit-sds-l1b/config/EMIT_20241025.json",
                 "config_comments": "Calibration change in response to FUBAR anomaly on 2024-08-17T19:30:45Z."
             }
