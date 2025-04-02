@@ -172,15 +172,20 @@ class L1BCalibrate(SlurmJobTask):
         if len(flat_field_update_paths) < 100:
             flat_field_update_paths = []
 
+        # Add isofit dir
+        isofit_dir = wm.pges["isofit"].repo_dir
+
         # Create runconfig
         runconfig = {
             "repository_dir": pge.repo_dir,
+            "isofit_dir": isofit_dir,
             "tmp_dir": tmp_dir,
             "level": self.level,
             "instrument_mode": instrument_mode,
             "raw_img_path": acq.raw_img_path,
             "dark_img_path": dark_img_path,
             "l1b_config": l1b_config,
+            "l1b_config_path": l1b_config_path,
             "flat_field_update_paths": flat_field_update_paths
         }
         with open(tmp_runconfig_path, "w") as f:
@@ -188,9 +193,8 @@ class L1BCalibrate(SlurmJobTask):
 
         emitrdn_wrapper_exe = os.path.join(pge.repo_dir, "emitrdn_wrapper.py")
         utils_path = os.path.join(pge.repo_dir, "utils")
-        isofit_pge = wm.pges["isofit"]
         env = os.environ.copy()
-        env["PYTHONPATH"] = f"$PYTHONPATH:{utils_path}:{isofit_pge.repo_dir}"
+        env["PYTHONPATH"] = f"$PYTHONPATH:{utils_path}:{isofit_dir}"
         env["RAY_worker_register_timeout_seconds"] = "600"
         cmd = ["python", emitrdn_wrapper_exe, tmp_runconfig_path]
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
@@ -237,6 +241,7 @@ class L1BCalibrate(SlurmJobTask):
         else:
             hdr["emit flat field median-based destriping"] = 0
         hdr["data ignore value"] = -9999
+        hdr["l1b_config"] = l1b_config_path
 
         envi.write_envi_header(acq.rdn_hdr_path, hdr)
 

@@ -2,12 +2,12 @@
   "repositories": [
     {
       "url": "git@github.com:emit-sds/emit-main.git",
-      "tag": "v1.6.21",
+      "tag": "v1.6.22",
       "conda_env": "emit-main-20241122"
     },
     {
       "url": "git@github.com:emit-sds/emit-utils.git",
-      "tag": "v1.3.0",
+      "tag": "v1.3.1",
       "conda_env": "emit-main-20241122"
     },
     {
@@ -22,7 +22,7 @@
     },
     {
       "url": "git@github.com:emit-sds/emit-sds-l1b.git",
-      "tag": "v1.4.1",
+      "tag": "v1.4.3",
       "conda_env": "emit-isofit"
     },
     {
@@ -77,7 +77,7 @@
     },
     {
       "url": "git@github.com:emit-sds/emit-ghg.git",
-      "tag": "sds_integration",
+      "tag": "v0.3.3",
       "conda_env": "emit-ghg"
     }
   ]
