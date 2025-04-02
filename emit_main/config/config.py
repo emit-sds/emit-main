@@ -69,12 +69,6 @@ class Config:
             # Remove "date_ranges" and return dictionary
             del product_config["date_ranges"]
 
-        # Convert file paths to absolute paths
-        environment_dir = os.path.join(self.dictionary["local_store_dir"], self.dictionary["instrument"],
-                                       self.dictionary["environment"])
-        for key, path in product_config.items():
-            if type(path) is str and not path.startswith("/"):
-                product_config[key] = os.path.join(environment_dir, path)
         return product_config
 
     def _get_passwords(self):
