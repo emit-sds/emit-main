@@ -58,7 +58,6 @@
     "product_config": {
         "decompression_constants_path": "/store/emit/ops/repos/emit-sds-l1a/decompression/constants.txt",
         "decompression_init_data_path": "/store/emit/ops/repos/emit-sds-l1a/decompression/FPGA_Data_Initialization_File_CREATE_COMPRESSION_INIT_DATA_328_e0.bin",
-        "l1b_config_path": "/store/emit/ops/repos/emit-sds-l1b/config/EMIT_20230119.json",
         "l1b_geo_install_dir": "/store/emit/ops/repos/emit_l1b_geo_installs/1.6.19",
         "l1b_geo_osp_dir": "/store/emit/ops/repos/emit_l1b_osp_installs/1.6.19",
         "isofit_surface_config": "/store/emit/ops/repos/emit-sds-l2a/surface/surface_20221020.json",
@@ -68,8 +67,6 @@
         "tetracorder_path": "/store/shared/spectroscopy-tetracorder/tetracorder5.27",
         "tetracorder_cmds_path": "/store/shared/tetracorder5.27c.cmds",
         "tetracorder_library_dir": "/store/shared/tetracorder_libraries",
-        "tetracorder_library_basename": "06emite",
-        "tetracorder_library_cmdname": "emit_e",
         "mineral_matrix_name": "mineral_grouping_matrix_20230503.csv",
         "tetracorder_config_filename": "cmd.lib.setup.t5.27d1",
         "ch4_lut_file": "/store/shared/ghg/dataset_ch4_full.hdf5",
