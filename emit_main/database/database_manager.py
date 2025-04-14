@@ -78,6 +78,7 @@ class DatabaseManager:
         query = {
             "start_time": {"$gt": q_start, "$lt": q_stop},
             "products.l1b.ffupdate": {"$exists": 1},
+            "mean_solar_zenith": {"$lt": 60},
             "build_num": self.config["build_num"]
         }
         projection = {
@@ -269,7 +270,7 @@ class DatabaseManager:
         }
 
         results = list(acquisitions_coll.find(query))
-        # Also query for case where nighttime science RDN exists but not cloud_fraction
+        # Also query for case where nighttime science RDN exists
         query = {
             "products.l1b.rdn.img_path": {"$exists": 1},
             "products.l1b.glt.img_path": {"$exists": 1},
