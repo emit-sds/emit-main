@@ -775,7 +775,6 @@ class L1BRdnDeliver(SlurmJobTask):
 
         # Create the UMM-G file
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rdn_nc_path), tz=datetime.timezone.utc)
-        daynight = "Day" if acq.submode == "science" else "Night"
         l1b_pge = wm.pges["emit-sds-l1b"]
         cloud_fraction = acq.cloud_fraction if "cloud_fraction" in acq.metadata else None
         ummg = daac_converter.initialize_ummg(acq.rdn_granule_ur, nc_creation_time, "EMITL1BRAD",
@@ -790,7 +789,7 @@ class L1BRdnDeliver(SlurmJobTask):
                                               cloud_fraction=cloud_fraction)
 
         ummg = daac_converter.add_data_files_ummg(ummg, [daac_rdn_nc_path, daac_obs_nc_path, daac_browse_path],
-                                                  daynight, ["NETCDF-4", "NETCDF-4", "PNG"])
+                                                  acq.daynight, ["NETCDF-4", "NETCDF-4", "PNG"])
         # ummg = daac_converter.add_related_url(ummg, l1b_pge.repo_url, "DOWNLOAD SOFTWARE")
         ummg = daac_converter.add_boundary_ummg(ummg, acq.gring)
         daac_converter.dump_json(ummg, ummg_path)
