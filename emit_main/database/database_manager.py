@@ -187,7 +187,7 @@ class DatabaseManager:
             "products.l1b.obs.img_path": {"$exists": 1},
             "products.l2a.rfl.img_path": {"$exists": 1},
             "products.l2a.mask.img_path": {"$exists": 1},
-            "products.ghg.ch4.ortch4.img_path": {"$exists": 0},
+            "products.ghg.ch4.ortch4.tif_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop},
             "build_num": self.config["build_num"]
         }
@@ -207,7 +207,7 @@ class DatabaseManager:
             "products.l1b.obs.img_path": {"$exists": 1},
             "products.l2a.rfl.img_path": {"$exists": 1},
             "products.l2a.mask.img_path": {"$exists": 1},
-            "products.ghg.co2.ortco2.img_path": {"$exists": 0},
+            "products.ghg.co2.ortco2.tif_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop},
             "build_num": self.config["build_num"]
         }

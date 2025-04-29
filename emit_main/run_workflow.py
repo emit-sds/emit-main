@@ -309,7 +309,7 @@ def task_failure(task, e):
     acquisition_tasks = ("emit.L1ADeliver", "emit.L1BCalibrate", "emit.L1BRdnFormat", "emit.L1BRdnDeliver",
                          "emit.L2AReflectance", "emit.L2AMask", "emit.L2AFormat", "emit.L2ADeliver",
                          "emit.L2BAbundance", "emit.L2BFormat", "emit.L2BDeliver", "emit.L3Unmix",
-                         "emit.GetAdditionalMetadata")
+                         "emit.GetAdditionalMetadata", "emit.CH4", "emit.CO2", "emit.CH4Deliver", "emit.CO2Deliver")
     orbit_tasks = ("emit.L1AReformatBAD", "emit.L1BGeolocate", "emit.L1BAttDeliver", "emit.AssignDAACSceneNumbers")
 
     dm = wm.database_manager
