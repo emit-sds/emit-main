@@ -479,7 +479,7 @@ class L1AReassembleRaw(SlurmJobTask):
 
             # Define acquisition metadata
             solar_zenith_angle = dc.metadata["planning_product"]["sza"] #TODO: Handle cases when planning product or sza do no exist?
-            daynight = "Day" if solar_zenith_angle < 90 else "Night"
+            daynight = "Day" if solar_zenith_angle < 90 else "Night" 
             
             acq_meta = {
                 "acquisition_id": acq_id,

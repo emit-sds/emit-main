@@ -142,7 +142,7 @@ class DatabaseManager:
             "products.l1b.obs.img_path": {"$exists": 1},
             "products.l2a.rfl.img_path": {"$exists": 0},
             "products.l2a.mask.img_path": {"$exists": 0},
-            "mean_solar_zenith": {"$lt": 90},
+            "mean_solar_zenith": {"$lt": 80},
             date_field: {"$gte": start, "$lte": stop},
             "build_num": self.config["build_num"]
         }
@@ -155,7 +155,7 @@ class DatabaseManager:
             "products.l1b.obs.img_path": {"$exists": 1},
             "products.l2a.rfl.img_path": {"$exists": 1},
             "products.l2a.mask.img_path": {"$exists": 0},
-            "mean_solar_zenith": {"$lt": 90},
+            "mean_solar_zenith": {"$lt": 80},
             date_field: {"$gte": start, "$lte": stop},
             "build_num": self.config["build_num"]
         }
@@ -191,7 +191,7 @@ class DatabaseManager:
             "products.l2a.rfl.img_path": {"$exists": 1},
             "products.l2a.mask.img_path": {"$exists": 1},
             "products.ghg.ch4.ortch4.img_path": {"$exists": 0},
-            "mean_solar_zenith": {"$lt": 60},
+            "mean_solar_zenith": {"$lt": 80},
             date_field: {"$gte": start, "$lte": stop},
             "build_num": self.config["build_num"]
         }
@@ -212,7 +212,7 @@ class DatabaseManager:
             "products.l2a.rfl.img_path": {"$exists": 1},
             "products.l2a.mask.img_path": {"$exists": 1},
             "products.ghg.co2.ortco2.img_path": {"$exists": 0},
-            "mean_solar_zenith": {"$lt": 60},
+            "mean_solar_zenith": {"$lt": 80},
             date_field: {"$gte": start, "$lte": stop},
             "build_num": self.config["build_num"]
         }
@@ -278,7 +278,7 @@ class DatabaseManager:
             "products.l1b.obs.img_path": {"$exists": 1},
             "products.l1b.rdn_png.png_path": {"$exists": 1},
             "submode": {"science"},
-            "daynight": {"Night"},
+            "daynight": {"Night"}, #TODO: Should use solar zenith >= 80 instead otherwise this will miss data w/ solar zenith 80-90 
             "daac_scene": {"$exists": 1},
             "products.l1b.rdn_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop},

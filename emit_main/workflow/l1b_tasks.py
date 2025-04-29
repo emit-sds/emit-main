@@ -235,7 +235,7 @@ class L1BCalibrate(SlurmJobTask):
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rdn_img_path), tz=datetime.timezone.utc)
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         hdr["emit data product version"] = wm.config["processing_version"]
-        hdr["emit acquisition daynight"] = acq.daynight
+        hdr["emit acquisition daynight"] = acq.daynight  #TODO Need to use planning product based daynight? Since OBS based not available yet.
         if os.path.exists(tmp_ffmedian_img_path):
             hdr["emit flat field median-based destriping"] = 1
         else:
@@ -546,6 +546,9 @@ class L1BGeolocate(SlurmJobTask):
             glt_gring = get_gring_boundary_points(acq.glt_hdr_path)
             mean_solar_azimuth = get_band_mean(acq.obs_img_path, 3)
             mean_solar_zenith = get_band_mean(acq.obs_img_path, 4)
+            
+            #TODO: Added additional daynight variable
+            #daynight = "Day" if mean_solar_zenith < 90 else "Night" 
             meta = {
                 "gring": glt_gring,
                 "mean_solar_azimuth": mean_solar_azimuth,
