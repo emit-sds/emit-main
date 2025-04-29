@@ -67,33 +67,29 @@ class Acquisition:
             wm.makedirs(d)
 
         # Build granule ur and paths for DAAC delivery on staging server
-        self.collection_version = f"0{self.config['processing_version']}"
         daac_start_time_str = self.start_time.strftime("%Y%m%dT%H%M%S")
 
         if "daac_scene" in self.metadata:
-            self.raw_granule_ur = f"EMIT_L1A_RAW_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.rdn_granule_ur = f"EMIT_L1B_RAD_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.obs_granule_ur = f"EMIT_L1B_OBS_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.rfl_granule_ur = f"EMIT_L2A_RFL_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.rfluncert_granule_ur = f"EMIT_L2A_RFLUNCERT_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.mask_granule_ur = f"EMIT_L2A_MASK_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.abun_granule_ur = f"EMIT_L2B_MIN_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.abununcert_granule_ur = f"EMIT_L2B_MINUNCERT_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.ch4_granule_ur = f"EMIT_L2B_CH4ENH_002_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.ch4uncert_granule_ur = f"EMIT_L2B_CH4UNCERT_002_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.ch4sens_granule_ur = f"EMIT_L2B_CH4SENS_002_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.co2_granule_ur = f"EMIT_L2B_CO2ENH_002_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.co2uncert_granule_ur = f"EMIT_L2B_CO2UNCERT_002_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.co2sens_granule_ur = f"EMIT_L2B_CO2SENS_002_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.raw_granule_ur = f"EMIT_L1A_RAW_0{self.config['product_versions']['l1a']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.rdn_granule_ur = f"EMIT_L1B_RAD_0{self.config['product_versions']['l1brdn']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            # obs gets the same product version and radiance since they are delivered together
+            self.obs_granule_ur = f"EMIT_L1B_OBS_0{self.config['product_versions']['l1brdn']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.rfl_granule_ur = f"EMIT_L2A_RFL_0{self.config['product_versions']['l2a']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.rfluncert_granule_ur = f"EMIT_L2A_RFLUNCERT_0{self.config['product_versions']['l2a']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.mask_granule_ur = f"EMIT_L2A_MASK_0{self.config['product_versions']['l2a']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.abun_granule_ur = f"EMIT_L2B_MIN_0{self.config['product_versions']['l2b']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.abununcert_granule_ur = f"EMIT_L2B_MINUNCERT_0{self.config['product_versions']['l2b']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.ch4_granule_ur = f"EMIT_L2B_CH4ENH_0{self.config['product_versions']['ch4']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.ch4uncert_granule_ur = f"EMIT_L2B_CH4UNCERT_0{self.config['product_versions']['ch4']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.ch4sens_granule_ur = f"EMIT_L2B_CH4SENS_0{self.config['product_versions']['ch4']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.co2_granule_ur = f"EMIT_L2B_CO2ENH_0{self.config['product_versions']['co2']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.co2uncert_granule_ur = f"EMIT_L2B_CO2UNCERT_0{self.config['product_versions']['co2']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.co2sens_granule_ur = f"EMIT_L2B_CO2SENS_0{self.config['product_versions']['c02']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
 
-        self.daac_staging_dir = os.path.join(self.config["daac_base_dir"], wm.config['environment'], "products",
-                                             self.start_time.strftime("%Y%m%d"))
-        self.daac_uri_base = f"https://{self.config['daac_server_external']}/emit/lpdaac/{wm.config['environment']}/" \
-            f"products/{self.start_time.strftime('%Y%m%d')}/"
-        self.daac_partial_dir = os.path.join(self.config["daac_base_dir"], wm.config['environment'],
-                                             "partial_transfers")
-        self.aws_staging_dir = os.path.join(self.config["aws_s3_base_dir"], wm.config['environment'], "products",
-                                            self.start_time.strftime("%Y%m%d"))
+        self.daac_staging_dir = os.path.join(self.config["daac_base_dir"], wm.config['environment'], "products", self.start_time.strftime("%Y%m%d"))
+        self.daac_uri_base = f"https://{self.config['daac_server_external']}/emit/lpdaac/{wm.config['environment']}/products/{self.start_time.strftime('%Y%m%d')}/"
+        self.daac_partial_dir = os.path.join(self.config["daac_base_dir"], wm.config['environment'], "partial_transfers")
+        self.aws_staging_dir = os.path.join(self.config["aws_s3_base_dir"], wm.config['environment'], "products", self.start_time.strftime("%Y%m%d"))
         self.aws_s3_uri_base = f"s3://{self.config['aws_s3_bucket']}{self.aws_staging_dir}/"
 
     def _initialize_metadata(self):
@@ -126,13 +122,15 @@ class Acquisition:
                 "dark": ["img", "hdr"],
                 "rawqa": ["txt"]
             },
-            "l1b": {
+            "l1brdn": {
                 "rdn": ["img", "hdr", "png", "kmz", "nc"],
                 "destripedark": ["img", "hdr"],
                 "destripeff": ["img", "hdr"],
                 "bandmask": ["img", "hdr"],
                 "ffupdate": ["img", "hdr"],
-                "ffmedian": ["img", "hdr"],
+                "ffmedian": ["img", "hdr"]
+            },
+            "l1batt": {
                 "loc": ["img", "hdr"],
                 "obs": ["img", "hdr", "nc"],
                 "glt": ["img", "hdr"],
@@ -181,28 +179,32 @@ class Acquisition:
             }
         }
         paths = {}
-        for level, prod_map in product_map.items():
-            if level in ['co2','ch4']: # Nest GHG products
-                level_data_dir = os.path.join(self.acquisition_id_dir, f'ghg/{level}')
-                self.__dict__.update({f"{level}_data_dir": level_data_dir})
-                level = 'ghg'
-                processing_verion = '02'
+        for prod_group, prod_map in product_map.items():
+            if prod_group in ["l1brdn", "l1batt"]: # Combine l1b products
+                prod_group_data_dir = os.path.join(self.acquisition_id_dir, "l1b")
+                self.__dict__.update({prod_group + "_data_dir": prod_group_data_dir})
+                product_version = self.config["product_versions"][prod_group]
+            if prod_group in ["co2","ch4"]: # Nest GHG products
+                prod_group_data_dir = os.path.join(self.acquisition_id_dir, f"ghg/{prod_group}")
+                self.__dict__.update({f"{prod_group}_data_dir": prod_group_data_dir})
+                product_version = self.config["product_versions"][prod_group]
+                prod_group = "ghg"
             else:
-                level_data_dir = os.path.join(self.acquisition_id_dir, level)
-                self.__dict__.update({level + "_data_dir": level_data_dir})
-                processing_verion = self.config["processing_version"]
-            self.dirs.append(level_data_dir)
+                prod_group_data_dir = os.path.join(self.acquisition_id_dir, prod_group)
+                self.__dict__.update({prod_group + "_data_dir": prod_group_data_dir})
+                product_version = self.config["product_versions"][prod_group]
+            self.dirs.append(prod_group_data_dir)
             for prod, formats in prod_map.items():
                 for format in formats:
                     prod_key = prod + "_" + format + "_path"
                     prod_prefix = "_".join([self.acquisition_id,
                                             "o" + self.short_orb,
                                             "s" + self.scene,
-                                            level,
+                                            prod_group,
                                             prod,
                                             "b" + self.config["build_num"],
-                                            "v" + processing_verion])
+                                            "v" + product_version])
                     prod_name = prod_prefix + "." + format
-                    prod_path = os.path.join(level_data_dir, prod_name)
+                    prod_path = os.path.join(prod_group_data_dir, prod_name)
                     paths[prod_key] = prod_path
         return paths

@@ -101,6 +101,7 @@ class L2AReflectance(SlurmJobTask):
         model_disc_file = os.path.join(isofit_pge.repo_dir, "data", "emit_model_discrepancy.mat")
 
         emulator_base = wm.config["isofit_emulator_base"]
+
         input_files = {
             "radiance_file": acq.rdn_img_path,
             "pixel_locations_file": acq.loc_img_path,

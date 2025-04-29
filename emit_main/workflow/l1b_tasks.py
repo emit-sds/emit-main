@@ -216,8 +216,8 @@ class L1BCalibrate(SlurmJobTask):
         # Copy the rest of the files
         wm.copy(tmp_bandmask_img_path, acq.bandmask_img_path)
         wm.copy(envi_header(tmp_bandmask_img_path), acq.bandmask_hdr_path)
-        wm.copy(tmp_runconfig_path, os.path.join(acq.l1b_data_dir, runconfig_name))
-        wm.copy(tmp_log_path, os.path.join(acq.l1b_data_dir, os.path.basename(tmp_log_path)))
+        wm.copy(tmp_runconfig_path, os.path.join(acq.l1brdn_data_dir, runconfig_name))
+        wm.copy(tmp_log_path, os.path.join(acq.l1brdn_data_dir, os.path.basename(tmp_log_path)))
 
         # Update hdr files
         input_files["runconfig"] = tmp_runconfig_path
@@ -808,7 +808,7 @@ class L1BRdnDeliver(SlurmJobTask):
         # Build notification dictionary
         utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
         cnm_submission_id = f"{acq.rdn_granule_ur}_{utc_now.strftime('%Y%m%dt%H%M%S')}"
-        cnm_submission_path = os.path.join(acq.l1b_data_dir, cnm_submission_id + "_cnm.json")
+        cnm_submission_path = os.path.join(acq.l1brdn_data_dir, cnm_submission_id + "_cnm.json")
         target_src_map = {
             daac_rdn_nc_name: os.path.basename(acq.rdn_nc_path),
             daac_obs_nc_name: os.path.basename(acq.obs_nc_path),
