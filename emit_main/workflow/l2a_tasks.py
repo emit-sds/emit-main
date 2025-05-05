@@ -67,6 +67,8 @@ class L2AReflectance(SlurmJobTask):
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
         pge = wm.pges["emit-sds-l2a"]
+        
+        #pge.conda_env_name = 'emit-isofit-v3.4.1-test'  #TODO DELETE...
 
         # Build PGE cmd for surface model
         isofit_pge = wm.pges["isofit"]
@@ -75,7 +77,7 @@ class L2AReflectance(SlurmJobTask):
 
         # Generate surface model
         env = os.environ.copy()
-        surf_cmd = ["surface_model",
+        surf_cmd = ["isofit", "surface_model",
                     surface_config_path,
                     f"--wavelength_path={acq.rdn_hdr_path}",
                     f"--output_path={tmp_surface_path}"]
@@ -92,10 +94,9 @@ class L2AReflectance(SlurmJobTask):
             "observation_parameters_file": acq.obs_img_path,
             "surface_model_config": surface_config_path
         }
-        cmd = ["apply_oe", acq.rdn_img_path, acq.loc_img_path, acq.obs_img_path, self.local_tmp_dir, "emit",
-               "--presolve=1",
-               "--empirical_line=0",
-               "--analytical_line=1",
+        cmd = ["isofit", "apply_oe", acq.rdn_img_path, acq.loc_img_path, acq.obs_img_path, self.local_tmp_dir, "emit",
+               "--presolve",
+               "--analytical_line",
                "--emulator_base=" + emulator_base,
                "--n_cores", str(self.n_cores),
                "--surface_path", tmp_surface_path,
@@ -106,6 +107,7 @@ class L2AReflectance(SlurmJobTask):
                "--model_discrepancy_path", model_disc_file,
                "--pressure_elevation"]
 
+        env["SIXS_DIR"] = wm.config["isofit_sixs_dir"]
         env["RAY_worker_register_timeout_seconds"] = "600"
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
