@@ -68,8 +68,6 @@ class L2AReflectance(SlurmJobTask):
         acq = wm.acquisition
         pge = wm.pges["emit-sds-l2a"]
         
-        #pge.conda_env_name = 'emit-isofit-v3.4.1-test'  #TODO DELETE...
-
         # Build PGE cmd for surface model
         isofit_pge = wm.pges["isofit"]
         surface_config_path = wm.config["isofit_surface_config"]
