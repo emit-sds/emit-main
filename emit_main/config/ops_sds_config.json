@@ -27,7 +27,7 @@
         "exchange_server": "ums.jpl.nasa.gov"
     },
     "build_config": {
-        "extended_build_num": "010622",
+        "extended_build_num": "010623",
         "conda_base_dir": "/store/local/miniconda3/"
     },
     "daac_config": {
