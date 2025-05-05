@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v1.6.23](https://github.com/emit-sds/emit-main/compare/v1.6.22...v1.6.23)
+
+> 5 May 2025
+
+* V1.6.22 patch by @winstonolson in https://github.com/emit-sds/emit-main/pull/60
+
 #### [v1.6.22](https://github.com/emit-sds/emit-main/compare/v1.6.21...v1.6.22)
 
 > 2 April 2025
