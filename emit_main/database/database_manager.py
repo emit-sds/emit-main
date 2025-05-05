@@ -321,6 +321,10 @@ class DatabaseManager:
             date_field: {"$gte": start, "$lte": stop},
             "build_num": self.config["build_num"]
         }
+        # TODO: Remove this block when GHG reprocessing is complete
+        if date_field ==  "last_modified":
+            ghg_forward_start = datetime.datetime.strptime("2025-04-01T00:00:00", "%Y-%m-%dT%H:%M:%S")
+            query["start_time"] = {"$gte": ghg_forward_start}
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.CH4Deliver"])
@@ -339,6 +343,10 @@ class DatabaseManager:
             date_field: {"$gte": start, "$lte": stop},
             "build_num": self.config["build_num"]
         }
+        # TODO: Remove this block when GHG reprocessing is complete
+        if date_field ==  "last_modified":
+            ghg_forward_start = datetime.datetime.strptime("2025-04-01T00:00:00", "%Y-%m-%dT%H:%M:%S")
+            query["start_time"] = {"$gte": ghg_forward_start}
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.CO2Deliver"])
