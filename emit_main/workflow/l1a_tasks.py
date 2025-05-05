@@ -490,7 +490,7 @@ class L1AReassembleRaw(SlurmJobTask):
                 "orbit": orbit,
                 "scene": scene,
                 "submode": submode.lower(),
-                "daynight": daynight,
+                "daynight_planned": daynight,
                 "instrument_mode": instrument_mode,
                 "num_valid_lines": num_valid_lines,
                 "associated_dcid": self.dcid
@@ -578,7 +578,7 @@ class L1AReassembleRaw(SlurmJobTask):
                 os.path.getmtime(acq.raw_img_path), tz=datetime.timezone.utc)
             hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
             hdr["emit data product version"] = wm.config["processing_version"]
-            hdr["emit acquisition daynight"] = acq.daynight
+            hdr["emit acquisition planned daynight"] = acq.daynight_planned
             envi.write_envi_header(acq.raw_hdr_path, hdr)
 
             # Update products with frames and decompressed frames:

@@ -235,7 +235,7 @@ class L1BCalibrate(SlurmJobTask):
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rdn_img_path), tz=datetime.timezone.utc)
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         hdr["emit data product version"] = wm.config["processing_version"]
-        hdr["emit acquisition daynight"] = acq.daynight  #TODO Need to use planning product based daynight? Since OBS based not available yet.
+        hdr["emit acquisition planned daynight"] = acq.daynight_planned  #TODO Need to use planning product based daynight? Since OBS based not available yet.
         if os.path.exists(tmp_ffmedian_img_path):
             hdr["emit flat field median-based destriping"] = 1
         else:
@@ -498,6 +498,18 @@ class L1BGeolocate(SlurmJobTask):
                 }
             }
 
+            # Get additional attributes and add to DB
+            glt_gring = get_gring_boundary_points(acq.glt_hdr_path)
+            mean_solar_azimuth = get_band_mean(acq.obs_img_path, 3)
+            mean_solar_zenith = get_band_mean(acq.obs_img_path, 4)
+            meta = {
+                "gring": glt_gring,
+                "mean_solar_azimuth": mean_solar_azimuth,
+                "mean_solar_zenith": mean_solar_zenith,
+                "daynight": "Day" if mean_solar_zenith < 90 else "Night" 
+                
+            }
+                        
             # Update acquisition header files and DB
             # Update hdr files
             acq_input_files = {
@@ -531,7 +543,7 @@ class L1BGeolocate(SlurmJobTask):
                                                                     tz=datetime.timezone.utc)
                 hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
                 hdr["emit data product version"] = wm.config["processing_version"]
-                hdr["emit acquisition daynight"] = acq.daynight
+                hdr["emit acquisition daynight"] = meta["daynight"]
 
                 envi.write_envi_header(hdr_path, hdr)
 
@@ -542,18 +554,6 @@ class L1BGeolocate(SlurmJobTask):
             dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn_kmz": acq_prod_map[id]["rdn_kmz"]})
             dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn_png": acq_prod_map[id]["rdn_png"]})
 
-            # Get additional attributes and add to DB
-            glt_gring = get_gring_boundary_points(acq.glt_hdr_path)
-            mean_solar_azimuth = get_band_mean(acq.obs_img_path, 3)
-            mean_solar_zenith = get_band_mean(acq.obs_img_path, 4)
-            
-            #TODO: Added additional daynight variable
-            #daynight = "Day" if mean_solar_zenith < 90 else "Night" 
-            meta = {
-                "gring": glt_gring,
-                "mean_solar_azimuth": mean_solar_azimuth,
-                "mean_solar_zenith": mean_solar_zenith
-            }
             dm.update_acquisition_metadata(acq.acquisition_id, meta)
 
         # Finish updating orbit level properties
@@ -779,7 +779,7 @@ class L1BRdnDeliver(SlurmJobTask):
         # Create the UMM-G file
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rdn_nc_path), tz=datetime.timezone.utc)
         l1b_pge = wm.pges["emit-sds-l1b"]
-        cloud_fraction = acq.cloud_fraction if "cloud_fraction" in acq.metadata else None
+        cloud_fraction = acq.cloud_fraction if "cloud_fraction" in acq.metadata else 0
         ummg = daac_converter.initialize_ummg(acq.rdn_granule_ur, nc_creation_time, "EMITL1BRAD",
                                               acq.collection_version, acq.start_time,
                                               acq.stop_time, l1b_pge.repo_name, l1b_pge.version_tag,

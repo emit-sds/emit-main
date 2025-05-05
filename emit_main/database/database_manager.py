@@ -277,8 +277,9 @@ class DatabaseManager:
             "products.l1b.loc.img_path": {"$exists": 1},
             "products.l1b.obs.img_path": {"$exists": 1},
             "products.l1b.rdn_png.png_path": {"$exists": 1},
+            "cloud_fraction": {"$exists": 0},
             "submode": {"science"},
-            "daynight": {"Night"}, #TODO: Should use solar zenith >= 80 instead otherwise this will miss data w/ solar zenith 80-90 
+            "mean_solar_zenith": {"$gte: 80"},
             "daac_scene": {"$exists": 1},
             "products.l1b.rdn_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop},
