@@ -30,7 +30,7 @@ def update_collection(db_collection, query, data_frame):
     if result is None:
         data_frame["last_modified"] = utc_now
         db_collection.insert_one(data_frame)
-        print(f"Inserted DB with {data_frame}")
+        # print(f"Inserted DB with {data_frame}")
         return
 
     # If result is not none then compare new values with existing and only update if different
@@ -47,9 +47,10 @@ def update_collection(db_collection, query, data_frame):
     if needs_update:
         data_frame["last_modified"] = utc_now
         db_collection.update_one(query, {"$set": data_frame})
-        print(f"Updated DB with {data_frame}")
+        # print(f"Updated DB with {data_frame}")
     else:
-        print("DB already contains matching document, so no update.")
+        pass
+        # print("DB already contains matching document, so no update.")
 
 
 def export_apid(apid, dm, query, out_dir, start, stop):
@@ -430,4 +431,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
