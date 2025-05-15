@@ -9,6 +9,9 @@ import datetime as dt
 import os
 import pandas as pd
 
+# To get CSV file, query sacct like this:
+# sacct --starttime=now-9days --format=User%15,JobID%8,JobName%30,State,ElapsedRaw,Submit,Start,End | grep -v batch | grep -v "\-\-" | awk '{print $1","$2","$3","$4","$5","$6","$7","$8}' > /home/emit-cron-test/runtimes.csv
+
 
 def main():
     # Set up args
