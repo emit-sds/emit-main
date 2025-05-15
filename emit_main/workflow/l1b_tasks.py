@@ -235,7 +235,7 @@ class L1BCalibrate(SlurmJobTask):
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rdn_img_path), tz=datetime.timezone.utc)
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         hdr["emit data product version"] = wm.config["processing_version"]
-        hdr["emit acquisition planned daynight"] = acq.daynight_planned  #TODO Need to use planning product based daynight? Since OBS based not available yet.
+        hdr["emit acquisition planned daynight"] = acq.daynight_planned
         if os.path.exists(tmp_ffmedian_img_path):
             hdr["emit flat field median-based destriping"] = 1
         else:

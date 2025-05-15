@@ -478,7 +478,7 @@ class L1AReassembleRaw(SlurmJobTask):
             acq_decomp_frame_paths.sort()
 
             # Define acquisition metadata
-            solar_zenith_angle = dc.metadata["planning_product"]["sza"] #TODO: Handle cases when planning product or sza do no exist?
+            solar_zenith_angle = dc.metadata["planning_product"]["sza"]
             daynight = "Day" if solar_zenith_angle < 90 else "Night" 
             
             acq_meta = {
