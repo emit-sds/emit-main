@@ -202,8 +202,7 @@ class L2AReflectance(SlurmJobTask):
                 os.path.getmtime(img_path), tz=datetime.timezone.utc)
             hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
             hdr["emit data product version"] = wm.config["processing_version"]
-            daynight = "Day" if acq.submode == "science" else "Night"
-            hdr["emit acquisition daynight"] = daynight
+            hdr["emit acquisition daynight"] = acq.daynight
             hdr["emit spectral quality"] = '{' + ', '.join(quality_results.astype(str).tolist()) + '}'
             envi.write_envi_header(hdr_path, hdr)
 
@@ -547,7 +546,6 @@ class L2ADeliver(SlurmJobTask):
 
         # Create the UMM-G file
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rfl_nc_path), tz=datetime.timezone.utc)
-        daynight = "Day" if acq.submode == "science" else "Night"
         l2a_pge = wm.pges["emit-sds-l2a"]
         ummg = daac_converter.initialize_ummg(acq.rfl_granule_ur, nc_creation_time, "EMITL2ARFL",
                                               acq.collection_version, acq.start_time,
@@ -562,7 +560,7 @@ class L2ADeliver(SlurmJobTask):
         ummg = daac_converter.add_data_files_ummg(
             ummg,
             [daac_rfl_nc_path, daac_rfluncert_nc_path, daac_mask_nc_path, daac_browse_path],
-            daynight,
+            acq.daynight,
             ["NETCDF-4", "NETCDF-4", "NETCDF-4", "PNG"])
         # ummg = daac_converter.add_related_url(ummg, l2a_pge.repo_url, "DOWNLOAD SOFTWARE")
         ummg = daac_converter.add_boundary_ummg(ummg, acq.gring)
