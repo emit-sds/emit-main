@@ -41,10 +41,10 @@ def parse_args():
     product_choices = ["l0hosc", "l0daac", "l0plan", "l0bad", "l1aeng", "l1aframe", "l1aframereport", "l1araw",
                        "l1adaac", "l1abad", "l1bcal", "l1bgeo", "l1brdnformat", "l1brdndaac", "l1battdaac", "l2arefl",
                        "l2amask", "l2aformat", "l2adaac", "l2babun", "l2bformat", "l2bdaac", "l2bch4", "l2bco2",
-                       "l2bch4daac", "l2bco2daac", "l3unmix", "daacscenes", "daacaddl", "recon"]
+                       "l2bch4daac", "l2bco2daac", "l2bch4mosaic", "l2bco2mosaic", "l3unmix", "daacscenes", "daacaddl", "recon"]
     monitor_choices = ["ingest", "frames", "edp", "cal", "bad", "geo", "l2", "l2b","ch4", "co2", "l3",
                        "email", "daacscenes", "dl0","dl1a", "dl1brdn", "dl1batt", "dl2a", "dl2b", "dch4", "dco2",
-                       "reconresp"]
+                       "mch4", "mco2","reconresp"]
     parser = argparse.ArgumentParser(
         description="Description: This is the top-level run script for executing the various EMIT SDS workflow and "
                     "monitor tasks.\n"
@@ -568,6 +568,15 @@ def main():
         am_dco2_tasks_str = "\n".join([str(t) for t in am_dco2_tasks])
         logger.info(f"Acquisition monitor deliver co2 tasks to run:\n{am_dco2_tasks_str}")
         tasks += am_dco2_tasks
+    
+    # Get tasks from mch4 (mosaic ch4) monitor
+    if args.monitor and args.monitor == "mch4":
+        dm = DCIDMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
+        dm_ch4_mosaic_tasks = dm.get_ch4_mosaic_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                        date_field=args.date_field, retry_failed=args.retry_failed)
+        dm_ch4_mosaic_tasks_str = "\n".join([str(t) for t in dm_ch4_mosaic_tasks])
+        logger.info(f"DCID monitor CH4 mosaic tasks to run:\n{dm_ch4_mosaic_tasks}")
+        tasks += dm_ch4_mosaic_tasks
     
     # Get tasks from products args
     if args.products:

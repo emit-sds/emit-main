@@ -193,6 +193,15 @@ class CH4(SlurmJobTask):
 
         dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
 
+    # Now get workflow manager again containing data collection
+    wm = WorkflowManager(config_path=self.config_path, dcid=acq.associated_dcid)
+    dc = wm.data_collection
+
+    if dc.has_complete_ch4_aqcuisitions():
+        dm.update_data_collection_metadata(acq.associated_dcid, {"ch4_status": "complete"})
+    else:
+        dm.update_data_collection_metadata(acq.associated_dcid, {"ch4_status": "incomplete"})
+
 class CO2(SlurmJobTask):
     """
     Performs carbon dioxide mapping on the EMIT SDS
@@ -845,4 +854,159 @@ class CO2Deliver(SlurmJobTask):
                 "l2b_co2_cnm_submission_path": cnm_submission_path
             }
         }
+        dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
+
+class CH4Mosaic(SlurmJobTask):
+    """
+    Mosaic methane outputs and copy to server
+    :returns: Matched filter form methane estimation
+    """
+
+    config_path = luigi.Parameter()
+    level = luigi.Parameter()
+    partition = luigi.Parameter()
+    dcid = luigi.Parameter()
+
+    n_cores = 16
+    memory = 90000
+
+    task_namespace = "emit"
+
+    def requires(self):
+
+        logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
+        wm = WorkflowManager(config_path=self.config_path, dcid=self.dcid)
+        acq = wm.acquisition
+
+    def output(self):
+
+        logger.debug(f"{self.task_family} output: {self.dcid}")
+        wm = WorkflowManager(config_path=self.config_path, dcid=self.dcid)
+        return DataCollectionTarget(dcid=wm.dcid, task_family=self.task_family)
+
+    def work(self):
+
+        start_time = time.time()
+        logger.debug(f"{self.task_family} run: {self.dcid}")
+
+        wm = WorkflowManager(config_path=self.config_path, dcid=self.dcid)
+        dc = wm.dcid
+        pge = wm.pges["emit-ghg"]
+        emit_utils_pge = wm.pges["emit-utils"]
+        dm = wm.database_manager
+
+        # PGE writes to tmp folder
+        tmp_output_dir = os.path.join(self.local_tmp_dir, "ch4")
+        wm.makedirs(tmp_output_dir)
+        env = os.environ.copy()
+        env["PYTHONPATH"] = f"$PYTHONPATH:{pge.repo_dir}:{emit_utils_pge.repo_dir}"
+        sys.path.append(pge.repo_dir)
+
+        acquisitions = dm.find_acquisitions_for_ch4_mosaic(dcid = self.dcid)
+        # Definte exe's
+        process_exe = os.path.join(pge.repo_dir, "mosaic.py")
+
+        # Define local output files
+        ch4_log_file = os.path.join(tmp_output_dir, "ch4_mosaic_log.txt")
+
+        ch4_base = os.path.join(self.tmp_dir, self.dcid + '_ch4')
+
+        input_files = {
+            "radiance_file": acq.rdn_img_path,
+            "obs_file": acq.obs_img_path,
+            "loc_file": acq.loc_img_path,
+            "glt_file": acq.glt_img_path,
+            "bandmask_file": acq.bandmask_img_path,
+            "mask_file": acq.mask_img_path,
+            "state_subs_file": acq.statesubs_img_path,
+        }
+
+        # Create command
+        cmd = ["python", process_exe,
+               acq.rdn_img_path, acq.obs_img_path, acq.loc_img_path, acq.glt_img_path,
+               acq.bandmask_img_path, acq.mask_img_path, ch4_base,
+               '--state_subs', acq.statesubs_img_path,
+               "--noise_file",noise_file,'--lut_file',
+               wm.config["ch4_lut_file"],
+               "--logfile", ch4_log_file,
+               "--software_version", wm.config["extended_build_num"],
+               "--product_version", 'V002']
+
+        # Run CH4
+        pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
+        ch4_of = Filenames(ch4_base)
+
+        # MF - CH4
+        wm.copy(ch4_of.mf_file, acq.ch4_img_path)
+        wm.copy(envi_header(ch4_of.mf_file), acq.ch4_hdr_path)
+        wm.copy(ch4_of.mf_ort_cog, acq.ortch4_tif_path)
+        wm.copy(ch4_of.mf_ort_ql, acq.ortch4_png_path)
+
+        # Sensitivity - CH4
+        wm.copy(ch4_of.mf_sens_file, acq.sensch4_img_path)
+        wm.copy(envi_header(ch4_of.mf_sens_file), acq.sensch4_hdr_path)
+        wm.copy(ch4_of.sens_ort_cog, acq.ortsensch4_tif_path)
+
+        # Uncertainty - CH4
+        wm.copy(ch4_of.mf_uncert_file, acq.uncertch4_img_path)
+        wm.copy(envi_header(ch4_of.mf_uncert_file), acq.uncertch4_hdr_path)
+        wm.copy(ch4_of.uncert_ort_cog, acq.ortuncertch4_tif_path)
+
+        # Update db
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.ch4.ch4": {
+                "img_path" : acq.ch4_img_path,
+                "hdr_path" : acq.ch4_hdr_path,
+                "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.ch4.sensch4": {
+                "img_path" : acq.sensch4_img_path,
+                "hdr_path" : acq.sensch4_hdr_path,
+                "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.ch4.uncertch4": {
+                "img_path" : acq.uncertch4_img_path,
+                "hdr_path" : acq.uncertch4_hdr_path,
+                "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.ch4.ortch4": {
+                "tif_path" : acq.ortch4_tif_path,
+                "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.ch4.ortch4ql": {
+                "png_path" : acq.ortch4_png_path,
+                "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.ch4.ortsensch4": {
+                "tif_path" : acq.ortsensch4_tif_path,
+                "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.ch4.ortuncertch4": {
+                "tif_path" : acq.ortuncertch4_tif_path,
+                "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
+
+        creation_time = datetime.datetime.fromtimestamp(
+            os.path.getmtime(acq.ortuncertch4_tif_path), tz=datetime.timezone.utc)
+
+        doc_version = "EMIT SDS GHG JPL-D 107866, v0.2"
+
+        total_time = time.time() - start_time
+        log_entry = {
+            "task": self.task_family,
+            "pge_name": pge.repo_url,
+            "pge_version": pge.version_tag,
+            "pge_input_files": input_files,
+            "pge_run_command": " ".join(cmd),
+            "documentation_version": doc_version,
+            "product_creation_time": creation_time,
+            "pge_runtime_seconds": total_time,
+            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
+            "completion_status": "SUCCESS",
+            "output": {
+                "ch4_img_path": acq.ch4_img_path,
+                "ch4_hdr_path:": acq.ch4_hdr_path,
+                "sensch4_img_path": acq.sensch4_img_path,
+                "sensch4_hdr_path": acq.sensch4_hdr_path,
+                "uncertch4_img_path": acq.uncertch4_img_path,
+                "uncertch4_hdr_path": acq.uncertch4_hdr_path,
+                "ortch4_tif_path": acq.ortch4_tif_path,
+                "ortch4_png_path": acq.ortch4_png_path,
+                "ortsensch4_tif_path": acq.ortsensch4_tif_path,
+                "ortuncertch4_tif_path": acq.ortuncertch4_tif_path,
+            }
+        }
+
         dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)

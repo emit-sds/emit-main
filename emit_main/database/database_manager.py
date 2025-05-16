@@ -375,6 +375,28 @@ class DatabaseManager:
             results = self._remove_results_with_failed_tasks(results, ["emit.CO2Deliver"])
         return results
 
+    def find_data_collections_for_ch4_mosaic(self, start, stop, date_field="last_modified"):
+        data_collections_coll = self.db.data_collections
+        query = {
+            "ch4_status": "complete",
+            "build_num": self.config["build_num"],
+            date_field: {"$gte": start, "$lte": stop},
+        }
+        return list(data_collections_coll.find(query).sort("dcid", 1))
+        #TODO: Add retry failed?
+
+    def find_acquisitions_for_ch4_mosaic(self, dcid):
+        acquisitions_coll = self.db.acquisitions
+        # Query for acquisitions with daac scene numbers but no daac ummg products.
+        query = {
+            "products.ghg.ch4.ortch4.tif_path": {"$exists": 1},
+            "products.ghg.ch4.ortsensch4.tif_path": {"$exists": 1},
+            "products.ghg.ch4.ortuncertch4.tif_path": {"$exists": 1},
+            "associated_dcid": dcid,
+            "build_num": self.config["build_num"]
+        }
+        return list(acquisitions_coll.find(query))
+
     def insert_acquisition(self, metadata):
         if self.find_acquisition_by_id(metadata["acquisition_id"]) is None:
             utc_now = datetime.datetime.now(tz=datetime.timezone.utc)

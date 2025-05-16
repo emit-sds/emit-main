@@ -109,3 +109,34 @@ class DataCollection:
 
         # If we made it this far, then return True
         return True
+
+    def has_complete_ch4_aqcuisitions(self):
+        from emit_main.workflow.workflow_manager import WorkflowManager
+        wm = WorkflowManager(config_path=self.config_path)
+        dm = wm.database_manager
+
+        acquisitions_coll = db.acquisitions
+
+        #Get list of acquisition ids expected to have CH4 products
+        query = {
+            "associated_dcid": self.dcid,
+            "mean_solar_zenith": {"$lt": 80},
+            "build_num": self.config["build_num"]  # What happens if different?
+        }
+
+        expected = list(acquisitions_coll.find(query))
+        expected_acq_ids = [doc['acquisition_id'] for doc in expected]
+
+        #Get list of acquisition ids with completed CH4 products
+        query = {
+            "associated_dcid": self.dcid,
+            "products.ghg.ch4.ortch4.tif_path": {"$exists": 1},
+            "products.ghg.ch4.ortsensch4.tif_path": {"$exists": 1},
+            "products.ghg.ch4.ortuncertch4.tif_path": {"$exists": 1},
+            "build_num": self.config["build_num"]  # What happens if different?
+        }
+
+        completed = list(acquisitions_coll.find(query))
+        completed_acq_ids = [doc['acquisition_id'] for doc in completed]
+ 
+        return set(expected_acq_ids) == set(completed_acq_ids)
