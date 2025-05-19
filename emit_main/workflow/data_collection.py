@@ -52,6 +52,8 @@ class DataCollection:
             "_".join([self.dcid, "frames", "b" + self.config["build_num"], "v" + self.config["processing_version"]]))
         self.decomp_dir = self.frames_dir.replace("_frames_", "_decomp_")
         self.acquisitions_dir = self.frames_dir.replace("_frames_", "_acquisitions_")
+        self.ch4_dir = os.path.join(self.by_dcid_dir,'ch4') # TODO: Temporary placeholder 
+        self.co2_dir = os.path.join(self.by_dcid_dir,'co2') # TODO: Temporary placeholder 
         self.dirs.extend([self.data_collections_dir, self.by_dcid_dir, self.by_date_dir, self.dcid_hash_dir,
                           self.dcid_dir, self.frames_dir, self.decomp_dir, self.acquisitions_dir])
 
