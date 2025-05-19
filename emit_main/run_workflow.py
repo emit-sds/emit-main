@@ -216,6 +216,7 @@ def get_tasks_from_product_args(args):
                               override_output=args.override_output, **kwargs),
         "l2bch4":  CH4(acquisition_id=args.acquisition_id, **kwargs),
         "l2bch4daac":  CH4Deliver(acquisition_id=args.acquisition_id, **kwargs),
+        "l2bch4mosaic":  CH4Mosaic(dcid=args.dcid, **kwargs),
         "l2bco2":  CO2(acquisition_id=args.acquisition_id, **kwargs),
         "l2bco2daac":  CO2Deliver(acquisition_id=args.acquisition_id, **kwargs),
         "l3unmix": L3Unmix(acquisition_id=args.acquisition_id, **kwargs),
