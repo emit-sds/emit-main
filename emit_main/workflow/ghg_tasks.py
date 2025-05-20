@@ -193,14 +193,14 @@ class CH4(SlurmJobTask):
 
         dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
 
-    # Now get workflow manager again containing data collection
-    wm = WorkflowManager(config_path=self.config_path, dcid=acq.associated_dcid)
-    dc = wm.data_collection
+        # Now get workflow manager again containing data collection
+        wm = WorkflowManager(config_path=self.config_path, dcid=acq.associated_dcid)
+        dc = wm.data_collection
 
-    if dc.has_complete_ch4_aqcuisitions():
-        dm.update_data_collection_metadata(acq.associated_dcid, {"ch4_status": "complete"})
-    else:
-        dm.update_data_collection_metadata(acq.associated_dcid, {"ch4_status": "incomplete"})
+        if dc.has_complete_ch4_aqcuisitions():
+            dm.update_data_collection_metadata(acq.associated_dcid, {"ch4_status": "complete"})
+        else:
+            dm.update_data_collection_metadata(acq.associated_dcid, {"ch4_status": "incomplete"})
 
 class CO2(SlurmJobTask):
     """
@@ -882,7 +882,7 @@ class CH4Mosaic(SlurmJobTask):
 
         logger.debug(f"{self.task_family} output: {self.dcid}")
         wm = WorkflowManager(config_path=self.config_path, dcid=self.dcid)
-        return DataCollectionTarget(dcid=wm.dcid, task_family=self.task_family)
+        return DataCollectionTarget(data_collection=wm.data_collection, task_family=self.task_family)
 
     def work(self):
 
@@ -899,7 +899,6 @@ class CH4Mosaic(SlurmJobTask):
         tmp_output_dir = os.path.join(self.local_tmp_dir, "ch4")
         wm.makedirs(tmp_output_dir)
         env = os.environ.copy()
-        env["PYTHONPATH"] = f"$PYTHONPATH:{pge.repo_dir}:{emit_utils_pge.repo_dir}" #TODO Delete
         sys.path.append(pge.repo_dir)
 
         acquisitions = dm.find_acquisitions_for_ch4_mosaic(dcid = self.dcid)
@@ -918,21 +917,34 @@ class CH4Mosaic(SlurmJobTask):
         # Define exe's
         process_exe = os.path.join(pge.repo_dir, "mosaic.py")
         
+        log_file_arg = f"--log-file={os.path.join(self.tmp_dir, 'rsync.log')}"
+
+        version = 'v02'
         input_files = {}
+        output_files = {}
+        pge_commands = []
         
-        for product in ['ortch4','ortsensch4','ortuncertch4']:
+        for product in ['ortch4', 'ortsensch4', 'ortuncertch4']:
             input_files[product] = [ac['products']['ghg']['ch4'][product]['tif_path'] for ac in acquisitions]
             
-            output_mosaic_path = os.path.join(self.tmp_dir,f'{mosaic_basename}_{product}.tif')
+            output_mosaic_path = os.path.join(self.tmp_dir,f'{mosaic_basename}_{product}_{version}.tif')
         
-            cmd = ["python",
+            cmd = ["python",process_exe,
                    ' '.join(input_files[product]),
                    output_mosaic_path]
-                   
+            
+            pge_commands.append(" ".join(cmd))       
             pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
-            dcid_ch4_product_path = os.path.join(dc.ch4_dir, f'{mosaic_basename}_{product}.tif')
+            dcid_ch4_product_path = os.path.join(wm.data_collection.ch4_dir, os.path.basename(output_mosaic_path))
+    
+            output_files[f"{product}_mosaic_tif_path"] = dcid_ch4_product_path
+            
             wm.copy(output_mosaic_path, dcid_ch4_product_path)
+        
+            target = f'{wm.config["daac_server_internal"]}:{wm.config["mmgis_ghg_staging_dir"]}'
+            cmd_rsync = ["rsync", "-av", log_file_arg, output_mosaic_path, target]
+            pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
         
             # Update db
             dm.update_data_collection_metadata(self.dcid, {"products.ghg.ch4.{product}_mosaic": {
@@ -944,21 +956,20 @@ class CH4Mosaic(SlurmJobTask):
 
             doc_version = "EMIT SDS GHG JPL-D 107866, v0.2"
 
-            total_time = time.time() - start_time
-            log_entry = {
-                "task": self.task_family,
-                "pge_name": pge.repo_url,
-                "pge_version": pge.version_tag,
-                "pge_input_files": input_files,
-                "pge_run_command": " ".join(cmd),
-                "documentation_version": doc_version,
-                "product_creation_time": creation_time,
-                "pge_runtime_seconds": total_time,
-                "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
-                "completion_status": "SUCCESS",
-                "output": {
-                    f"{product}_mosaic_tif_path": dcid_ch4_product_path,
-                }
+        total_time = time.time() - start_time
+            
+        log_entry = {
+            "task": self.task_family,
+            "pge_name": pge.repo_url,
+            "pge_version": pge.version_tag,
+            "pge_input_files": input_files,
+            "pge_run_command": pge_commands,
+            "documentation_version": doc_version,
+            "product_creation_time": creation_time,
+            "pge_runtime_seconds": total_time,
+            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
+            "completion_status": "SUCCESS",
+            "output": output_files
             }
 
-            dm.insert_acquisition_log_entry(self.dcid, log_entry)
+        dm.insert_data_collection_log_entry(self.dcid, log_entry) 

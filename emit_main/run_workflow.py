@@ -28,7 +28,7 @@ from emit_main.workflow.l1b_tasks import L1BGeolocate, L1BCalibrate, L1BRdnForma
 from emit_main.workflow.l2a_tasks import L2AMask, L2AReflectance, L2AFormat, L2ADeliver
 from emit_main.workflow.l2b_tasks import L2BAbundance, L2BFormat, L2BDeliver
 from emit_main.workflow.l3_tasks import L3Unmix
-from emit_main.workflow.ghg_tasks import CH4, CO2, CH4Deliver, CO2Deliver
+from emit_main.workflow.ghg_tasks import CH4, CO2, CH4Deliver, CO2Deliver, CH4Mosaic
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_main.workflow.workflow_manager import WorkflowManager
 
@@ -306,7 +306,7 @@ def task_failure(task, e):
 
     stream_tasks = ("emit.L0StripHOSC", "emit.L1ADepacketizeScienceFrames", "emit.L1AReformatEDP", "emit.L0IngestBAD",
                     "emit.L0Deliver")
-    data_collection_tasks = ("emit.L1AReassembleRaw", "emit.L1AFrameReport")
+    data_collection_tasks = ("emit.L1AReassembleRaw", "emit.L1AFrameReport", "emit.CH4Mosaic", "emit.CO2Mosaic")
     acquisition_tasks = ("emit.L1ADeliver", "emit.L1BCalibrate", "emit.L1BRdnFormat", "emit.L1BRdnDeliver",
                          "emit.L2AReflectance", "emit.L2AMask", "emit.L2AFormat", "emit.L2ADeliver",
                          "emit.L2BAbundance", "emit.L2BFormat", "emit.L2BDeliver", "emit.L3Unmix",

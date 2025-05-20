@@ -52,10 +52,10 @@ class DataCollection:
             "_".join([self.dcid, "frames", "b" + self.config["build_num"], "v" + self.config["processing_version"]]))
         self.decomp_dir = self.frames_dir.replace("_frames_", "_decomp_")
         self.acquisitions_dir = self.frames_dir.replace("_frames_", "_acquisitions_")
-        self.ch4_dir = os.path.join(self.by_dcid_dir,'ch4') # TODO: Temporary placeholder 
-        self.co2_dir = os.path.join(self.by_dcid_dir,'co2') # TODO: Temporary placeholder 
+        self.ch4_dir = os.path.join(self.dcid_dir,'ghg', 'ch4')
+        self.co2_dir = os.path.join(self.dcid_dir,'ghg', 'co2')
         self.dirs.extend([self.data_collections_dir, self.by_dcid_dir, self.by_date_dir, self.dcid_hash_dir,
-                          self.dcid_dir, self.frames_dir, self.decomp_dir, self.acquisitions_dir])
+                          self.dcid_dir, self.frames_dir, self.decomp_dir, self.acquisitions_dir, self.ch4_dir])
 
         # Make directories and symlinks if they don't exist
         from emit_main.workflow.workflow_manager import WorkflowManager
@@ -113,17 +113,16 @@ class DataCollection:
         return True
 
     def has_complete_ch4_aqcuisitions(self):
-        from emit_main.workflow.workflow_manager import WorkflowManager
-        wm = WorkflowManager(config_path=self.config_path)
-        dm = wm.database_manager
 
-        acquisitions_coll = db.acquisitions
+        dm = DatabaseManager(self.config_path)
+
+        acquisitions_coll = dm.db.acquisitions
 
         #Get list of acquisition ids expected to have CH4 products
         query = {
             "associated_dcid": self.dcid,
             "mean_solar_zenith": {"$lt": 80},
-            "build_num": self.config["build_num"]  # What happens if different?
+            "build_num": self.config["build_num"]
         }
 
         expected = list(acquisitions_coll.find(query))
@@ -135,7 +134,7 @@ class DataCollection:
             "products.ghg.ch4.ortch4.tif_path": {"$exists": 1},
             "products.ghg.ch4.ortsensch4.tif_path": {"$exists": 1},
             "products.ghg.ch4.ortuncertch4.tif_path": {"$exists": 1},
-            "build_num": self.config["build_num"]  # What happens if different?
+            "build_num": self.config["build_num"]
         }
 
         completed = list(acquisitions_coll.find(query))
