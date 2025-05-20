@@ -28,7 +28,7 @@ from emit_main.workflow.l1b_tasks import L1BGeolocate, L1BCalibrate, L1BRdnForma
 from emit_main.workflow.l2a_tasks import L2AMask, L2AReflectance, L2AFormat, L2ADeliver
 from emit_main.workflow.l2b_tasks import L2BAbundance, L2BFormat, L2BDeliver
 from emit_main.workflow.l3_tasks import L3Unmix
-from emit_main.workflow.ghg_tasks import CH4, CO2, CH4Deliver, CO2Deliver, CH4Mosaic
+from emit_main.workflow.ghg_tasks import CH4, CO2, CH4Deliver, CO2Deliver, CH4Mosaic, CO2Mosaic
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_main.workflow.workflow_manager import WorkflowManager
 
@@ -219,6 +219,7 @@ def get_tasks_from_product_args(args):
         "l2bch4mosaic":  CH4Mosaic(dcid=args.dcid, **kwargs),
         "l2bco2":  CO2(acquisition_id=args.acquisition_id, **kwargs),
         "l2bco2daac":  CO2Deliver(acquisition_id=args.acquisition_id, **kwargs),
+        "l2bco2mosaic":  CO2Mosaic(dcid=args.dcid, **kwargs),
         "l3unmix": L3Unmix(acquisition_id=args.acquisition_id, **kwargs),
         # "l3unmixformat": L3UnmixFormat(acquisition_id=args.acquisition_id, **kwargs)
         "daacscenes": AssignDAACSceneNumbers(orbit_id=args.orbit_id, override_output=args.override_output, **kwargs),
@@ -578,6 +579,15 @@ def main():
         dm_ch4_mosaic_tasks_str = "\n".join([str(t) for t in dm_ch4_mosaic_tasks])
         logger.info(f"DCID monitor CH4 mosaic tasks to run:\n{dm_ch4_mosaic_tasks}")
         tasks += dm_ch4_mosaic_tasks
+    
+    # Get tasks from mco2 (mosaic co2) monitor
+    if args.monitor and args.monitor == "mco2":
+        dm = DCIDMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
+        dm_co2_mosaic_tasks = dm.get_co2_mosaic_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                        date_field=args.date_field, retry_failed=args.retry_failed)
+        dm_co2_mosaic_tasks_str = "\n".join([str(t) for t in dm_co2_mosaic_tasks])
+        logger.info(f"DCID monitor CO2 mosaic tasks to run:\n{dm_co2_mosaic_tasks}")
+        tasks += dm_co2_mosaic_tasks
     
     # Get tasks from products args
     if args.products:

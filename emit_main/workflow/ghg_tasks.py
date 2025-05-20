@@ -361,6 +361,14 @@ class CO2(SlurmJobTask):
 
         dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
 
+        # Now get workflow manager again containing data collection
+        wm = WorkflowManager(config_path=self.config_path, dcid=acq.associated_dcid)
+        dc = wm.data_collection
+
+        if dc.has_complete_co2_aqcuisitions():
+            dm.update_data_collection_metadata(acq.associated_dcid, {"co2_status": "complete"})
+        else:
+            dm.update_data_collection_metadata(acq.associated_dcid, {"co2_status": "incomplete"})
 
 class CH4Deliver(SlurmJobTask):
     """
@@ -947,12 +955,130 @@ class CH4Mosaic(SlurmJobTask):
             pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
         
             # Update db
-            dm.update_data_collection_metadata(self.dcid, {"products.ghg.ch4.{product}_mosaic": {
+            dm.update_data_collection_metadata(self.dcid, {f"products.ghg.ch4.{product}_mosaic": {
                     "tif_path" : dcid_ch4_product_path,
                     "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
 
             creation_time = datetime.datetime.fromtimestamp(
                 os.path.getmtime(dcid_ch4_product_path), tz=datetime.timezone.utc)
+
+            doc_version = "EMIT SDS GHG JPL-D 107866, v0.2"
+
+        total_time = time.time() - start_time
+            
+        log_entry = {
+            "task": self.task_family,
+            "pge_name": pge.repo_url,
+            "pge_version": pge.version_tag,
+            "pge_input_files": input_files,
+            "pge_run_command": pge_commands,
+            "documentation_version": doc_version,
+            "product_creation_time": creation_time,
+            "pge_runtime_seconds": total_time,
+            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
+            "completion_status": "SUCCESS",
+            "output": output_files
+            }
+
+        dm.insert_data_collection_log_entry(self.dcid, log_entry) 
+        
+class CO2Mosaic(SlurmJobTask):
+    """
+    Mosaic methane outputs and copy to server
+    :returns: Mosaiced CO2 matched filter results
+    """
+
+    config_path = luigi.Parameter()
+    level = luigi.Parameter()
+    partition = luigi.Parameter()
+    dcid = luigi.Parameter()
+
+    n_cores = 16
+    memory = 90000
+
+    task_namespace = "emit"
+
+    def requires(self):
+
+        logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
+        wm = WorkflowManager(config_path=self.config_path, dcid=self.dcid)
+        dc = wm.dcid
+
+    def output(self):
+
+        logger.debug(f"{self.task_family} output: {self.dcid}")
+        wm = WorkflowManager(config_path=self.config_path, dcid=self.dcid)
+        return DataCollectionTarget(data_collection=wm.data_collection, task_family=self.task_family)
+
+    def work(self):
+
+        start_time = time.time()
+        logger.debug(f"{self.task_family} run: {self.dcid}")
+
+        wm = WorkflowManager(config_path=self.config_path, dcid=self.dcid)
+        dc = wm.dcid
+        pge = wm.pges["emit-ghg"]
+        emit_utils_pge = wm.pges["emit-utils"]
+        dm = wm.database_manager
+
+        # PGE writes to tmp folder
+        tmp_output_dir = os.path.join(self.local_tmp_dir, "co2")
+        wm.makedirs(tmp_output_dir)
+        env = os.environ.copy()
+        sys.path.append(pge.repo_dir)
+
+        acquisitions = dm.find_acquisitions_for_co2_mosaic(dcid = self.dcid)
+        acquisition_ids = [ac['acquisition_id'] for ac in acquisitions]
+        acquisition_ids.sort()
+    
+        start_timestamp = datetime.datetime.strptime(acquisition_ids[0], "emit%Y%m%dt%H%M%S")
+        end_timestamp =  datetime.datetime.strptime(acquisition_ids[-1], "emit%Y%m%dt%H%M%S")
+
+        if start_timestamp == end_timestamp:
+            end_timestamp +=  datetime.timedelta(seconds=1)
+
+        fmt = "%Y-%m-%dT%H_%M_%SZ"
+        mosaic_basename = f"emit{self.dcid}_{start_timestamp.strftime(fmt)}-to-{end_timestamp.strftime(fmt)}"
+        
+        # Define exe's
+        process_exe = os.path.join(pge.repo_dir, "mosaic.py")
+        
+        log_file_arg = f"--log-file={os.path.join(self.tmp_dir, 'rsync.log')}"
+
+        version = 'v02'
+        input_files = {}
+        output_files = {}
+        pge_commands = []
+        
+        for product in ['ortco2', 'ortsensco2', 'ortuncertco2']:
+            input_files[product] = [ac['products']['ghg']['co2'][product]['tif_path'] for ac in acquisitions]
+            
+            output_mosaic_path = os.path.join(self.tmp_dir,f'{mosaic_basename}_{product}_{version}.tif')
+        
+            cmd = ["python",process_exe,
+                   ' '.join(input_files[product]),
+                   output_mosaic_path]
+            
+            pge_commands.append(" ".join(cmd))       
+            pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
+
+            dcid_co2_product_path = os.path.join(wm.data_collection.co2_dir, os.path.basename(output_mosaic_path))
+    
+            output_files[f"{product}_mosaic_tif_path"] = dcid_co2_product_path
+            
+            wm.copy(output_mosaic_path, dcid_co2_product_path)
+        
+            target = f'{wm.config["daac_server_internal"]}:{wm.config["mmgis_ghg_staging_dir"]}'
+            cmd_rsync = ["rsync", "-av", log_file_arg, output_mosaic_path, target]
+            # pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
+        
+            # Update db
+            dm.update_data_collection_metadata(self.dcid, {f"products.ghg.co2.{product}_mosaic": {
+                    "tif_path" : dcid_co2_product_path,
+                    "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
+
+            creation_time = datetime.datetime.fromtimestamp(
+                os.path.getmtime(dcid_co2_product_path), tz=datetime.timezone.utc)
 
             doc_version = "EMIT SDS GHG JPL-D 107866, v0.2"
 

@@ -385,13 +385,13 @@ class DatabaseManager:
         return list(data_collections_coll.find(query).sort("dcid", 1))
         #TODO: Add retry failed?
 
-    def find_acquisitions_for_ch4_mosaic(self, dcid):
+    def find_acquisitions_for_co2_mosaic(self, dcid):
         acquisitions_coll = self.db.acquisitions
         # Query for acquisitions with daac scene numbers but no daac ummg products.
         query = {
-            "products.ghg.ch4.ortch4.tif_path": {"$exists": 1},
-            "products.ghg.ch4.ortsensch4.tif_path": {"$exists": 1},
-            "products.ghg.ch4.ortuncertch4.tif_path": {"$exists": 1},
+            "products.ghg.co2.ortco2.tif_path": {"$exists": 1},
+            "products.ghg.co2.ortsensco2.tif_path": {"$exists": 1},
+            "products.ghg.co2.ortuncertco2.tif_path": {"$exists": 1},
             "associated_dcid": dcid,
             "build_num": self.config["build_num"]
         }
