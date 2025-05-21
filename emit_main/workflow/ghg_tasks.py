@@ -427,7 +427,6 @@ class CH4Deliver(SlurmJobTask):
 
         # Create the UMM-G file
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.ortch4_tif_path), tz=datetime.timezone.utc)
-        daynight = "Day" if acq.submode == "science" else "Night"
         ghg_pge = wm.pges["emit-ghg"]
         ummg = daac_converter.initialize_ummg(acq.ch4_granule_ur, nc_creation_time, "EMITL2BCH4ENH",
                                               collection_version, acq.start_time,
@@ -442,7 +441,7 @@ class CH4Deliver(SlurmJobTask):
         ummg = daac_converter.add_data_files_ummg(
             ummg,
             [daac_ortch4_tif_path, daac_ortsensch4_tif_path, daac_ortuncertch4_tif_path, daac_browse_path],
-            daynight,
+            acq.daynight,
             ["GeoTIFF", "GeoTIFF", "GeoTIFF", "PNG"])
         # ummg = daac_converter.add_related_url(ummg, ghg_pge.repo_url, "DOWNLOAD SOFTWARE")
         ummg = daac_converter.add_boundary_ummg(ummg, acq.gring)
@@ -675,7 +674,6 @@ class CO2Deliver(SlurmJobTask):
 
         # Create the UMM-G file
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.ortco2_tif_path), tz=datetime.timezone.utc)
-        daynight = "Day" if acq.submode == "science" else "Night"
         ghg_pge = wm.pges["emit-ghg"]
         ummg = daac_converter.initialize_ummg(acq.co2_granule_ur, nc_creation_time, "EMITL2BCO2ENH",
                                               collection_version, acq.start_time,
@@ -690,7 +688,7 @@ class CO2Deliver(SlurmJobTask):
         ummg = daac_converter.add_data_files_ummg(
             ummg,
             [daac_ortco2_tif_path, daac_ortsensco2_tif_path, daac_ortuncertco2_tif_path, daac_browse_path],
-            daynight,
+            acq.daynight,
             ["GeoTIFF", "GeoTIFF", "GeoTIFF", "PNG"])
         # ummg = daac_converter.add_related_url(ummg, ghg_pge.repo_url, "DOWNLOAD SOFTWARE")
         ummg = daac_converter.add_boundary_ummg(ummg, acq.gring)

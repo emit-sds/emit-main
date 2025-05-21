@@ -78,6 +78,7 @@ class DatabaseManager:
         query = {
             "start_time": {"$gt": q_start, "$lt": q_stop},
             "products.l1b.ffupdate": {"$exists": 1},
+            "mean_solar_zenith": {"$lt": 60},
             "build_num": self.config["build_num"]
         }
         projection = {
@@ -141,6 +142,7 @@ class DatabaseManager:
             "products.l1b.obs.img_path": {"$exists": 1},
             "products.l2a.rfl.img_path": {"$exists": 0},
             "products.l2a.mask.img_path": {"$exists": 0},
+            "mean_solar_zenith": {"$lt": 80},
             date_field: {"$gte": start, "$lte": stop},
             "build_num": self.config["build_num"]
         }
@@ -153,6 +155,7 @@ class DatabaseManager:
             "products.l1b.obs.img_path": {"$exists": 1},
             "products.l2a.rfl.img_path": {"$exists": 1},
             "products.l2a.mask.img_path": {"$exists": 0},
+            "mean_solar_zenith": {"$lt": 80},
             date_field: {"$gte": start, "$lte": stop},
             "build_num": self.config["build_num"]
         }
@@ -187,7 +190,8 @@ class DatabaseManager:
             "products.l1b.obs.img_path": {"$exists": 1},
             "products.l2a.rfl.img_path": {"$exists": 1},
             "products.l2a.mask.img_path": {"$exists": 1},
-            "products.ghg.ch4.ortch4.img_path": {"$exists": 0},
+            "mean_solar_zenith": {"$lt": 80},
+            "products.ghg.ch4.ortch4.tif_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop},
             "build_num": self.config["build_num"]
         }
@@ -207,7 +211,8 @@ class DatabaseManager:
             "products.l1b.obs.img_path": {"$exists": 1},
             "products.l2a.rfl.img_path": {"$exists": 1},
             "products.l2a.mask.img_path": {"$exists": 1},
-            "products.ghg.co2.ortco2.img_path": {"$exists": 0},
+            "mean_solar_zenith": {"$lt": 80},
+            "products.ghg.co2.ortco2.tif_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop},
             "build_num": self.config["build_num"]
         }
@@ -263,7 +268,25 @@ class DatabaseManager:
             date_field: {"$gte": start, "$lte": stop},
             "build_num": self.config["build_num"]
         }
+
         results = list(acquisitions_coll.find(query))
+        # Also query for case where nighttime science RDN exists
+        query = {
+            "products.l1b.rdn.img_path": {"$exists": 1},
+            "products.l1b.glt.img_path": {"$exists": 1},
+            "products.l1b.loc.img_path": {"$exists": 1},
+            "products.l1b.obs.img_path": {"$exists": 1},
+            "products.l1b.rdn_png.png_path": {"$exists": 1},
+            "cloud_fraction": {"$exists": 0},
+            "submode": {"science"},
+            "mean_solar_zenith": {"$gte: 80"},
+            "daac_scene": {"$exists": 1},
+            "products.l1b.rdn_ummg.ummg_json_path": {"$exists": 0},
+            date_field: {"$gte": start, "$lte": stop},
+            "build_num": self.config["build_num"]
+        }
+        results += list(acquisitions_coll.find(query))
+
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L1BRdnFormat", "emit.L1BRdnDeliver"])
         return results
@@ -321,6 +344,10 @@ class DatabaseManager:
             date_field: {"$gte": start, "$lte": stop},
             "build_num": self.config["build_num"]
         }
+        # TODO: Remove this block when GHG reprocessing is complete
+        if date_field ==  "last_modified":
+            ghg_forward_start = datetime.datetime.strptime("2025-04-01T00:00:00", "%Y-%m-%dT%H:%M:%S")
+            query["start_time"] = {"$gte": ghg_forward_start}
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.CH4Deliver"])
@@ -339,6 +366,10 @@ class DatabaseManager:
             date_field: {"$gte": start, "$lte": stop},
             "build_num": self.config["build_num"]
         }
+        # TODO: Remove this block when GHG reprocessing is complete
+        if date_field ==  "last_modified":
+            ghg_forward_start = datetime.datetime.strptime("2025-04-01T00:00:00", "%Y-%m-%dT%H:%M:%S")
+            query["start_time"] = {"$gte": ghg_forward_start}
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.CO2Deliver"])
