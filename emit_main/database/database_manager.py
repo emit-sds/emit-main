@@ -384,6 +384,28 @@ class DatabaseManager:
         }
         return list(data_collections_coll.find(query).sort("dcid", 1))
         #TODO: Add retry failed?
+        
+    def find_data_collections_for_co2_mosaic(self, start, stop, date_field="last_modified"):
+        data_collections_coll = self.db.data_collections
+        query = {
+            "co2_status": "complete",
+            "build_num": self.config["build_num"],
+            date_field: {"$gte": start, "$lte": stop},
+        }
+        return list(data_collections_coll.find(query).sort("dcid", 1))
+        #TODO: Add retry failed?
+
+    def find_acquisitions_for_ch4_mosaic(self, dcid):
+        acquisitions_coll = self.db.acquisitions
+        # Query for acquisitions with daac scene numbers but no daac ummg products.
+        query = {
+            "products.ghg.ch4.ortch4.tif_path": {"$exists": 1},
+            "products.ghg.ch4.ortsensch4.tif_path": {"$exists": 1},
+            "products.ghg.ch4.ortuncertch4.tif_path": {"$exists": 1},
+            "associated_dcid": dcid,
+            "build_num": self.config["build_num"]
+        }
+        return list(acquisitions_coll.find(query))
 
     def find_acquisitions_for_co2_mosaic(self, dcid):
         acquisitions_coll = self.db.acquisitions

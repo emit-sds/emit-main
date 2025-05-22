@@ -1070,7 +1070,7 @@ class CO2Mosaic(SlurmJobTask):
         
             target = f'{wm.config["daac_server_internal"]}:{wm.config["mmgis_ghg_staging_dir"]}'
             cmd_rsync = ["rsync", "-av", log_file_arg, output_mosaic_path, target]
-            # pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
+            pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
         
             # Update db
             dm.update_data_collection_metadata(self.dcid, {f"products.ghg.co2.{product}_mosaic": {
