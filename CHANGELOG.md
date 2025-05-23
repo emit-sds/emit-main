@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v1.6.24](https://github.com/emit-sds/emit-main/compare/v1.6.23...v1.6.24)
+
+> 23 May 2025
+
+* Solar zenith and daynight updates by @adamchlus in https://github.com/emit-sds/emit-main/pull/62
+
 #### [v1.6.23](https://github.com/emit-sds/emit-main/compare/v1.6.22...v1.6.23)
 
 > 5 May 2025
