@@ -110,8 +110,7 @@ class L3Unmix(SlurmJobTask):
                 os.path.getmtime(acq.cover_img_path), tz=datetime.timezone.utc)
             hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
             hdr["emit data product version"] = wm.config["processing_version"]
-            daynight = "Day" if acq.submode == "science" else "Night"
-            hdr["emit acquisition daynight"] = daynight
+            hdr["emit acquisition daynight"] = acq.daynight
             envi.write_envi_header(header_to_update, hdr)
 
         # PGE writes metadata to db

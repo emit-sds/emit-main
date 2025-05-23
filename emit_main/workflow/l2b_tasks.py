@@ -162,8 +162,7 @@ class L2BAbundance(SlurmJobTask):
                 os.path.getmtime(img_path), tz=datetime.timezone.utc)
             hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
             hdr["emit data product version"] = wm.config["processing_version"]
-            daynight = "Day" if acq.submode == "science" else "Night"
-            hdr["emit acquisition daynight"] = daynight
+            hdr["emit acquisition daynight"] = acq.daynight
             envi.write_envi_header(hdr_path, hdr)
 
         # PGE writes metadata to db
@@ -366,7 +365,6 @@ class L2BDeliver(SlurmJobTask):
 
         # Create the UMM-G file
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.abun_nc_path), tz=datetime.timezone.utc)
-        daynight = "Day" if acq.submode == "science" else "Night"
         l2b_pge = wm.pges["emit-sds-l2b"]
         ummg = daac_converter.initialize_ummg(acq.abun_granule_ur, nc_creation_time, "EMITL2BMIN",
                                               acq.collection_version, acq.start_time,
@@ -381,7 +379,7 @@ class L2BDeliver(SlurmJobTask):
         ummg = daac_converter.add_data_files_ummg(
             ummg,
             [daac_abun_nc_path, daac_abununcert_nc_path, daac_browse_path],
-            daynight,
+            acq.daynight,
             ["NETCDF-4", "NETCDF-4", "PNG"])
         # ummg = daac_converter.add_related_url(ummg, l2b_pge.repo_url, "DOWNLOAD SOFTWARE")
         ummg = daac_converter.add_boundary_ummg(ummg, acq.gring)
