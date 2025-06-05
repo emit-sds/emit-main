@@ -838,3 +838,90 @@ class L2AMaskTf(SlurmJobTask):
         }
 
         dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
+        
+        
+class L2AFormatTf(SlurmJobTask):
+    """
+    Converts L2A Tf mask to netcdf file
+    :returns: L2A netcdf output for delivery
+    """
+
+    config_path = luigi.Parameter()
+    acquisition_id = luigi.Parameter()
+    level = luigi.Parameter()
+    partition = luigi.Parameter()
+
+    memory = 18000
+
+    task_namespace = "emit"
+
+    def requires(self):
+
+        logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
+        return None
+
+    def output(self):
+
+        logger.debug(f"{self.task_family} output: {self.acquisition_id}")
+        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return AcquisitionTarget(acquisition=acq, task_family=self.task_family)
+
+    def work(self):
+
+        logger.debug(f"{self.task_family} work: {self.acquisition_id}")
+
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        acq = wm.acquisition
+
+        pge = wm.pges["emit-sds-masks"]
+
+        output_generator_exe = os.path.join(pge.repo_dir, "output_conversion.py")
+        tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
+        wm.makedirs(tmp_output_dir)
+        tmp_daac_maskTf_nc_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l2a_maskTf.nc")   #TODO: Name update
+        tmp_log_path = os.path.join(self.local_tmp_dir, "output_conversion_pge.log")
+
+        cmd = ["python", 
+               output_generator_exe,
+               tmp_daac_maskTf_nc_path, acq.maskTf_img_path, acq.loc_img_path, acq.glt_img_path,
+               "V0" + str(wm.config["processing_version"]), wm.config["extended_build_num"],
+               "--log_file", tmp_log_path]
+
+        # Run this inside the emit-main conda environment to include emit-utils and other requirements
+        main_pge = wm.pges["emit-main"]
+        main_pge.run(cmd, tmp_dir=self.tmp_dir)
+
+        # Copy and rename output files back to /store
+        log_path = acq.rfl_nc_path.replace(".nc", "_nc_pge.log")
+        wm.copy(tmp_daac_maskTf_nc_path, acq.maskTf_nc_path)
+        wm.copy(tmp_log_path, log_path)
+
+        # PGE writes metadata to db
+        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rfl_nc_path), tz=datetime.timezone.utc)
+        dm = wm.database_manager
+        product_dict_netcdf = {
+            "netcdf_maskTf_path": acq.maskTf_nc_path,
+            "created": nc_creation_time
+        }
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2a.maskTf_netcdf": product_dict_netcdf})
+
+        log_entry = {
+            "task": self.task_family,
+            "pge_name": pge.repo_url,
+            "pge_version": pge.version_tag,
+            "pge_input_files": {
+                "maskTf_img_path": acq.maskTf_img_path,
+                "loc_img_path": acq.loc_img_path,
+                "glt_img_path": acq.glt_img_path
+            },
+            "pge_run_command": " ".join(cmd),
+            "documentation_version": "TBD",
+            "product_creation_time": nc_creation_time,
+            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
+            "completion_status": "SUCCESS",
+            "output": {
+                "l2a_maskTf_netcdf_path": acq.maskTf_nc_path
+            }
+        }
+
+        dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
