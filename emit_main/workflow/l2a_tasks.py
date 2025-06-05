@@ -718,3 +718,123 @@ class L2ADeliver(SlurmJobTask):
             }
         }
         dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
+
+class L2AMaskTf(SlurmJobTask):
+    """
+    Creates masks
+    :returns: Mask file
+    """
+
+    config_path = luigi.Parameter()
+    acquisition_id = luigi.Parameter()
+    level = luigi.Parameter()
+    partition = luigi.Parameter()
+
+    n_cores = 64
+    memory = 360000
+
+    task_namespace = "emit"
+
+    def requires(self):
+
+        logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        acq = wm.acquisition
+        return None
+
+    def output(self):
+
+        logger.debug(self.task_family + " output")
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family)
+
+    def work(self):
+
+        start_time = time.time()
+        logger.debug(self.task_family + " run")
+
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        acq = wm.acquisition
+        pge = wm.pges["emit-sds-masks"]
+
+        # Build PGE command for make_masks.py
+        tmp_output_dir = os.path.join(self.tmp_dir, "output")
+        wm.makedirs(tmp_output_dir)
+
+        tmp_maskTf_path = os.path.join(tmp_output_dir, os.path.basename(acq.maskTf_img_path))
+        tmp_maskTf_hdr_path = envi_header(tmp_maskTf_path)
+        make_cloud_masks_exe = os.path.join(pge.repo_dir, "make_cloud_masks.py")
+
+        input_files = {
+            "radiance_file": acq.rdn_img_path,
+            "observation_parameters_file": acq.obs_img_path,
+        }
+
+        env = os.environ.copy()
+        emit_utils_pge = wm.pges["emit-utils"]
+        env["PYTHONPATH"] = f"$PYTHONPATH:{emit_utils_pge.repo_dir}"
+
+        cmd = ["python",
+               make_cloud_masks_exe,
+               acq.rdn_img_path,
+               acq.obs_img_path,
+               tmp_maskTf_path]
+
+        pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
+
+        # Copy mask files to l2a dir
+        wm.copy(tmp_maskTf_path, acq.maskTf_img_path)
+        wm.copy(tmp_maskTf_hdr_path, acq.maskTf_hdr_path)
+
+        # Update hdr files
+        input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
+        doc_version = "EMIT SDS L2A JPL-D 104236, Rev B"
+        hdr = envi.read_envi_header(acq.maskTf_hdr_path)
+        hdr["emit acquisition start time"] = acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
+        hdr["emit acquisition stop time"] = acq.stop_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
+        hdr["emit pge name"] = pge.repo_url
+        hdr["emit pge version"] = pge.version_tag
+        hdr["emit pge input files"] = input_files_arr
+        hdr["emit pge run command"] = " ".join(cmd)
+        hdr["emit software build version"] = wm.config["extended_build_num"]
+        hdr["emit documentation version"] = doc_version
+        creation_time = datetime.datetime.fromtimestamp(
+            os.path.getmtime(acq.maskTf_img_path), tz=datetime.timezone.utc)
+        hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
+        hdr["emit data product version"] = wm.config["processing_version"]
+        hdr["emit acquisition daynight"] = acq.daynight
+        envi.write_envi_header(acq.maskTf_hdr_path, hdr)
+
+        # PGE writes metadata to db
+        dm = wm.database_manager
+        product_dict = {
+            "img_path": acq.maskTf_img_path,
+            "hdr_path": acq.maskTf_hdr_path,
+            "created": creation_time,
+            "dimensions": {
+                "lines": hdr["lines"],
+                "samples": hdr["samples"],
+                "bands": hdr["bands"]
+            }
+        }
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2a.maskTf": product_dict})
+
+        total_time = time.time() - start_time
+        log_entry = {
+            "task": self.task_family,
+            "pge_name": pge.repo_url,
+            "pge_version": pge.version_tag,
+            "pge_input_files": input_files,
+            "pge_run_command": " ".join(cmd),
+            "documentation_version": doc_version,
+            "product_creation_time": creation_time,
+            "pge_runtime_seconds": total_time,
+            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
+            "completion_status": "SUCCESS",
+            "output": {
+                "l2a_maskTf_img_path": acq.maskTf_img_path,
+                "l2a_maskTf_hdr_path:": acq.maskTf_hdr_path
+            }
+        }
+
+        dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
