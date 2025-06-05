@@ -101,6 +101,8 @@ class L2AReflectance(SlurmJobTask):
                "--ray_temp_dir", "/local/ray",
                "--log_file", tmp_log_path,
                "--logging_level", self.level,
+               "--num_neighbors=100",
+               "--num_neighbors=10",
                "--num_neighbors=10",
                "--model_discrepancy_path", model_disc_file,
                "--pressure_elevation"]
