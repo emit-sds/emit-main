@@ -375,25 +375,33 @@ class DatabaseManager:
             results = self._remove_results_with_failed_tasks(results, ["emit.CO2Deliver"])
         return results
 
-    def find_data_collections_for_ch4_mosaic(self, start, stop, date_field="last_modified"):
+    def find_data_collections_for_ch4_mosaic(self, start, stop, date_field="last_modified", retry_failed=False):
         data_collections_coll = self.db.data_collections
         query = {
             "ch4_status": "complete",
             "build_num": self.config["build_num"],
             date_field: {"$gte": start, "$lte": stop},
         }
-        return list(data_collections_coll.find(query).sort("dcid", 1))
-        #TODO: Add retry failed?
+        results =  list(data_collections_coll.find(query).sort("dcid", 1))
         
-    def find_data_collections_for_co2_mosaic(self, start, stop, date_field="last_modified"):
+        #TODO: Doulecheck logic
+        # if not retry_failed:
+        #     results = self._remove_results_with_failed_tasks(results, ["emit.CH4Mosaic"])
+        return results
+        
+    def find_data_collections_for_co2_mosaic(self, start, stop, date_field="last_modified", retry_failed=False):
         data_collections_coll = self.db.data_collections
         query = {
             "co2_status": "complete",
             "build_num": self.config["build_num"],
             date_field: {"$gte": start, "$lte": stop},
         }
-        return list(data_collections_coll.find(query).sort("dcid", 1))
-        #TODO: Add retry failed?
+        results =  list(data_collections_coll.find(query).sort("dcid", 1))
+        
+        # TODO: Doulecheck logic
+        if not retry_failed:
+            results = self._remove_results_with_failed_tasks(results, ["emit.CO2Mosaic"])
+        return results
 
     def find_acquisitions_for_ch4_mosaic(self, dcid):
         acquisitions_coll = self.db.acquisitions

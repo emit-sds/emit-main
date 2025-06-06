@@ -573,7 +573,7 @@ def main():
     
     # Get tasks from mch4 (mosaic ch4) monitor
     if args.monitor and args.monitor == "mch4":
-        dm = DCIDMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
+        dm = FramesMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
         dm_ch4_mosaic_tasks = dm.get_ch4_mosaic_tasks(start_time=args.start_time, stop_time=args.stop_time,
                                         date_field=args.date_field, retry_failed=args.retry_failed)
         dm_ch4_mosaic_tasks_str = "\n".join([str(t) for t in dm_ch4_mosaic_tasks])
@@ -582,7 +582,7 @@ def main():
     
     # Get tasks from mco2 (mosaic co2) monitor
     if args.monitor and args.monitor == "mco2":
-        dm = DCIDMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
+        dm = FramesMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
         dm_co2_mosaic_tasks = dm.get_co2_mosaic_tasks(start_time=args.start_time, stop_time=args.stop_time,
                                         date_field=args.date_field, retry_failed=args.retry_failed)
         dm_co2_mosaic_tasks_str = "\n".join([str(t) for t in dm_co2_mosaic_tasks])

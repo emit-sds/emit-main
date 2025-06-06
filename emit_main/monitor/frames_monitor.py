@@ -10,6 +10,7 @@ import logging
 import os
 
 from emit_main.workflow.l1a_tasks import L1AReassembleRaw, L1AFrameReport
+from emit_main.workflow.ghg_tasks import CO2Mosaic, CH4Mosaic
 from emit_main.workflow.workflow_manager import WorkflowManager
 
 logger = logging.getLogger("emit-main")
@@ -74,8 +75,7 @@ class FramesMonitor:
             tasks.append(CH4Mosaic(config_path=self.config_path,
                                         dcid=dc["dcid"],
                                         level=self.level,
-                                        partition=self.partition,
-                                        test_mode=self.test_mode))
+                                        partition=self.partition)) #TODO: test_mode?
 
         return tasks
 
@@ -96,7 +96,6 @@ class FramesMonitor:
             tasks.append(CO2Mosaic(config_path=self.config_path,
                                         dcid=dc["dcid"],
                                         level=self.level,
-                                        partition=self.partition,
-                                        test_mode=self.test_mode))
+                                        partition=self.partition))  #TODO: test_mode?
 
         return tasks
