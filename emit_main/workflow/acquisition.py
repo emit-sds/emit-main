@@ -150,7 +150,7 @@ class Acquisition:
                 "locsubs": ["img", "hdr"],
                 "atm": ["img", "hdr"],
                 "mask": ["img", "hdr", "nc"],
-                "maskTf": ["img", "hdr", "nc"],
+                "maskTf": ["img", "hdr", "nc", "png"],
                 "quality": ["txt"],
             },
             "l2b": {

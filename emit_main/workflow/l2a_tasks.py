@@ -782,9 +782,16 @@ class L2AMaskTf(SlurmJobTask):
 
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
+        tmp_maskTf_png_path = os.path.join(tmp_output_dir, os.path.basename(acq.maskTf_png_path))
+
+        cmd = ["gdal_translate", tmp_maskTf_path, tmp_maskTf_png_path, "-b", "1",
+               "-ot", "Byte", "-scale", "0", "1", "1", "255", "-of", "PNG", "-co", "ZLEVEL=9"]
+        pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
+
         # Copy mask files to l2a dir
         wm.copy(tmp_maskTf_path, acq.maskTf_img_path)
         wm.copy(tmp_maskTf_hdr_path, acq.maskTf_hdr_path)
+        wm.copy(tmp_maskTf_png_path, acq.maskTf_png_path)
 
         # Update hdr files
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
@@ -810,6 +817,7 @@ class L2AMaskTf(SlurmJobTask):
         product_dict = {
             "img_path": acq.maskTf_img_path,
             "hdr_path": acq.maskTf_hdr_path,
+            "png_path": acq.maskTf_png_path,
             "created": creation_time,
             "dimensions": {
                 "lines": hdr["lines"],
