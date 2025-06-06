@@ -950,10 +950,14 @@ class CH4Mosaic(SlurmJobTask):
             
             wm.copy(output_mosaic_path, dcid_ch4_product_path)
         
-            target = f'{wm.config["daac_server_internal"]}:{wm.config["mmgis_ghg_staging_dir"]}'
+            target_dir = f'{wm.config["mirror_dir"]}/data_collections/by_dcid/{self.dcid[:5]}/{self.dcid}/ghg/ch4'
+            cmd_mkdir = ["ssh", wm.config["daac_server_internal"], "mkdir", "-p", target_dir]
+            pge.run(cmd_mkdir, tmp_dir=self.tmp_dir)
+
+            target = f'{wm.config["daac_server_internal"]}:{target_dir}'
             cmd_rsync = ["rsync", "-av", log_file_arg, output_mosaic_path, target]
             pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
-        
+
             # Update db
             dm.update_data_collection_metadata(self.dcid, {f"products.ghg.ch4.{product}_mosaic": {
                     "tif_path" : dcid_ch4_product_path,
@@ -1068,7 +1072,11 @@ class CO2Mosaic(SlurmJobTask):
             
             wm.copy(output_mosaic_path, dcid_co2_product_path)
         
-            target = f'{wm.config["daac_server_internal"]}:{wm.config["mmgis_ghg_staging_dir"]}'
+            target_dir = f'{wm.config["mirror_dir"]}/data_collections/by_dcid/{self.dcid[:5]}/{self.dcid}/ghg/co2'
+            cmd_mkdir = ["ssh", wm.config["daac_server_internal"], "mkdir", "-p", target_dir]
+            pge.run(cmd_mkdir, tmp_dir=self.tmp_dir)
+
+            target = f'{wm.config["daac_server_internal"]}:{target_dir}'
             cmd_rsync = ["rsync", "-av", log_file_arg, output_mosaic_path, target]
             pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
         
