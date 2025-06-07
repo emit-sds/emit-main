@@ -379,6 +379,9 @@ class DatabaseManager:
         data_collections_coll = self.db.data_collections
         query = {
             "ch4_status": "complete",
+            "products.ghg.ch4.ortch4_mosaic.tif_path": {"$exists": 0},
+            "products.ghg.ch4.ortsensch4_mosaic.tif_path": {"$exists": 0},
+            "products.ghg.ch4.ortuncertch4_mosaic.tif_path": {"$exists": 0},
             "build_num": self.config["build_num"],
             date_field: {"$gte": start, "$lte": stop},
         }
@@ -393,6 +396,9 @@ class DatabaseManager:
         data_collections_coll = self.db.data_collections
         query = {
             "co2_status": "complete",
+            "products.ghg.co2.ortco2_mosaic.tif_path": {"$exists": 0},
+            "products.ghg.co2.ortsensco2_mosaic.tif_path": {"$exists": 0},
+            "products.ghg.co2.ortuncertco2_mosaic.tif_path": {"$exists": 0},
             "build_num": self.config["build_num"],
             date_field: {"$gte": start, "$lte": stop},
         }
