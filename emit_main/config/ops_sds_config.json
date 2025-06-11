@@ -72,7 +72,7 @@
         "ch4_lut_file": "/store/shared/ghg/dataset_ch4_full.hdf5",
         "co2_lut_file": "/store/shared/ghg/dataset_co2_full.hdf5",
         "unmixing_library": "/store/shared/unmixing_libraries/convex_hull__n_dims_4_unmix_library.csv",
-        "mirror_dir": "/data/emit/ops/data",
+        "mirror_data_dir": "/data/emit/ops/data",
         "date_ranges": {
             "2022-08-10T00:00:00_to_2024-02-20T00:00:00": {
                 "tetracorder_library_basename": "em2208a",

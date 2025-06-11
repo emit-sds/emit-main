@@ -75,7 +75,7 @@ class FramesMonitor:
             tasks.append(CH4Mosaic(config_path=self.config_path,
                                         dcid=dc["dcid"],
                                         level=self.level,
-                                        partition=self.partition)) #TODO: test_mode?
+                                        partition=self.partition))
 
         return tasks
 
@@ -96,6 +96,6 @@ class FramesMonitor:
             tasks.append(CO2Mosaic(config_path=self.config_path,
                                         dcid=dc["dcid"],
                                         level=self.level,
-                                        partition=self.partition))  #TODO: test_mode?
+                                        partition=self.partition))
 
         return tasks

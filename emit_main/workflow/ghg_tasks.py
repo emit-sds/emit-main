@@ -932,7 +932,7 @@ class CH4Mosaic(SlurmJobTask):
         output_files = {}
         pge_commands = []
         
-        target_dir = f'{wm.config["mirror_dir"]}/data_collections/by_dcid/{self.dcid[:5]}/{self.dcid}/ghg/ch4'
+        target_dir = f'{wm.config["mirror_data_dir"]}/data_collections/by_dcid/{self.dcid[:5]}/{self.dcid}/ghg/ch4'
         cmd_mkdir = ["ssh", wm.config["daac_server_internal"], "mkdir", "-p", target_dir]
         pge.run(cmd_mkdir, tmp_dir=self.tmp_dir)
             
@@ -963,10 +963,10 @@ class CH4Mosaic(SlurmJobTask):
                     "tif_path" : dcid_ch4_product_path,
                     "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
 
-            creation_time = datetime.datetime.fromtimestamp(
-                os.path.getmtime(dcid_ch4_product_path), tz=datetime.timezone.utc)
+        creation_time = datetime.datetime.fromtimestamp(
+            os.path.getmtime(dcid_ch4_product_path), tz=datetime.timezone.utc)
 
-            doc_version = "EMIT SDS GHG JPL-D 107866, v0.2"
+        doc_version = "EMIT SDS GHG JPL-D 107866, v0.2"
 
         total_time = time.time() - start_time
             
@@ -1054,7 +1054,7 @@ class CO2Mosaic(SlurmJobTask):
         output_files = {}
         pge_commands = []
         
-        target_dir = f'{wm.config["mirror_dir"]}/data_collections/by_dcid/{self.dcid[:5]}/{self.dcid}/ghg/co2'
+        target_dir = f'{wm.config["mirror_data_dir"]}/data_collections/by_dcid/{self.dcid[:5]}/{self.dcid}/ghg/co2'
         cmd_mkdir = ["ssh", wm.config["daac_server_internal"], "mkdir", "-p", target_dir]
         pge.run(cmd_mkdir, tmp_dir=self.tmp_dir)
         
@@ -1085,10 +1085,10 @@ class CO2Mosaic(SlurmJobTask):
                     "tif_path" : dcid_co2_product_path,
                     "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
 
-            creation_time = datetime.datetime.fromtimestamp(
-                os.path.getmtime(dcid_co2_product_path), tz=datetime.timezone.utc)
+        creation_time = datetime.datetime.fromtimestamp(
+            os.path.getmtime(dcid_co2_product_path), tz=datetime.timezone.utc)
 
-            doc_version = "EMIT SDS GHG JPL-D 107866, v0.2"
+        doc_version = "EMIT SDS GHG JPL-D 107866, v0.2"
 
         total_time = time.time() - start_time
             
