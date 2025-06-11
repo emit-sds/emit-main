@@ -932,6 +932,10 @@ class CH4Mosaic(SlurmJobTask):
         output_files = {}
         pge_commands = []
         
+        target_dir = f'{wm.config["mirror_dir"]}/data_collections/by_dcid/{self.dcid[:5]}/{self.dcid}/ghg/ch4'
+        cmd_mkdir = ["ssh", wm.config["daac_server_internal"], "mkdir", "-p", target_dir]
+        pge.run(cmd_mkdir, tmp_dir=self.tmp_dir)
+            
         for product in ['ortch4', 'ortsensch4', 'ortuncertch4']:
             input_files[product] = [ac['products']['ghg']['ch4'][product]['tif_path'] for ac in acquisitions]
             
@@ -949,11 +953,7 @@ class CH4Mosaic(SlurmJobTask):
             output_files[f"{product}_mosaic_tif_path"] = dcid_ch4_product_path
             
             wm.copy(output_mosaic_path, dcid_ch4_product_path)
-        
-            target_dir = f'{wm.config["mirror_dir"]}/data_collections/by_dcid/{self.dcid[:5]}/{self.dcid}/ghg/ch4'
-            cmd_mkdir = ["ssh", wm.config["daac_server_internal"], "mkdir", "-p", target_dir]
-            pge.run(cmd_mkdir, tmp_dir=self.tmp_dir)
-
+    
             target = f'{wm.config["daac_server_internal"]}:{target_dir}'
             cmd_rsync = ["rsync", "-av", log_file_arg, output_mosaic_path, target]
             pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
@@ -1054,6 +1054,10 @@ class CO2Mosaic(SlurmJobTask):
         output_files = {}
         pge_commands = []
         
+        target_dir = f'{wm.config["mirror_dir"]}/data_collections/by_dcid/{self.dcid[:5]}/{self.dcid}/ghg/co2'
+        cmd_mkdir = ["ssh", wm.config["daac_server_internal"], "mkdir", "-p", target_dir]
+        pge.run(cmd_mkdir, tmp_dir=self.tmp_dir)
+        
         for product in ['ortco2', 'ortsensco2', 'ortuncertco2']:
             input_files[product] = [ac['products']['ghg']['co2'][product]['tif_path'] for ac in acquisitions]
             
@@ -1072,10 +1076,6 @@ class CO2Mosaic(SlurmJobTask):
             
             wm.copy(output_mosaic_path, dcid_co2_product_path)
         
-            target_dir = f'{wm.config["mirror_dir"]}/data_collections/by_dcid/{self.dcid[:5]}/{self.dcid}/ghg/co2'
-            cmd_mkdir = ["ssh", wm.config["daac_server_internal"], "mkdir", "-p", target_dir]
-            pge.run(cmd_mkdir, tmp_dir=self.tmp_dir)
-
             target = f'{wm.config["daac_server_internal"]}:{target_dir}'
             cmd_rsync = ["rsync", "-av", log_file_arg, output_mosaic_path, target]
             pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
