@@ -25,7 +25,7 @@ from emit_main.workflow.l0_tasks import L0StripHOSC, L0ProcessPlanningProduct, L
 from emit_main.workflow.l1a_tasks import L1ADepacketizeScienceFrames, L1AReassembleRaw, L1AReformatEDP, \
     L1AFrameReport, L1AReformatBAD, L1ADeliver
 from emit_main.workflow.l1b_tasks import L1BGeolocate, L1BCalibrate, L1BRdnFormat, L1BRdnDeliver, L1BAttDeliver
-from emit_main.workflow.l2a_tasks import L2AMask, L2AReflectance, L2AFormat, L2ADeliver, L2AMaskTf, L2AFormatTf
+from emit_main.workflow.l2a_tasks import L2AMask, L2AReflectance, L2AFormat, L2ADeliver, L2AMaskTf, L2AFormatTf, L2AMaskTfDeliver
 from emit_main.workflow.l2b_tasks import L2BAbundance, L2BFormat, L2BDeliver
 from emit_main.workflow.l3_tasks import L3Unmix
 from emit_main.workflow.ghg_tasks import CH4, CO2, CH4Deliver, CO2Deliver
@@ -40,11 +40,12 @@ logger = logging.getLogger("emit-main")
 def parse_args():
     product_choices = ["l0hosc", "l0daac", "l0plan", "l0bad", "l1aeng", "l1aframe", "l1aframereport", "l1araw",
                        "l1adaac", "l1abad", "l1bcal", "l1bgeo", "l1brdnformat", "l1brdndaac", "l1battdaac", "l2arefl",
-                       "l2amask", "l2amaskTf", "l2aformat", "l2aformatTf",  "l2adaac", "l2babun", "l2bformat", "l2bdaac", "l2bch4", "l2bco2",
-                       "l2bch4daac", "l2bco2daac", "l3unmix", "daacscenes", "daacaddl", "recon"]
-    monitor_choices = ["ingest", "frames", "edp", "cal", "bad", "geo", "l2", "l2b","ch4", "co2", "l3",
-                       "email", "daacscenes", "dl0","dl1a", "dl1brdn", "dl1batt", "dl2a", "dl2b", "dch4", "dco2",
-                       "reconresp"]
+                       "l2amask", "l2amaskTf", "l2aformat", "l2aformatTf", "l2adaac","l2adaacTf", 
+                       "l2babun", "l2bformat", "l2bdaac", "l2bch4", "l2bco2", "l2bch4daac", "l2bco2daac",
+                       "l3unmix", "daacscenes", "daacaddl", "recon"]
+    monitor_choices = ["ingest", "frames", "edp", "cal", "bad", "geo", "l2", "maskTf", "l2b", "ch4", "co2", "l3",
+                       "email", "daacscenes", "dl0","dl1a", "dl1brdn", "dl1batt", "dl2a", "dmaskTf",
+                       "dl2b", "dch4", "dco2", "reconresp"]
     parser = argparse.ArgumentParser(
         description="Description: This is the top-level run script for executing the various EMIT SDS workflow and "
                     "monitor tasks.\n"
@@ -445,6 +446,15 @@ def main():
         am_l2_tasks_str = "\n".join([str(t) for t in am_l2_tasks])
         logger.info(f"Acquisition monitor L2 tasks to run:\n{am_l2_tasks_str}")
         tasks += am_l2_tasks
+        
+    # Get tasks from acquisition monitor for maskTf tasks
+    if args.monitor and args.monitor == "maskTf":
+        am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
+        am_maskTf_tasks = am.get_maskTf_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                      date_field=args.date_field, retry_failed=args.retry_failed)
+        am_maskTf_tasks_str = "\n".join([str(t) for t in am_maskTf_tasks])
+        logger.info(f"Acquisition monitor maskTf tasks to run:\n{am_maskTf_tasks_str}")
+        tasks += am_maskTf_tasks
 
     # Get tasks from acquisition monitor for L2b tasks
     if args.monitor and args.monitor == "l2b":
