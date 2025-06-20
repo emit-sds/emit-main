@@ -77,6 +77,7 @@ class Acquisition:
             self.rfl_granule_ur = f"EMIT_L2A_RFL_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.rfluncert_granule_ur = f"EMIT_L2A_RFLUNCERT_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.mask_granule_ur = f"EMIT_L2A_MASK_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.maskTf_granule_ur = f"EMIT_L2A_MASKTF_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.abun_granule_ur = f"EMIT_L2B_MIN_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.abununcert_granule_ur = f"EMIT_L2B_MINUNCERT_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.ch4_granule_ur = f"EMIT_L2B_CH4ENH_002_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"

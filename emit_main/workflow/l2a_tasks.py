@@ -848,7 +848,7 @@ class L2AMaskTf(SlurmJobTask):
         dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
         
         
-class L2AFormatTf(SlurmJobTask):
+class L2AMaskTfFormat(SlurmJobTask):
     """
     Converts L2A Tf mask to netcdf file
     :returns: L2A netcdf output for delivery
@@ -886,7 +886,7 @@ class L2AFormatTf(SlurmJobTask):
         output_generator_exe = os.path.join(pge.repo_dir, "output_conversion.py")
         tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
         wm.makedirs(tmp_output_dir)
-        tmp_daac_maskTf_nc_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l2a_maskTf.nc")   #TODO: Name update
+        tmp_daac_maskTf_nc_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l2a_maskTf.nc")
         tmp_log_path = os.path.join(self.local_tmp_dir, "output_conversion_pge.log")
 
         cmd = ["python", 
@@ -900,12 +900,12 @@ class L2AFormatTf(SlurmJobTask):
         main_pge.run(cmd, tmp_dir=self.tmp_dir)
 
         # Copy and rename output files back to /store
-        log_path = acq.rfl_nc_path.replace(".nc", "_nc_pge.log")
+        log_path = acq.maskTf_nc_path.replace(".nc", "_nc_pge.log")
         wm.copy(tmp_daac_maskTf_nc_path, acq.maskTf_nc_path)
         wm.copy(tmp_log_path, log_path)
 
         # PGE writes metadata to db
-        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rfl_nc_path), tz=datetime.timezone.utc)
+        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.maskTf_nc_path), tz=datetime.timezone.utc)
         dm = wm.database_manager
         product_dict_netcdf = {
             "netcdf_maskTf_path": acq.maskTf_nc_path,
@@ -954,7 +954,7 @@ class L2AMaskTfDeliver(SlurmJobTask):
     def requires(self):
 
         logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
-        return L2AFormat(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+        return L2AMaskTfFormat(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
                          partition=self.partition)
 
     def output(self):
@@ -984,7 +984,6 @@ class L2AMaskTfDeliver(SlurmJobTask):
         daac_browse_name = f"{acq.maskTf_granule_ur}.png"
         daac_ummg_name = f"{acq.maskTf_granule_ur}.cmr.json"
         daac_maskTf_nc_path = os.path.join(self.tmp_dir, daac_maskTf_nc_name)
-        daac_mask_nc_path = os.path.join(self.tmp_dir, daac_mask_nc_name)
         daac_browse_path = os.path.join(self.tmp_dir, daac_browse_name)
         daac_ummg_path = os.path.join(self.tmp_dir, daac_ummg_name)
 
@@ -1004,7 +1003,7 @@ class L2AMaskTfDeliver(SlurmJobTask):
                                               acq.stop_time, l2a_pge.repo_name, l2a_pge.version_tag,
                                               software_build_version=software_build_version,
                                               software_delivery_version=wm.config["extended_build_num"],
-                                              doi=wm.config["dois"]["EMITL2AmaskTf"], orbit=int(acq.orbit),
+                                              doi=wm.config["dois"]["EMITL2AMASKTF"], orbit=int(acq.orbit),
                                               orbit_segment=int(acq.scene), scene=int(acq.daac_scene),
                                               solar_zenith=acq.mean_solar_zenith,
                                               solar_azimuth=acq.mean_solar_azimuth,
@@ -1080,8 +1079,8 @@ class L2AMaskTfDeliver(SlurmJobTask):
         cnm_submission_output = cnm_submission_path.replace(".json", ".out")
         cmd_aws = [wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", queue_url, "--message-body",
                    f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"], ">", cnm_submission_output]
-        pge.run(cmd_aws, tmp_dir=self.tmp_dir)
-        wm.change_group_ownership(cnm_submission_output)
+        # pge.run(cmd_aws, tmp_dir=self.tmp_dir) TODO: Uncomment
+        # wm.change_group_ownership(cnm_submission_output) TODO: Uncomment
         cnm_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(cnm_submission_path),
                                                             tz=datetime.timezone.utc)
 
