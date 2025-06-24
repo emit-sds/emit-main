@@ -248,7 +248,6 @@ class L2AReflectance(SlurmJobTask):
 
         dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
 
-
 class L2AMask(SlurmJobTask):
     """
     Creates masks

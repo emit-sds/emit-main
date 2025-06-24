@@ -519,6 +519,12 @@ class L1BGeolocate(SlurmJobTask):
             }
             input_files_arr = ["{}={}".format(key, value) for key, value in acq_input_files.items()]
             doc_version = "EMIT SDS L1B JPL-D 104187, Initial"
+
+            # Add daynight to radiance hdr
+            rdn_hdr = envi.read_envi_header(acq.rdn_hdr_path)
+            rdn_hdr["emit acquisition daynight"] = meta["daynight"]
+            envi.write_envi_header(acq.rdn_hdr_path, rdn_hdr)
+
             for img_path, hdr_path in [(acq.glt_img_path, acq.glt_hdr_path),
                                        (acq.loc_img_path, acq.loc_hdr_path),
                                        (acq.obs_img_path, acq.obs_hdr_path)]:

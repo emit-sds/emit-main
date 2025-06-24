@@ -52,8 +52,11 @@ class DataCollection:
             "_".join([self.dcid, "frames", "b" + self.config["build_num"], "v" + self.config["processing_version"]]))
         self.decomp_dir = self.frames_dir.replace("_frames_", "_decomp_")
         self.acquisitions_dir = self.frames_dir.replace("_frames_", "_acquisitions_")
+        self.ch4_dir = os.path.join(self.dcid_dir,'ghg', 'ch4')
+        self.co2_dir = os.path.join(self.dcid_dir,'ghg', 'co2')
         self.dirs.extend([self.data_collections_dir, self.by_dcid_dir, self.by_date_dir, self.dcid_hash_dir,
-                          self.dcid_dir, self.frames_dir, self.decomp_dir, self.acquisitions_dir])
+                          self.dcid_dir, self.frames_dir, self.decomp_dir, self.acquisitions_dir, self.ch4_dir,
+                          self.co2_dir])
 
         # Make directories and symlinks if they don't exist
         from emit_main.workflow.workflow_manager import WorkflowManager
@@ -109,3 +112,63 @@ class DataCollection:
 
         # If we made it this far, then return True
         return True
+
+    def has_complete_ch4_aqcuisitions(self):
+
+        dm = DatabaseManager(self.config_path)
+
+        acquisitions_coll = dm.db.acquisitions
+
+        #Get list of acquisition ids expected to have CH4 products
+        query = {
+            "associated_dcid": self.dcid,
+            "mean_solar_zenith": {"$lt": 80},
+            "build_num": self.config["build_num"]
+        }
+
+        expected = list(acquisitions_coll.find(query))
+        expected_acq_ids = [doc['acquisition_id'] for doc in expected]
+
+        #Get list of acquisition ids with completed CH4 products
+        query = {
+            "associated_dcid": self.dcid,
+            "products.ghg.ch4.ortch4.tif_path": {"$exists": 1},
+            "products.ghg.ch4.ortsensch4.tif_path": {"$exists": 1},
+            "products.ghg.ch4.ortuncertch4.tif_path": {"$exists": 1},
+            "build_num": self.config["build_num"]
+        }
+
+        completed = list(acquisitions_coll.find(query))
+        completed_acq_ids = [doc['acquisition_id'] for doc in completed]
+ 
+        return set(expected_acq_ids) == set(completed_acq_ids)
+    
+    def has_complete_co2_aqcuisitions(self):
+
+        dm = DatabaseManager(self.config_path)
+
+        acquisitions_coll = dm.db.acquisitions
+
+        #Get list of acquisition ids expected to have CO2 products
+        query = {
+            "associated_dcid": self.dcid,
+            "mean_solar_zenith": {"$lt": 80},
+            "build_num": self.config["build_num"]
+        }
+
+        expected = list(acquisitions_coll.find(query))
+        expected_acq_ids = [doc['acquisition_id'] for doc in expected]
+
+        #Get list of acquisition ids with completed CO2 products
+        query = {
+            "associated_dcid": self.dcid,
+            "products.ghg.co2.ortco2.tif_path": {"$exists": 1},
+            "products.ghg.co2.ortsensco2.tif_path": {"$exists": 1},
+            "products.ghg.co2.ortuncertco2.tif_path": {"$exists": 1},
+            "build_num": self.config["build_num"]
+        }
+
+        completed = list(acquisitions_coll.find(query))
+        completed_acq_ids = [doc['acquisition_id'] for doc in completed]
+ 
+        return set(expected_acq_ids) == set(completed_acq_ids)
