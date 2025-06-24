@@ -286,8 +286,8 @@ class DatabaseManager:
             "products.l1b.obs.img_path": {"$exists": 1},
             "products.l1b.rdn_png.png_path": {"$exists": 1},
             "cloud_fraction": {"$exists": 0},
-            "submode": {"science"},
-            "mean_solar_zenith": {"$gte: 80"},
+            "submode": "science",
+            "mean_solar_zenith": {"$gte": 80},
             "daac_scene": {"$exists": 1},
             "products.l1b.rdn_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop},
@@ -382,62 +382,6 @@ class DatabaseManager:
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.CO2Deliver"])
         return results
-
-    def find_data_collections_for_ch4_mosaic(self, start, stop, date_field="last_modified", retry_failed=False):
-        data_collections_coll = self.db.data_collections
-        query = {
-            "ch4_status": "complete",
-            "products.ghg.ch4.ortch4_mosaic.tif_path": {"$exists": 0},
-            "products.ghg.ch4.ortsensch4_mosaic.tif_path": {"$exists": 0},
-            "products.ghg.ch4.ortuncertch4_mosaic.tif_path": {"$exists": 0},
-            "build_num": self.config["build_num"],
-            date_field: {"$gte": start, "$lte": stop},
-        }
-        results =  list(data_collections_coll.find(query).sort("dcid", 1))
-        
-        if not retry_failed:
-            results = self._remove_results_with_failed_tasks(results, ["emit.CH4Mosaic"])
-        return results
-        
-    def find_data_collections_for_co2_mosaic(self, start, stop, date_field="last_modified", retry_failed=False):
-        data_collections_coll = self.db.data_collections
-        query = {
-            "co2_status": "complete",
-            "products.ghg.co2.ortco2_mosaic.tif_path": {"$exists": 0},
-            "products.ghg.co2.ortsensco2_mosaic.tif_path": {"$exists": 0},
-            "products.ghg.co2.ortuncertco2_mosaic.tif_path": {"$exists": 0},
-            "build_num": self.config["build_num"],
-            date_field: {"$gte": start, "$lte": stop},
-        }
-        results =  list(data_collections_coll.find(query).sort("dcid", 1))
-        
-        if not retry_failed:
-            results = self._remove_results_with_failed_tasks(results, ["emit.CO2Mosaic"])
-        return results
-
-    def find_acquisitions_for_ch4_mosaic(self, dcid):
-        acquisitions_coll = self.db.acquisitions
-        # Query for acquisitions with daac scene numbers but no daac ummg products.
-        query = {
-            "products.ghg.ch4.ortch4.tif_path": {"$exists": 1},
-            "products.ghg.ch4.ortsensch4.tif_path": {"$exists": 1},
-            "products.ghg.ch4.ortuncertch4.tif_path": {"$exists": 1},
-            "associated_dcid": dcid,
-            "build_num": self.config["build_num"]
-        }
-        return list(acquisitions_coll.find(query))
-
-    def find_acquisitions_for_co2_mosaic(self, dcid):
-        acquisitions_coll = self.db.acquisitions
-        # Query for acquisitions with daac scene numbers but no daac ummg products.
-        query = {
-            "products.ghg.co2.ortco2.tif_path": {"$exists": 1},
-            "products.ghg.co2.ortsensco2.tif_path": {"$exists": 1},
-            "products.ghg.co2.ortuncertco2.tif_path": {"$exists": 1},
-            "associated_dcid": dcid,
-            "build_num": self.config["build_num"]
-        }
-        return list(acquisitions_coll.find(query))
 
     def insert_acquisition(self, metadata):
         if self.find_acquisition_by_id(metadata["acquisition_id"]) is None:

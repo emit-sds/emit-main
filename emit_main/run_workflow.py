@@ -28,7 +28,7 @@ from emit_main.workflow.l1b_tasks import L1BGeolocate, L1BCalibrate, L1BRdnForma
 from emit_main.workflow.l2a_tasks import L2AMask, L2AReflectance, L2AFormat, L2ADeliver
 from emit_main.workflow.l2b_tasks import L2BAbundance, L2BFormat, L2BDeliver
 from emit_main.workflow.l3_tasks import L3Unmix
-from emit_main.workflow.ghg_tasks import CH4, CO2, CH4Deliver, CO2Deliver, CH4Mosaic, CO2Mosaic
+from emit_main.workflow.ghg_tasks import CH4, CO2, CH4Deliver, CO2Deliver
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_main.workflow.workflow_manager import WorkflowManager
 
@@ -41,10 +41,10 @@ def parse_args():
     product_choices = ["l0hosc", "l0daac", "l0plan", "l0bad", "l1aeng", "l1aframe", "l1aframereport", "l1araw",
                        "l1adaac", "l1abad", "l1bcal", "l1bgeo", "l1brdnformat", "l1brdndaac", "l1battdaac", "l2arefl",
                        "l2amask", "l2aformat", "l2adaac", "l2babun", "l2bformat", "l2bdaac", "l2bch4", "l2bco2",
-                       "l2bch4daac", "l2bco2daac", "l2bch4mosaic", "l2bco2mosaic", "l3unmix", "daacscenes", "daacaddl", "recon"]
+                       "l2bch4daac", "l2bco2daac", "l3unmix", "daacscenes", "daacaddl", "recon"]
     monitor_choices = ["ingest", "frames", "edp", "cal", "bad", "geo", "l2", "l2b","ch4", "co2", "l3",
                        "email", "daacscenes", "dl0","dl1a", "dl1brdn", "dl1batt", "dl2a", "dl2b", "dch4", "dco2",
-                       "mch4", "mco2","reconresp"]
+                       "reconresp"]
     parser = argparse.ArgumentParser(
         description="Description: This is the top-level run script for executing the various EMIT SDS workflow and "
                     "monitor tasks.\n"
@@ -215,11 +215,9 @@ def get_tasks_from_product_args(args):
         "l2bdaac": L2BDeliver(acquisition_id=args.acquisition_id, daac_ingest_queue=args.daac_ingest_queue,
                               override_output=args.override_output, **kwargs),
         "l2bch4":  CH4(acquisition_id=args.acquisition_id, **kwargs),
-        "l2bch4daac":  CH4Deliver(acquisition_id=args.acquisition_id, **kwargs),
-        "l2bch4mosaic":  CH4Mosaic(dcid=args.dcid, **kwargs),
+        "l2bch4daac":  CH4Deliver(acquisition_id=args.acquisition_id, override_output=args.override_output, **kwargs),
         "l2bco2":  CO2(acquisition_id=args.acquisition_id, **kwargs),
-        "l2bco2daac":  CO2Deliver(acquisition_id=args.acquisition_id, **kwargs),
-        "l2bco2mosaic":  CO2Mosaic(dcid=args.dcid, **kwargs),
+        "l2bco2daac":  CO2Deliver(acquisition_id=args.acquisition_id, override_output=args.override_output, **kwargs),
         "l3unmix": L3Unmix(acquisition_id=args.acquisition_id, **kwargs),
         # "l3unmixformat": L3UnmixFormat(acquisition_id=args.acquisition_id, **kwargs)
         "daacscenes": AssignDAACSceneNumbers(orbit_id=args.orbit_id, override_output=args.override_output, **kwargs),
@@ -307,7 +305,7 @@ def task_failure(task, e):
 
     stream_tasks = ("emit.L0StripHOSC", "emit.L1ADepacketizeScienceFrames", "emit.L1AReformatEDP", "emit.L0IngestBAD",
                     "emit.L0Deliver")
-    data_collection_tasks = ("emit.L1AReassembleRaw", "emit.L1AFrameReport", "emit.CH4Mosaic", "emit.CO2Mosaic")
+    data_collection_tasks = ("emit.L1AReassembleRaw", "emit.L1AFrameReport")
     acquisition_tasks = ("emit.L1ADeliver", "emit.L1BCalibrate", "emit.L1BRdnFormat", "emit.L1BRdnDeliver",
                          "emit.L2AReflectance", "emit.L2AMask", "emit.L2AFormat", "emit.L2ADeliver",
                          "emit.L2BAbundance", "emit.L2BFormat", "emit.L2BDeliver", "emit.L3Unmix",
@@ -570,24 +568,6 @@ def main():
         am_dco2_tasks_str = "\n".join([str(t) for t in am_dco2_tasks])
         logger.info(f"Acquisition monitor deliver co2 tasks to run:\n{am_dco2_tasks_str}")
         tasks += am_dco2_tasks
-    
-    # Get tasks from mch4 (mosaic ch4) monitor
-    if args.monitor and args.monitor == "mch4":
-        dm = FramesMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
-        dm_ch4_mosaic_tasks = dm.get_ch4_mosaic_tasks(start_time=args.start_time, stop_time=args.stop_time,
-                                        date_field=args.date_field, retry_failed=args.retry_failed)
-        dm_ch4_mosaic_tasks_str = "\n".join([str(t) for t in dm_ch4_mosaic_tasks])
-        logger.info(f"DCID monitor CH4 mosaic tasks to run:\n{dm_ch4_mosaic_tasks}")
-        tasks += dm_ch4_mosaic_tasks
-    
-    # Get tasks from mco2 (mosaic co2) monitor
-    if args.monitor and args.monitor == "mco2":
-        dm = FramesMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
-        dm_co2_mosaic_tasks = dm.get_co2_mosaic_tasks(start_time=args.start_time, stop_time=args.stop_time,
-                                        date_field=args.date_field, retry_failed=args.retry_failed)
-        dm_co2_mosaic_tasks_str = "\n".join([str(t) for t in dm_co2_mosaic_tasks])
-        logger.info(f"DCID monitor CO2 mosaic tasks to run:\n{dm_co2_mosaic_tasks}")
-        tasks += dm_co2_mosaic_tasks
     
     # Get tasks from products args
     if args.products:
