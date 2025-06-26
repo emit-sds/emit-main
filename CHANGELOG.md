@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v1.6.26](https://github.com/emit-sds/emit-main/compare/v1.6.25...v1.6.26)
+
+> 26 June 2025
+
+* Added removed GHG mosaic code by @adamchlus in https://github.com/emit-sds/emit-main/pull/67
+
 #### [v1.6.25](https://github.com/emit-sds/emit-main/compare/v1.6.24...v1.6.25)
 
 > 24 June 2025
