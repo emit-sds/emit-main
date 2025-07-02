@@ -825,7 +825,7 @@ class L2AMaskTf(SlurmJobTask):
                 "bands": hdr["bands"]
             }
         }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2a.maskTf": product_dict})
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.mask.maskTf": product_dict})
 
         total_time = time.time() - start_time
         log_entry = {
@@ -892,7 +892,7 @@ class L2AMaskTfFormat(SlurmJobTask):
         cmd = ["python", 
                output_generator_exe,
                tmp_daac_maskTf_nc_path, acq.maskTf_img_path, acq.loc_img_path, acq.glt_img_path,
-               "V0" + str(wm.config["processing_version"]), wm.config["extended_build_num"],
+               "V002", wm.config["extended_build_num"],
                "--log_file", tmp_log_path]
 
         # Run this inside the emit-main conda environment to include emit-utils and other requirements
@@ -911,7 +911,7 @@ class L2AMaskTfFormat(SlurmJobTask):
             "netcdf_maskTf_path": acq.maskTf_nc_path,
             "created": nc_creation_time
         }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2a.maskTf_netcdf": product_dict_netcdf})
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.mask.maskTf_netcdf": product_dict_netcdf})
 
         log_entry = {
             "task": self.task_family,
@@ -950,7 +950,7 @@ class L2AMaskTfDeliver(SlurmJobTask):
     memory = 18000
 
     task_namespace = "emit"
-
+    
     def requires(self):
 
         logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
@@ -974,6 +974,8 @@ class L2AMaskTfDeliver(SlurmJobTask):
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
         pge = wm.pges["emit-main"]
+        
+        collection_version = '002'
 
         # Get local SDS names
         # nc_path = acq.maskTf_img_path.replace(".img", ".nc")
@@ -997,13 +999,13 @@ class L2AMaskTfDeliver(SlurmJobTask):
 
         # Create the UMM-G file
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.maskTf_nc_path), tz=datetime.timezone.utc)
-        l2a_pge = wm.pges["emit-sds-l2a"]
-        ummg = daac_converter.initialize_ummg(acq.maskTf_granule_ur, nc_creation_time, "EMITL2AmaskTf",
-                                              acq.collection_version, acq.start_time,
+        l2a_pge = wm.pges["emit-sds-masks"]
+        ummg = daac_converter.initialize_ummg(acq.maskTf_granule_ur, nc_creation_time, "EMITL2AMASK",
+                                              collection_version, acq.start_time,
                                               acq.stop_time, l2a_pge.repo_name, l2a_pge.version_tag,
                                               software_build_version=software_build_version,
                                               software_delivery_version=wm.config["extended_build_num"],
-                                              doi=wm.config["dois"]["EMITL2AMASKTF"], orbit=int(acq.orbit),
+                                              doi=wm.config["dois"]["EMITL2AMASK"], orbit=int(acq.orbit),
                                               orbit_segment=int(acq.scene), scene=int(acq.daac_scene),
                                               solar_zenith=acq.mean_solar_zenith,
                                               solar_azimuth=acq.mean_solar_azimuth,
@@ -1042,13 +1044,13 @@ class L2AMaskTfDeliver(SlurmJobTask):
             provider = wm.config["daac_provider_backward"]
             queue_url = wm.config["daac_submission_url_backward"]
         notification = {
-            "collection": "EMITL2AmaskTf",
+            "collection": "EMITL2AMASK",
             "provider": provider,
             "identifier": cnm_submission_id,
             "version": wm.config["cnm_version"],
             "product": {
                 "name": acq.maskTf_granule_ur,
-                "dataVersion": acq.collection_version,
+                "dataVersion": collection_version,
                 "files": [
                     {
                         "name": daac_maskTf_nc_name,
@@ -1091,7 +1093,7 @@ class L2AMaskTfDeliver(SlurmJobTask):
                 "timestamp": utc_now,
                 "extended_build_num": wm.config["extended_build_num"],
                 "collection": notification["collection"],
-                "collection_version": notification["product"]["dataVersion"],
+                "collection_version": collection_version,
                 "granule_ur": acq.maskTf_granule_ur,
                 "sds_filename": target_src_map[file["name"]],
                 "daac_filename": file["name"],
@@ -1111,16 +1113,16 @@ class L2AMaskTfDeliver(SlurmJobTask):
             "ummg_json_path": ummg_path,
             "created": datetime.datetime.fromtimestamp(os.path.getmtime(ummg_path), tz=datetime.timezone.utc)
         }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2a.maskTf_ummg": product_dict_ummg})
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.mask.maskTf_ummg": product_dict_ummg})
 
-        if "maskTf_daac_submissions" in acq.metadata["products"]["l2a"] and \
-                acq.metadata["products"]["l2a"]["maskTf_daac_submissions"] is not None:
-            acq.metadata["products"]["l2a"]["maskTf_daac_submissions"].append(cnm_submission_path)
+        if "maskTf_daac_submissions" in acq.metadata["products"]["mask"] and \
+                acq.metadata["products"]["mask"]["maskTf_daac_submissions"] is not None:
+            acq.metadata["products"]["mask"]["maskTf_daac_submissions"].append(cnm_submission_path)
         else:
-            acq.metadata["products"]["l2a"]["maskTf_daac_submissions"] = [cnm_submission_path]
+            acq.metadata["products"]["mask"]["maskTf_daac_submissions"] = [cnm_submission_path]
         dm.update_acquisition_metadata(
             acq.acquisition_id,
-            {"products.l2a.maskTf_daac_submissions": acq.metadata["products"]["l2a"]["maskTf_daac_submissions"]})
+            {"products.mask.maskTf_daac_submissions": acq.metadata["products"]["mask"]["maskTf_daac_submissions"]})
 
         log_entry = {
             "task": self.task_family,

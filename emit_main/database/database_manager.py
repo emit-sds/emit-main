@@ -170,7 +170,7 @@ class DatabaseManager:
         query = {
             "products.l1b.rdn.img_path": {"$exists": 1},
             "products.l1b.obs.img_path": {"$exists": 1},
-            "products.l2a.maskTf.img_path": {"$exists": 0},
+            "products.mask.maskTf.img_path": {"$exists": 0},
             "mean_solar_zenith": {"$lt": 80},   # Matches current masking threshold, check if could be increased to 90
             date_field: {"$gte": start, "$lte": stop},
             "build_num": self.config["build_num"]
@@ -341,11 +341,11 @@ class DatabaseManager:
         acquisitions_coll = self.db.acquisitions
         # Query for acquisitions with daac scene numbers but no daac ummg products.
         query = {
-            "products.l2a.maskTf.img_path": {"$exists": 1},
+            "products.mask.maskTf.img_path": {"$exists": 1},
             "products.l1b.glt.img_path": {"$exists": 1},
             "products.l1b.loc.img_path": {"$exists": 1},
             "daac_scene": {"$exists": 1},
-            "products.l2a.maskTf_ummg.ummg_json_path": {"$exists": 0},
+            "products.mask.maskTf_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop},
             "build_num": self.config["build_num"]
         }

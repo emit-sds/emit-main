@@ -77,7 +77,7 @@ class Acquisition:
             self.rfl_granule_ur = f"EMIT_L2A_RFL_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.rfluncert_granule_ur = f"EMIT_L2A_RFLUNCERT_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.mask_granule_ur = f"EMIT_L2A_MASK_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.maskTf_granule_ur = f"EMIT_L2A_MASKTF_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.maskTf_granule_ur = f"EMIT_L2A_MASK_002_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.abun_granule_ur = f"EMIT_L2B_MIN_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.abununcert_granule_ur = f"EMIT_L2B_MINUNCERT_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.ch4_granule_ur = f"EMIT_L2B_CH4ENH_002_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
@@ -151,8 +151,10 @@ class Acquisition:
                 "locsubs": ["img", "hdr"],
                 "atm": ["img", "hdr"],
                 "mask": ["img", "hdr", "nc"],
-                "maskTf": ["img", "hdr", "nc", "png"],
                 "quality": ["txt"],
+            },
+            "mask": {
+                "maskTf": ["img", "hdr", "nc", "png"],  
             },
             "l2b": {
                 "tetra": ["dir"],
@@ -192,7 +194,12 @@ class Acquisition:
             else:
                 level_data_dir = os.path.join(self.acquisition_id_dir, level)
                 self.__dict__.update({level + "_data_dir": level_data_dir})
-                processing_verion = self.config["processing_version"]
+                if level == 'mask':
+                    processing_verion = '02'
+                else:
+                    processing_verion = self.config["processing_version"]
+                
+                
             self.dirs.append(level_data_dir)
             for prod, formats in prod_map.items():
                 for format in formats:
