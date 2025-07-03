@@ -763,22 +763,46 @@ class L2AMaskTf(SlurmJobTask):
 
         tmp_maskTf_path = os.path.join(tmp_output_dir, os.path.basename(acq.maskTf_img_path))
         tmp_maskTf_hdr_path = envi_header(tmp_maskTf_path)
-        make_cloud_masks_exe = os.path.join(pge.repo_dir, "make_cloud_masks.py")
-
+        tmp_maskTf_cloud_path = tmp_maskTf_path.replace('.img','.tif')
+        solar_irradiance_path = os.path.join(pge.repo_dir, "data", "kurudz_0.1nm.dat")
+        make_masks_exe = os.path.join(pge.repo_dir, "make_emit_masks.py")
+                      
         input_files = {
             "radiance_file": acq.rdn_img_path,
             "observation_parameters_file": acq.obs_img_path,
+            "pixel_locations_file": acq.loc_img_path,
+            "geolocation_table_file": acq.loc_img_path,
+            "atmosphere_file": acq.atm_img_path,
+            "solar_irradiance_file": solar_irradiance_path
         }
 
         env = os.environ.copy()
         emit_utils_pge = wm.pges["emit-utils"]
         env["PYTHONPATH"] = f"$PYTHONPATH:{emit_utils_pge.repo_dir}"
 
+        #First run specTF
+        cmd = ["spectf-cloud", "deploy-pt",
+                tmp_maskTf_cloud_path,
+                acq.obs_hdr_path,
+                acq.rdn_hdr_path,
+                "--proba"
+        ]
+        
+        pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
+
+        #TODO: generate shadows
+
+        # Create remainder of masks and combin with previous 
         cmd = ["python",
-               make_cloud_masks_exe,
+               make_masks_exe,
                acq.rdn_img_path,
+               acq.loc_img_path,
                acq.obs_img_path,
-               tmp_maskTf_path]
+               acq.atm_img_path,
+               tmp_maskTf_cloud_path,
+               solar_irradiance_path,
+               tmp_maskTf_path,
+               "--n_cores", str(self.n_cores)]
 
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
