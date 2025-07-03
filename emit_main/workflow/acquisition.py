@@ -195,10 +195,10 @@ class Acquisition:
                 level_data_dir = os.path.join(self.acquisition_id_dir, level)
                 self.__dict__.update({level + "_data_dir": level_data_dir})
                 if level == 'mask':
+                    level ='l2a'
                     processing_verion = '02'
                 else:
                     processing_verion = self.config["processing_version"]
-                
                 
             self.dirs.append(level_data_dir)
             for prod, formats in prod_map.items():
@@ -211,6 +211,7 @@ class Acquisition:
                                             prod,
                                             "b" + self.config["build_num"],
                                             "v" + processing_verion])
+                    prod_prefix = prod_prefix.replace('maskTf','mask')
                     prod_name = prod_prefix + "." + format
                     prod_path = os.path.join(level_data_dir, prod_name)
                     paths[prod_key] = prod_path
