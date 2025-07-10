@@ -67,36 +67,21 @@ class L2AReflectance(SlurmJobTask):
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
         pge = wm.pges["emit-sds-l2a"]
-
+        
         # Build PGE cmd for surface model
         isofit_pge = wm.pges["isofit"]
         surface_config_path = wm.config["isofit_surface_config"]
         tmp_surface_path = os.path.join(self.local_tmp_dir, f"{acq.acquisition_id}_surface.mat")
-        # Get wavelength file from l1b config
-        l1b_config_path = wm.config["l1b_config_path"]
-        with open(l1b_config_path, "r") as f:
-            config = json.load(f)
-        wavelength_path = config["spectral_calibration_file"]
-        if not wavelength_path.startswith("/"):
-            wavelength_path = os.path.abspath(os.path.join(os.path.dirname(l1b_config_path), wavelength_path))
 
-        first_wavelength_ind = int(config["first_distributed_row"])
-        last_wavelength_ind = int(config["last_distributed_row"])
-        # Clip and Flip
-        wavelengths = np.genfromtxt(wavelength_path)[first_wavelength_ind:last_wavelength_ind + 1, :][::-1, :]
-        tmp_clipped_wavelength_path = os.path.join(self.local_tmp_dir, f"{acq.acquisition_id}_wavelengths.txt")
-        np.savetxt(tmp_clipped_wavelength_path, wavelengths, fmt='%f')
-
-        # Set environment
+        # Generate surface model
         env = os.environ.copy()
-        env["PYTHONPATH"] = f"$PYTHONPATH:{isofit_pge.repo_dir}"
-        surf_cmd = ["python", "-c", "\"from isofit.utils import surface_model;",
-                    f"surface_model('{surface_config_path}', wavelength_path='{tmp_clipped_wavelength_path}', "
-                    f"output_path='{tmp_surface_path}')\""]
+        surf_cmd = ["isofit", "surface_model",
+                    surface_config_path,
+                    f"--wavelength_path={acq.rdn_hdr_path}",
+                    f"--output_path={tmp_surface_path}"]
         pge.run(surf_cmd, tmp_dir=self.tmp_dir, env=env)
 
         # Build PGE cmd for apply_oe
-        apply_oe_exe = os.path.join(isofit_pge.repo_dir, "isofit", "utils", "apply_oe.py")
         tmp_log_path = os.path.join(self.local_tmp_dir, "isofit.log")
         model_disc_file = os.path.join(isofit_pge.repo_dir, "data", "emit_model_discrepancy.mat")
 
@@ -107,22 +92,22 @@ class L2AReflectance(SlurmJobTask):
             "observation_parameters_file": acq.obs_img_path,
             "surface_model_config": surface_config_path
         }
-        cmd = ["python", apply_oe_exe, acq.rdn_img_path, acq.loc_img_path, acq.obs_img_path, self.local_tmp_dir, "emit",
-               "--presolve=1",
-               "--empirical_line=0",
-               "--analytical_line=1",
+        cmd = ["isofit", "apply_oe", acq.rdn_img_path, acq.loc_img_path, acq.obs_img_path, self.local_tmp_dir, "emit",
+               "--presolve",
+               "--analytical_line",
                "--emulator_base=" + emulator_base,
                "--n_cores", str(self.n_cores),
                "--surface_path", tmp_surface_path,
                "--ray_temp_dir", "/local/ray",
                "--log_file", tmp_log_path,
                "--logging_level", self.level,
+               "--num_neighbors=100",
+               "--num_neighbors=10",
                "--num_neighbors=10",
                "--model_discrepancy_path", model_disc_file,
                "--pressure_elevation"]
 
         env["SIXS_DIR"] = wm.config["isofit_sixs_dir"]
-        env["EMULATOR_DIR"] = emulator_base
         env["RAY_worker_register_timeout_seconds"] = "600"
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
