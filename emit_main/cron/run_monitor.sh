@@ -11,7 +11,7 @@ echo
 echo "$T: Executing run_monitor.sh cron job with '$1' environment, '$2' conda environment, and '$3' monitor and '$4' optional args"
 echo
 
-source /store/local/miniconda3/etc/profile.d/conda.sh
+source /store/local/miniforge3/etc/profile.d/conda.sh
 conda activate $2
 
 cd /store/emit/$1/repos/emit-main/emit_main

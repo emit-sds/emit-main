@@ -28,7 +28,7 @@
     },
     "build_config": {
         "extended_build_num": "010626",
-        "conda_base_dir": "/store/local/miniconda3/"
+        "conda_base_dir": "/store/local/miniforge3/"
     },
     "daac_config": {
         "aws_cli_exe": "/store/shared/aws-cli/v2/current/bin/aws",

@@ -8,7 +8,7 @@
 echo "$(date +"%F %T,%3N"): Executing ingest_1675_science_data.sh cron job for $1 environment with $2 conda environment"
 
 echo "Activating conda environment $2"
-source /local/miniconda3/etc/profile.d/conda.sh
+source /local/miniforge3/etc/profile.d/conda.sh
 conda activate ${2}
 
 cd /store/emit/${1}/repos/emit-main/emit_main
