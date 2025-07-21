@@ -23,7 +23,7 @@
     {
       "url": "git@github.com:emit-sds/emit-sds-l1b.git",
       "tag": "v1.4.3",
-      "conda_env": "emit-isofit-20250705"
+      "conda_env": "emit-l1b-20250705"
     },
     {
       "url": "git@github.com:emit-sds/emit-sds-l1b-geo.git",
@@ -52,7 +52,7 @@
     },
     {
       "url": "https://github.com/isofit/isofit.git",
-      "tag": "v2.9.8",
+      "tag": "v3.5.0",
       "conda_env": "emit-isofit-20250705"
     },
     {

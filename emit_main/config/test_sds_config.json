@@ -27,7 +27,7 @@
         "exchange_server": "ums.jpl.nasa.gov"
     },
     "build_config": {
-        "extended_build_num": "010626",
+        "extended_build_num": "010627",
         "conda_base_dir": "/store/local/miniforge3/"
     },
     "daac_config": {
@@ -63,6 +63,7 @@
         "isofit_surface_config": "/store/emit/test/repos/emit-sds-l2a/surface/surface_20240103.json",
         "isofit_emulator_base": "/store/shared/sRTMnet_v120.h5",
         "isofit_sixs_dir": "/store/shared/sixs",
+        "isofit_ini_path": "/store/emit/test/resources/.isofit/isofit.ini",
         "specpr_path": "/store/shared/spectroscopy-tetracorder/specpr",
         "tetracorder_path": "/store/shared/spectroscopy-tetracorder/tetracorder5.27",
         "tetracorder_cmds_path": "/store/shared/tetracorder5.27c.cmds",

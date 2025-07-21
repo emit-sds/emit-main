@@ -92,7 +92,8 @@ class L2AReflectance(SlurmJobTask):
             "observation_parameters_file": acq.obs_img_path,
             "surface_model_config": surface_config_path
         }
-        cmd = ["isofit", "apply_oe", acq.rdn_img_path, acq.loc_img_path, acq.obs_img_path, self.local_tmp_dir, "emit",
+        cmd = ["isofit", "-i", wm.config["isofit_ini_path"], "apply_oe", 
+               acq.rdn_img_path, acq.loc_img_path, acq.obs_img_path, self.local_tmp_dir, "emit",
                "--presolve",
                "--analytical_line",
                "--emulator_base=" + emulator_base,
