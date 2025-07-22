@@ -996,8 +996,8 @@ class L1BAttDeliver(SlurmJobTask):
         software_build_version = nc_ds.software_build_version
         if 'software_delivery_version' in nc_ds.ncattrs() and nc_ds.software_delivery_version == wm.config["extended_build_num"]:
             logging.info('Skipping software_delivery_version assignment, because it already exists and matches')
-        else:
-            nc_ds.software_delivery_version = wm.config["extended_build_num"]
+        # else:
+        #     nc_ds.software_delivery_version = wm.config["extended_build_num"]
         nc_ds.sync()
         nc_ds.close()
 
