@@ -1,13 +1,13 @@
 name: emit-main
 channels:
-  - defaults
+  - conda-forge
 dependencies:
-  - python=3.7.7
+  - python=3.7.12
   - luigi=2.8.10
   - pymongo=3.9.0
-  - gdal=3.0.2
+  - gdal=3.1.4
   - python-dateutil=2.8.1
-  - mongodb=4.0.3
+  - mongodb=4.2.15
   - pytest=6.2.1
   - pytest-cov=2.10.1
   - pycodestyle=2.6.0
