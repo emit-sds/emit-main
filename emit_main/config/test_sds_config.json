@@ -87,11 +87,17 @@
                 "l1b_config_path": "/store/emit/test/repos/emit-sds-l1b/config/EMIT_20240227.json",
                 "config_comments": "Calibration change in response to FSW reboot on 2024-02-19T12:38:13Z."
             },
-            "2024-08-18T00:00:00_to_2030-01-01T00:00:00": {
+            "2024-08-18T00:00:00_to_2025-07-13T16:25:00": {
                 "tetracorder_library_basename": "em2410a",
                 "tetracorder_library_cmdname": "em2410a",
                 "l1b_config_path": "/store/emit/test/repos/emit-sds-l1b/config/EMIT_20241025.json",
                 "config_comments": "Calibration change in response to FUBAR anomaly on 2024-08-17T19:30:45Z."
+            },
+            "2025-07-13T16:25:00_to_2030-01-01T00:00:00": {
+                "tetracorder_library_basename": "em2507a",
+                "tetracorder_library_cmdname": "em2507a",
+                "l1b_config_path": "/store/emit/test/repos/emit-sds-l1b/config/EMIT_20250721.json",
+                "config_comments": "Calibration change in response to anomaly on 2025-07-13T16:25:00Z."
             }
         }
     }
