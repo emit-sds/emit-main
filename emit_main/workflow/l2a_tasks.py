@@ -771,7 +771,7 @@ class L2AMaskTf(SlurmJobTask):
             "radiance_file": acq.rdn_img_path,
             "observation_parameters_file": acq.obs_img_path,
             "pixel_locations_file": acq.loc_img_path,
-            "geolocation_table_file": acq.loc_img_path,
+            "geolocation_table_file": acq.glt_img_path,
             "atmosphere_file": acq.atm_img_path,
             "solar_irradiance_file": solar_irradiance_path
         }
