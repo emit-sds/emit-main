@@ -8,6 +8,7 @@ dependencies:
   - gdal=3.1.4
   - python-dateutil=2.8.1
   - mongodb=4.2.15
+  - mongo-tools=4.2.5
   - pytest=6.2.1
   - pytest-cov=2.10.1
   - pycodestyle=2.6.0
