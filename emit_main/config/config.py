@@ -52,7 +52,7 @@ class Config:
             # Get passwords from resources/credentials directory
             self.dictionary.update(self._get_passwords())
             
-            # Added well known errors
+            # Add well known errors
             self.dictionary['well_known_errors'] = config['well_known_errors']
 
     def _get_product_config_paths(self, product_config, timestamp):
