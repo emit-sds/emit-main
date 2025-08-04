@@ -40,7 +40,22 @@ class DatabaseManager:
             if not failed:
                 non_failed_results.append(r)
         return non_failed_results
-
+    
+    def _remove_results_with_well_known_errors(self, results, tasks):
+        non_wke_results = []
+        for result in results:
+            has_wke = False
+            if "processing_log" in result:
+                for log_entry in reversed(result["processing_log"]):
+                    if log_entry["task"] in tasks and log_entry["completion_status"] == "FAILURE":
+                        known_errors = self.config['well_known_errors'].get(log_entry["task"])
+                        if known_errors and any(err in log_entry['error_message'] for err in known_errors):
+                            has_wke = True
+                            break
+            if not has_wke:
+                non_wke_results.append(result)
+        return non_wke_results
+    
     def find_acquisition_by_id(self, acquisition_id):
         acquisitions_coll = self.db.acquisitions
         return acquisitions_coll.find_one({"acquisition_id": acquisition_id, "build_num": self.config["build_num"]})
@@ -109,6 +124,9 @@ class DatabaseManager:
         results = list(acquisitions_coll.find(query).sort("start_time", 1))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L1BCalibrate"])
+        else:
+            results = self._remove_results_with_well_known_errors(results, ["emit.L1BCalibrate"])
+
         acqs_ready_for_cal = []
         for acq in results:
             recent_darks = self.find_acquisitions_touching_date_range(
@@ -162,6 +180,8 @@ class DatabaseManager:
         results += list(acquisitions_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L2AReflectance", "emit.L2AMask"])
+        else:
+            results = self._remove_results_with_well_known_errors(results, ["emit.L2AReflectance", "emit.L2AMask"])
         return results
 
     def find_acquisitions_for_l2b(self, start, stop, date_field="last_modified", retry_failed=False):
@@ -692,6 +712,8 @@ class DatabaseManager:
         results = list(orbits_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L1BGeolocate"])
+        else:
+            results = self._remove_results_with_well_known_errors(results, ["emit.L1BGeolocate"])
         return results
 
     def find_orbits_for_daac_scene_numbers(self, start, stop, date_field="last_modified", retry_failed=False):
