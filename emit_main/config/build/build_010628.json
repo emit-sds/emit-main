@@ -22,7 +22,7 @@
     },
     {
       "url": "git@github.com:emit-sds/emit-sds-l1b.git",
-      "tag": "v1.4.3",
+      "tag": "v1.4.5",
       "conda_env": "emit-l1b-20250705"
     },
     {
@@ -32,7 +32,7 @@
     },
     {
       "url": "git@github.com:emit-sds/emit-sds-l2a.git",
-      "tag": "v1.3.3",
+      "tag": "v1.4.0",
       "conda_env": "emit-isofit-20250705"
     },
     {
@@ -72,7 +72,7 @@
     },
     {
       "url": "git@github.jpl.nasa.gov:aviris/NGIS_Check_Line_Frame.git",
-      "tag": "emit-sds-0.6.0",
+      "tag": "emit-sds-0.6.1",
       "conda_env": "emit-check-line-frame-20250705"
     },
     {
