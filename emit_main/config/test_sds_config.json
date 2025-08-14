@@ -27,8 +27,8 @@
         "exchange_server": "ums.jpl.nasa.gov"
     },
     "build_config": {
-        "extended_build_num": "010627",
-        "conda_base_dir": "/store/local/miniconda3/"
+        "extended_build_num": "010628",
+        "conda_base_dir": "/store/local/miniforge3/"
     },
     "daac_config": {
         "aws_cli_exe": "/store/shared/aws-cli/v2/current/bin/aws",
@@ -60,9 +60,10 @@
         "decompression_init_data_path": "/store/emit/test/repos/emit-sds-l1a/decompression/FPGA_Data_Initialization_File_CREATE_COMPRESSION_INIT_DATA_328_e0.bin",
         "l1b_geo_install_dir": "/store/emit/ops/repos/emit_l1b_geo_installs/1.6.19",
         "l1b_geo_osp_dir": "/store/emit/ops/repos/emit_l1b_osp_installs/1.6.19",
-        "isofit_surface_config": "/store/emit/test/repos/emit-sds-l2a/surface/surface_20221020.json",
+        "isofit_surface_config": "/store/emit/test/repos/emit-sds-l2a/surface/surface_20240103.json",
         "isofit_emulator_base": "/store/shared/sRTMnet_v120.h5",
         "isofit_sixs_dir": "/store/shared/sixs",
+        "isofit_ini_path": "/store/emit/test/resources/.isofit/isofit.ini",
         "specpr_path": "/store/shared/spectroscopy-tetracorder/specpr",
         "tetracorder_path": "/store/shared/spectroscopy-tetracorder/tetracorder5.27",
         "tetracorder_cmds_path": "/store/shared/tetracorder5.27c.cmds",

@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v1.6.28](https://github.com/emit-sds/emit-main/compare/v1.6.27...v1.6.28)
+
+> 14 August 2025
+
+* Sync isofit_3x with develop by @adamchlus in https://github.com/emit-sds/emit-main/pull/63
+* Add Isofit 3x to minforge branch for testing by @winstonolson in https://github.com/emit-sds/emit-main/pull/69
+* Use miniforge with conda-forge and upgrade to isofit 3.x by @winstonolson in https://github.com/emit-sds/emit-main/pull/72
+
 #### [v1.6.27](https://github.com/emit-sds/emit-main/compare/v1.6.26...v1.6.27)
 
 > 22 July 2025

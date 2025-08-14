@@ -5,7 +5,7 @@
 
 echo "$(date +"%F %T,%3N"): Executing copy_sftp.sh cron job with '$1' environment and '$2' conda environment."
 
-source /local/miniconda3/etc/profile.d/conda.sh
+source /local/miniforge3/etc/profile.d/conda.sh
 conda activate $2
 
 INGEST_DIR=/store/emit/$1/ingest

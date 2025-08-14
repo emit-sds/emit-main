@@ -8,7 +8,7 @@
 
 echo "$(date +"%F %T,%3N"): Executing stage_metrics.sh cron job for $1 environment with $2 conda environment for the last $3 days"
 
-source /local/miniconda3/etc/profile.d/conda.sh
+source /local/miniforge3/etc/profile.d/conda.sh
 conda activate $2
 
 cd /store/emit/${1}/repos/emit-main/emit_main
