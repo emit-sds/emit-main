@@ -27,7 +27,7 @@
     "exchange_server": "ums.jpl.nasa.gov"
   },
   "build_config": {
-    "extended_build_num": "010627",
+    "extended_build_num": "010628",
     "conda_base_dir": "/store/local/miniforge3/"
   },
   "daac_config": {
