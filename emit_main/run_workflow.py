@@ -522,7 +522,7 @@ def main():
     # Get tasks from dl1a (deliver l1a) monitor
     if args.monitor and args.monitor == "dl1a":
         am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
-                                daac_ingest_queue=args.daac_ingest_queue, override_ouput=args.override_output))
+                                daac_ingest_queue=args.daac_ingest_queue, override_ouput=args.override_output)
         am_dl1a_tasks = am.get_l1a_delivery_tasks(start_time=args.start_time, stop_time=args.stop_time,
                                                   date_field=args.date_field, retry_failed=args.retry_failed)
         am_dl1a_tasks_str = "\n".join([str(t) for t in am_dl1a_tasks])
@@ -532,7 +532,7 @@ def main():
     # Get tasks from dl1brdn (deliver dl1brdn) monitor
     if args.monitor and args.monitor == "dl1brdn":
         am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
-                                daac_ingest_queue=args.daac_ingest_queue, override_ouput=args.override_output))
+                                daac_ingest_queue=args.daac_ingest_queue, override_ouput=args.override_output)
         am_dl1brdn_tasks = am.get_l1brdn_delivery_tasks(start_time=args.start_time, stop_time=args.stop_time,
                                                         date_field=args.date_field, retry_failed=args.retry_failed)
         am_dl1brdn_tasks_str = "\n".join([str(t) for t in am_dl1brdn_tasks])
@@ -552,7 +552,7 @@ def main():
     # Get tasks from dl2a (deliver l2a) monitor
     if args.monitor and args.monitor == "dl2a":
         am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
-                                daac_ingest_queue=args.daac_ingest_queue, override_ouput=args.override_output))
+                                daac_ingest_queue=args.daac_ingest_queue, override_ouput=args.override_output)
         am_dl2a_tasks = am.get_l2a_delivery_tasks(start_time=args.start_time, stop_time=args.stop_time,
                                                   date_field=args.date_field, retry_failed=args.retry_failed)
         am_dl2a_tasks_str = "\n".join([str(t) for t in am_dl2a_tasks])
@@ -562,7 +562,7 @@ def main():
     # Get tasks from dl2b (deliver l2b) monitor
     if args.monitor and args.monitor == "dl2b":
         am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
-                                daac_ingest_queue=args.daac_ingest_queue, override_ouput=args.override_output))
+                                daac_ingest_queue=args.daac_ingest_queue, override_ouput=args.override_output)
         am_dl2b_tasks = am.get_l2b_delivery_tasks(start_time=args.start_time, stop_time=args.stop_time,
                                                   date_field=args.date_field, retry_failed=args.retry_failed)
         am_dl2b_tasks_str = "\n".join([str(t) for t in am_dl2b_tasks])
@@ -572,7 +572,7 @@ def main():
     # Get tasks from dch4 (deliver ch4) monitor
     if args.monitor and args.monitor == "dch4":
         am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
-                                daac_ingest_queue=args.daac_ingest_queue, override_ouput=args.override_output))
+                                daac_ingest_queue=args.daac_ingest_queue, override_ouput=args.override_output)
         am_dch4_tasks = am.get_ch4_delivery_tasks(start_time=args.start_time, stop_time=args.stop_time,
                                                   date_field=args.date_field, retry_failed=args.retry_failed)
         am_dch4_tasks_str = "\n".join([str(t) for t in am_dch4_tasks])
@@ -582,7 +582,7 @@ def main():
     # Get tasks from dco2 (deliver co2) monitor
     if args.monitor and args.monitor == "dco2":
         am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
-                                daac_ingest_queue=args.daac_ingest_queue, override_ouput=args.override_output))
+                                daac_ingest_queue=args.daac_ingest_queue, override_ouput=args.override_output)
         am_dco2_tasks = am.get_co2_delivery_tasks(start_time=args.start_time, stop_time=args.stop_time,
                                                   date_field=args.date_field, retry_failed=args.retry_failed)
         am_dco2_tasks_str = "\n".join([str(t) for t in am_dco2_tasks])
