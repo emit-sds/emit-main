@@ -438,7 +438,7 @@ def main():
                                         headers={'Accept': 'application/json'
                                                  #'Authorization':f'Bearer {token}'
                                                  })
-                out_json_dir = f"/store/emit/ops/reports/cmr/{cur_date.strftime('%Y%m%d')}"
+                out_json_dir = f"/store/emit/{env}/reports/cmr/{cur_date.strftime('%Y%m%d')}"
                 out_json_path = f"{out_json_dir}/cmr_{cur_date.strftime('%Y%m%d')}_{level}.json"
                 if not os.path.exists(out_json_dir):
                     os.makedirs(out_json_dir)
