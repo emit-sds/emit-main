@@ -21,7 +21,7 @@ logger = logging.getLogger("emit-main")
 
 class AcquisitionMonitor:
 
-    def __init__(self, config_path, level="INFO", partition="emit", daac_ingest_queue="forward"):
+    def __init__(self, config_path, level="INFO", partition="emit", daac_ingest_queue="forward", override_output = False):
         """
         :param config_path: Path to config file containing environment settings
         """
@@ -30,6 +30,7 @@ class AcquisitionMonitor:
         self.level = level
         self.partition = partition
         self.daac_ingest_queue = daac_ingest_queue
+        self.override_output = override_output
 
         # Get workflow manager
         self.wm = WorkflowManager(config_path=config_path)
@@ -185,7 +186,8 @@ class AcquisitionMonitor:
                                     acquisition_id=acq["acquisition_id"],
                                     level=self.level,
                                     partition=self.partition,
-                                    daac_ingest_queue=self.daac_ingest_queue))
+                                    daac_ingest_queue=self.daac_ingest_queue,
+                                    override_output = self.override_output))
 
         return tasks
 
@@ -208,7 +210,8 @@ class AcquisitionMonitor:
                                        acquisition_id=acq["acquisition_id"],
                                        level=self.level,
                                        partition=self.partition,
-                                       daac_ingest_queue=self.daac_ingest_queue))
+                                       daac_ingest_queue=self.daac_ingest_queue,
+                                       override_output = self.override_output))
 
         return tasks
 
@@ -231,7 +234,8 @@ class AcquisitionMonitor:
                                     acquisition_id=acq["acquisition_id"],
                                     level=self.level,
                                     partition=self.partition,
-                                    daac_ingest_queue=self.daac_ingest_queue))
+                                    daac_ingest_queue=self.daac_ingest_queue,
+                                    override_output = self.override_output))
 
         return tasks
 
@@ -254,7 +258,8 @@ class AcquisitionMonitor:
                                     acquisition_id=acq["acquisition_id"],
                                     level=self.level,
                                     partition=self.partition,
-                                    daac_ingest_queue=self.daac_ingest_queue))
+                                    daac_ingest_queue=self.daac_ingest_queue,
+                                    override_output = self.override_output))
 
         return tasks
 
@@ -277,7 +282,8 @@ class AcquisitionMonitor:
                                     acquisition_id=acq["acquisition_id"],
                                     level=self.level,
                                     partition=self.partition,
-                                    daac_ingest_queue=self.daac_ingest_queue))
+                                    daac_ingest_queue=self.daac_ingest_queue,
+                                    override_output = self.override_output))
 
         return tasks
     
@@ -301,6 +307,7 @@ class AcquisitionMonitor:
                                     acquisition_id=acq["acquisition_id"],
                                     level=self.level,
                                     partition=self.partition,
-                                    daac_ingest_queue=self.daac_ingest_queue))
+                                    daac_ingest_queue=self.daac_ingest_queue,
+                                    override_output = self.override_output))
 
         return tasks
