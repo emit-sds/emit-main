@@ -245,6 +245,18 @@ def main():
                 min_nc_files = glob.glob(f"{dir}/{acq}/l2b/{acq}*_abun_*nc")
                 minunc_img_files = glob.glob(f"{dir}/{acq}/l2b/{acq}*_abununcert_*img")
                 minunc_nc_files = glob.glob(f"{dir}/{acq}/l2b/{acq}*_abununcert_*nc")
+                ch4_img_files = glob.glob(f"{dir}/{acq}/ghg/ch4/{acq}*_ch4_*img")
+                ch4_tif_files = glob.glob(f"{dir}/{acq}/ghg/ch4/{acq}*_ortch4_*tif")
+                sensch4_img_files = glob.glob(f"{dir}/{acq}/ghg/ch4/{acq}*_sensch4_*img")
+                sensch4_tif_files = glob.glob(f"{dir}/{acq}/ghg/ch4/{acq}*_ortsensch4_*tif")
+                uncertch4_img_files = glob.glob(f"{dir}/{acq}/ghg/ch4/{acq}*_uncertch4_*img")
+                uncertch4_tif_files = glob.glob(f"{dir}/{acq}/ghg/ch4/{acq}*_ortuncertch4_*tif")
+                co2_img_files = glob.glob(f"{dir}/{acq}/ghg/co2/{acq}*_co2_*img")
+                co2_tif_files = glob.glob(f"{dir}/{acq}/ghg/co2/{acq}*_ortco2_*tif")
+                sensco2_img_files = glob.glob(f"{dir}/{acq}/ghg/co2/{acq}*_sensco2_*img")
+                sensco2_tif_files = glob.glob(f"{dir}/{acq}/ghg/co2/{acq}*_ortsensco2_*tif")
+                uncertco2_img_files = glob.glob(f"{dir}/{acq}/ghg/co2/{acq}*_uncertco2_*img")
+                uncertco2_tif_files = glob.glob(f"{dir}/{acq}/ghg/co2/{acq}*_ortuncertco2_*tif")
                 df["l1a_raw_exists"], df["l1b_radiance_exists"] = False, False
                 df["l2a_reflectance_exists"], df["l2b_mineral_id_exists"] = False, False
 
@@ -286,7 +298,30 @@ def main():
                     df["minunc_img_size_bytes"] = os.path.getsize(minunc_img_files[0])
                 if len(minunc_nc_files) > 0:
                     df["minunc_nc_size_bytes"] = os.path.getsize(minunc_nc_files[0])
-
+                if len(ch4_img_files) > 0:
+                    df["ch4_img_size_bytes"] = os.path.getsize(ch4_img_files[0])
+                if len(ch4_tif_files) > 0:
+                    df["ch4_tif_size_bytes"] = os.path.getsize(ch4_tif_files[0])
+                if len(sensch4_img_files) > 0:
+                    df["sensch4_img_size_bytes"] = os.path.getsize(sensch4_img_files[0])
+                if len(sensch4_tif_files) > 0:
+                    df["sensch4_tif_size_bytes"] = os.path.getsize(sensch4_tif_files[0])
+                if len(uncertch4_img_files) > 0:
+                    df["uncertch4_img_size_bytes"] = os.path.getsize(uncertch4_img_files[0])
+                if len(uncertch4_tif_files) > 0:
+                    df["uncertch4_tif_size_bytes"] = os.path.getsize(uncertch4_tif_files[0])
+                if len(co2_img_files) > 0:
+                    df["co2_img_size_bytes"] = os.path.getsize(co2_img_files[0])
+                if len(co2_tif_files) > 0:
+                    df["co2_tif_size_bytes"] = os.path.getsize(co2_tif_files[0])
+                if len(sensco2_img_files) > 0:
+                    df["sensco2_img_size_bytes"] = os.path.getsize(sensco2_img_files[0])
+                if len(sensco2_tif_files) > 0:
+                    df["sensco2_tif_size_bytes"] = os.path.getsize(sensco2_tif_files[0])
+                if len(uncertco2_img_files) > 0:
+                    df["uncertco2_img_size_bytes"] = os.path.getsize(uncertco2_img_files[0])
+                if len(uncertco2_tif_files) > 0:
+                    df["uncertco2_tif_size_bytes"] = os.path.getsize(uncertco2_tif_files[0])
                 # Get reassembly report info
                 if len(reassembly_reports) > 0:
                     num_lines, corrupt_lines, cloudy_frames = 0, 0, 0
