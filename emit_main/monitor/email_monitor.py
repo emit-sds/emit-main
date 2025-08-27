@@ -124,10 +124,10 @@ class EmailMonitor:
             messages = graph_data.get('value', [])
             return messages
         else:
-            print("Error:")
-            print(response.get("error"))
-            print(response.get("error_description"))
-            print(response.get("correlation_id"))
+            logger.error("Error:")
+            logger.error(response.get("error"))
+            logger.error(response.get("error_description"))
+            logger.error(response.get("correlation_id"))
             return []
 
     def move_message(self, message_id, destination_folder_id):
@@ -143,7 +143,7 @@ class EmailMonitor:
         }
         response = requests.post(f"{self.base_url}/messages/{message_id}/move", headers=headers, json=payload)
         response.raise_for_status()
-        print("Message moved successfully!")
+        logger.info("Message moved successfully!")
 
     def process_daac_delivery_responses(self):
         messages = self.retrieve_inbox_messages()
@@ -184,8 +184,7 @@ class EmailMonitor:
                 continue
 
             # Now get JSON response
-            print(f"Processing message with subject \"{subject}\" dated "
-                  f"{time_received}.")
+            logger.info(f"Processing message with subject \"{subject}\" dated {time_received}.")
             response = json.loads(body_text.split("--")[0])
             # Get identifier
             try:
