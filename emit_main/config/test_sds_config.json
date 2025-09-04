@@ -29,7 +29,7 @@
         "graph_api_base_url": "https://graph.microsoft.com/v1.0/users/"
     },
     "build_config": {
-        "extended_build_num": "010628",
+        "extended_build_num": "010629",
         "conda_base_dir": "/store/local/miniforge3/"
     },
     "daac_config": {
