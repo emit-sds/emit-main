@@ -17,8 +17,8 @@
         "db_user": "emit-test"
     },
     "email_config": {
-        "email_user": "emit-sds@jpl.nasa.gov",
-        "email_sender": "emit-sds@jpl.nasa.gov",
+        "email_user": "emit-sds-test@jpl.nasa.gov",
+        "email_sender": "emit-sds-test@jpl.nasa.gov",
         "email_recipient_list": [
             "emit-sds-admins@jpl.nasa.gov"
         ],

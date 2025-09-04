@@ -115,7 +115,7 @@ class EmailMonitor:
             "Content-Type": "application/json"
         }
 
-        url = self.base_url + "/mailFolders/inbox/messages"
+        url = self.base_url + "/mailFolders/inbox/messages?$top=1000"
 
         response = requests.get(url, headers=headers)
         
