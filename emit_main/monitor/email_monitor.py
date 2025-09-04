@@ -129,6 +129,38 @@ class EmailMonitor:
             logger.error(response.get("error_description"))
             logger.error(response.get("correlation_id"))
             return []
+        
+    def get_message_as_dict(self, m):
+        """
+        Converts a message object to a dictionary.
+        """
+
+        # Get time_received in local time
+        time_received_utc = m.get('receivedDateTime')
+        dt_utc = datetime.fromisoformat(time_received_utc.replace("Z", "+00:00"))
+        pacific = pytz.timezone("America/Los_Angeles")
+        dt_local = dt_utc.astimezone(pacific)
+        time_received = dt_local.strftime("%Y-%m-%d %H:%M:%S %Z")
+
+        # Get body_text from HTML body
+        body = m.get('body', {}).get('content')
+        content_type = m.get('body', {}).get('contentType')
+        if content_type == "html":
+            # Convert HTML to plain text
+            soup = BeautifulSoup(body, "html.parser")
+            body_text = soup.get_text()
+        else:
+            body_text = body
+        # Remove leading and trailing spaces and \r and \n from body text
+        body_text = body_text.strip().replace("\r", "").replace("\n", "")
+
+        message_dict = {
+            "id": m.get("id"),
+            "subject": m.get("subject"),
+            "time_received": time_received,
+            "body_text": body_text,
+        }
+        return message_dict
 
     def move_message(self, message_id, destination_folder_id):
         """
@@ -149,68 +181,47 @@ class EmailMonitor:
         messages = self.retrieve_inbox_messages()
         logger.info(f"Attempting to process {len(messages)} messages in inbox for DAAC delivery responses.")
         dm = self.wm.database_manager
-        for m in messages:
-            # Get message properties
-            message_id = m.get('id')
-            subject = m.get('subject')
-            
-            # Get time_received in local time
-            time_received_utc = m.get('receivedDateTime')
-            dt_utc = datetime.fromisoformat(time_received_utc.replace("Z", "+00:00"))
-            pacific = pytz.timezone("America/Los_Angeles")
-            dt_local = dt_utc.astimezone(pacific)
-            time_received = dt_local.strftime("%Y-%m-%d %H:%M:%S %Z")
-
-            # Get body_text from HTML body
-            body = m.get('body', {}).get('content')
-            content_type = m.get('body', {}).get('contentType')
-            if content_type == "html":
-                # Convert HTML to plain text
-                soup = BeautifulSoup(body, "html.parser")
-                body_text = soup.get_text()
-            else:
-                body_text = body
-            # Remove leading and trailing spaces and \r and \n from body text
-            body_text = body_text.strip().replace("\r", "").replace("\n", "")
+        for message in messages:
+            m = self.get_message_as_dict(message)
 
             # Check that the subject includes "AWS Notification Message"
-            if "AWS Notification Message" not in subject:
+            if "AWS Notification Message" not in m["subject"]:
                 continue
 
             # Check that body starts with "{" to indicate a JSON response
-            if not body_text.startswith("{"):
-                logger.info(f"Unable to find JSON at start of message with subject \"{subject}\" dated "
-                            f"{time_received}. Leaving in inbox.")
+            if not m["body_text"].startswith("{"):
+                logger.info(f"Unable to find JSON at start of message with subject \"{m['subject']}\" dated "
+                            f"{m['time_received']}. Leaving in inbox.")
                 continue
 
             # Now get JSON response
-            logger.info(f"Processing message with subject \"{subject}\" dated {time_received}.")
-            response = json.loads(body_text.split("--")[0])
+            logger.info(f"Processing message with subject \"{m['subject']}\" dated {m['time_received']}.")
+            response = json.loads(m["body_text"].split("--")[0])
             # Get identifier
             try:
                 identifier = response["identifier"]
             except KeyError:
-                logger.info(f"Unable to find identifier in email message with subject \"{subject}\" dated "
-                            f"{time_received}. Leaving in inbox.")
+                logger.info(f"Unable to find identifier in email message with subject \"{m['subject']}\" dated "
+                            f"{m['time_received']}. Leaving in inbox.")
                 continue
             # Get response status
             try:
                 response_status = response["response"]["status"].upper()
             except KeyError:
-                logger.info(f"Unable to find response status in email message with subject \"{subject}\" dated "
-                            f"{time_received}. Leaving in inbox.")
+                logger.info(f"Unable to find response status in email message with subject \"{m['subject']}\" dated "
+                            f"{m['time_received']}. Leaving in inbox.")
                 continue
 
             # Lookup granule report by identifier. If not found, then assume it was submitted by a different environment
             if dm.find_granule_report_by_id(identifier) is None:
                 logger.info(f"Cannot find granule report for submission {response['identifier']} dated "
-                            f"{time_received}. Leaving message in inbox.")
+                            f"{m['time_received']}. Leaving message in inbox.")
                 continue
 
             # Otherwise, look at response status.  Update DB and move message out of inbox to success or failure folders
             if response_status == "SUCCESS":
                 dm.update_granule_report_submission_statuses(identifier, response_status)
-                self.move_message(message_id, self.delivery_success_folder_id)
+                self.move_message(m["id"], self.delivery_success_folder_id)
             if response_status == "FAILURE":
                 if "errorCode" in response["response"]:
                     error_code = response["response"]["errorCode"]
@@ -222,7 +233,7 @@ class EmailMonitor:
                     error_message = ""
                 dm.update_granule_report_submission_statuses(identifier,
                                                              ",".join([response_status, error_code, error_message]))
-                self.move_message(message_id, self.delivery_failure_folder_id)
+                self.move_message(m["id"], self.delivery_failure_folder_id)
 
     def process_daac_reconciliation_responses(self, reconciliation_response_path=None, retry_failed=False):
         dm = self.wm.database_manager
@@ -232,59 +243,38 @@ class EmailMonitor:
             messages = self.retrieve_inbox_messages()
             logger.info(f"Attempting to process {len(messages)} messages in inbox for DAAC reconciliation "
                         f"responses.")
-            for m in messages:
-                # Get message properties
-                message_id = m.get('id')
-                subject = m.get('subject')
-                
-                # Get time_received in local time
-                time_received_utc = m.get('receivedDateTime')
-                dt_utc = datetime.fromisoformat(time_received_utc.replace("Z", "+00:00"))
-                pacific = pytz.timezone("America/Los_Angeles")
-                dt_local = dt_utc.astimezone(pacific)
-                time_received = dt_local.strftime("%Y-%m-%d %H:%M:%S %Z")
-
-                # Get body_text from HTML body
-                body = m.get('body', {}).get('content')
-                content_type = m.get('body', {}).get('contentType')
-                if content_type == "html":
-                    # Convert HTML to plain text
-                    soup = BeautifulSoup(body, "html.parser")
-                    body_text = soup.get_text()
-                else:
-                    body_text = body
-                # Remove leading and trailing spaces and \r and \n from body text
-                body_text = body_text.strip().replace("\r", "").replace("\n", "")
+            for message in messages:
+                m = self.get_message_as_dict(message)
 
                 # Check that the subject includes "Rec-Report for lp-prod-reconciliation" or
                 # "Rec-Report for lp-uat-reconciliation"
-                if env == "ops" and "Rec-Report EMIT lp-prod" not in subject:
+                if env == "ops" and "Rec-Report EMIT lp-prod" not in m["subject"]:
                     continue
 
-                if env == "test" and "Rec-Report EMIT lp-uat" not in subject:
+                if env == "test" and "Rec-Report EMIT lp-uat" not in m["subject"]:
                     continue
 
-                match = re.search("ER_.+rpt", subject)
+                match = re.search("ER_.+rpt", m)
                 if match is None:
-                    logger.warning(f"Found email with subject \"{subject}\" dated {time_received} but unable to "
+                    logger.warning(f"Found email with subject \"{m['subject']}\" dated {m['time_received']} but unable to "
                                    f"identify the reconciliation report name from the subject")
                     continue
 
                 report = match.group()
                 # Find all files in this report
                 files = dm.find_files_by_last_reconciliation_report(report=report)
-                if body_text.startswith("No discrepencies found"):
-                    logger.info(f"No discrepancies found in email with subject \"{subject}\" dated {time_received}. "
+                if m["body_text"].startswith("No discrepancies found"):
+                    logger.info(f"No discrepancies found in email with subject \"{m['subject']}\" dated {m['time_received']}. "
                                 f"Marking all files as reconciled.")
                     # Mark all files as reconciled
                     for f in files:
                         dm.update_reconciliation_submission_status(f["daac_filename"], f["submission_id"], report,
                                                                    "RECONCILED")
-                    self.move_message(message_id, self.reconciliation_success_folder_id)
+                    self.move_message(m["id"], self.reconciliation_success_folder_id)
                 else:
                     report_response_name = report.replace(".rpt", ".json")
                     reconciliation_response_path = os.path.join(self.wm.reconciliation_dir, report_response_name)
-                    logger.info(f"Discrepancies found in email with subject \"{subject}\" dated {time_received}. "
+                    logger.info(f"Discrepancies found in email with subject \"{m['subject']}\" dated {m['time_received']}. "
                                 f"Downloading report file to {reconciliation_response_path}.")
                     pge = self.wm.pges["emit-main"]
                     # cmd: aws s3 cp s3://lp-prod-reconciliation/reports/EMIT_RECON_PROD.json ./
@@ -296,7 +286,7 @@ class EmailMonitor:
                            "--profile", self.wm.config["aws_profile"]]
                     pge.run(cmd)
                     self.wm.change_group_ownership(reconciliation_response_path)
-                    self.move_message(message_id, self.reconciliation_failure_folder_id)
+                    self.move_message(m["id"], self.reconciliation_failure_folder_id)
 
         # Check if we have response path now and update files accordingly
         granule_urs = set()
