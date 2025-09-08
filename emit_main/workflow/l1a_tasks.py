@@ -75,6 +75,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
         input_files = {"ccsds_path": stream.ccsds_path}
         cmd = ["python", sds_l1a_science_packet_exe, stream.ccsds_path,
                "--pkt_format", self.pkt_format,
+               "--frame_hdr_format", wm.config["frame_hdr_format"],
                "--work_dir", self.local_tmp_dir,
                "--level", self.level,
                "--log_path", tmp_log_path]
@@ -343,6 +344,7 @@ class L1AReassembleRaw(SlurmJobTask):
                "--flexcodec_exe", flex_codec_exe,
                "--constants_path", constants_path,
                "--init_data_path", init_data_path,
+               "--frame_hdr_format", wm.config["frame_hdr_format"],
                "--work_dir", self.local_tmp_dir,
                "--level", self.level,
                "--log_path", tmp_log_path,
@@ -360,7 +362,10 @@ class L1AReassembleRaw(SlurmJobTask):
         pge_reassemble.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
         # Now run the compute line stats script
-        pge_line_stats = wm.pges["NGIS_Check_Line_Frame"]
+        if wm.config["frame_hdr_format"] == "1.0":
+            pge_line_stats = wm.pges["NGIS_Check_Line_Frame"]
+        elif wm.config["frame_hdr_format"] == "1.5":
+            pge_line_stats = wm.pges["NGIS_Check_Line_Frame_1.5"]
         compute_line_stats_exe = os.path.join(pge_line_stats.repo_dir, "python", "compute_line_stats.py")
         tmp_image_dir = os.path.join(self.local_tmp_dir, "image")
         tmp_decomp_no_header_paths = glob.glob(os.path.join(tmp_image_dir, "*.decomp_no_header"))
@@ -703,7 +708,10 @@ class L1AFrameReport(SlurmJobTask):
 
         wm = WorkflowManager(config_path=self.config_path, dcid=self.dcid)
         dc = wm.data_collection
-        pge = wm.pges["NGIS_Check_Line_Frame"]
+        if wm.config["frame_hdr_format"] == "1.0":
+            pge = wm.pges["NGIS_Check_Line_Frame"]
+        elif wm.config["frame_hdr_format"] == "1.5":
+            pge = wm.pges["NGIS_Check_Line_Frame_1.5"]
 
         tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
         wm.makedirs(tmp_output_dir)

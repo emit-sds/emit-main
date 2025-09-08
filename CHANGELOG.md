@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v1.6.29](https://github.com/emit-sds/emit-main/compare/v1.6.28...v1.6.29)
+
+> 8 September 2025
+
+* Run workflow updates by @adamchlus in https://github.com/emit-sds/emit-main/pull/74
+* GHG metrics by @adamchlus in https://github.com/emit-sds/emit-main/pull/75
+* Add frame_hdr_format to support enhanced cloud screening by @winstonolson in https://github.com/emit-sds/emit-main/pull/76
+* Use Graph API for emit-sds mailbox by @winstonolson in https://github.com/emit-sds/emit-main/pull/77
+
 #### [v1.6.28](https://github.com/emit-sds/emit-main/compare/v1.6.27...v1.6.28)
 
 > 14 August 2025

@@ -24,10 +24,12 @@
         ],
         "smtp_host": "smtp.jpl.nasa.gov",
         "smtp_port": 587,
-        "exchange_server": "ums.jpl.nasa.gov"
+        "graph_api_app_id": "b9adb101-52a1-4111-ac13-b534ff282581",
+        "graph_api_tenant_id": "545921e0-10ef-4398-8713-9832ac563dad",
+        "graph_api_base_url": "https://graph.microsoft.com/v1.0/users/"
     },
     "build_config": {
-        "extended_build_num": "010628",
+        "extended_build_num": "010629",
         "conda_base_dir": "/store/local/miniforge3/"
     },
     "daac_config": {
@@ -79,24 +81,28 @@
                 "tetracorder_library_basename": "em2208a",
                 "tetracorder_library_cmdname": "em2208a",
                 "l1b_config_path": "/store/emit/ops/repos/emit-sds-l1b/config/EMIT_20230119.json",
+                "frame_hdr_format": "1.0",
                 "config_comments": "Post-IOC calibration solution to be applied to all scenes going back to the start of the mission."
             },
             "2024-02-20T00:00:00_to_2024-08-18T00:00:00": {
                 "tetracorder_library_basename": "em2402a",
                 "tetracorder_library_cmdname": "em2402a",
                 "l1b_config_path": "/store/emit/ops/repos/emit-sds-l1b/config/EMIT_20240227.json",
+                "frame_hdr_format": "1.0",
                 "config_comments": "Calibration change in response to FSW reboot on 2024-02-19T12:38:13Z."
             },
             "2024-08-18T00:00:00_to_2025-07-13T16:25:00": {
                 "tetracorder_library_basename": "em2410a",
                 "tetracorder_library_cmdname": "em2410a",
                 "l1b_config_path": "/store/emit/ops/repos/emit-sds-l1b/config/EMIT_20241025.json",
+                "frame_hdr_format": "1.0",
                 "config_comments": "Calibration change in response to FUBAR anomaly on 2024-08-17T19:30:45Z."
             },
             "2025-07-13T16:25:00_to_2030-01-01T00:00:00": {
                 "tetracorder_library_basename": "em2507a",
                 "tetracorder_library_cmdname": "em2507a",
                 "l1b_config_path": "/store/emit/ops/repos/emit-sds-l1b/config/EMIT_20250721.json",
+                "frame_hdr_format": "1.0",
                 "config_comments": "Calibration change in response to anomaly on 2025-07-13T16:25:00Z."
             }
         }
