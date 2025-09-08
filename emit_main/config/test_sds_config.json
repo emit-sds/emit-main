@@ -17,8 +17,8 @@
         "db_user": "emit-test"
     },
     "email_config": {
-        "email_user": "emit-sds-test@jpl.nasa.gov",
-        "email_sender": "emit-sds-test@jpl.nasa.gov",
+        "email_user": "emit-sds@jpl.nasa.gov",
+        "email_sender": "emit-sds@jpl.nasa.gov",
         "email_recipient_list": [
             "emit-sds-admins@jpl.nasa.gov"
         ],
@@ -98,14 +98,14 @@
                 "frame_hdr_format": "1.0",
                 "config_comments": "Calibration change in response to FUBAR anomaly on 2024-08-17T19:30:45Z."
             },
-            "2025-07-13T16:25:00_to_2025-10-01T00:00:00": {
+            "2025-07-13T16:25:00_to_2025-12-01T00:00:00": {
                 "tetracorder_library_basename": "em2507a",
                 "tetracorder_library_cmdname": "em2507a",
                 "l1b_config_path": "/store/emit/test/repos/emit-sds-l1b/config/EMIT_20250721.json",
                 "frame_hdr_format": "1.0",
                 "config_comments": "Calibration change in response to anomaly on 2025-07-13T16:25:00Z."
             },
-            "2025-10-01T00:00:00_to_2030-01-01T00:00:00": {
+            "2025-12-01T00:00:00_to_2030-01-01T00:00:00": {
                 "tetracorder_library_basename": "em2507a",
                 "tetracorder_library_cmdname": "em2507a",
                 "l1b_config_path": "/store/emit/test/repos/emit-sds-l1b/config/EMIT_20250721.json",
