@@ -143,7 +143,7 @@ class L2AReflectance(SlurmJobTask):
 
         cmd = ["python", os.path.join(pge.repo_dir, "spectrum_quality.py"), tmp_rfl_path, tmp_quality_path]
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
-        quality_results = np.genfromtxt(tmp_quality_path)
+        quality_results = np.genfromtxt(tmp_quality_path, dtype=str, delimiter="\n")
 
         wm.copy(tmp_rfl_path, acq.rfl_img_path)
         wm.copy(tmp_rfl_hdr_path, acq.rfl_hdr_path)
