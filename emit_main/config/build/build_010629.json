@@ -2,7 +2,7 @@
   "repositories": [
     {
       "url": "git@github.com:emit-sds/emit-main.git",
-      "tag": "v1.6.28",
+      "tag": "v1.6.29",
       "conda_env": "emit-main-20250901"
     },
     {
@@ -71,9 +71,16 @@
       "conda_env": "emit-main-20250901"
     },
     {
+      "name":"NGIS_Check_Line_Frame",
       "url": "git@github.jpl.nasa.gov:aviris/NGIS_Check_Line_Frame.git",
       "tag": "emit-sds-0.6.1",
       "conda_env": "emit-check-line-frame-20250705"
+    },
+    {
+      "name": "NGIS_Check_Line_Frame_1.5",
+      "url": "git@github.jpl.nasa.gov:emit-ies/NGIS_Check_Line_Frame.git",
+      "tag": "emit-sds-1.0.0",
+      "conda_env": "emit-check-line-frame-20250901"
     },
     {
       "url": "git@github.com:emit-sds/emit-ghg.git",
