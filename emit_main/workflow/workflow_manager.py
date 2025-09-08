@@ -128,13 +128,17 @@ class WorkflowManager:
                 version_tag = repo["tag"]
             else:
                 version_tag = None
+            repo_name = None
+            if "name" in repo and len(repo["name"]) > 0:
+                repo_name = repo["name"]
             pge = PGE(
                 conda_base=self.config["conda_base_dir"],
                 conda_env=conda_env,
                 pge_base=self.repos_dir,
                 repo_url=repo["url"],
                 version_tag=version_tag,
-                environment=self.config["environment"]
+                environment=self.config["environment"],
+                repo_name=repo_name
             )
             self.pges[pge.repo_name] = pge
 
