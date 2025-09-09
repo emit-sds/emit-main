@@ -13,7 +13,7 @@ logger = logging.getLogger("emit-main")
 
 class PGE:
 
-    def __init__(self, conda_base, conda_env, pge_base, repo_url, version_tag, environment):
+    def __init__(self, conda_base, conda_env, pge_base, repo_url, version_tag, environment, repo_name):
         # conda_env_base is the top level "envs" folder, e.g. ~/anaconda3/envs
         self.conda_env_base = os.path.join(conda_base, "envs")
         self.conda_sh_path = os.path.join(conda_base, "etc/profile.d/conda.sh")
@@ -28,7 +28,7 @@ class PGE:
             self.version = self.version_tag
 
         self.repo_account = self._get_repo_account()
-        self.repo_name = self.repo_url.split("/")[-1].replace(".git", "")
+        self.repo_name = self.repo_url.split("/")[-1].replace(".git", "") if repo_name is None else repo_name
         self.versioned_repo_name = self.repo_name + "-" + self.version
         self.repo_dir = os.path.join(self.pge_base, self.repo_name, "")
 

@@ -11,7 +11,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="emit_main",
-    version="1.6.24",
+    version="1.6.29",
     author="Winston Olson-Duvall",
     author_email="winston.olson-duvall@jpl.nasa.gov",
     description="Workflow and file management code for EMIT data processing",
@@ -33,7 +33,6 @@ setuptools.setup(
         "cryptography>=3.4.7",
         "pytest>=6.2.1",
         "pytest-cov>=2.10.1",
-        "pycodestyle>=2.6.0",
-        "exchangelib>=4.6.2"
+        "pycodestyle>=2.6.0"
     ]
 )

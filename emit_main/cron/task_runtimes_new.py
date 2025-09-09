@@ -19,7 +19,10 @@ def main():
     parser.add_argument("input", help="Slurm job completion log")
     args = parser.parse_args()
 
-    df = pd.read_csv(args.input)
+    # User,JobID,JobName,State,ElapsedRaw,Submit,Start,End
+
+    # df = pd.read_csv(args.input, dtype={"User": str, "JobID": str, "JobName":str, "State": str, "ElapsedRaw": str, "Submit":str, "Start": str, "End":str})
+    df = pd.read_csv(args.input, na_values=["Unknown", "None"])
     df["EndDate"] = pd.to_datetime(df["End"], format="%Y-%m-%dT%H:%M:%S")
     df["StartDate"] = pd.to_datetime(df["Start"], format="%Y-%m-%dT%H:%M:%S")
     df["SubmitDate"] = pd.to_datetime(df["Submit"], format="%Y-%m-%dT%H:%M:%S")

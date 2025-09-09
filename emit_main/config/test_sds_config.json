@@ -24,11 +24,13 @@
         ],
         "smtp_host": "smtp.jpl.nasa.gov",
         "smtp_port": 587,
-        "exchange_server": "ums.jpl.nasa.gov"
+        "graph_api_app_id": "b9adb101-52a1-4111-ac13-b534ff282581",
+        "graph_api_tenant_id": "545921e0-10ef-4398-8713-9832ac563dad",
+        "graph_api_base_url": "https://graph.microsoft.com/v1.0/users/"
     },
     "build_config": {
-        "extended_build_num": "010624",
-        "conda_base_dir": "/store/local/miniconda3/"
+        "extended_build_num": "010629",
+        "conda_base_dir": "/store/local/miniforge3/"
     },
     "daac_config": {
         "aws_cli_exe": "/store/shared/aws-cli/v2/current/bin/aws",
@@ -61,9 +63,10 @@
         "decompression_init_data_path": "/store/emit/test/repos/emit-sds-l1a/decompression/FPGA_Data_Initialization_File_CREATE_COMPRESSION_INIT_DATA_328_e0.bin",
         "l1b_geo_install_dir": "/store/emit/ops/repos/emit_l1b_geo_installs/1.6.19",
         "l1b_geo_osp_dir": "/store/emit/ops/repos/emit_l1b_osp_installs/1.6.19",
-        "isofit_surface_config": "/store/emit/test/repos/emit-sds-l2a/surface/surface_20221020.json",
+        "isofit_surface_config": "/store/emit/test/repos/emit-sds-l2a/surface/surface_20240103.json",
         "isofit_emulator_base": "/store/shared/sRTMnet_v120.h5",
         "isofit_sixs_dir": "/store/shared/sixs",
+        "isofit_ini_path": "/store/emit/test/resources/.isofit/isofit.ini",
         "specpr_path": "/store/shared/spectroscopy-tetracorder/specpr",
         "tetracorder_path": "/store/shared/spectroscopy-tetracorder/tetracorder5.27",
         "tetracorder_cmds_path": "/store/shared/tetracorder5.27c.cmds",
@@ -73,24 +76,42 @@
         "ch4_lut_file": "/store/shared/ghg/dataset_ch4_full.hdf5",
         "co2_lut_file": "/store/shared/ghg/dataset_co2_full.hdf5",
         "unmixing_library": "/store/shared/unmixing_libraries/convex_hull__n_dims_4_unmix_library.csv",
+        "mirror_data_dir": "/data/emit/test/data",
         "date_ranges": {
             "2022-08-10T00:00:00_to_2024-02-20T00:00:00": {
                 "tetracorder_library_basename": "em2208a",
                 "tetracorder_library_cmdname": "em2208a",
                 "l1b_config_path": "/store/emit/test/repos/emit-sds-l1b/config/EMIT_20230119.json",
+                "frame_hdr_format": "1.0",
                 "config_comments": "Post-IOC calibration solution to be applied to all scenes going back to the start of the mission."
             },
             "2024-02-20T00:00:00_to_2024-08-18T00:00:00": {
                 "tetracorder_library_basename": "em2402a",
                 "tetracorder_library_cmdname": "em2402a",
                 "l1b_config_path": "/store/emit/test/repos/emit-sds-l1b/config/EMIT_20240227.json",
+                "frame_hdr_format": "1.0",
                 "config_comments": "Calibration change in response to FSW reboot on 2024-02-19T12:38:13Z."
             },
-            "2024-08-18T00:00:00_to_2030-01-01T00:00:00": {
+            "2024-08-18T00:00:00_to_2025-07-13T16:25:00": {
                 "tetracorder_library_basename": "em2410a",
                 "tetracorder_library_cmdname": "em2410a",
                 "l1b_config_path": "/store/emit/test/repos/emit-sds-l1b/config/EMIT_20241025.json",
+                "frame_hdr_format": "1.0",
                 "config_comments": "Calibration change in response to FUBAR anomaly on 2024-08-17T19:30:45Z."
+            },
+            "2025-07-13T16:25:00_to_2025-12-01T00:00:00": {
+                "tetracorder_library_basename": "em2507a",
+                "tetracorder_library_cmdname": "em2507a",
+                "l1b_config_path": "/store/emit/test/repos/emit-sds-l1b/config/EMIT_20250721.json",
+                "frame_hdr_format": "1.0",
+                "config_comments": "Calibration change in response to anomaly on 2025-07-13T16:25:00Z."
+            },
+            "2025-12-01T00:00:00_to_2030-01-01T00:00:00": {
+                "tetracorder_library_basename": "em2507a",
+                "tetracorder_library_cmdname": "em2507a",
+                "l1b_config_path": "/store/emit/test/repos/emit-sds-l1b/config/EMIT_20250721.json",
+                "frame_hdr_format": "1.5",
+                "config_comments": "Update frame header to version 1.5 to match FSW v1.5.0 uplink."
             }
         }
     }

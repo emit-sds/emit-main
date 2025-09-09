@@ -28,7 +28,7 @@ from emit_main.workflow.l1b_tasks import L1BGeolocate, L1BCalibrate, L1BRdnForma
 from emit_main.workflow.l2a_tasks import L2AMask, L2AReflectance, L2AFormat, L2ADeliver, L2AMaskTf, L2AMaskTfFormat, L2AMaskTfDeliver
 from emit_main.workflow.l2b_tasks import L2BAbundance, L2BFormat, L2BDeliver
 from emit_main.workflow.l3_tasks import L3Unmix
-from emit_main.workflow.ghg_tasks import CH4, CO2, CH4Deliver, CO2Deliver
+from emit_main.workflow.ghg_tasks import CH4, CO2, CH4Deliver, CO2Deliver, CH4Mosaic, CO2Mosaic
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_main.workflow.workflow_manager import WorkflowManager
 
@@ -40,12 +40,20 @@ logger = logging.getLogger("emit-main")
 def parse_args():
     product_choices = ["l0hosc", "l0daac", "l0plan", "l0bad", "l1aeng", "l1aframe", "l1aframereport", "l1araw",
                        "l1adaac", "l1abad", "l1bcal", "l1bgeo", "l1brdnformat", "l1brdndaac", "l1battdaac", "l2arefl",
+<<<<<<< HEAD
                        "l2amask", "l2amaskTf", "l2aformat", "l2amaskTfformat", "l2adaac","l2amaskTfdaac", 
                        "l2babun", "l2bformat", "l2bdaac", "l2bch4", "l2bco2", "l2bch4daac", "l2bco2daac",
                        "l3unmix", "daacscenes", "daacaddl", "recon"]
     monitor_choices = ["ingest", "frames", "edp", "cal", "bad", "geo", "l2", "maskTf", "l2b", "ch4", "co2", "l3",
                        "email", "daacscenes", "dl0","dl1a", "dl1brdn", "dl1batt", "dl2a", "dmaskTf",
                        "dl2b", "dch4", "dco2", "reconresp"]
+=======
+                       "l2amask", "l2aformat", "l2adaac", "l2babun", "l2bformat", "l2bdaac", "l2bch4", "l2bco2",
+                       "l2bch4daac", "l2bco2daac", "l2bch4mosaic", "l2bco2mosaic", "l3unmix", "daacscenes", "daacaddl", "recon"]
+    monitor_choices = ["ingest", "frames", "edp", "cal", "bad", "geo", "l2", "l2b","ch4", "co2", "l3",
+                       "email", "daacscenes", "dl0","dl1a", "dl1brdn", "dl1batt", "dl2a", "dl2b", "dch4", "dco2",
+                       "mch4", "mco2","reconresp"]
+>>>>>>> origin/develop
     parser = argparse.ArgumentParser(
         description="Description: This is the top-level run script for executing the various EMIT SDS workflow and "
                     "monitor tasks.\n"
@@ -57,7 +65,7 @@ def parse_args():
     parser.add_argument("-m", "--monitor",
                         help=("Which monitor to run. Choose from " + ", ".join(monitor_choices)))
     parser.add_argument("-a", "--acquisition_id", default="",
-                        help="Acquisition ID")
+                        help="Acquisition ID or path to text file containing list of IDs")
     parser.add_argument("-d", "--dcid", default="",
                         help="Data Collection ID")
     parser.add_argument("-s", "--stream_path", default="",
@@ -172,38 +180,23 @@ def parse_args():
 
 def get_tasks_from_product_args(args):
     products = args.products.split(",")
+    if os.path.isfile(args.acquisition_id):
+        with open(args.acquisition_id, "r") as f:
+            acquisition_ids = [line.strip() for line in f if line.strip()]
+    else:
+        acquisition_ids = [args.acquisition_id]
+        
     kwargs = {
         "config_path": args.config_path,
         "level": args.level,
         "partition": args.partition
     }
     prod_task_map = {
-        "l0hosc": L0StripHOSC(stream_path=args.stream_path, miss_pkt_thresh=args.miss_pkt_thresh,
-                              **kwargs),
-        "l0daac": L0Deliver(stream_path=args.stream_path, daac_ingest_queue=args.daac_ingest_queue,
-                            override_output=args.override_output, **kwargs),
-        "l0plan": L0ProcessPlanningProduct(plan_prod_path=args.plan_prod_path, test_mode=args.test_mode, **kwargs),
-        "l0bad": L0IngestBAD(stream_path=args.stream_path, **kwargs),
-        "l1aeng": L1AReformatEDP(stream_path=args.stream_path, pkt_format=args.pkt_format,
-                                 miss_pkt_thresh=args.miss_pkt_thresh, **kwargs),
-        "l1aframe": L1ADepacketizeScienceFrames(stream_path=args.stream_path,
-                                                pkt_format=args.pkt_format,
-                                                miss_pkt_thresh=args.miss_pkt_thresh,
-                                                override_output=args.override_output,
-                                                **kwargs),
-        "l1aframereport": L1AFrameReport(dcid=args.dcid, ignore_missing_frames=args.ignore_missing_frames,
-                                         acq_chunksize=args.acq_chunksize, test_mode=args.test_mode, **kwargs),
-        "l1araw": L1AReassembleRaw(dcid=args.dcid, ignore_missing_frames=args.ignore_missing_frames,
-                                   acq_chunksize=args.acq_chunksize, test_mode=args.test_mode, **kwargs),
-        "l1adaac": L1ADeliver(acquisition_id=args.acquisition_id, daac_ingest_queue=args.daac_ingest_queue,
-                              override_output=args.override_output, **kwargs),
-        "l1abad": L1AReformatBAD(orbit_id=args.orbit_id, ignore_missing_bad=args.ignore_missing_bad, **kwargs),
-        "l1bcal": L1BCalibrate(acquisition_id=args.acquisition_id, dark_path=args.dark_path,
-                               use_future_flat=args.use_future_flat, **kwargs),
-        "l1bgeo": L1BGeolocate(orbit_id=args.orbit_id, ignore_missing_radiance=args.ignore_missing_radiance, **kwargs),
-        "l1brdnformat": L1BRdnFormat(acquisition_id=args.acquisition_id, **kwargs),
-        "l1brdndaac": L1BRdnDeliver(acquisition_id=args.acquisition_id, daac_ingest_queue=args.daac_ingest_queue,
+        "l0hosc": lambda: L0StripHOSC(stream_path=args.stream_path,
+                                      miss_pkt_thresh=args.miss_pkt_thresh, **kwargs),
+        "l0daac": lambda: L0Deliver(stream_path=args.stream_path, daac_ingest_queue=args.daac_ingest_queue,
                                     override_output=args.override_output, **kwargs),
+<<<<<<< HEAD
         "l1battdaac": L1BAttDeliver(orbit_id=args.orbit_id, daac_ingest_queue=args.daac_ingest_queue,
                                     override_output=args.override_output, **kwargs),
         "l2arefl": L2AReflectance(acquisition_id=args.acquisition_id, **kwargs),
@@ -229,10 +222,69 @@ def get_tasks_from_product_args(args):
         "daacaddl": GetAdditionalMetadata(acquisition_id=args.acquisition_id, **kwargs),
         "recon": ReconciliationReport(start_time=args.start_time.strftime("%Y%m%dT%H%M%S"),
                                       stop_time=args.stop_time.strftime("%Y%m%dT%H%M%S"), **kwargs)
+=======
+        "l0plan": lambda: L0ProcessPlanningProduct(plan_prod_path=args.plan_prod_path,
+                                                   test_mode=args.test_mode, **kwargs),
+        "l0bad": lambda: L0IngestBAD(stream_path=args.stream_path, **kwargs),
+        "l1aeng": lambda: L1AReformatEDP(stream_path=args.stream_path, pkt_format=args.pkt_format,
+                                         miss_pkt_thresh=args.miss_pkt_thresh, **kwargs),
+        "l1aframe": lambda: L1ADepacketizeScienceFrames(stream_path=args.stream_path, pkt_format=args.pkt_format,
+                                                        miss_pkt_thresh=args.miss_pkt_thresh, override_output=args.override_output, 
+                                                        **kwargs),
+        "l1aframereport": lambda: L1AFrameReport(dcid=args.dcid, ignore_missing_frames=args.ignore_missing_frames,
+                                                 acq_chunksize=args.acq_chunksize, test_mode=args.test_mode, **kwargs),
+        "l1araw": lambda: L1AReassembleRaw(dcid=args.dcid,ignore_missing_frames=args.ignore_missing_frames,
+                                           acq_chunksize=args.acq_chunksize, test_mode=args.test_mode, **kwargs),
+        "l1adaac": lambda acq_id: L1ADeliver(acquisition_id=acq_id,daac_ingest_queue=args.daac_ingest_queue,
+                                          override_output=args.override_output, **kwargs),
+        "l1abad": lambda: L1AReformatBAD(orbit_id=args.orbit_id,
+                                         ignore_missing_bad=args.ignore_missing_bad, **kwargs),
+        "l1bcal": lambda acq_id: L1BCalibrate(acquisition_id=acq_id,dark_path=args.dark_path,
+                                           use_future_flat=args.use_future_flat, **kwargs),
+        "l1bgeo": lambda: L1BGeolocate(orbit_id=args.orbit_id,
+                                       ignore_missing_radiance=args.ignore_missing_radiance, **kwargs),
+        "l1brdnformat": lambda acq_id: L1BRdnFormat(acquisition_id=acq_id, **kwargs),
+        "l1brdndaac": lambda acq_id: L1BRdnDeliver(acquisition_id=acq_id, daac_ingest_queue=args.daac_ingest_queue,
+                                                override_output=args.override_output, **kwargs),
+        "l1battdaac": lambda: L1BAttDeliver(orbit_id=args.orbit_id, daac_ingest_queue=args.daac_ingest_queue,
+                                            override_output=args.override_output, **kwargs),
+        "l2arefl": lambda acq_id: L2AReflectance(acquisition_id=acq_id, **kwargs),
+        "l2amask": lambda acq_id: L2AMask(acquisition_id=acq_id, **kwargs),
+        "l2aformat": lambda acq_id: L2AFormat(acquisition_id=acq_id, **kwargs),
+        "l2adaac": lambda acq_id: L2ADeliver(acquisition_id=acq_id, daac_ingest_queue=args.daac_ingest_queue,
+                                          override_output=args.override_output, **kwargs),
+        "l2babun": lambda acq_id: L2BAbundance(acquisition_id=acq_id, **kwargs),
+        "l2bformat": lambda acq_id: L2BFormat(acquisition_id=acq_id, **kwargs),
+        "l2bdaac": lambda acq_id: L2BDeliver(acquisition_id=acq_id, daac_ingest_queue=args.daac_ingest_queue,
+                                          override_output=args.override_output, **kwargs),
+        "l2bch4": lambda acq_id: CH4(acquisition_id=acq_id, **kwargs),
+        "l2bch4daac": lambda acq_id: CH4Deliver(acquisition_id=acq_id, daac_ingest_queue=args.daac_ingest_queue,
+                                             override_output=args.override_output, **kwargs),
+        "l2bch4mosaic": lambda: CH4Mosaic(dcid=args.dcid, **kwargs),
+        "l2bco2": lambda acq_id: CO2(acquisition_id=acq_id, **kwargs),
+        "l2bco2daac": lambda acq_id: CO2Deliver(acquisition_id=acq_id, daac_ingest_queue=args.daac_ingest_queue,
+                                             override_output=args.override_output, **kwargs),
+        "l2bco2mosaic": lambda: CO2Mosaic(dcid=args.dcid, **kwargs),
+        "l3unmix": lambda acq_id: L3Unmix(acquisition_id=acq_id, **kwargs),
+        # "l3unmixformat": lambda acq_id: L3UnmixFormat(acquisition_id=acq_id, **kwargs),
+        "daacscenes": lambda: AssignDAACSceneNumbers(orbit_id=args.orbit_id, override_output=args.override_output, **kwargs),
+        "daacaddl": lambda acq_id: GetAdditionalMetadata(acquisition_id=acq_id, **kwargs),
+        "recon": lambda: ReconciliationReport(start_time=args.start_time.strftime("%Y%m%dT%H%M%S"),
+                                              stop_time=args.stop_time.strftime("%Y%m%dT%H%M%S"), **kwargs)
+>>>>>>> origin/develop
     }
+
     tasks = []
     for prod in products:
-        tasks.append(prod_task_map[prod])
+        if prod in {"l1adaac", "l1bcal", "l1brdnformat", "l1brdndaac", "l2arefl",
+                    "l2amask", "l2aformat", "l2adaac", "l2babun", "l2bformat",
+                    "l2bdaac", "l2bch4", "l2bch4daac", "l2bco2", "l2bco2daac",
+                    "l3unmix", "daacaddl"}:
+            for acq_id in acquisition_ids:
+                tasks.append(prod_task_map[prod](acq_id))
+        else:
+            tasks.append(prod_task_map[prod]())
+        
     return tasks
 
 
@@ -310,7 +362,7 @@ def task_failure(task, e):
 
     stream_tasks = ("emit.L0StripHOSC", "emit.L1ADepacketizeScienceFrames", "emit.L1AReformatEDP", "emit.L0IngestBAD",
                     "emit.L0Deliver")
-    data_collection_tasks = ("emit.L1AReassembleRaw", "emit.L1AFrameReport")
+    data_collection_tasks = ("emit.L1AReassembleRaw", "emit.L1AFrameReport", "emit.CH4Mosaic", "emit.CO2Mosaic")
     acquisition_tasks = ("emit.L1ADeliver", "emit.L1BCalibrate", "emit.L1BRdnFormat", "emit.L1BRdnDeliver",
                          "emit.L2AReflectance", "emit.L2AMask", "emit.L2AMaskTf", "emit.L2AFormat", "emit.L2AMaskTfFormat", 
                          "emit.L2ADeliver", "emit.L2AMaskTfDeliver", "emit.L2BAbundance", "emit.L2BFormat", "emit.L2BDeliver", 
@@ -516,7 +568,7 @@ def main():
     # Get tasks from dl1a (deliver l1a) monitor
     if args.monitor and args.monitor == "dl1a":
         am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
-                                daac_ingest_queue=args.daac_ingest_queue)
+                                daac_ingest_queue=args.daac_ingest_queue, override_output=args.override_output)
         am_dl1a_tasks = am.get_l1a_delivery_tasks(start_time=args.start_time, stop_time=args.stop_time,
                                                   date_field=args.date_field, retry_failed=args.retry_failed)
         am_dl1a_tasks_str = "\n".join([str(t) for t in am_dl1a_tasks])
@@ -526,7 +578,7 @@ def main():
     # Get tasks from dl1brdn (deliver dl1brdn) monitor
     if args.monitor and args.monitor == "dl1brdn":
         am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
-                                daac_ingest_queue=args.daac_ingest_queue)
+                                daac_ingest_queue=args.daac_ingest_queue, override_output=args.override_output)
         am_dl1brdn_tasks = am.get_l1brdn_delivery_tasks(start_time=args.start_time, stop_time=args.stop_time,
                                                         date_field=args.date_field, retry_failed=args.retry_failed)
         am_dl1brdn_tasks_str = "\n".join([str(t) for t in am_dl1brdn_tasks])
@@ -546,7 +598,7 @@ def main():
     # Get tasks from dl2a (deliver l2a) monitor
     if args.monitor and args.monitor == "dl2a":
         am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
-                                daac_ingest_queue=args.daac_ingest_queue)
+                                daac_ingest_queue=args.daac_ingest_queue, override_output=args.override_output)
         am_dl2a_tasks = am.get_l2a_delivery_tasks(start_time=args.start_time, stop_time=args.stop_time,
                                                   date_field=args.date_field, retry_failed=args.retry_failed)
         am_dl2a_tasks_str = "\n".join([str(t) for t in am_dl2a_tasks])
@@ -566,7 +618,7 @@ def main():
     # Get tasks from dl2b (deliver l2b) monitor
     if args.monitor and args.monitor == "dl2b":
         am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
-                                daac_ingest_queue=args.daac_ingest_queue)
+                                daac_ingest_queue=args.daac_ingest_queue, override_output=args.override_output)
         am_dl2b_tasks = am.get_l2b_delivery_tasks(start_time=args.start_time, stop_time=args.stop_time,
                                                   date_field=args.date_field, retry_failed=args.retry_failed)
         am_dl2b_tasks_str = "\n".join([str(t) for t in am_dl2b_tasks])
@@ -576,7 +628,7 @@ def main():
     # Get tasks from dch4 (deliver ch4) monitor
     if args.monitor and args.monitor == "dch4":
         am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
-                                daac_ingest_queue=args.daac_ingest_queue)
+                                daac_ingest_queue=args.daac_ingest_queue, override_output=args.override_output)
         am_dch4_tasks = am.get_ch4_delivery_tasks(start_time=args.start_time, stop_time=args.stop_time,
                                                   date_field=args.date_field, retry_failed=args.retry_failed)
         am_dch4_tasks_str = "\n".join([str(t) for t in am_dch4_tasks])
@@ -586,13 +638,35 @@ def main():
     # Get tasks from dco2 (deliver co2) monitor
     if args.monitor and args.monitor == "dco2":
         am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
-                                daac_ingest_queue=args.daac_ingest_queue)
+                                daac_ingest_queue=args.daac_ingest_queue, override_output=args.override_output)
         am_dco2_tasks = am.get_co2_delivery_tasks(start_time=args.start_time, stop_time=args.stop_time,
                                                   date_field=args.date_field, retry_failed=args.retry_failed)
         am_dco2_tasks_str = "\n".join([str(t) for t in am_dco2_tasks])
         logger.info(f"Acquisition monitor deliver co2 tasks to run:\n{am_dco2_tasks_str}")
         tasks += am_dco2_tasks
+<<<<<<< HEAD
 
+=======
+    
+        # Get tasks from mch4 (mosaic ch4) monitor
+    if args.monitor and args.monitor == "mch4":
+        dm = FramesMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
+        dm_ch4_mosaic_tasks = dm.get_ch4_mosaic_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                        date_field=args.date_field, retry_failed=args.retry_failed)
+        dm_ch4_mosaic_tasks_str = "\n".join([str(t) for t in dm_ch4_mosaic_tasks])
+        logger.info(f"DCID monitor CH4 mosaic tasks to run:\n{dm_ch4_mosaic_tasks}")
+        tasks += dm_ch4_mosaic_tasks
+    
+    # Get tasks from mco2 (mosaic co2) monitor
+    if args.monitor and args.monitor == "mco2":
+        dm = FramesMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
+        dm_co2_mosaic_tasks = dm.get_co2_mosaic_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                        date_field=args.date_field, retry_failed=args.retry_failed)
+        dm_co2_mosaic_tasks_str = "\n".join([str(t) for t in dm_co2_mosaic_tasks])
+        logger.info(f"DCID monitor CO2 mosaic tasks to run:\n{dm_co2_mosaic_tasks}")
+        tasks += dm_co2_mosaic_tasks
+        
+>>>>>>> origin/develop
     # Get tasks from products args
     if args.products:
         prod_tasks = get_tasks_from_product_args(args)

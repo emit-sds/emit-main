@@ -8,10 +8,12 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 import json
 import logging
 import os
+import pytz
 import re
+import requests
 
-from exchangelib import Account, Configuration, Credentials, FaultTolerance, DELEGATE
-from exchangelib.protocol import BaseProtocol, NoVerifyHTTPAdapter
+from bs4 import BeautifulSoup
+from datetime import datetime
 
 from emit_main.workflow.l0_tasks import L0Deliver
 from emit_main.workflow.l1a_tasks import L1ADeliver
@@ -31,8 +33,6 @@ class EmailMonitor:
         :param config_path: Path to config file containing environment settings
         """
 
-        BaseProtocol.HTTP_ADAPTER_CLS = NoVerifyHTTPAdapter
-
         self.config_path = os.path.abspath(config_path)
         self.level = level
         self.partition = partition
@@ -43,84 +43,185 @@ class EmailMonitor:
         # Get Exchange account
         self.user_address = self.wm.config["email_user"]
         self.username = f"JPL\\{self.user_address.split('@')[0]}"
-        self.password = self.wm.config["email_password"]
-        credentials = Credentials(username=self.username, password=self.password)
-        exchange_config = Configuration(
-            server=self.wm.config["exchange_server"],
-            retry_policy=FaultTolerance(max_wait=600), credentials=credentials
-        )
-        self.acct = Account(
-            primary_smtp_address=self.user_address, config=exchange_config, autodiscover=False, access_type=DELEGATE
-        )
-        self.acct.msg_folder_root.refresh()
+        self.tenant_id = self.wm.config["graph_api_tenant_id"]
+        self.client_id = self.wm.config["graph_api_app_id"]
+        self.client_secret = self.wm.config["graph_api_secret"]
+        self.base_url = f"{self.wm.config['graph_api_base_url']}{self.wm.config['email_user']}"
+        self.access_token = self.get_access_token()
 
         # Get delivery response folders
         env = self.wm.config["environment"]
         if env in ("dev", "test", "ops"):
-            self.delivery_success_folder = \
-                self.acct.msg_folder_root // "EMIT Delivery Responses" // env.capitalize() // "Success"
-            self.delivery_failure_folder = \
-                self.acct.msg_folder_root // "EMIT Delivery Responses" // env.capitalize() // "Failure"
-            self.reconciliation_success_folder = \
-                self.acct.msg_folder_root // "EMIT Reconciliation Responses" // env.capitalize() // "Success"
-            self.reconciliation_failure_folder = \
-                self.acct.msg_folder_root // "EMIT Reconciliation Responses" // env.capitalize() // "Failure"
+            self.delivery_success_folder_id = self.get_folder_id_by_path_segments(["EMIT Delivery Responses", env.capitalize(), "Success"])
+            self.delivery_failure_folder_id = self.get_folder_id_by_path_segments(["EMIT Delivery Responses", env.capitalize(), "Failure"])
+            self.reconciliation_success_folder_id = self.get_folder_id_by_path_segments(["EMIT Reconciliation Responses", env.capitalize(), "Success"])
+            self.reconciliation_failure_folder_id = self.get_folder_id_by_path_segments(["EMIT Reconciliation Responses", env.capitalize(), "Failure"])
         else:
-            self.delivery_success_folder = \
-                self.acct.msg_folder_root // "EMIT Delivery Responses" // "Dev" // "Success"
-            self.delivery_failure_folder = \
-                self.acct.msg_folder_root // "EMIT Delivery Responses" // "Dev" // "Failure"
-            self.reconciliation_success_folder = \
-                self.acct.msg_folder_root // "EMIT Reconciliation Responses" // "Dev" // "Success"
-            self.reconciliation_failure_folder = \
-                self.acct.msg_folder_root // "EMIT Reconciliation Responses" // "Dev" // "Failure"
-        pass
+            self.delivery_success_folder_id = self.get_folder_id_by_path_segments(["EMIT Delivery Responses", "Dev", "Success"])
+            self.delivery_failure_folder_id = self.get_folder_id_by_path_segments(["EMIT Delivery Responses", "Dev", "Failure"])
+            self.reconciliation_success_folder_id = self.get_folder_id_by_path_segments(["EMIT Reconciliation Responses", "Dev", "Success"])
+            self.reconciliation_failure_folder_id = self.get_folder_id_by_path_segments(["EMIT Reconciliation Responses", "Dev", "Failure"])
+
+    def get_access_token(self):
+        url = f"https://login.microsoftonline.com/{self.tenant_id}/oauth2/v2.0/token"
+        
+        payload = {
+            "grant_type": "client_credentials",
+            "client_id": self.client_id,
+            "client_secret": self.client_secret,
+            "scope": "https://graph.microsoft.com/.default"
+        }
+        
+        response = requests.post(url, data=payload)
+        response_data = response.json()
+        access_token = response_data['access_token']
+        
+        return access_token
+
+    def get_folder_id_by_path_segments(self, path_segments):
+        """
+        Retrieves the ID of a folder by its path segments.
+        """
+        headers = {
+            "Authorization": f"Bearer {self.access_token}",
+            "Content-Type": "application/json"
+        }
+
+        # Start with top-level folders
+        response = requests.get(f"{self.base_url}/mailFolders", headers=headers)
+        response.raise_for_status()
+        folders = response.json().get("value", [])
+        folder_id = None
+
+        for segment in path_segments:
+            found = False
+            for folder in folders:
+                if folder.get("displayName") == segment:
+                    folder_id = folder.get("id")
+                    found = True
+                    break
+            if not found:
+                return None
+            # Prepare for next level
+            response = requests.get(f"{self.base_url}/mailFolders/{folder_id}/childFolders", headers=headers)
+            response.raise_for_status()
+            folders = response.json().get("value", [])
+
+        return folder_id
+
+    def retrieve_inbox_messages(self):
+        headers = {
+            "Authorization": f"Bearer {self.access_token}",
+            "Content-Type": "application/json"
+        }
+
+        url = self.base_url + "/mailFolders/inbox/messages?$top=1000"
+
+        response = requests.get(url, headers=headers)
+        
+        if response.status_code == 200:
+            graph_data = response.json()
+            messages = graph_data.get('value', [])
+            return messages
+        else:
+            logger.error("Error:")
+            logger.error(response.get("error"))
+            logger.error(response.get("error_description"))
+            logger.error(response.get("correlation_id"))
+            return []
+        
+    def get_message_as_dict(self, m):
+        """
+        Converts a message object to a dictionary.
+        """
+
+        # Get time_received in local time
+        time_received_utc = m.get('receivedDateTime')
+        dt_utc = datetime.fromisoformat(time_received_utc.replace("Z", "+00:00"))
+        pacific = pytz.timezone("America/Los_Angeles")
+        dt_local = dt_utc.astimezone(pacific)
+        time_received = dt_local.strftime("%Y-%m-%d %H:%M:%S %Z")
+
+        # Get body_text from HTML body
+        body = m.get('body', {}).get('content')
+        content_type = m.get('body', {}).get('contentType')
+        if content_type == "html":
+            # Convert HTML to plain text
+            soup = BeautifulSoup(body, "html.parser")
+            body_text = soup.get_text()
+        else:
+            body_text = body
+        # Remove leading and trailing spaces and \r and \n from body text
+        body_text = body_text.strip().replace("\r", "").replace("\n", "")
+
+        message_dict = {
+            "id": m.get("id"),
+            "subject": m.get("subject"),
+            "time_received": time_received,
+            "body_text": body_text,
+        }
+        return message_dict
+
+    def move_message(self, message_id, destination_folder_id):
+        """
+        Moves a message to a different folder.
+        """
+        headers = {
+            "Authorization": f"Bearer {self.access_token}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "destinationId": destination_folder_id
+        }
+        response = requests.post(f"{self.base_url}/messages/{message_id}/move", headers=headers, json=payload)
+        response.raise_for_status()
+        logger.info("Message moved successfully!")
 
     def process_daac_delivery_responses(self):
-        items = self.acct.inbox.all()
-        logger.info(f"Attempting to process {self.acct.inbox.total_count} messages in inbox for DAAC delivery responses.")
+        messages = self.retrieve_inbox_messages()
+        logger.info(f"Attempting to process {len(messages)} messages in inbox for DAAC delivery responses.")
         dm = self.wm.database_manager
-        for item in items:
-            # Get time received
-            time_received = item.datetime_received.astimezone(self.acct.default_timezone)
+        for message in messages:
+            m = self.get_message_as_dict(message)
 
             # Check that the subject includes "AWS Notification Message"
-            if "AWS Notification Message" not in item.subject:
+            if "AWS Notification Message" not in m["subject"]:
                 continue
 
             # Check that body starts with "{" to indicate a JSON response
-            if not item.body.startswith("{"):
-                logger.info(f"Unable to find JSON at start of message with subject \"{item.subject}\" dated "
-                            f"{time_received}. Leaving in inbox.")
+            if not m["body_text"].startswith("{"):
+                logger.info(f"Unable to find JSON at start of message with subject \"{m['subject']}\" dated "
+                            f"{m['time_received']}. Leaving in inbox.")
                 continue
 
             # Now get JSON response
-            response = json.loads(item.body.split("\n")[0].rstrip("\r"))
+            logger.info(f"Processing message with subject \"{m['subject']}\" dated {m['time_received']}.")
+            response = json.loads(m["body_text"].split("--")[0])
             # Get identifier
             try:
                 identifier = response["identifier"]
             except KeyError:
-                logger.info(f"Unable to find identifier in email message with subject \"{item.subject}\" dated "
-                            f"{time_received}. Leaving in inbox.")
+                logger.info(f"Unable to find identifier in email message with subject \"{m['subject']}\" dated "
+                            f"{m['time_received']}. Leaving in inbox.")
                 continue
             # Get response status
             try:
                 response_status = response["response"]["status"].upper()
             except KeyError:
-                logger.info(f"Unable to find response status in email message with subject \"{item.subject}\" dated "
-                            f"{time_received}. Leaving in inbox.")
+                logger.info(f"Unable to find response status in email message with subject \"{m['subject']}\" dated "
+                            f"{m['time_received']}. Leaving in inbox.")
                 continue
 
             # Lookup granule report by identifier. If not found, then assume it was submitted by a different environment
             if dm.find_granule_report_by_id(identifier) is None:
                 logger.info(f"Cannot find granule report for submission {response['identifier']} dated "
-                            f"{time_received}. Leaving message in inbox.")
+                            f"{m['time_received']}. Leaving message in inbox.")
                 continue
 
             # Otherwise, look at response status.  Update DB and move message out of inbox to success or failure folders
             if response_status == "SUCCESS":
                 dm.update_granule_report_submission_statuses(identifier, response_status)
-                item.move(self.delivery_success_folder)
+                self.move_message(m["id"], self.delivery_success_folder_id)
             if response_status == "FAILURE":
                 if "errorCode" in response["response"]:
                     error_code = response["response"]["errorCode"]
@@ -132,49 +233,48 @@ class EmailMonitor:
                     error_message = ""
                 dm.update_granule_report_submission_statuses(identifier,
                                                              ",".join([response_status, error_code, error_message]))
-                item.move(self.delivery_failure_folder)
+                self.move_message(m["id"], self.delivery_failure_folder_id)
 
     def process_daac_reconciliation_responses(self, reconciliation_response_path=None, retry_failed=False):
         dm = self.wm.database_manager
         env = self.wm.config["environment"]
         # If the response path is not specified, then check the inbox for responses
         if reconciliation_response_path is None:
-            items = self.acct.inbox.all()
-            logger.info(f"Attempting to process {self.acct.inbox.total_count} messages in inbox for DAAC reconciliation "
+            messages = self.retrieve_inbox_messages()
+            logger.info(f"Attempting to process {len(messages)} messages in inbox for DAAC reconciliation "
                         f"responses.")
-            for item in items:
-                # Get time received
-                time_received = item.datetime_received.astimezone(self.acct.default_timezone)
+            for message in messages:
+                m = self.get_message_as_dict(message)
 
                 # Check that the subject includes "Rec-Report for lp-prod-reconciliation" or
                 # "Rec-Report for lp-uat-reconciliation"
-                if env == "ops" and "Rec-Report EMIT lp-prod" not in item.subject:
+                if env == "ops" and "Rec-Report EMIT lp-prod" not in m["subject"]:
                     continue
 
-                if env == "test" and "Rec-Report EMIT lp-uat" not in item.subject:
+                if env == "test" and "Rec-Report EMIT lp-uat" not in m["subject"]:
                     continue
 
-                match = re.search("ER_.+rpt", item.subject)
+                match = re.search("ER_.+rpt", m)
                 if match is None:
-                    logger.warning(f"Found email with subject \"{item.subject}\" dated {time_received} but unable to "
+                    logger.warning(f"Found email with subject \"{m['subject']}\" dated {m['time_received']} but unable to "
                                    f"identify the reconciliation report name from the subject")
                     continue
 
                 report = match.group()
                 # Find all files in this report
                 files = dm.find_files_by_last_reconciliation_report(report=report)
-                if item.body.startswith("No discrepencies found"):
-                    logger.info(f"No discrepancies found in email with subject \"{item.subject}\" dated {time_received}. "
+                if m["body_text"].startswith("No discrepancies found"):
+                    logger.info(f"No discrepancies found in email with subject \"{m['subject']}\" dated {m['time_received']}. "
                                 f"Marking all files as reconciled.")
                     # Mark all files as reconciled
                     for f in files:
                         dm.update_reconciliation_submission_status(f["daac_filename"], f["submission_id"], report,
                                                                    "RECONCILED")
-                    item.move(self.reconciliation_success_folder)
+                    self.move_message(m["id"], self.reconciliation_success_folder_id)
                 else:
                     report_response_name = report.replace(".rpt", ".json")
                     reconciliation_response_path = os.path.join(self.wm.reconciliation_dir, report_response_name)
-                    logger.info(f"Discrepancies found in email with subject \"{item.subject}\" dated {time_received}. "
+                    logger.info(f"Discrepancies found in email with subject \"{m['subject']}\" dated {m['time_received']}. "
                                 f"Downloading report file to {reconciliation_response_path}.")
                     pge = self.wm.pges["emit-main"]
                     # cmd: aws s3 cp s3://lp-prod-reconciliation/reports/EMIT_RECON_PROD.json ./
@@ -186,7 +286,7 @@ class EmailMonitor:
                            "--profile", self.wm.config["aws_profile"]]
                     pge.run(cmd)
                     self.wm.change_group_ownership(reconciliation_response_path)
-                    item.move(self.reconciliation_failure_folder)
+                    self.move_message(m["id"], self.reconciliation_failure_folder_id)
 
         # Check if we have response path now and update files accordingly
         granule_urs = set()

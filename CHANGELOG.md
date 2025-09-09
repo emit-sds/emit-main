@@ -2,6 +2,41 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v1.6.29](https://github.com/emit-sds/emit-main/compare/v1.6.28...v1.6.29)
+
+> 8 September 2025
+
+* Run workflow updates by @adamchlus in https://github.com/emit-sds/emit-main/pull/74
+* GHG metrics by @adamchlus in https://github.com/emit-sds/emit-main/pull/75
+* Add frame_hdr_format to support enhanced cloud screening by @winstonolson in https://github.com/emit-sds/emit-main/pull/76
+* Use Graph API for emit-sds mailbox by @winstonolson in https://github.com/emit-sds/emit-main/pull/77
+
+#### [v1.6.28](https://github.com/emit-sds/emit-main/compare/v1.6.27...v1.6.28)
+
+> 14 August 2025
+
+* Sync isofit_3x with develop by @adamchlus in https://github.com/emit-sds/emit-main/pull/63
+* Add Isofit 3x to minforge branch for testing by @winstonolson in https://github.com/emit-sds/emit-main/pull/69
+* Use miniforge with conda-forge and upgrade to isofit 3.x by @winstonolson in https://github.com/emit-sds/emit-main/pull/72
+
+#### [v1.6.27](https://github.com/emit-sds/emit-main/compare/v1.6.26...v1.6.27)
+
+> 22 July 2025
+
+* V1.6.26 hotfix (including calibration update) by @winstonolson in https://github.com/emit-sds/emit-main/pull/70
+
+#### [v1.6.26](https://github.com/emit-sds/emit-main/compare/v1.6.25...v1.6.26)
+
+> 26 June 2025
+
+* Added removed GHG mosaic code by @adamchlus in https://github.com/emit-sds/emit-main/pull/67
+
+#### [v1.6.25](https://github.com/emit-sds/emit-main/compare/v1.6.24...v1.6.25)
+
+> 24 June 2025
+
+* Ghg mosaic by @adamchlus in https://github.com/emit-sds/emit-main/pull/65
+
 #### [v1.6.24](https://github.com/emit-sds/emit-main/compare/v1.6.23...v1.6.24)
 
 > 23 May 2025
