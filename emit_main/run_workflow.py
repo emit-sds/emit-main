@@ -40,20 +40,12 @@ logger = logging.getLogger("emit-main")
 def parse_args():
     product_choices = ["l0hosc", "l0daac", "l0plan", "l0bad", "l1aeng", "l1aframe", "l1aframereport", "l1araw",
                        "l1adaac", "l1abad", "l1bcal", "l1bgeo", "l1brdnformat", "l1brdndaac", "l1battdaac", "l2arefl",
-<<<<<<< HEAD
-                       "l2amask", "l2amaskTf", "l2aformat", "l2amaskTfformat", "l2adaac","l2amaskTfdaac", 
-                       "l2babun", "l2bformat", "l2bdaac", "l2bch4", "l2bco2", "l2bch4daac", "l2bco2daac",
-                       "l3unmix", "daacscenes", "daacaddl", "recon"]
-    monitor_choices = ["ingest", "frames", "edp", "cal", "bad", "geo", "l2", "maskTf", "l2b", "ch4", "co2", "l3",
+                       "l2amask", "l2amaskTf", "l2aformat","l2amaskTfformat" "l2adaac", "l2babun", "l2bformat",
+                       "l2bdaac","l2amaskTfdaac", "l2bch4", "l2bco2","l2bch4daac", "l2bco2daac", "l2bch4mosaic", 
+                       "l2bco2mosaic", "l3unmix", "daacscenes", "daacaddl", "recon"]
+    monitor_choices = ["ingest", "frames", "edp", "cal", "bad", "geo", "l2","maskTf", "l2b","ch4", "co2", "l3",
                        "email", "daacscenes", "dl0","dl1a", "dl1brdn", "dl1batt", "dl2a", "dmaskTf",
-                       "dl2b", "dch4", "dco2", "reconresp"]
-=======
-                       "l2amask", "l2aformat", "l2adaac", "l2babun", "l2bformat", "l2bdaac", "l2bch4", "l2bco2",
-                       "l2bch4daac", "l2bco2daac", "l2bch4mosaic", "l2bco2mosaic", "l3unmix", "daacscenes", "daacaddl", "recon"]
-    monitor_choices = ["ingest", "frames", "edp", "cal", "bad", "geo", "l2", "l2b","ch4", "co2", "l3",
-                       "email", "daacscenes", "dl0","dl1a", "dl1brdn", "dl1batt", "dl2a", "dl2b", "dch4", "dco2",
-                       "mch4", "mco2","reconresp"]
->>>>>>> origin/develop
+                       "dl2b", "dch4", "dco2", "mch4", "mco2","reconresp"]
     parser = argparse.ArgumentParser(
         description="Description: This is the top-level run script for executing the various EMIT SDS workflow and "
                     "monitor tasks.\n"
@@ -196,33 +188,6 @@ def get_tasks_from_product_args(args):
                                       miss_pkt_thresh=args.miss_pkt_thresh, **kwargs),
         "l0daac": lambda: L0Deliver(stream_path=args.stream_path, daac_ingest_queue=args.daac_ingest_queue,
                                     override_output=args.override_output, **kwargs),
-<<<<<<< HEAD
-        "l1battdaac": L1BAttDeliver(orbit_id=args.orbit_id, daac_ingest_queue=args.daac_ingest_queue,
-                                    override_output=args.override_output, **kwargs),
-        "l2arefl": L2AReflectance(acquisition_id=args.acquisition_id, **kwargs),
-        "l2amask": L2AMask(acquisition_id=args.acquisition_id, **kwargs),
-        "l2amaskTf": L2AMaskTf(acquisition_id=args.acquisition_id, **kwargs),
-        "l2aformat": L2AFormat(acquisition_id=args.acquisition_id, **kwargs),
-        "l2amaskTfformat": L2AMaskTfFormat(acquisition_id=args.acquisition_id, **kwargs),
-        "l2adaac": L2ADeliver(acquisition_id=args.acquisition_id, daac_ingest_queue=args.daac_ingest_queue,
-                              override_output=args.override_output, **kwargs),
-        "l2amaskTfdaac": L2AMaskTfDeliver(acquisition_id=args.acquisition_id, daac_ingest_queue=args.daac_ingest_queue,
-                        override_output=args.override_output, **kwargs),
-        "l2babun": L2BAbundance(acquisition_id=args.acquisition_id, **kwargs),
-        "l2bformat": L2BFormat(acquisition_id=args.acquisition_id, **kwargs),
-        "l2bdaac": L2BDeliver(acquisition_id=args.acquisition_id, daac_ingest_queue=args.daac_ingest_queue,
-                              override_output=args.override_output, **kwargs),
-        "l2bch4":  CH4(acquisition_id=args.acquisition_id, **kwargs),
-        "l2bch4daac":  CH4Deliver(acquisition_id=args.acquisition_id, **kwargs),
-        "l2bco2":  CO2(acquisition_id=args.acquisition_id, **kwargs),
-        "l2bco2daac":  CO2Deliver(acquisition_id=args.acquisition_id, **kwargs),
-        "l3unmix": L3Unmix(acquisition_id=args.acquisition_id, **kwargs),
-        # "l3unmixformat": L3UnmixFormat(acquisition_id=args.acquisition_id, **kwargs)
-        "daacscenes": AssignDAACSceneNumbers(orbit_id=args.orbit_id, override_output=args.override_output, **kwargs),
-        "daacaddl": GetAdditionalMetadata(acquisition_id=args.acquisition_id, **kwargs),
-        "recon": ReconciliationReport(start_time=args.start_time.strftime("%Y%m%dT%H%M%S"),
-                                      stop_time=args.stop_time.strftime("%Y%m%dT%H%M%S"), **kwargs)
-=======
         "l0plan": lambda: L0ProcessPlanningProduct(plan_prod_path=args.plan_prod_path,
                                                    test_mode=args.test_mode, **kwargs),
         "l0bad": lambda: L0IngestBAD(stream_path=args.stream_path, **kwargs),
@@ -250,6 +215,10 @@ def get_tasks_from_product_args(args):
                                             override_output=args.override_output, **kwargs),
         "l2arefl": lambda acq_id: L2AReflectance(acquisition_id=acq_id, **kwargs),
         "l2amask": lambda acq_id: L2AMask(acquisition_id=acq_id, **kwargs),
+        "l2amaskTf": lambda acq_id: L2AMaskTf(acquisition_id=acq_id, **kwargs),
+        "l2amaskTfformat": lambda acq_id: L2AMaskTfFormat(acquisition_id=acq_id, **kwargs),
+        "l2amaskTfdaac": lambda acq_id: L2AMaskTfDeliver(acquisition_id=acq_id, daac_ingest_queue=args.daac_ingest_queue,
+                        override_output=args.override_output, **kwargs),
         "l2aformat": lambda acq_id: L2AFormat(acquisition_id=acq_id, **kwargs),
         "l2adaac": lambda acq_id: L2ADeliver(acquisition_id=acq_id, daac_ingest_queue=args.daac_ingest_queue,
                                           override_output=args.override_output, **kwargs),
@@ -271,15 +240,14 @@ def get_tasks_from_product_args(args):
         "daacaddl": lambda acq_id: GetAdditionalMetadata(acquisition_id=acq_id, **kwargs),
         "recon": lambda: ReconciliationReport(start_time=args.start_time.strftime("%Y%m%dT%H%M%S"),
                                               stop_time=args.stop_time.strftime("%Y%m%dT%H%M%S"), **kwargs)
->>>>>>> origin/develop
     }
-
+    
     tasks = []
     for prod in products:
         if prod in {"l1adaac", "l1bcal", "l1brdnformat", "l1brdndaac", "l2arefl",
                     "l2amask", "l2aformat", "l2adaac", "l2babun", "l2bformat",
                     "l2bdaac", "l2bch4", "l2bch4daac", "l2bco2", "l2bco2daac",
-                    "l3unmix", "daacaddl"}:
+                    "l3unmix", "daacaddl", "l2amaskTf","l2amaskTfformat","l2amaskTfdaac"}:
             for acq_id in acquisition_ids:
                 tasks.append(prod_task_map[prod](acq_id))
         else:
@@ -644,9 +612,6 @@ def main():
         am_dco2_tasks_str = "\n".join([str(t) for t in am_dco2_tasks])
         logger.info(f"Acquisition monitor deliver co2 tasks to run:\n{am_dco2_tasks_str}")
         tasks += am_dco2_tasks
-<<<<<<< HEAD
-
-=======
     
         # Get tasks from mch4 (mosaic ch4) monitor
     if args.monitor and args.monitor == "mch4":
@@ -666,7 +631,6 @@ def main():
         logger.info(f"DCID monitor CO2 mosaic tasks to run:\n{dm_co2_mosaic_tasks}")
         tasks += dm_co2_mosaic_tasks
         
->>>>>>> origin/develop
     # Get tasks from products args
     if args.products:
         prod_tasks = get_tasks_from_product_args(args)
