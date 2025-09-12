@@ -817,7 +817,7 @@ class L2AMaskTf(SlurmJobTask):
         creation_time = datetime.datetime.fromtimestamp(
             os.path.getmtime(acq.maskTf_img_path), tz=datetime.timezone.utc)
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
-        hdr["emit data product version"] = wm.config["processing_version"]
+        hdr["emit data product version"] = '02'
         hdr["emit acquisition daynight"] = acq.daynight
         envi.write_envi_header(acq.maskTf_hdr_path, hdr)
 
