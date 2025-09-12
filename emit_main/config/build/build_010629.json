@@ -86,6 +86,11 @@
       "url": "git@github.com:emit-sds/emit-ghg.git",
       "tag": "v0.3.4",
       "conda_env": "emit-ghg-20250705"
+    },
+        {
+      "url": "git@github.com:emit-sds/emit-sds-masks.git",
+      "tag": "v0.1.0",
+      "conda_env": "emit-spectf-20250909"
     }
   ]
 }
