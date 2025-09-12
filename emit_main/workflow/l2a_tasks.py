@@ -775,8 +775,6 @@ class L2AMaskTf(SlurmJobTask):
         
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
-        #TODO: generate shadows
-
         # Create remainder of masks and combin with previous 
         cmd = ["python",
                make_masks_exe,
@@ -793,7 +791,7 @@ class L2AMaskTf(SlurmJobTask):
 
         tmp_maskTf_png_path = os.path.join(tmp_output_dir, os.path.basename(acq.maskTf_png_path))
 
-        cmd = ["gdal_translate", tmp_maskTf_path, tmp_maskTf_png_path, "-b", "1",
+        cmd = ["gdal_translate", tmp_maskTf_path, tmp_maskTf_png_path, "-b", "10",
                "-ot", "Byte", "-scale", "0", "1", "1", "255", "-of", "PNG", "-co", "ZLEVEL=9"]
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
