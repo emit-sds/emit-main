@@ -346,6 +346,7 @@ class DatabaseManager:
             "products.mask.maskTf.img_path": {"$exists": 1},
             "products.l1b.glt.img_path": {"$exists": 1},
             "products.l1b.loc.img_path": {"$exists": 1},
+            "cloud_fraction": {"$exists": 1},
             "daac_scene": {"$exists": 1},
             "products.mask.maskTf_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop},
