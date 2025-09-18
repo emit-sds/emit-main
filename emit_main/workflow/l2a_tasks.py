@@ -789,7 +789,7 @@ class L2AMaskTf(SlurmJobTask):
 
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
         
-        cloud_fractionTf = check_cloudfraction(tmp_maskTf_path,mask_band = 9)
+        cloud_fraction = check_cloudfraction(tmp_maskTf_path,mask_band = 9)
 
         tmp_maskTf_png_path = os.path.join(tmp_output_dir, os.path.basename(acq.maskTf_png_path))
 
@@ -835,7 +835,7 @@ class L2AMaskTf(SlurmJobTask):
             }
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.mask.maskTf": product_dict})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"cloud_fractionTf": cloud_fractionTf})
+        dm.update_acquisition_metadata(acq.acquisition_id, {"cloud_fraction_02": cloud_fraction})
         
         total_time = time.time() - start_time
         log_entry = {
@@ -1019,7 +1019,7 @@ class L2AMaskTfDeliver(SlurmJobTask):
                                               orbit_segment=int(acq.scene), scene=int(acq.daac_scene),
                                               solar_zenith=acq.mean_solar_zenith,
                                               solar_azimuth=acq.mean_solar_azimuth,
-                                              cloud_fraction=acq.cloud_fractionTf)
+                                              cloud_fraction=acq.cloud_fraction)
         ummg = daac_converter.add_data_files_ummg(
             ummg,
             [daac_maskTf_nc_path, daac_browse_path],
