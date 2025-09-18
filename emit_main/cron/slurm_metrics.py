@@ -12,12 +12,12 @@ def main():
 
     cmd = f"""sacct -u {args.user} --starttime=now-{args.days}days \
     --noheader \
-    --format=JobName%30,State,ElapsedRaw,Submit,Start,End \
+    --format=JobID,JobName%30,State,ElapsedRaw,Submit,Start,End \
     | grep -v batch | grep -v "\\-\\-" \
-    | awk '{{print $1","$2","$3","$4","$5","$6}}'"""
+    | awk '{{print $1","$2","$3","$4","$5","$6","$7}}'"""
 
     out = subprocess.check_output(cmd, shell=True, text=True)
-    df = pd.read_csv(io.StringIO(out), header=None, names=["task_name","state","elapsed_time_raw","submit","start","end"])
+    df = pd.read_csv(io.StringIO(out), header=None, names=["job_id","task_name","state","elapsed_time_raw","submit","start","end"])
 
     df["start_time"] = pd.to_datetime(df["start"], errors="coerce")
     df["end_time"] = pd.to_datetime(df["end"], errors="coerce")
