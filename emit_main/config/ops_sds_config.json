@@ -106,5 +106,23 @@
                 "config_comments": "Calibration change in response to anomaly on 2025-07-13T16:25:00Z."
             }
         }
+    },
+  "well_known_errors": {
+        "emit.L1BGeolocate": [
+        "Out of range error in file",
+        "Don't yet work when we cross the dateline",
+        "RuntimeError: Opening GDAL file",
+        "reference_surface_intersect_approximate failed to find a solution",
+        "Time_list needs to be strictly ordered"
+        ],
+        "emit.L1BCalibrate": [
+        "AttributeError: 'NoneType' object has no attribute 'decode'"
+        ],
+        "emit.L2AReflectance": [
+        "ValueError: shape mismatch: value array of shape",
+        "numpy.linalg.LinAlgError: unrecoverable internal error",
+        "IndexError: cannot do a non-empty take from an empty axe",
+        "IndexError: index 2 is out of bounds for axis 1 with size 2"
+        ]
     }
 }
