@@ -1042,7 +1042,7 @@ class L2AMaskTfDeliver(SlurmJobTask):
         # Build notification dictionary
         utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
         cnm_submission_id = f"{acq.maskTf_granule_ur}_{utc_now.strftime('%Y%m%dt%H%M%S')}"
-        cnm_submission_path = os.path.join(acq.l2a_data_dir, cnm_submission_id + "_cnm.json")
+        cnm_submission_path = os.path.join(acq.mask_data_dir, cnm_submission_id + "_cnm.json")
         target_src_map = {
             daac_maskTf_nc_name: os.path.basename(acq.maskTf_nc_path),
             daac_browse_name: os.path.basename(acq.maskTf_png_path),
@@ -1091,8 +1091,8 @@ class L2AMaskTfDeliver(SlurmJobTask):
         cnm_submission_output = cnm_submission_path.replace(".json", ".out")
         cmd_aws = [wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", queue_url, "--message-body",
                    f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"], ">", cnm_submission_output]
-        # pge.run(cmd_aws, tmp_dir=self.tmp_dir) TODO: Uncomment
-        # wm.change_group_ownership(cnm_submission_output) TODO: Uncomment
+        pge.run(cmd_aws, tmp_dir=self.tmp_dir)
+        wm.change_group_ownership(cnm_submission_output)
         cnm_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(cnm_submission_path),
                                                             tz=datetime.timezone.utc)
 
