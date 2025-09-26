@@ -104,7 +104,19 @@
         "l1b_config_path": "/store/emit/dev/repos/emit-sds-l1b/config/EMIT_20250721.json",
         "frame_hdr_format": "1.0",
         "config_comments": "Calibration change in response to anomaly on 2025-07-13T16:25:00Z."
-      }
+            }
+        }
+    },
+  "well_known_errors": {
+        "emit.L1BGeolocate": [
+        "RuntimeError: Opening GDAL file",
+        "reference_surface_intersect_approximate failed to find a solution"
+        ],
+        "emit.L1BCalibrate": [
+        "AttributeError: 'NoneType' object has no attribute 'decode'"
+        ],
+        "emit.L2AReflectance": [
+        "IndexError: index 2 is out of bounds for axis 1 with size 2"
+        ]
     }
-  }
 }
