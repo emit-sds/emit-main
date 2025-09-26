@@ -45,8 +45,8 @@ class CH4(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
 
-    n_cores = 64
-    memory = 360000
+    n_cores = 1
+    memory = 10000
 
     task_namespace = "emit"
 
