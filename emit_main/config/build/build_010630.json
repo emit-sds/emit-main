@@ -2,12 +2,12 @@
   "repositories": [
     {
       "url": "git@github.com:emit-sds/emit-main.git",
-      "tag": "v1.6.29",
+      "tag": "v1.6.30",
       "conda_env": "emit-main-20250901"
     },
     {
       "url": "git@github.com:emit-sds/emit-utils.git",
-      "tag": "v1.3.3",
+      "tag": "v1.3.4",
       "conda_env": "emit-main-20250901"
     },
     {
@@ -22,12 +22,12 @@
     },
     {
       "url": "git@github.com:emit-sds/emit-sds-l1b.git",
-      "tag": "v1.4.5",
+      "tag": "v1.4.6",
       "conda_env": "emit-l1b-20250705"
     },
     {
       "url": "git@github.com:emit-sds/emit-sds-l1b-geo.git",
-      "tag": "v1.6.19",
+      "tag": "v1.6.29_rc2",
       "conda_env": "emit-main-20250901"
     },
     {
@@ -84,8 +84,18 @@
     },
     {
       "url": "git@github.com:emit-sds/emit-ghg.git",
-      "tag": "v0.3.4",
+      "tag": "v0.3.5",
       "conda_env": "emit-ghg-20250705"
+    },
+    {
+      "url": "git@github.com:emit-sds/emit-sds-masks.git",
+      "tag": "v0.1.0",
+      "conda_env": "emit-spectf-20250909"
+    },
+    {
+      "url": "git@github.com:emit-sds/SpecTf.git",
+      "tag": "v0.1.2",
+      "conda_env": "emit-spectf-20250909"
     }
   ]
 }
