@@ -749,6 +749,7 @@ class L2AMaskTf(SlurmJobTask):
         tmp_maskTf_path = os.path.join(tmp_output_dir, os.path.basename(acq.maskTf_img_path))
         tmp_maskTf_hdr_path = envi_header(tmp_maskTf_path)
         tmp_maskTf_cloud_path = tmp_maskTf_path.replace('.img','.tif')
+        tmp_maskTf_cloud_prob_path = tmp_maskTf_path.replace('.img','_prob.tif')
         solar_irradiance_path = os.path.join(pge.repo_dir, "data", "kurudz_0.1nm.dat")
         make_masks_exe = os.path.join(pge.repo_dir, "make_emit_masks.py")
                       
@@ -782,7 +783,7 @@ class L2AMaskTf(SlurmJobTask):
                acq.loc_img_path,
                acq.obs_img_path,
                acq.atm_img_path,
-               tmp_maskTf_cloud_path,
+               tmp_maskTf_cloud_prob_path,
                solar_irradiance_path,
                tmp_maskTf_path,
                "--n_cores", str(self.n_cores)]
