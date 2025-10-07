@@ -411,7 +411,7 @@ def main():
                     if "Retrieved Ele. Median" in p:
                         df["retrieved_ele_median"] = p["Retrieved Ele. Median"]
                     if "Retrieved WV Median" in p:
-                        df["retrieved_wavelength_median"] = p["Retrieved WV Median"]
+                        df["retrieved_water_vapor_median"] = p["Retrieved WV Median"]
 
                     trending_acqs_coll = dm.db.trending_acquisitions
                     query = {"timestamp": timestamp}
