@@ -254,7 +254,7 @@ class EmailMonitor:
                 if env == "test" and "Rec-Report EMIT lp-uat" not in m["subject"]:
                     continue
 
-                match = re.search("ER_.+rpt", m)
+                match = re.search("ER_.+rpt", m["subject"])
                 if match is None:
                     logger.warning(f"Found email with subject \"{m['subject']}\" dated {m['time_received']} but unable to "
                                    f"identify the reconciliation report name from the subject")
@@ -263,7 +263,7 @@ class EmailMonitor:
                 report = match.group()
                 # Find all files in this report
                 files = dm.find_files_by_last_reconciliation_report(report=report)
-                if m["body_text"].startswith("No discrepancies found"):
+                if m["body_text"].startswith("No"):
                     logger.info(f"No discrepancies found in email with subject \"{m['subject']}\" dated {m['time_received']}. "
                                 f"Marking all files as reconciled.")
                     # Mark all files as reconciled
