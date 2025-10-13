@@ -115,6 +115,8 @@ class Acquisition:
             self.metadata["products"]["l3"] = {}
         if "ghg" not in self.metadata["products"]:
             self.metadata["products"]["ghg"] = {}
+        if "frcov" not in self.metadata["products"]:
+            self.metadata["products"]["frcov"] = {}
         if "ch4" not in self.metadata["products"]["ghg"]:
             self.metadata["products"]["ghg"]["ch4"] = {}
         if "co2" not in self.metadata["products"]["ghg"]:
@@ -181,8 +183,18 @@ class Acquisition:
                 "sensco2": ["img","hdr"],
                 "ortsensco2": ["tif"],
                 "uncertco2": ["img","hdr"],
-                "ortuncertco2": ["tif"]
-            }
+                "ortuncertco2": ["tif"],
+            },
+            "frcov": {
+                "frcovmask": ["tif"],
+                "bare": ["tif"],
+                "bareunc": ["tif"],
+                "pv": ["tif"],
+                "pvunc": ["tif"],
+                "npv": ["tif"],
+                "npvunc": ["tif"],
+                "frcovbrowse": ["png"],            
+                }
         }
         paths = {}
         for level, prod_map in product_map.items():

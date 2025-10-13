@@ -267,6 +267,25 @@ class DatabaseManager:
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.CO2"])
         return results
+    
+    def find_acquisitions_for_frcov_format(self, start, stop, date_field="last_modified", retry_failed=False):
+        acquisitions_coll = self.db.acquisitions
+        # Query for acquisitions with complete l2a outputs but no l2b co2 outputs in time range
+        query = {
+            "products.l1b.glt.img_path": {"$exists": 1},
+            "products.l2a.rfl.img_path": {"$exists": 1},
+            "products.mask.maskTf.img_path": {"$exists": 1},
+            "products.l3.cover.img_path": {"$exists": 1},
+            "products.l3.coveruncert.img_path": {"$exists": 1},
+            "products.frcov.mask.tif_path": {"$exists": 0},
+            date_field: {"$gte": start, "$lte": stop},
+            "build_num": self.config["build_num"]
+        }
+
+        results = list(acquisitions_coll.find(query))
+        if not retry_failed:
+            results = self._remove_results_with_failed_tasks(results, ["emit.L2BFrCovFormat"])
+        return results
 
     def find_acquisitions_for_l3(self, start, stop, date_field="last_modified", retry_failed=False):
         acquisitions_coll = self.db.acquisitions

@@ -527,3 +527,155 @@ class L2BDeliver(SlurmJobTask):
             }
         }
         dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
+
+class L2BFrCovFormat(SlurmJobTask):
+    """
+    Converts L2B Fractional cover products mask to COGs and generates QA/QC mask
+    :returns: L2B Fractional cover COG output for delivery
+    """
+
+    config_path = luigi.Parameter()
+    acquisition_id = luigi.Parameter()
+    level = luigi.Parameter()
+    partition = luigi.Parameter()
+
+    memory = 18000
+
+    task_namespace = "emit"
+
+    def requires(self):
+
+        logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
+        return None
+
+    def output(self):
+
+        logger.debug(f"{self.task_family} output: {self.acquisition_id}")
+        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return AcquisitionTarget(acquisition=acq, task_family=self.task_family)
+
+    def work(self):
+
+        start_time = time.time()
+        logger.debug(f"{self.task_family} work: {self.acquisition_id}")
+
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        acq = wm.acquisition
+        pge = wm.pges["emit-sds-frcov"]
+        dm = wm.database_manager
+
+        mask_generator_exe = os.path.join(pge.repo_dir, "create_frcov_masks.py")
+        tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
+        wm.makedirs(tmp_output_dir)
+        tmp_frcovmask_tif_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_frcovmask.tif")
+        tmp_log_path = os.path.join(self.local_tmp_dir, "mask_and_format_pge.log")
+
+        input_files = {
+            "rfl_file": acq.rfl_img_path,
+            "maskTf_file": acq.maskTf_img_path,
+            "glt_file": acq.glt_img_path,
+            "cover_file": acq.cover_img_path,
+            "coverunc_file": acq.coveruncert_img_path,
+        }
+
+        cmd = ["python",
+               mask_generator_exe,
+               "create-masks",
+               acq.rfl_img_path, 
+               acq.maskTf_img_path, 
+               acq.glt_img_path,
+               tmp_frcovmask_tif_path,
+               '--urban_data', "/store/shared/landcover/complete_landcover.vrt",
+               '--coastal_data', "/store/shared/landcover/GSHHS_f_L1.shp"]
+               
+        # Run this inside the emit-main conda environment to include emit-utils and other requirements
+        main_pge = wm.pges["emit-sds-frcov"]
+        main_pge.run(cmd, tmp_dir=self.tmp_dir)
+
+        # Copy and rename output files back to /store
+        log_path = acq.maskTf_nc_path.replace(".nc", "_nc_pge.log")
+        wm.copy(tmp_frcovmask_tif_path, acq.frcovmask_tif_path)
+        # wm.copy(tmp_log_path, log_path)
+
+        mask_apply_exe = os.path.join(pge.repo_dir, "apply_glt_and_mask.py")
+
+        tmp_frcov_base = os.path.join(tmp_output_dir, self.acquisition_id)
+
+        cmd = ["python",
+               mask_apply_exe,
+               acq.cover_img_path, 
+               acq.coveruncert_img_path, 
+               tmp_frcovmask_tif_path,
+               acq.glt_img_path,
+               tmp_frcov_base]
+
+        main_pge.run(cmd, tmp_dir=self.tmp_dir)
+
+        wm.copy(tmp_frcov_base + '_frcov_pv.tif', acq.pv_tif_path)
+        wm.copy(tmp_frcov_base + '_frcovunc_pv.tif', acq.pvunc_tif_path)
+
+        wm.copy(tmp_frcov_base + '_frcov_npv.tif', acq.npv_tif_path)
+        wm.copy(tmp_frcov_base + '_frcovunc_npv.tif', acq.npvunc_tif_path)
+
+        wm.copy(tmp_frcov_base + '_frcov_bare.tif', acq.bare_tif_path)
+        wm.copy(tmp_frcov_base + '_frcovunc_bare.tif', acq.bareunc_tif_path)
+        
+        wm.copy(tmp_frcov_base + '_frcov_col.png', acq.frcovbrowse_png_path)
+
+        # Update db
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.frcov.mask": {
+                "tif_path" : acq.frcovmask_tif_path,
+                "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.frcov.pv": {
+                "tif_path" : acq.pv_tif_path,
+                "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.frcov.pvunc": {
+                "tif_path" : acq.pvunc_tif_path,
+                "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.frcov.npv": {
+                "tif_path" : acq.npv_tif_path,
+                "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.frcov.npvunc": {
+                "tif_path" : acq.npvunc_tif_path,
+                "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.frcov.bare": {
+                "tif_path" : acq.bareunc_tif_path,
+                "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.frcov.bareunc": {
+                "tif_path" : acq.bareunc_tif_path,
+                "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.frcov.browse": {
+                "png_path" : acq.frcovbrowse_png_path,
+                "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
+
+        creation_time = datetime.datetime.fromtimestamp(
+            os.path.getmtime(acq.pv_tif_path), tz=datetime.timezone.utc)
+        
+        doc_version = "EMIT SDS GHG JPL-D 107866, v0.2"
+        
+        total_time = time.time() - start_time
+        log_entry = {
+            "task": self.task_family,
+            "pge_name": pge.repo_url,
+            "pge_version": pge.version_tag,
+            "pge_input_files": input_files,
+            "pge_run_command": " ".join(cmd),
+            "documentation_version": doc_version,
+            "product_creation_time": creation_time,
+            "pge_runtime_seconds": total_time,
+            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
+            "completion_status": "SUCCESS",
+            "output": {
+                "frcovmask_tif_path": acq.frcovmask_tif_path,
+                "pv_tif_path:": acq.pv_tif_path,
+                "pvunc_tif_path": acq.pvunc_tif_path,
+                "npv_tif_path:": acq.npv_tif_path,
+                "npvunc_tif_path": acq.npvunc_tif_path,
+                "bare_tif_path:": acq.bare_tif_path,
+                "bareunc_tif_path": acq.bareunc_tif_path,
+                "ortch4_png_path": acq.ortch4_png_path,
+                "frcovbrowse_png_path": acq.frcovbrowse_png_path
+            }
+        }
+
+        dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
