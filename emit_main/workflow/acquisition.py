@@ -74,19 +74,34 @@ class Acquisition:
             self.raw_granule_ur = f"EMIT_L1A_RAW_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.rdn_granule_ur = f"EMIT_L1B_RAD_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.obs_granule_ur = f"EMIT_L1B_OBS_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            
             self.rfl_granule_ur = f"EMIT_L2A_RFL_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.rfluncert_granule_ur = f"EMIT_L2A_RFLUNCERT_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            
             self.mask_granule_ur = f"EMIT_L2A_MASK_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            
             self.maskTf_granule_ur = f"EMIT_L2A_MASK_002_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            
             self.abun_granule_ur = f"EMIT_L2B_MIN_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.abununcert_granule_ur = f"EMIT_L2B_MINUNCERT_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            
             self.ch4_granule_ur = f"EMIT_L2B_CH4ENH_002_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.ch4uncert_granule_ur = f"EMIT_L2B_CH4UNCERT_002_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.ch4sens_granule_ur = f"EMIT_L2B_CH4SENS_002_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+           
             self.co2_granule_ur = f"EMIT_L2B_CO2ENH_002_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.co2uncert_granule_ur = f"EMIT_L2B_CO2UNCERT_002_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.co2sens_granule_ur = f"EMIT_L2B_CO2SENS_002_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-
+            
+            self.frcov_granule_ur = f"EMIT_L2B_FRCOV_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.frcovqc_granule_ur = f"EMIT_L2B_FRCOVQC_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.pv_granule_ur = f"EMIT_L2B_FRCOVPV_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.pvunc_granule_ur = f"EMIT_L2B_FRCOVPVUNC_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.npv_granule_ur = f"EMIT_L2B_FRCOVNPV_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.npvunc_granule_ur = f"EMIT_L2B_FRCOVNPVUNC_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.bare_granule_ur = f"EMIT_L2B_FRCOVBARE_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.bareunc_granule_ur = f"EMIT_L2B_FRCOVBAREUNC_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            
         self.daac_staging_dir = os.path.join(self.config["daac_base_dir"], wm.config['environment'], "products",
                                              self.start_time.strftime("%Y%m%d"))
         self.daac_uri_base = f"https://{self.config['daac_server_external']}/emit/lpdaac/{wm.config['environment']}/" \
@@ -186,7 +201,7 @@ class Acquisition:
                 "ortuncertco2": ["tif"],
             },
             "frcov": {
-                "frcovmask": ["tif"],
+                "frcovqc": ["tif"],
                 "bare": ["tif"],
                 "bareunc": ["tif"],
                 "pv": ["tif"],

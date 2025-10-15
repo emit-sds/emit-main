@@ -26,7 +26,7 @@ from emit_main.workflow.l1a_tasks import L1ADepacketizeScienceFrames, L1AReassem
     L1AFrameReport, L1AReformatBAD, L1ADeliver
 from emit_main.workflow.l1b_tasks import L1BGeolocate, L1BCalibrate, L1BRdnFormat, L1BRdnDeliver, L1BAttDeliver
 from emit_main.workflow.l2a_tasks import L2AMask, L2AReflectance, L2AFormat, L2ADeliver, L2AMaskTf, L2AMaskTfFormat, L2AMaskTfDeliver
-from emit_main.workflow.l2b_tasks import L2BAbundance, L2BFormat, L2BDeliver, L2BFrCovFormat
+from emit_main.workflow.l2b_tasks import L2BAbundance, L2BFormat, L2BDeliver, L2BFrCovFormat, L2BFrCovDeliver
 from emit_main.workflow.l3_tasks import L3Unmix
 from emit_main.workflow.ghg_tasks import CH4, CO2, CH4Deliver, CO2Deliver, CH4Mosaic, CO2Mosaic
 from emit_main.workflow.slurm import SlurmJobTask
@@ -44,7 +44,7 @@ def parse_args():
                        "l2bdaac", "l2amaskTfdaac", "l2bch4", "l2bco2","l2bch4daac", "l2bco2daac", "l2bch4mosaic", 
                        "l2bco2mosaic","l2bfrcovformat", "l2bfrcovdaac", "l3unmix", "daacscenes", "daacaddl", "recon"]
     monitor_choices = ["ingest", "frames", "edp", "cal", "bad", "geo", "l2","maskTf", "l2b","ch4", "co2", "l3", "frcov",
-                       "email", "daacscenes", "dl0","dl1a", "dl1brdn", "dl1batt", "dl2a", "dmaskTf",
+                       "email", "daacscenes", "dl0","dl1a", "dl1brdn", "dl1batt", "dl2a", "dmaskTf", "dfrcov",
                        "dl2b", "dch4", "dco2", "mch4", "mco2","reconresp"]
     parser = argparse.ArgumentParser(
         description="Description: This is the top-level run script for executing the various EMIT SDS workflow and "
@@ -235,6 +235,8 @@ def get_tasks_from_product_args(args):
                                              override_output=args.override_output, **kwargs),
         "l2bco2mosaic": lambda: CO2Mosaic(dcid=args.dcid, **kwargs),
         "l2bfrcovformat": lambda acq_id: L2BFrCovFormat(acquisition_id=acq_id, **kwargs),
+        "l2bfrcovdaac": lambda acq_id: L2BFrCovDeliver(acquisition_id=acq_id, daac_ingest_queue=args.daac_ingest_queue,
+                                                override_output=args.override_output, **kwargs),
         "l3unmix": lambda acq_id: L3Unmix(acquisition_id=acq_id, **kwargs),
         # "l3unmixformat": lambda acq_id: L3UnmixFormat(acquisition_id=acq_id, **kwargs),
         "daacscenes": lambda: AssignDAACSceneNumbers(orbit_id=args.orbit_id, override_output=args.override_output, **kwargs),
@@ -624,6 +626,16 @@ def main():
         logger.info(f"Acquisition monitor deliver co2 tasks to run:\n{am_dco2_tasks_str}")
         tasks += am_dco2_tasks
     
+    # Get tasks from dfrcov (deliver frcov) monitor
+    if args.monitor and args.monitor == "dfrcov":
+        am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
+                                daac_ingest_queue=args.daac_ingest_queue, override_output=args.override_output)
+        am_dfrcov_tasks = am.get_frcov_delivery_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                                  date_field=args.date_field, retry_failed=args.retry_failed)
+        am_dfrcov_tasks_str = "\n".join([str(t) for t in am_dfrcov_tasks])
+        logger.info(f"Acquisition monitor deliver frcov tasks to run:\n{am_dfrcov_tasks_str}")
+        tasks += am_dfrcov_tasks
+        
         # Get tasks from mch4 (mosaic ch4) monitor
     if args.monitor and args.monitor == "mch4":
         dm = FramesMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
