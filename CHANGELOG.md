@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v1.6.30](https://github.com/emit-sds/emit-main/compare/v1.6.29...v1.6.30)
+
+> 7 October 2025
+
+* Well Known Errors by @adamchlus in https://github.com/emit-sds/emit-main/pull/80
+* Updated slurm resources for GHG task by @adamchlus in https://github.com/emit-sds/emit-main/pull/81
+* Added max_jobs to L1BCalibrate run config by @adamchlus in https://github.com/emit-sds/emit-main/pull/82
+* L2AMask V002 (SpecTf) by @adamchlus in https://github.com/emit-sds/emit-main/pull/83
+* L2AMaskTf filepaths update by @adamchlus in https://github.com/emit-sds/emit-main/pull/84
+
 #### [v1.6.29](https://github.com/emit-sds/emit-main/compare/v1.6.28...v1.6.29)
 
 > 8 September 2025
