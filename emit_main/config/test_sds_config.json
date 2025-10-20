@@ -12,7 +12,7 @@
     },
     "database_config": {
         "db_host": "128.149.12.85",
-        "db_port": 27017,
+        "db_port": 27018,
         "db_name": "emitTestDB",
         "db_user": "emit-test"
     },

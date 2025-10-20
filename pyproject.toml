@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "emit_main"
+version = "1.6.29"
+description = "Workflow and file management code for EMIT science data processing"
+authors = [
+    { name = "Winston Olson-Duvall", email = "winston.olson-duvall@jpl.nasa.gov" },
+    { name = "Phil Brodrick", email = "philip.brodrick@jpl.nasa.gov" },
+    { name = "Adam Chlus", email = "adam.m.chlus@jpl.nasa.gov" }
+]
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "gdal",
+    "luigi"
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-cov", "pycodestyle"]
