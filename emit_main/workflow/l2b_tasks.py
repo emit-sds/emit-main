@@ -593,25 +593,24 @@ class L2BFrCovFormat(SlurmJobTask):
         main_pge = wm.pges["emit-sds-frcov"]
         main_pge.run(cmd, tmp_dir=self.tmp_dir)
 
-        # Copy and rename output files back to /store
-        log_path = acq.maskTf_nc_path.replace(".nc", "_nc_pge.log")
-        wm.copy(tmp_frcovqc_tif_path, acq.frcovqc_tif_path)
-        # wm.copy(tmp_log_path, log_path)
-
-        mask_apply_exe = os.path.join(pge.repo_dir, "apply_glt_and_mask.py")
+        format_exe = os.path.join(pge.repo_dir, "format_outputs.py")
 
         tmp_frcov_base = os.path.join(tmp_output_dir, self.acquisition_id)
 
-        cmd = ["python",
-               mask_apply_exe,
+        format_cmd = ["python",
+               format_exe,
                acq.cover_img_path, 
                acq.coveruncert_img_path, 
                tmp_frcovqc_tif_path,
                acq.glt_img_path,
+               "--software_version", wm.config["extended_build_num"],
+               "--product_version", acq.collection_version,
                tmp_frcov_base]
 
-        main_pge.run(cmd, tmp_dir=self.tmp_dir)
+        main_pge.run(format_cmd, tmp_dir=self.tmp_dir)
 
+        wm.copy(tmp_frcovqc_tif_path, acq.frcovqc_tif_path)
+        
         wm.copy(tmp_frcov_base + '_frcov_pv.tif', acq.pv_tif_path)
         wm.copy(tmp_frcov_base + '_frcovunc_pv.tif', acq.pvunc_tif_path)
 
@@ -621,7 +620,7 @@ class L2BFrCovFormat(SlurmJobTask):
         wm.copy(tmp_frcov_base + '_frcov_bare.tif', acq.bare_tif_path)
         wm.copy(tmp_frcov_base + '_frcovunc_bare.tif', acq.bareunc_tif_path)
         
-        wm.copy(tmp_frcov_base + '_frcov_col.png', acq.frcovbrowse_png_path)
+        wm.copy(tmp_frcov_base + '_frcov.png', acq.frcovbrowse_png_path)
 
         # Update db
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.frcov.mask": {
@@ -761,7 +760,6 @@ class L2BFrCovDeliver(SlurmJobTask):
 
         # Get the software_build_version (extended build num when product was created)
         software_build_version = read_gdal_metadata(acq.frcovqc_tif_path, 'software_build_version')
-        software_build_version = 'TEST'
 
         if not software_build_version:
             print('Could not read software build version from COG metadata')
