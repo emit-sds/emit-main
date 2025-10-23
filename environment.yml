@@ -2,14 +2,21 @@ name: emit-main
 channels:
   - conda-forge
 dependencies:
+  - beautifulsoup4
   - cryptography=46.0.3
   - gdal=3.11.4
+  - h5netcdf
   - luigi=3.6.0
+  - matplotlib
+  - numpy
+  - pandas
   - pip=25.2
   - pycodestyle=2.14.0
   - pymongo=4.9.1
   - pytest=8.4.2
   - pytest-cov=7.0.0
   - python=3.12.12
+  - pytz=2025.2
+  - requests
   - setuptools=80.9.0
   - spectral=0.24

@@ -12,7 +12,7 @@ authors = [
     { name = "Adam Chlus", email = "adam.m.chlus@jpl.nasa.gov" }
 ]
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.12"
 dependencies = [
     "gdal",
     "luigi"
