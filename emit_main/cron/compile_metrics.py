@@ -300,6 +300,7 @@ def main():
                     df["minunc_nc_size_bytes"] = os.path.getsize(minunc_nc_files[0])
                 if len(ch4_img_files) > 0:
                     df["ch4_img_size_bytes"] = os.path.getsize(ch4_img_files[0])
+                    df["ch4_exists"] = True
                 if len(ch4_tif_files) > 0:
                     df["ch4_tif_size_bytes"] = os.path.getsize(ch4_tif_files[0])
                 if len(sensch4_img_files) > 0:
@@ -312,6 +313,7 @@ def main():
                     df["uncertch4_tif_size_bytes"] = os.path.getsize(uncertch4_tif_files[0])
                 if len(co2_img_files) > 0:
                     df["co2_img_size_bytes"] = os.path.getsize(co2_img_files[0])
+                    df["co2_exists"] = True
                 if len(co2_tif_files) > 0:
                     df["co2_tif_size_bytes"] = os.path.getsize(co2_tif_files[0])
                 if len(sensco2_img_files) > 0:
@@ -424,7 +426,9 @@ def main():
             # "l1a": "C2407975601-LPCLOUD",
             "l1b": "C2408009906-LPCLOUD",
             "l2a": "C2408750690-LPCLOUD",
-            "l2b": "C2408034484-LPCLOUD"
+            "l2b": "C2408034484-LPCLOUD",
+            "ch4": "C3242680113-LPCLOUD",
+            "co2": "C3243477145-LPCLOUD"
         }
         # token = "eyJ0eXAiOiJKV1QiLCJvcmlnaW4iOiJFYXJ0aGRhdGEgTG9naW4iLCJzaWciOiJlZGxqd3RwdWJrZXlfb3BzIiwiYWxnIjoiUlMyNTYifQ.eyJ0eXBlIjoiVXNlciIsInVpZCI6IndpbnN0b25vbHNvbiIsImV4cCI6MTcxODU3MDg3NywiaWF0IjoxNzEzMzg2ODc3LCJpc3MiOiJFYXJ0aGRhdGEgTG9naW4ifQ.3HAXsV3fzMYMY7LqztJa71Z_vfyXbleR3JZGkXv57uMfekYRHN_Y9rw38dX3twtccBiTsohlFXXprFnTpiBKMgqDxcS55eis8G46SF8Y7Nt4qikY8k4RkF7szMmfqcOJYpj1v1INONBhF9W7Pjew9DUpLJiMQgyKbC90gEmCADbPVZVgL0_rlzT7oL__w_vQTQMauwz7Exr3T63BeISJzAj1jz7zeDo3ROuGZrqtfSX9z-ngLRpCyO9CjCF_ABtL0Y6ZRBoZPiYE43sfm-YnSiKhAfy46ju5CpHomPxbAWrfzDqkN52OXX9tLFGkrK8ucW4snOWW8_LZn5rwGOVKFA"
         cur_date = start_date
