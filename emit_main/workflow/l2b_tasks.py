@@ -620,7 +620,7 @@ class L2BFrCovFormat(SlurmJobTask):
         wm.copy(tmp_frcov_base + '_frcov_bare.tif', acq.bare_tif_path)
         wm.copy(tmp_frcov_base + '_frcovunc_bare.tif', acq.bareunc_tif_path)
         
-        wm.copy(tmp_frcov_base + '_frcov.png', acq.frcovbrowse_png_path)
+        wm.copy(tmp_frcov_base + '_frcov.png', acq.frcov_png_path)
 
         # Update db
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.frcov.mask": {
@@ -645,7 +645,7 @@ class L2BFrCovFormat(SlurmJobTask):
                 "tif_path" : acq.bareunc_tif_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.frcov.browse": {
-                "png_path" : acq.frcovbrowse_png_path,
+                "png_path" : acq.frcov_png_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
 
         creation_time = datetime.datetime.fromtimestamp(
@@ -674,7 +674,7 @@ class L2BFrCovFormat(SlurmJobTask):
                 "bare_tif_path:": acq.bare_tif_path,
                 "bareunc_tif_path": acq.bareunc_tif_path,
                 "ortch4_png_path": acq.ortch4_png_path,
-                "frcovbrowse_png_path": acq.frcovbrowse_png_path
+                "frcov_png_path": acq.frcov_png_path
             }
         }
 
@@ -722,7 +722,7 @@ class L2BFrCovDeliver(SlurmJobTask):
         pge = wm.pges["emit-main"]
 
         # Get local SDS names
-        ummg_path = acq.frcovbrowse_png_path.replace(".png", ".cmr.json")
+        ummg_path = acq.frcov_png_path.replace(".png", ".cmr.json")
 
         # Create local/tmp daac names and paths
         daac_frcovqc_tif_name = f"{acq.frcovqc_granule_ur}.tif"
@@ -750,7 +750,7 @@ class L2BFrCovDeliver(SlurmJobTask):
 
         # Copy files to tmp dir and rename
         wm.copy(acq.frcovqc_tif_path, daac_frcovqc_tif_path)
-        wm.copy(acq.frcovbrowse_png_path, daac_browse_path)
+        wm.copy(acq.frcov_png_path, daac_browse_path)
         wm.copy(acq.pv_tif_path, daac_pv_tif_path)
         wm.copy(acq.pvunc_tif_path, daac_pvunc_tif_path)
         wm.copy(acq.npv_tif_path, daac_npv_tif_path)
@@ -816,7 +816,7 @@ class L2BFrCovDeliver(SlurmJobTask):
             daac_npvunc_tif_name: os.path.basename(acq.npvunc_tif_path),
             daac_bare_tif_name: os.path.basename(acq.bare_tif_path),
             daac_bareunc_tif_name: os.path.basename(acq.bareunc_tif_path),
-            daac_browse_name: os.path.basename(acq.frcovbrowse_png_path),
+            daac_browse_name: os.path.basename(acq.frcov_png_path),
             daac_ummg_name: os.path.basename(ummg_path)
         }
         provider = wm.config["daac_provider_forward"]
@@ -973,7 +973,7 @@ class L2BFrCovDeliver(SlurmJobTask):
                 "npvunc_tif_path": acq.npvunc_tif_path,
                 "bare_tif_path": acq.bare_tif_path,
                 "bareunc_tif_path": acq.bareunc_tif_path,
-                "frcovbrowse_png_path": acq.frcovbrowse_png_path
+                "frcov_png_path": acq.frcov_png_path
             },
             "pge_run_command": " ".join(cmd_aws),
             "documentation_version": "TBD",

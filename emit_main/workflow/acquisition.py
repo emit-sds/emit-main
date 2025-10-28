@@ -208,7 +208,7 @@ class Acquisition:
                 "pvunc": ["tif"],
                 "npv": ["tif"],
                 "npvunc": ["tif"],
-                "frcovbrowse": ["png"],            
+                "frcov": ["png"],            
                 }
         }
         paths = {}
@@ -221,11 +221,13 @@ class Acquisition:
             else:
                 level_data_dir = os.path.join(self.acquisition_id_dir, level)
                 self.__dict__.update({level + "_data_dir": level_data_dir})
+                processing_verion = self.config["processing_version"]
                 if level == 'mask':
                     level ='l2a'
                     processing_verion = '02'
-                else:
-                    processing_verion = self.config["processing_version"]
+                elif level == 'frcov':
+                    level ='l2b'
+                    
                 
             self.dirs.append(level_data_dir)
             for prod, formats in prod_map.items():
