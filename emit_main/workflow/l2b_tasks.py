@@ -781,7 +781,7 @@ class L2BFrCovDeliver(SlurmJobTask):
                                               orbit_segment=int(acq.scene), scene=int(acq.daac_scene),
                                               solar_zenith=acq.mean_solar_zenith,
                                               solar_azimuth=acq.mean_solar_azimuth,
-                                              cloud_fraction=acq.cloud_fraction)
+                                              cloud_fraction=acq.cloud_fraction_02)
         ummg = daac_converter.add_data_files_ummg(
             ummg, daac_paths,
             acq.daynight,
