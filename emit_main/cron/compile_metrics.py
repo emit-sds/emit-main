@@ -257,7 +257,16 @@ def main():
                 sensco2_tif_files = glob.glob(f"{dir}/{acq}/ghg/co2/{acq}*_ortsensco2_*tif")
                 uncertco2_img_files = glob.glob(f"{dir}/{acq}/ghg/co2/{acq}*_uncertco2_*img")
                 uncertco2_tif_files = glob.glob(f"{dir}/{acq}/ghg/co2/{acq}*_ortuncertco2_*tif")
-
+                frcovqc_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_frcovqc_*tif")
+                pv_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_pv_*tif")
+                pvunc_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_pvunc_*tif")
+                npv_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_npv_*tif")
+                npvunc_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_npvunc_*tif")
+                bare_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_bare_*tif")
+                bareunc_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_bareunc_*tif")
+                maskTf_img_files = glob.glob(f"{dir}/{acq}/mask/{acq}*_mask_*img")
+                maskTf_nc_files = glob.glob(f"{dir}/{acq}/mask/{acq}*_mask_*nc")
+                
                 if len(raw_img_files) > 0:
                     df["raw_img_size_bytes"] = os.path.getsize(raw_img_files[0])
                 if len(rdn_img_files) > 0:
@@ -316,6 +325,25 @@ def main():
                     df["uncertco2_img_size_bytes"] = os.path.getsize(uncertco2_img_files[0])
                 if len(uncertco2_tif_files) > 0:
                     df["uncertco2_tif_size_bytes"] = os.path.getsize(uncertco2_tif_files[0])
+                if len(frcovqc_tif_files) > 0:
+                    df["frcovqc_tif_size_bytes"] = os.path.getsize(frcovqc_tif_files[0])
+                if len(pv_tif_files) > 0:
+                    df["pv_tif_size_bytes"] = os.path.getsize(pv_tif_files[0])
+                if len(pvunc_tif_files) > 0:
+                    df["pvunc_tif_size_bytes"] = os.path.getsize(pvunc_tif_files[0])
+                if len(npv_tif_files) > 0:
+                    df["npv_tif_size_bytes"] = os.path.getsize(npv_tif_files[0])
+                if len(npvunc_tif_files) > 0:
+                    df["npvunc_tif_size_bytes"] = os.path.getsize(npvunc_tif_files[0])
+                if len(bare_tif_files) > 0:
+                    df["bare_tif_size_bytes"] = os.path.getsize(bare_tif_files[0])
+                if len(bareunc_tif_files) > 0:
+                    df["bareunc_tif_size_bytes"] = os.path.getsize(bareunc_tif_files[0])
+                if len(maskTf_img_files) > 0:
+                    df["maskTf_img_size_bytes"] = os.path.getsize(maskTf_img_files[0])
+                if len(maskTf_nc_files) > 0:
+                    df["maskTf_nc_size_bytes"] = os.path.getsize(maskTf_nc_files[0])
+                    
                 # Get reassembly report info
                 if len(reassembly_reports) > 0:
                     num_lines, corrupt_lines, cloudy_frames = 0, 0, 0
@@ -420,7 +448,9 @@ def main():
             "l2a": "C2408750690-LPCLOUD",
             "l2b": "C2408034484-LPCLOUD",
             "ch4": "C3242680113-LPCLOUD",
-            "co2": "C3243477145-LPCLOUD"
+            "co2": "C3243477145-LPCLOUD",
+            # "frcov": "",
+            # "mask": "",
         }
         # token = "eyJ0eXAiOiJKV1QiLCJvcmlnaW4iOiJFYXJ0aGRhdGEgTG9naW4iLCJzaWciOiJlZGxqd3RwdWJrZXlfb3BzIiwiYWxnIjoiUlMyNTYifQ.eyJ0eXBlIjoiVXNlciIsInVpZCI6IndpbnN0b25vbHNvbiIsImV4cCI6MTcxODU3MDg3NywiaWF0IjoxNzEzMzg2ODc3LCJpc3MiOiJFYXJ0aGRhdGEgTG9naW4ifQ.3HAXsV3fzMYMY7LqztJa71Z_vfyXbleR3JZGkXv57uMfekYRHN_Y9rw38dX3twtccBiTsohlFXXprFnTpiBKMgqDxcS55eis8G46SF8Y7Nt4qikY8k4RkF7szMmfqcOJYpj1v1INONBhF9W7Pjew9DUpLJiMQgyKbC90gEmCADbPVZVgL0_rlzT7oL__w_vQTQMauwz7Exr3T63BeISJzAj1jz7zeDo3ROuGZrqtfSX9z-ngLRpCyO9CjCF_ABtL0Y6ZRBoZPiYE43sfm-YnSiKhAfy46ju5CpHomPxbAWrfzDqkN52OXX9tLFGkrK8ucW4snOWW8_LZn5rwGOVKFA"
         cur_date = start_date
