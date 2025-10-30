@@ -257,15 +257,11 @@ def main():
                 sensco2_tif_files = glob.glob(f"{dir}/{acq}/ghg/co2/{acq}*_ortsensco2_*tif")
                 uncertco2_img_files = glob.glob(f"{dir}/{acq}/ghg/co2/{acq}*_uncertco2_*img")
                 uncertco2_tif_files = glob.glob(f"{dir}/{acq}/ghg/co2/{acq}*_ortuncertco2_*tif")
-                df["l1a_raw_exists"], df["l1b_radiance_exists"] = False, False
-                df["l2a_reflectance_exists"], df["l2b_mineral_id_exists"] = False, False
 
                 if len(raw_img_files) > 0:
                     df["raw_img_size_bytes"] = os.path.getsize(raw_img_files[0])
-                    df["l1a_raw_exists"] = True
                 if len(rdn_img_files) > 0:
                     df["rdn_img_size_bytes"] = os.path.getsize(rdn_img_files[0])
-                    df["l1b_radiance_exists"] = True
                 if len(rdn_nc_files) > 0:
                     df["rdn_nc_size_bytes"] = os.path.getsize(rdn_nc_files[0])
                 if len(glt_img_files) > 0:
@@ -278,7 +274,6 @@ def main():
                     df["obs_nc_size_bytes"] = os.path.getsize(obs_nc_files[0])
                 if len(rfl_img_files) > 0:
                     df["rfl_img_size_bytes"] = os.path.getsize(rfl_img_files[0])
-                    df["l2a_reflectance_exists"] = True
                 if len(rfl_nc_files) > 0:
                     df["rfl_nc_size_bytes"] = os.path.getsize(rfl_nc_files[0])
                 if len(rflunc_img_files) > 0:
@@ -291,7 +286,6 @@ def main():
                     df["mask_nc_size_bytes"] = os.path.getsize(mask_nc_files[0])
                 if len(min_img_files) > 0:
                     df["min_img_size_bytes"] = os.path.getsize(min_img_files[0])
-                    df["l2b_mineral_id_exists"] = True
                 if len(min_nc_files) > 0:
                     df["min_nc_size_bytes"] = os.path.getsize(min_nc_files[0])
                 if len(minunc_img_files) > 0:
@@ -300,7 +294,6 @@ def main():
                     df["minunc_nc_size_bytes"] = os.path.getsize(minunc_nc_files[0])
                 if len(ch4_img_files) > 0:
                     df["ch4_img_size_bytes"] = os.path.getsize(ch4_img_files[0])
-                    df["ch4_exists"] = True
                 if len(ch4_tif_files) > 0:
                     df["ch4_tif_size_bytes"] = os.path.getsize(ch4_tif_files[0])
                 if len(sensch4_img_files) > 0:
@@ -313,7 +306,6 @@ def main():
                     df["uncertch4_tif_size_bytes"] = os.path.getsize(uncertch4_tif_files[0])
                 if len(co2_img_files) > 0:
                     df["co2_img_size_bytes"] = os.path.getsize(co2_img_files[0])
-                    df["co2_exists"] = True
                 if len(co2_tif_files) > 0:
                     df["co2_tif_size_bytes"] = os.path.getsize(co2_tif_files[0])
                 if len(sensco2_img_files) > 0:
