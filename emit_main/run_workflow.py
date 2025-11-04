@@ -13,6 +13,10 @@ import sys
 
 from argparse import RawTextHelpFormatter
 
+# Set Luigi client config
+parent_dir = os.path.dirname(__file__)
+os.environ["LUIGI_CONFIG_PATH"] = os.path.join(parent_dir, "workflow", "luigi", "luigi.cfg")
+
 import luigi
 
 from emit_main.monitor.acquisition_monitor import AcquisitionMonitor
@@ -32,7 +36,8 @@ from emit_main.workflow.ghg_tasks import CH4, CO2, CH4Deliver, CO2Deliver, CH4Mo
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_main.workflow.workflow_manager import WorkflowManager
 
-logging_conf = os.path.join(os.path.dirname(__file__), "logging.conf")
+# Configure logging
+logging_conf = os.path.join(parent_dir, "logging.conf")
 logging.config.fileConfig(fname=logging_conf)
 logger = logging.getLogger("emit-main")
 
