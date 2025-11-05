@@ -1150,3 +1150,123 @@ class L1BAttDeliver(SlurmJobTask):
             }
         }
         dm.insert_orbit_log_entry(self.orbit_id, log_entry)
+
+class L1BMosaic(SlurmJobTask):
+    """
+    Create L1B RGB mosaic and copy to server
+    """
+
+    config_path = luigi.Parameter()
+    level = luigi.Parameter()
+    partition = luigi.Parameter()
+    dcid = luigi.Parameter()
+
+    n_cores = 16
+    memory = 90000
+
+    task_namespace = "emit"
+
+    def requires(self):
+
+        logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
+        wm = WorkflowManager(config_path=self.config_path, dcid=self.dcid)
+        dc = wm.dcid
+
+    def output(self):
+
+        logger.debug(f"{self.task_family} output: {self.dcid}")
+        wm = WorkflowManager(config_path=self.config_path, dcid=self.dcid)
+        return DataCollectionTarget(data_collection=wm.data_collection, task_family=self.task_family)
+
+    def work(self):
+
+        start_time = time.time()
+        logger.debug(f"{self.task_family} run: {self.dcid}")
+
+        wm = WorkflowManager(config_path=self.config_path, dcid=self.dcid)
+        dc = wm.dcid
+        pge = wm.pges["emit-sds-l1b"]
+        emit_utils_pge = wm.pges["emit-utils"]
+        dm = wm.database_manager
+
+        # PGE writes to tmp folder
+        tmp_output_dir = os.path.join(self.local_tmp_dir, "rgb")
+        wm.makedirs(tmp_output_dir)
+        env = os.environ.copy()
+        sys.path.append(pge.repo_dir)
+
+        acquisitions = dm.find_acquisitions_for_l1b_mosaic(dcid = self.dcid)
+        acquisition_ids = [ac['acquisition_id'] for ac in acquisitions]
+        acquisition_ids.sort()
+    
+        start_timestamp = datetime.datetime.strptime(acquisition_ids[0], "emit%Y%m%dt%H%M%S")
+        end_timestamp =  datetime.datetime.strptime(acquisition_ids[-1], "emit%Y%m%dt%H%M%S")
+
+        if start_timestamp == end_timestamp:
+            end_timestamp +=  datetime.timedelta(seconds=1)
+
+        fmt = "%Y-%m-%dT%H_%M_%SZ"
+        mosaic_basename = f"emit{self.dcid}_{start_timestamp.strftime(fmt)}-to-{end_timestamp.strftime(fmt)}"
+        
+        # Define exe's
+        process_exe = os.path.join(pge.repo_dir, "mosaic.py")
+        
+        log_file_arg = f"--log-file={os.path.join(self.tmp_dir, 'rsync.log')}"
+
+        version = 'v01'
+        input_files = {}
+        output_files = {}
+        pge_commands = []
+        
+        target_dir = f'{wm.config["mirror_data_dir"]}/data_collections/by_dcid/{self.dcid[:5]}/{self.dcid}/l1b'
+        cmd_mkdir = ["ssh", wm.config["daac_server_internal"], "mkdir", "-p", target_dir]
+        pge.run(cmd_mkdir, tmp_dir=self.tmp_dir)
+            
+        input_files = [ac['products']['l1b']['rdn']['img_path'] for ac in acquisitions]
+        
+        output_mosaic_path = os.path.join(self.tmp_dir,f'{mosaic_basename}_rgb_{version}.tif')
+    
+        cmd = ["python",process_exe,
+                ' '.join(input_files),
+                output_mosaic_path]
+        
+        pge_commands.append(" ".join(cmd))       
+        pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
+
+        dcid_rgb_product_path = os.path.join(wm.data_collection.rgb_dir, os.path.basename(output_mosaic_path))
+
+        output_files["rgb_mosaic_tif_path"] = dcid_rgb_product_path
+        
+        wm.copy(output_mosaic_path, dcid_rgb_product_path)
+
+        target = f'{wm.config["daac_server_internal"]}:{target_dir}'
+        cmd_rsync = ["rsync", "-av", log_file_arg, output_mosaic_path, target]
+        pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
+
+        # Update db
+        dm.update_data_collection_metadata(self.dcid, {f"products.l1b.rgb_mosaic": {
+                "tif_path" : dcid_rgb_product_path,
+                "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
+
+        creation_time = datetime.datetime.fromtimestamp(
+            os.path.getmtime(dcid_rgb_product_path), tz=datetime.timezone.utc)
+
+        doc_version = "EMIT SDS L1B JPL-D 107866, v0.2"
+
+        total_time = time.time() - start_time
+            
+        log_entry = {
+            "task": self.task_family,
+            "pge_name": pge.repo_url,
+            "pge_version": pge.version_tag,
+            "pge_input_files": input_files,
+            "pge_run_command": pge_commands,
+            "documentation_version": doc_version,
+            "product_creation_time": creation_time,
+            "pge_runtime_seconds": total_time,
+            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
+            "completion_status": "SUCCESS",
+            "output": output_files
+            }
+
+        dm.insert_data_collection_log_entry(self.dcid, log_entry) 
