@@ -141,12 +141,14 @@ def main():
             "timestamp": {"$gte": start_date, "$lt": stop_date}
         }
 
-        for apid in ["1674", "1675", "1676"]:
-            print(f"Exporting apid {apid} to CSV")
-            export_apid(apid, dm, query, args.export_to_dir, start, stop)
+        if "streams" in metrics_flags:
+            for apid in ["1674", "1675", "1676"]:
+                print(f"Exporting apid {apid} to CSV")
+                export_apid(apid, dm, query, args.export_to_dir, start, stop)
 
-        print("Exporting scene data to CSV")
-        export_scene(dm, query, args.export_to_dir, start, stop)
+        if "scenes" in metrics_flags:
+            print("Exporting scene data to CSV")
+            export_scene(dm, query, args.export_to_dir, start, stop)
         sys.exit()
 
     if "streams" in metrics_flags:
