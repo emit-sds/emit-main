@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v1.6.31](https://github.com/emit-sds/emit-main/compare/v1.6.30...v1.6.31)
+
+> 5 November 2025
+
+* Slurm and trace gas metrics by @adamchlus in https://github.com/emit-sds/emit-main/pull/87
+* Update software versions by @winstonolson in https://github.com/emit-sds/emit-main/pull/88
+
 #### [v1.6.30](https://github.com/emit-sds/emit-main/compare/v1.6.29...v1.6.30)
 
 > 7 October 2025
