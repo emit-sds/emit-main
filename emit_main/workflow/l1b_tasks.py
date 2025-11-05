@@ -186,7 +186,8 @@ class L1BCalibrate(SlurmJobTask):
             "dark_img_path": dark_img_path,
             "l1b_config": l1b_config,
             "l1b_config_path": l1b_config_path,
-            "flat_field_update_paths": flat_field_update_paths
+            "flat_field_update_paths": flat_field_update_paths,
+            "max_jobs": self.n_cores 
         }
         with open(tmp_runconfig_path, "w") as f:
             f.write(json.dumps(runconfig, indent=4))

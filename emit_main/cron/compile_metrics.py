@@ -259,15 +259,20 @@ def main():
                 sensco2_tif_files = glob.glob(f"{dir}/{acq}/ghg/co2/{acq}*_ortsensco2_*tif")
                 uncertco2_img_files = glob.glob(f"{dir}/{acq}/ghg/co2/{acq}*_uncertco2_*img")
                 uncertco2_tif_files = glob.glob(f"{dir}/{acq}/ghg/co2/{acq}*_ortuncertco2_*tif")
-                df["l1a_raw_exists"], df["l1b_radiance_exists"] = False, False
-                df["l2a_reflectance_exists"], df["l2b_mineral_id_exists"] = False, False
-
+                frcovqc_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_frcovqc_*tif")
+                pv_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_pv_*tif")
+                pvunc_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_pvunc_*tif")
+                npv_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_npv_*tif")
+                npvunc_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_npvunc_*tif")
+                bare_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_bare_*tif")
+                bareunc_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_bareunc_*tif")
+                maskTf_img_files = glob.glob(f"{dir}/{acq}/mask/{acq}*_mask_*img")
+                maskTf_nc_files = glob.glob(f"{dir}/{acq}/mask/{acq}*_mask_*nc")
+                
                 if len(raw_img_files) > 0:
                     df["raw_img_size_bytes"] = os.path.getsize(raw_img_files[0])
-                    df["l1a_raw_exists"] = True
                 if len(rdn_img_files) > 0:
                     df["rdn_img_size_bytes"] = os.path.getsize(rdn_img_files[0])
-                    df["l1b_radiance_exists"] = True
                 if len(rdn_nc_files) > 0:
                     df["rdn_nc_size_bytes"] = os.path.getsize(rdn_nc_files[0])
                 if len(glt_img_files) > 0:
@@ -280,7 +285,6 @@ def main():
                     df["obs_nc_size_bytes"] = os.path.getsize(obs_nc_files[0])
                 if len(rfl_img_files) > 0:
                     df["rfl_img_size_bytes"] = os.path.getsize(rfl_img_files[0])
-                    df["l2a_reflectance_exists"] = True
                 if len(rfl_nc_files) > 0:
                     df["rfl_nc_size_bytes"] = os.path.getsize(rfl_nc_files[0])
                 if len(rflunc_img_files) > 0:
@@ -293,7 +297,6 @@ def main():
                     df["mask_nc_size_bytes"] = os.path.getsize(mask_nc_files[0])
                 if len(min_img_files) > 0:
                     df["min_img_size_bytes"] = os.path.getsize(min_img_files[0])
-                    df["l2b_mineral_id_exists"] = True
                 if len(min_nc_files) > 0:
                     df["min_nc_size_bytes"] = os.path.getsize(min_nc_files[0])
                 if len(minunc_img_files) > 0:
@@ -324,6 +327,25 @@ def main():
                     df["uncertco2_img_size_bytes"] = os.path.getsize(uncertco2_img_files[0])
                 if len(uncertco2_tif_files) > 0:
                     df["uncertco2_tif_size_bytes"] = os.path.getsize(uncertco2_tif_files[0])
+                if len(frcovqc_tif_files) > 0:
+                    df["frcovqc_tif_size_bytes"] = os.path.getsize(frcovqc_tif_files[0])
+                if len(pv_tif_files) > 0:
+                    df["pv_tif_size_bytes"] = os.path.getsize(pv_tif_files[0])
+                if len(pvunc_tif_files) > 0:
+                    df["pvunc_tif_size_bytes"] = os.path.getsize(pvunc_tif_files[0])
+                if len(npv_tif_files) > 0:
+                    df["npv_tif_size_bytes"] = os.path.getsize(npv_tif_files[0])
+                if len(npvunc_tif_files) > 0:
+                    df["npvunc_tif_size_bytes"] = os.path.getsize(npvunc_tif_files[0])
+                if len(bare_tif_files) > 0:
+                    df["bare_tif_size_bytes"] = os.path.getsize(bare_tif_files[0])
+                if len(bareunc_tif_files) > 0:
+                    df["bareunc_tif_size_bytes"] = os.path.getsize(bareunc_tif_files[0])
+                if len(maskTf_img_files) > 0:
+                    df["maskTf_img_size_bytes"] = os.path.getsize(maskTf_img_files[0])
+                if len(maskTf_nc_files) > 0:
+                    df["maskTf_nc_size_bytes"] = os.path.getsize(maskTf_nc_files[0])
+                    
                 # Get reassembly report info
                 if len(reassembly_reports) > 0:
                     num_lines, corrupt_lines, cloudy_frames = 0, 0, 0
@@ -413,7 +435,7 @@ def main():
                     if "Retrieved Ele. Median" in p:
                         df["retrieved_ele_median"] = p["Retrieved Ele. Median"]
                     if "Retrieved WV Median" in p:
-                        df["retrieved_wavelength_median"] = p["Retrieved WV Median"]
+                        df["retrieved_water_vapor_median"] = p["Retrieved WV Median"]
 
                     trending_acqs_coll = dm.db.trending_acquisitions
                     query = {"timestamp": timestamp}
@@ -426,7 +448,11 @@ def main():
             # "l1a": "C2407975601-LPCLOUD",
             "l1b": "C2408009906-LPCLOUD",
             "l2a": "C2408750690-LPCLOUD",
-            "l2b": "C2408034484-LPCLOUD"
+            "l2b": "C2408034484-LPCLOUD",
+            "ch4": "C3242680113-LPCLOUD",
+            "co2": "C3243477145-LPCLOUD",
+            # "frcov": "",
+            # "mask": "",
         }
         # token = "eyJ0eXAiOiJKV1QiLCJvcmlnaW4iOiJFYXJ0aGRhdGEgTG9naW4iLCJzaWciOiJlZGxqd3RwdWJrZXlfb3BzIiwiYWxnIjoiUlMyNTYifQ.eyJ0eXBlIjoiVXNlciIsInVpZCI6IndpbnN0b25vbHNvbiIsImV4cCI6MTcxODU3MDg3NywiaWF0IjoxNzEzMzg2ODc3LCJpc3MiOiJFYXJ0aGRhdGEgTG9naW4ifQ.3HAXsV3fzMYMY7LqztJa71Z_vfyXbleR3JZGkXv57uMfekYRHN_Y9rw38dX3twtccBiTsohlFXXprFnTpiBKMgqDxcS55eis8G46SF8Y7Nt4qikY8k4RkF7szMmfqcOJYpj1v1INONBhF9W7Pjew9DUpLJiMQgyKbC90gEmCADbPVZVgL0_rlzT7oL__w_vQTQMauwz7Exr3T63BeISJzAj1jz7zeDo3ROuGZrqtfSX9z-ngLRpCyO9CjCF_ABtL0Y6ZRBoZPiYE43sfm-YnSiKhAfy46ju5CpHomPxbAWrfzDqkN52OXX9tLFGkrK8ucW4snOWW8_LZn5rwGOVKFA"
         cur_date = start_date
