@@ -10,6 +10,8 @@ import glob
 import json
 import logging
 import os
+import time
+import sys
 
 import h5netcdf.legacyapi as netCDF4
 import luigi
@@ -17,7 +19,7 @@ import spectral.io.envi as envi
 # import netCDF4
 
 from emit_main.workflow.acquisition import Acquisition
-from emit_main.workflow.output_targets import AcquisitionTarget, OrbitTarget
+from emit_main.workflow.output_targets import AcquisitionTarget, OrbitTarget, DataCollectionTarget
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_utils import daac_converter
@@ -1223,33 +1225,35 @@ class L1BMosaic(SlurmJobTask):
         pge.run(cmd_mkdir, tmp_dir=self.tmp_dir)
             
         input_files = [ac['products']['l1b']['rdn']['img_path'] for ac in acquisitions]
-        
-        output_mosaic_path = os.path.join(self.tmp_dir,f'{mosaic_basename}_rgb_{version}.tif')
+        glt_files = [ac['products']['l1b']['glt']['img_path'] for ac in acquisitions]
+
+        output_mosaic_path = os.path.join(self.tmp_dir,f'{mosaic_basename}_l1b_rgb_{version}.tif')
     
         cmd = ["python",process_exe,
-                ' '.join(input_files),
-                output_mosaic_path]
+                f'--rdn {" ".join(input_files)}',
+                f'--glt {" ".join(glt_files)}',
+                f'--output {output_mosaic_path}']
         
         pge_commands.append(" ".join(cmd))       
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
-        dcid_rgb_product_path = os.path.join(wm.data_collection.rgb_dir, os.path.basename(output_mosaic_path))
+        dcid_l1b_mosaic_product_path = os.path.join(wm.data_collection.l1b_dir, os.path.basename(output_mosaic_path))
 
-        output_files["rgb_mosaic_tif_path"] = dcid_rgb_product_path
+        output_files["l1b_mosaic_tif_path"] = dcid_l1b_mosaic_product_path
         
-        wm.copy(output_mosaic_path, dcid_rgb_product_path)
+        wm.copy(output_mosaic_path, dcid_l1b_mosaic_product_path)
 
         target = f'{wm.config["daac_server_internal"]}:{target_dir}'
         cmd_rsync = ["rsync", "-av", log_file_arg, output_mosaic_path, target]
         pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
 
         # Update db
-        dm.update_data_collection_metadata(self.dcid, {f"products.l1b.rgb_mosaic": {
-                "tif_path" : dcid_rgb_product_path,
+        dm.update_data_collection_metadata(self.dcid, {f"products.l1b.mosaic": {
+                "tif_path" : dcid_l1b_mosaic_product_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
 
         creation_time = datetime.datetime.fromtimestamp(
-            os.path.getmtime(dcid_rgb_product_path), tz=datetime.timezone.utc)
+            os.path.getmtime(dcid_l1b_mosaic_product_path), tz=datetime.timezone.utc)
 
         doc_version = "EMIT SDS L1B JPL-D 107866, v0.2"
 
@@ -1259,7 +1263,7 @@ class L1BMosaic(SlurmJobTask):
             "task": self.task_family,
             "pge_name": pge.repo_url,
             "pge_version": pge.version_tag,
-            "pge_input_files": input_files,
+            "pge_input_files": input_files + glt_files,
             "pge_run_command": pge_commands,
             "documentation_version": doc_version,
             "product_creation_time": creation_time,

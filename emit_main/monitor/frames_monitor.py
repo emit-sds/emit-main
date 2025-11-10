@@ -5,11 +5,11 @@ reassembly
 Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 """
 
-import datetime
 import logging
 import os
 
-from emit_main.workflow.l1a_tasks import L1AReassembleRaw, L1AFrameReport
+from emit_main.workflow.l1a_tasks import L1AFrameReport
+from emit_main.workflow.l2b_tasks import L1BMosaic
 from emit_main.workflow.ghg_tasks import CO2Mosaic, CH4Mosaic
 from emit_main.workflow.workflow_manager import WorkflowManager
 
@@ -94,6 +94,27 @@ class FramesMonitor:
         for dc in data_collections:
             logger.info(f"Creating CO2Mosaic task for dcid {dc['dcid']}")
             tasks.append(CO2Mosaic(config_path=self.config_path,
+                                        dcid=dc["dcid"],
+                                        level=self.level,
+                                        partition=self.partition))
+
+        return tasks
+    
+    def get_l1b_mosaic_tasks(self, start_time, stop_time, date_field="last_modified", retry_failed=False):
+        tasks = []
+        dm = self.wm.database_manager
+        data_collections = dm.find_data_collections_for_l1b_mosaic(start=start_time, stop=stop_time,
+                                                                   date_field=date_field, retry_failed=retry_failed)
+
+        # If no results, just return empty list
+        if len(data_collections) == 0:
+            logger.info(f"Did not find any data collections with {date_field} between {start_time} and {stop_time} "
+                        f"needing L1B mosaic tasks. Not executing any tasks.")
+            return tasks
+
+        for dc in data_collections:
+            logger.info(f"Creating L1BMosaic task for dcid {dc['dcid']}")
+            tasks.append(L1BMosaic(config_path=self.config_path,
                                         dcid=dc["dcid"],
                                         level=self.level,
                                         partition=self.partition))
