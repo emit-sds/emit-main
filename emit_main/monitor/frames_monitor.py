@@ -9,7 +9,7 @@ import logging
 import os
 
 from emit_main.workflow.l1a_tasks import L1AFrameReport
-from emit_main.workflow.l2b_tasks import L1BMosaic
+from emit_main.workflow.l1b_tasks import L1BMosaic
 from emit_main.workflow.ghg_tasks import CO2Mosaic, CH4Mosaic
 from emit_main.workflow.workflow_manager import WorkflowManager
 
