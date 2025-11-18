@@ -1232,33 +1232,41 @@ class L1BMosaic(SlurmJobTask):
         input_files = [ac['products']['l1b']['rdn']['img_path'] for ac in acquisitions]
         glt_files = [ac['products']['l1b']['glt']['img_path'] for ac in acquisitions]
 
-        output_mosaic_path = os.path.join(self.tmp_dir,f'{mosaic_basename}_l1b_rgb_{version}.tif')
-        output_mosaic_path_2 = os.path.join(self.tmp_dir,f'{mosaic_basename}_l1b_rgb_{version}_2.tif')
+        output_mosaic_paths = [os.path.join(self.tmp_dir, f'{mosaic_basename}_l1b_rgb_{version}.tif'),
+                               os.path.join(self.tmp_dir, f'{mosaic_basename}_l1b_rgb_{version}_2.tif')]
 
-        cmd = ["python",process_exe,
+        cmd = ["python",
+                process_exe,
                 f'--rdn {" ".join(input_files)}',
                 f'--glt {" ".join(glt_files)}',
-                f'--output {output_mosaic_path}']
+                f'--output {output_mosaic_paths[0]}']
         
-        pge_commands.append(" ".join(cmd))       
+        pge_commands.append(" ".join(cmd))
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
-        dcid_l1b_mosaic_product_path = os.path.join(wm.data_collection.l1b_dir, os.path.basename(output_mosaic_path))
-        output_files["l1b_mosaic_tif_path"] = dcid_l1b_mosaic_product_path        
-        wm.copy(output_mosaic_path, dcid_l1b_mosaic_product_path)
-
         target = f'{wm.config["daac_server_internal"]}:{target_dir}'
-        cmd_rsync = ["rsync", "-av", log_file_arg, output_mosaic_path, target]
-        pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
 
+        for idx, out_path in enumerate(output_mosaic_paths):
+            if not os.path.exists(out_path):
+                continue
 
-        # Update db
-        dm.update_data_collection_metadata(self.dcid, {f"products.l1b.mosaic": {
-                "tif_path" : dcid_l1b_mosaic_product_path,
-                "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
+            dc_path = os.path.join(wm.data_collection.l1b_dir, os.path.basename(out_path))
 
-        creation_time = datetime.datetime.fromtimestamp(
-            os.path.getmtime(dcid_l1b_mosaic_product_path), tz=datetime.timezone.utc)
+            key = "l1b_mosaic_tif_path" if idx == 0 else f"l1b_mosaic_tif_path_{idx+1}"
+            output_files[key] = dc_path
+
+            wm.copy(out_path, dc_path)
+
+            creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(dc_path),tz=datetime.timezone.utc)
+
+            cmd_rsync = ["rsync", "-av", log_file_arg, out_path, target]
+            pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
+
+            meta_key = "products.l1b.mosaic" if idx == 0 else f"products.l1b.mosaic_{idx+1}"
+            
+            dm.update_data_collection_metadata(
+                self.dcid,
+                {meta_key: {"tif_path": dc_path, "created": creation_time}})
 
         doc_version = "EMIT SDS L1B JPL-D 107866, v0.2"
 
