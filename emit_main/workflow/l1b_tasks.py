@@ -629,6 +629,11 @@ This product is generated at the orbit level."
             "output": output_prods
         }
         dm.insert_orbit_log_entry(orbit.orbit_id, log_entry)
+        
+        data_collections = dm.find_data_collections_by_orbit_id(orbit.orbit_id, submode="science")
+
+        for data_collect in data_collections:    
+            dm.update_data_collection_metadata(data_collect['dcid'], {"geolocation_status": "complete"})
 
 
 class L1BRdnFormat(SlurmJobTask):
@@ -1228,7 +1233,8 @@ class L1BMosaic(SlurmJobTask):
         glt_files = [ac['products']['l1b']['glt']['img_path'] for ac in acquisitions]
 
         output_mosaic_path = os.path.join(self.tmp_dir,f'{mosaic_basename}_l1b_rgb_{version}.tif')
-    
+        output_mosaic_path_2 = os.path.join(self.tmp_dir,f'{mosaic_basename}_l1b_rgb_{version}_2.tif')
+
         cmd = ["python",process_exe,
                 f'--rdn {" ".join(input_files)}',
                 f'--glt {" ".join(glt_files)}',
@@ -1238,14 +1244,13 @@ class L1BMosaic(SlurmJobTask):
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
         dcid_l1b_mosaic_product_path = os.path.join(wm.data_collection.l1b_dir, os.path.basename(output_mosaic_path))
-
-        output_files["l1b_mosaic_tif_path"] = dcid_l1b_mosaic_product_path
-        
+        output_files["l1b_mosaic_tif_path"] = dcid_l1b_mosaic_product_path        
         wm.copy(output_mosaic_path, dcid_l1b_mosaic_product_path)
 
         target = f'{wm.config["daac_server_internal"]}:{target_dir}'
         cmd_rsync = ["rsync", "-av", log_file_arg, output_mosaic_path, target]
         pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
+
 
         # Update db
         dm.update_data_collection_metadata(self.dcid, {f"products.l1b.mosaic": {

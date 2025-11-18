@@ -638,7 +638,7 @@ def main():
         dm_l1b_mosaic_tasks = dm.get_l1b_mosaic_tasks(start_time=args.start_time, stop_time=args.stop_time,
                                         date_field=args.date_field, retry_failed=args.retry_failed)
         dm_l1b_mosaic_tasks_str = "\n".join([str(t) for t in dm_l1b_mosaic_tasks])
-        logger.info(f"DCID monitor CO2 mosaic tasks to run:\n{dm_l1b_mosaic_tasks_str}")
+        logger.info(f"DCID monitor L1B mosaic tasks to run:\n{dm_l1b_mosaic_tasks_str}")
         tasks += dm_l1b_mosaic_tasks
     
     # Get tasks from products args
