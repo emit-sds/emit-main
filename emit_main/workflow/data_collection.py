@@ -124,6 +124,7 @@ class DataCollection:
             "associated_dcid": self.dcid,
             "mean_solar_zenith": {"$lt": 80},
             "build_num": self.config["build_num"]
+            "num_valid_lines": {"$gte": 2},
         }
 
         expected = list(acquisitions_coll.find(query))

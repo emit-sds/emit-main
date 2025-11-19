@@ -197,7 +197,7 @@ class CH4(SlurmJobTask):
         wm = WorkflowManager(config_path=self.config_path, dcid=acq.associated_dcid)
         dc = wm.data_collection
 
-        if dc.has_complete_ch4_aqcuisitions():
+        if dc.has_complete_ch4_acquisitions():
             dm.update_data_collection_metadata(acq.associated_dcid, {"ch4_status": "complete"})
         else:
             dm.update_data_collection_metadata(acq.associated_dcid, {"ch4_status": "incomplete"})
