@@ -96,6 +96,11 @@
       "url": "git@github.com:emit-sds/SpecTf.git",
       "tag": "v0.1.2",
       "conda_env": "emit-spectf-20250909"
+    },
+        {
+      "url": "git@github.com:emit-sds/emit-sds-frcov.git",
+      "tag": "develop",
+      "conda_env": "emit-frcov-20251013"
     }
   ]
 }

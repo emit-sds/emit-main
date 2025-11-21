@@ -277,7 +277,7 @@ class DatabaseManager:
             "products.mask.maskTf.img_path": {"$exists": 1},
             "products.l3.cover.img_path": {"$exists": 1},
             "products.l3.coveruncert.img_path": {"$exists": 1},
-            "products.frcov.mask.tif_path": {"$exists": 0},
+            "products.frcov.qc.tif_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop},
             "build_num": self.config["build_num"]
         }
@@ -468,11 +468,11 @@ class DatabaseManager:
             "products.frcov.pvunc.tif_path": {"$exists": 1},
             "products.frcov.npvunc.tif_path": {"$exists": 1},
             "products.frcov.bareunc.tif_path": {"$exists": 1},
-            "products.frcov.mask.tif_path": {"$exists": 1},
+            "products.frcov.qc.tif_path": {"$exists": 1},
             "products.frcov.browse.png_path": {"$exists": 1},
             "cloud_fraction_02": {"$exists": 1},
             "daac_scene": {"$exists": 1},
-            "products.ghg.frcov.frcov_ummg.ummg_json_path": {"$exists": 0},
+            "products.frcov.frcov_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop},
             "build_num": self.config["build_num"]
         }

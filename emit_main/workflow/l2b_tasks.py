@@ -611,45 +611,45 @@ class L2BFrCovFormat(SlurmJobTask):
 
         wm.copy(tmp_frcovqc_tif_path, acq.frcovqc_tif_path)
         
-        wm.copy(tmp_frcov_base + '_frcov_pv.tif', acq.pv_tif_path)
-        wm.copy(tmp_frcov_base + '_frcovunc_pv.tif', acq.pvunc_tif_path)
+        wm.copy(tmp_frcov_base + '_frcov_pv.tif', acq.frcovpv_tif_path)
+        wm.copy(tmp_frcov_base + '_frcovunc_pv.tif', acq.frcovpvunc_tif_path)
 
-        wm.copy(tmp_frcov_base + '_frcov_npv.tif', acq.npv_tif_path)
-        wm.copy(tmp_frcov_base + '_frcovunc_npv.tif', acq.npvunc_tif_path)
+        wm.copy(tmp_frcov_base + '_frcov_npv.tif', acq.frcovnpv_tif_path)
+        wm.copy(tmp_frcov_base + '_frcovunc_npv.tif', acq.frcovnpvunc_tif_path)
 
-        wm.copy(tmp_frcov_base + '_frcov_bare.tif', acq.bare_tif_path)
-        wm.copy(tmp_frcov_base + '_frcovunc_bare.tif', acq.bareunc_tif_path)
+        wm.copy(tmp_frcov_base + '_frcov_bare.tif', acq.frcovbare_tif_path)
+        wm.copy(tmp_frcov_base + '_frcovunc_bare.tif', acq.frcovbareunc_tif_path)
         
         wm.copy(tmp_frcov_base + '_frcov.png', acq.frcov_png_path)
 
         # Update db
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.frcov.mask": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {"products.frcov.qc": {
                 "tif_path" : acq.frcovqc_tif_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.frcov.pv": {
-                "tif_path" : acq.pv_tif_path,
+                "tif_path" : acq.frcovpv_tif_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.frcov.pvunc": {
-                "tif_path" : acq.pvunc_tif_path,
+                "tif_path" : acq.frcovpvunc_tif_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.frcov.npv": {
-                "tif_path" : acq.npv_tif_path,
+                "tif_path" : acq.frcovnpv_tif_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.frcov.npvunc": {
-                "tif_path" : acq.npvunc_tif_path,
+                "tif_path" : acq.frcovnpvunc_tif_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.frcov.bare": {
-                "tif_path" : acq.bareunc_tif_path,
+                "tif_path" : acq.frcovbareunc_tif_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.frcov.bareunc": {
-                "tif_path" : acq.bareunc_tif_path,
+                "tif_path" : acq.frcovbareunc_tif_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.frcov.browse": {
                 "png_path" : acq.frcov_png_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
 
         creation_time = datetime.datetime.fromtimestamp(
-            os.path.getmtime(acq.pv_tif_path), tz=datetime.timezone.utc)
+            os.path.getmtime(acq.frcovpv_tif_path), tz=datetime.timezone.utc)
         
         doc_version = "EMIT SDS GHG JPL-D 107866, v0.2"
         
@@ -667,13 +667,12 @@ class L2BFrCovFormat(SlurmJobTask):
             "completion_status": "SUCCESS",
             "output": {
                 "frcovqc_tif_path": acq.frcovqc_tif_path,
-                "pv_tif_path:": acq.pv_tif_path,
-                "pvunc_tif_path": acq.pvunc_tif_path,
-                "npv_tif_path:": acq.npv_tif_path,
-                "npvunc_tif_path": acq.npvunc_tif_path,
-                "bare_tif_path:": acq.bare_tif_path,
-                "bareunc_tif_path": acq.bareunc_tif_path,
-                "ortch4_png_path": acq.ortch4_png_path,
+                "frcovpv_tif_path:": acq.frcovpv_tif_path,
+                "frcovpvunc_tif_path": acq.frcovpvunc_tif_path,
+                "frcovnpv_tif_path:": acq.frcovnpv_tif_path,
+                "frcovnpvunc_tif_path": acq.frcovnpvunc_tif_path,
+                "frcovbare_tif_path:": acq.frcovbare_tif_path,
+                "frcovbareunc_tif_path": acq.frcovbareunc_tif_path,
                 "frcov_png_path": acq.frcov_png_path
             }
         }
@@ -720,18 +719,20 @@ class L2BFrCovDeliver(SlurmJobTask):
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
         pge = wm.pges["emit-main"]
+        for name, value in vars(acq).items():
+            print(f"{name}: {value}")
 
         # Get local SDS names
         ummg_path = acq.frcov_png_path.replace(".png", ".cmr.json")
 
         # Create local/tmp daac names and paths
         daac_frcovqc_tif_name = f"{acq.frcovqc_granule_ur}.tif"
-        daac_pv_tif_name = f"{acq.pv_granule_ur}.tif"
-        daac_pvunc_tif_name = f"{acq.pvunc_granule_ur}.tif"
-        daac_npv_tif_name = f"{acq.npv_granule_ur}.tif"
-        daac_npvunc_tif_name = f"{acq.npvunc_granule_ur}.tif"
-        daac_bare_tif_name = f"{acq.bare_granule_ur}.tif"
-        daac_bareunc_tif_name = f"{acq.bareunc_granule_ur}.tif"
+        daac_pv_tif_name = f"{acq.frcovpv_granule_ur}.tif"
+        daac_pvunc_tif_name = f"{acq.frcovpvunc_granule_ur}.tif"
+        daac_npv_tif_name = f"{acq.frcovnpv_granule_ur}.tif"
+        daac_npvunc_tif_name = f"{acq.frcovnpvunc_granule_ur}.tif"
+        daac_bare_tif_name = f"{acq.frcovbare_granule_ur}.tif"
+        daac_bareunc_tif_name = f"{acq.frcovbareunc_granule_ur}.tif"
 
         daac_ummg_name = f"{acq.frcov_granule_ur}.cmr.json"
         daac_browse_name = f"{acq.frcov_granule_ur}.png"
@@ -751,12 +752,12 @@ class L2BFrCovDeliver(SlurmJobTask):
         # Copy files to tmp dir and rename
         wm.copy(acq.frcovqc_tif_path, daac_frcovqc_tif_path)
         wm.copy(acq.frcov_png_path, daac_browse_path)
-        wm.copy(acq.pv_tif_path, daac_pv_tif_path)
-        wm.copy(acq.pvunc_tif_path, daac_pvunc_tif_path)
-        wm.copy(acq.npv_tif_path, daac_npv_tif_path)
-        wm.copy(acq.npvunc_tif_path, daac_npvunc_tif_path)
-        wm.copy(acq.bare_tif_path, daac_bare_tif_path)
-        wm.copy(acq.bareunc_tif_path, daac_bareunc_tif_path)        
+        wm.copy(acq.frcovpv_tif_path, daac_pv_tif_path)
+        wm.copy(acq.frcovpvunc_tif_path, daac_pvunc_tif_path)
+        wm.copy(acq.frcovnpv_tif_path, daac_npv_tif_path)
+        wm.copy(acq.frcovnpvunc_tif_path, daac_npvunc_tif_path)
+        wm.copy(acq.frcovbare_tif_path, daac_bare_tif_path)
+        wm.copy(acq.frcovbareunc_tif_path, daac_bareunc_tif_path)        
 
         # Get the software_build_version (extended build num when product was created)
         software_build_version = read_gdal_metadata(acq.frcovqc_tif_path, 'software_build_version')
@@ -810,12 +811,12 @@ class L2BFrCovDeliver(SlurmJobTask):
         cnm_submission_path = os.path.join(acq.frcov_data_dir, cnm_submission_id + "_cnm.json")
         target_src_map = {
             daac_frcovqc_tif_name: os.path.basename(acq.frcovqc_tif_path),
-            daac_pv_tif_name: os.path.basename(acq.pv_tif_path),
-            daac_pvunc_tif_name: os.path.basename(acq.pvunc_tif_path),
-            daac_npv_tif_name: os.path.basename(acq.npv_tif_path),
-            daac_npvunc_tif_name: os.path.basename(acq.npvunc_tif_path),
-            daac_bare_tif_name: os.path.basename(acq.bare_tif_path),
-            daac_bareunc_tif_name: os.path.basename(acq.bareunc_tif_path),
+            daac_pv_tif_name: os.path.basename(acq.frcovpv_tif_path),
+            daac_pvunc_tif_name: os.path.basename(acq.frcovpvunc_tif_path),
+            daac_npv_tif_name: os.path.basename(acq.frcovnpv_tif_path),
+            daac_npvunc_tif_name: os.path.basename(acq.frcovnpvunc_tif_path),
+            daac_bare_tif_name: os.path.basename(acq.frcovbare_tif_path),
+            daac_bareunc_tif_name: os.path.basename(acq.frcovbareunc_tif_path),
             daac_browse_name: os.path.basename(acq.frcov_png_path),
             daac_ummg_name: os.path.basename(ummg_path)
         }
@@ -967,12 +968,12 @@ class L2BFrCovDeliver(SlurmJobTask):
             "pge_version": pge.version_tag,
             "pge_input_files": {
                 "frcovqc_tif_path": acq.frcovqc_tif_path,
-                "pv_tif_path": acq.pv_tif_path,
-                "pvunc_tif_path": acq.pvunc_tif_path,
-                "npv_tif_path": acq.npv_tif_path,
-                "npvunc_tif_path": acq.npvunc_tif_path,
-                "bare_tif_path": acq.bare_tif_path,
-                "bareunc_tif_path": acq.bareunc_tif_path,
+                "pv_tif_path": acq.frcovpv_tif_path,
+                "pvunc_tif_path": acq.frcovpvunc_tif_path,
+                "npv_tif_path": acq.frcovnpv_tif_path,
+                "npvunc_tif_path": acq.frcovnpvunc_tif_path,
+                "bare_tif_path": acq.frcovbare_tif_path,
+                "bareunc_tif_path": acq.frcovbareunc_tif_path,
                 "frcov_png_path": acq.frcov_png_path
             },
             "pge_run_command": " ".join(cmd_aws),

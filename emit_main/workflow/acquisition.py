@@ -95,12 +95,12 @@ class Acquisition:
             
             self.frcov_granule_ur = f"EMIT_L2B_FRCOV_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.frcovqc_granule_ur = f"EMIT_L2B_FRCOVQC_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.pv_granule_ur = f"EMIT_L2B_FRCOVPV_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.pvunc_granule_ur = f"EMIT_L2B_FRCOVPVUNC_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.npv_granule_ur = f"EMIT_L2B_FRCOVNPV_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.npvunc_granule_ur = f"EMIT_L2B_FRCOVNPVUNC_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.bare_granule_ur = f"EMIT_L2B_FRCOVBARE_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.bareunc_granule_ur = f"EMIT_L2B_FRCOVBAREUNC_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.frcovpv_granule_ur = f"EMIT_L2B_FRCOVPV_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.frcovpvunc_granule_ur = f"EMIT_L2B_FRCOVPVUNC_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.frcovnpv_granule_ur = f"EMIT_L2B_FRCOVNPV_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.frcovnpvunc_granule_ur = f"EMIT_L2B_FRCOVNPVUNC_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.frcovbare_granule_ur = f"EMIT_L2B_FRCOVBARE_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.frcovbareunc_granule_ur = f"EMIT_L2B_FRCOVBAREUNC_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             
         self.daac_staging_dir = os.path.join(self.config["daac_base_dir"], wm.config['environment'], "products",
                                              self.start_time.strftime("%Y%m%d"))
@@ -202,12 +202,12 @@ class Acquisition:
             },
             "frcov": {
                 "frcovqc": ["tif"],
-                "bare": ["tif"],
-                "bareunc": ["tif"],
-                "pv": ["tif"],
-                "pvunc": ["tif"],
-                "npv": ["tif"],
-                "npvunc": ["tif"],
+                "frcovbare": ["tif"],
+                "frcovbareunc": ["tif"],
+                "frcovpv": ["tif"],
+                "frcovpvunc": ["tif"],
+                "frcovnpv": ["tif"],
+                "frcovnpvunc": ["tif"],
                 "frcov": ["png"],            
                 }
         }
