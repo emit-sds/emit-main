@@ -421,7 +421,7 @@ def main():
                     df["l1a_raw_to_deliver_seconds"] = (l1a_delivery_timestamp - hosc_date).total_seconds()
 
                 if l1b_delivery_timestamp:
-                    df["l1b_raw_rdn_to_deliver_seconds"] = (l1b_delivery_timestamp - hosc_date).total_seconds()
+                    df["l1b_raw_to_deliver_seconds"] = (l1b_delivery_timestamp - hosc_date).total_seconds()
 
                 if l2a_delivery_timestamp:
                     df["rfl_raw_to_deliver_seconds"] = (l2a_delivery_timestamp - hosc_date).total_seconds()
