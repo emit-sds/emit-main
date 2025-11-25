@@ -552,8 +552,9 @@ def main():
                         acq_to_level_pub_seconds: (last_publish_date - timestamp).total_seconds(),
                     }
                     
-                    doc = trending_acqs_coll.find_one(query,{level_delivery_date: 1, "_id": 0})
+                    doc = trending_acqs_coll.find_one(query, {level_delivery_date: 1, "_id": 0})
                     delivery_date = doc.get(level_delivery_date)
+                    # May not need the conditional logic since there should be a delivery date for every published dataset
                     if delivery_date:
                         df[deliver_to_level_pub_seconds] = (last_publish_date - delivery_date).total_seconds()                   
                     
