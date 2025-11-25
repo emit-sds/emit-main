@@ -218,6 +218,11 @@ def main():
 
         # First, get data from acquisition directories
         print("Checking acquisition directories")
+        
+        acq_coll = dm.db.acquisitions
+        dcid_coll = dm.db.data_collections
+        stream_coll = dm.db.streams
+        
         for dir in date_dirs:
             acqs = [os.path.basename(a) for a in glob.glob(f"{dir}/*")]
             # print(f"Found acqs: {acqs}")
@@ -390,7 +395,52 @@ def main():
                     hdr = envi.read_envi_header(rdn_hdr_files[0])
                     if "masked pixel noise" in hdr:
                         df["masked_pixel_noise"] = float(hdr["masked pixel noise"])
+                
+                # Get HOSC creation time
+                acq_doc = acq_coll.find_one({"acquisition_id": acq})
+                dcid = acq_doc["associated_dcid"]
 
+                dcid_doc = dcid_coll.find_one({"dcid": dcid}, {"associated_ccsds": 1, "_id": 0})
+                dcid_doc['associated_ccsds'].sort()
+                ccsds = os.path.basename(dcid_doc['associated_ccsds'][0])
+
+                stream_doc = stream_coll.find_one({"ccsds_name": ccsds}, {"products.raw.created": 1, "_id": 0})
+                
+                hosc_date = stream_doc['products']['raw']['created']
+                
+                l1a_delivery_timestamp = acq_doc.get('products',{}).get('l1a',{}).get('raw_ummg',{}).get('created',{})
+                l1b_delivery_timestamp = acq_doc.get('products',{}).get('l1b',{}).get('rdn_ummg',{}).get('created',{})
+                l2a_delivery_timestamp = acq_doc.get('products',{}).get('l2a',{}).get('rfl_ummg',{}).get('created',{})
+                co2_delivery_timestamp = acq_doc.get('products',{}).get('ghg',{}).get('co2',{}).get('co2_ummg',{}).get('created',{})
+                ch4_delivery_timestamp = acq_doc.get('products',{}).get('ghg',{}).get('ch4',{}).get('ch4_ummg',{}).get('created',{})
+                abun_delivery_timestamp = acq_doc.get('products',{}).get('l1b',{}).get('abun_ummg',{}).get('created',{})
+                maskTf_delivery_timestamp = acq_doc.get('products',{}).get('mask',{}).get('maskTf_ummg',{}).get('created',{})
+                frcov_delivery_timestamp = acq_doc.get('products',{}).get('frcov',{}).get('frcov_ummg',{}).get('created',{})
+       
+                if l1a_delivery_timestamp:
+                    df["l1a_raw_to_deliver_seconds"] = (l1a_delivery_timestamp - hosc_date).total_seconds()
+
+                if l1b_delivery_timestamp:
+                    df["l1b_raw_rdn_to_deliver_seconds"] = (l1b_delivery_timestamp - hosc_date).total_seconds()
+
+                if l2a_delivery_timestamp:
+                    df["rfl_raw_to_deliver_seconds"] = (l2a_delivery_timestamp - hosc_date).total_seconds()
+
+                if co2_delivery_timestamp:
+                    df["co2_raw_to_deliver_seconds"] = (co2_delivery_timestamp - hosc_date).total_seconds()
+
+                if ch4_delivery_timestamp:
+                    df["ch4_raw_to_deliver_seconds"] = (ch4_delivery_timestamp - hosc_date).total_seconds()
+
+                if abun_delivery_timestamp:
+                    df["abun_raw_to_deliver_seconds"] = (abun_delivery_timestamp - hosc_date).total_seconds()
+
+                if frcov_delivery_timestamp:
+                    df["frcov_raw_to_deliver_seconds"] = (frcov_delivery_timestamp - hosc_date).total_seconds()
+
+                if maskTf_delivery_timestamp:
+                    df["maskTf_raw_to_deliver_seconds"] = (maskTf_delivery_timestamp - hosc_date).total_seconds()     
+                                
                 # Update the DB
                 trending_acqs_coll = dm.db.trending_acquisitions
                 query = {"timestamp": timestamp}
