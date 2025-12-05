@@ -418,7 +418,7 @@ def main():
                 frcov_delivery_date = acq_doc.get('products',{}).get('frcov',{}).get('frcov_ummg',{}).get('created',{})
        
                 if l1a_delivery_date:
-                    df["raw_to__l1a_deliver_seconds"] = (l1a_delivery_date - hosc_date).total_seconds()
+                    df["raw_to_l1a_deliver_seconds"] = (l1a_delivery_date - hosc_date).total_seconds()
                     df["l1a_delivery_date"] = l1a_delivery_date
 
                 if l1b_delivery_date:
@@ -512,7 +512,7 @@ def main():
             # "frcov": "",
             # "mask": "",
         }
-        # token = "eyJ0eXAiOiJKV1QiLCJvcmlnaW4iOiJFYXJ0aGRhdGEgTG9naW4iLCJzaWciOiJlZGxqd3RwdWJrZXlfb3BzIiwiYWxnIjoiUlMyNTYifQ.eyJ0eXBlIjoiVXNlciIsInVpZCI6IndpbnN0b25vbHNvbiIsImV4cCI6MTcxODU3MDg3NywiaWF0IjoxNzEzMzg2ODc3LCJpc3MiOiJFYXJ0aGRhdGEgTG9naW4ifQ.3HAXsV3fzMYMY7LqztJa71Z_vfyXbleR3JZGkXv57uMfekYRHN_Y9rw38dX3twtccBiTsohlFXXprFnTpiBKMgqDxcS55eis8G46SF8Y7Nt4qikY8k4RkF7szMmfqcOJYpj1v1INONBhF9W7Pjew9DUpLJiMQgyKbC90gEmCADbPVZVgL0_rlzT7oL__w_vQTQMauwz7Exr3T63BeISJzAj1jz7zeDo3ROuGZrqtfSX9z-ngLRpCyO9CjCF_ABtL0Y6ZRBoZPiYE43sfm-YnSiKhAfy46ju5CpHomPxbAWrfzDqkN52OXX9tLFGkrK8ucW4snOWW8_LZn5rwGOVKFA"
+
         trending_acqs_coll = dm.db.trending_acquisitions
         cur_date = start_date
         while cur_date < stop_date:
@@ -554,8 +554,7 @@ def main():
                     
                     doc = trending_acqs_coll.find_one(query, {level_delivery_date: 1, "_id": 0})
                     delivery_date = doc.get(level_delivery_date)
-                    # May not need the conditional logic since there should be a delivery date for every published dataset
-                    if delivery_date:
+                    if delivery_date: # Not needed for ops, but keeping in place for dev/test where delivery may not have occured
                         df[deliver_to_level_pub_seconds] = (last_publish_date - delivery_date).total_seconds()                   
                     
                     update_collection(trending_acqs_coll, query, df)
