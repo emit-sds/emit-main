@@ -2,12 +2,12 @@
   "repositories": [
     {
       "url": "git@github.com:emit-sds/emit-main.git",
-      "tag": "v1.6.31",
+      "tag": "v1.6.32",
       "conda_env": "emit-main-20251031"
     },
     {
       "url": "git@github.com:emit-sds/emit-utils.git",
-      "tag": "v1.4.0",
+      "tag": "v1.4.1",
       "conda_env": "emit-main-20251031"
     },
     {
@@ -32,8 +32,8 @@
     },
     {
       "url": "git@github.com:emit-sds/emit-sds-l2a.git",
-      "tag": "v1.4.0",
-      "conda_env": "emit-isofit-20250705"
+      "tag": "v1.4.1",
+      "conda_env": "emit-isofit-20251201"
     },
     {
       "url": "git@github.com:emit-sds/emit-sds-l2b.git",
@@ -52,8 +52,8 @@
     },
     {
       "url": "https://github.com/isofit/isofit.git",
-      "tag": "v3.5.0",
-      "conda_env": "emit-isofit-20250705"
+      "tag": "v3.6.1",
+      "conda_env": "emit-isofit-20251201"
     },
     {
       "url": "git@github.jpl.nasa.gov:emit/emit-ios.git",
@@ -89,13 +89,18 @@
     },
     {
       "url": "git@github.com:emit-sds/emit-sds-masks.git",
-      "tag": "v0.1.0",
+      "tag": "v0.1.1",
       "conda_env": "emit-spectf-20250909"
     },
     {
       "url": "git@github.com:emit-sds/SpecTf.git",
       "tag": "v0.1.2",
       "conda_env": "emit-spectf-20250909"
+    },
+        {
+      "url": "git@github.com:emit-sds/emit-sds-frcov.git",
+      "tag": "v0.1.0",
+      "conda_env": "emit-frcov-20251013"
     }
   ]
 }

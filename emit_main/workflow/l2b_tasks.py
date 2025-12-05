@@ -770,6 +770,10 @@ class L2BFrCovDeliver(SlurmJobTask):
                       daac_npv_tif_path, daac_npvunc_tif_path, daac_bare_tif_path, 
                       daac_bareunc_tif_path, daac_browse_path]
 
+        # Use a cloud fraction that sums the nodata fraction (clouds screened on board) and the cloud fraction 02 value
+        # from the maskTf step.  These fractions are rounded separately.  Use min to ensure it doesn't go over 100.
+        cloud_fraction = min(acq.cloud_fraction_02 + acq.nodata_fraction, 100)
+        
         # Create the UMM-G file
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.frcovqc_tif_path), tz=datetime.timezone.utc)
         frcov_pge = wm.pges["emit-sds-frcov"]
@@ -782,7 +786,7 @@ class L2BFrCovDeliver(SlurmJobTask):
                                               orbit_segment=int(acq.scene), scene=int(acq.daac_scene),
                                               solar_zenith=acq.mean_solar_zenith,
                                               solar_azimuth=acq.mean_solar_azimuth,
-                                              cloud_fraction=acq.cloud_fraction_02)
+                                              cloud_fraction=cloud_fraction)
         ummg = daac_converter.add_data_files_ummg(
             ummg, daac_paths,
             acq.daynight,
