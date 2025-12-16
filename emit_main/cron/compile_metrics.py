@@ -509,8 +509,8 @@ def main():
             "l2b": "C2408034484-LPCLOUD",
             "ch4": "C3242680113-LPCLOUD",
             "co2": "C3243477145-LPCLOUD",
-            # "frcov": "",
-            # "mask": "",
+            "frcov": "C3911089796-LPCLOUD",
+            "mask": "C3882545269-LPCLOUD",
         }
 
         trending_acqs_coll = dm.db.trending_acquisitions
