@@ -44,23 +44,13 @@ logger = logging.getLogger("emit-main")
 
 def parse_args():
     product_choices = ["l0hosc", "l0daac", "l0plan", "l0bad", "l1aeng", "l1aframe", "l1aframereport", "l1araw",
-<<<<<<< HEAD
                        "l1adaac", "l1abad", "l1bcal", "l1bgeo", "l1brdnformat", "l1brdndaac", "l1battdaac", "l1bmosaic",
                        "l2arefl", "l2amask", "l2amaskTf", "l2aformat","l2amaskTfformat", "l2adaac", "l2babun", "l2bformat",
-                       "l2bdaac","l2amaskTfdaac", "l2bch4", "l2bco2","l2bch4daac", "l2bco2daac", "l2bch4mosaic", 
+                       "l2bdaac","l2amaskTfdaac", "l2bch4", "l2bco2","l2bch4daac", "l2bco2daac", "l2bch4mosaic",
                        "l2bco2mosaic", "l3unmix", "daacscenes", "daacaddl", "recon"]
     monitor_choices = ["ingest", "frames", "edp", "cal", "bad", "geo", "l2","maskTf", "l2b","ch4", "co2", "l3",
                        "email", "daacscenes", "dl0","dl1a", "dl1brdn", "dl1batt", "dl2a", "dmaskTf",
                        "dl2b", "dch4", "dco2", "mch4", "mco2", "ml1b", "reconresp"]
-=======
-                       "l1adaac", "l1abad", "l1bcal", "l1bgeo", "l1brdnformat", "l1brdndaac", "l1battdaac", "l2arefl",
-                       "l2amask", "l2amaskTf", "l2aformat","l2amaskTfformat", "l2adaac", "l2babun", "l2bformat",
-                       "l2bdaac", "l2amaskTfdaac", "l2bch4", "l2bco2","l2bch4daac", "l2bco2daac", "l2bch4mosaic", 
-                       "l2bco2mosaic","l2bfrcovformat", "l2bfrcovdaac", "l3unmix", "daacscenes", "daacaddl", "recon"]
-    monitor_choices = ["ingest", "frames", "edp", "cal", "bad", "geo", "l2","maskTf", "l2b","ch4", "co2", "l3", "frcov",
-                       "email", "daacscenes", "dl0","dl1a", "dl1brdn", "dl1batt", "dl2a", "dmaskTf", "dfrcov",
-                       "dl2b", "dch4", "dco2", "mch4", "mco2","reconresp"]
->>>>>>> origin/develop
     parser = argparse.ArgumentParser(
         description="Description: This is the top-level run script for executing the various EMIT SDS workflow and "
                     "monitor tasks.\n"
