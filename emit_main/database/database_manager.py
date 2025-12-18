@@ -498,6 +498,32 @@ class DatabaseManager:
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.CH4Mosaic"])
         return results
+    
+    def find_data_collections_for_l1b_mosaic(self, start, stop, date_field="last_modified", retry_failed=False):
+        data_collections_coll = self.db.data_collections
+        query = {
+            "geolocation_status": "complete",
+            "products.l1b.mosaic.tif_path": {"$exists": 0},
+            "build_num": self.config["build_num"],
+            date_field: {"$gte": start, "$lte": stop},
+        }
+        results =  list(data_collections_coll.find(query).sort("dcid", 1))
+        
+        if not retry_failed:
+            results = self._remove_results_with_failed_tasks(results, ["emit.L1BMosaic"])
+        return results
+    
+    def find_acquisitions_for_l1b_mosaic(self, dcid):
+        acquisitions_coll = self.db.acquisitions
+        query = {
+            "products.l1b.rdn.img_path": {"$exists": 1},    
+            "products.l1b.glt.img_path": {"$exists": 1},
+            "num_valid_lines": {"$gte": 320},
+            "associated_dcid": dcid,
+            "build_num": self.config["build_num"]
+        }
+        return list(acquisitions_coll.find(query))
+      
         
     def find_data_collections_for_co2_mosaic(self, start, stop, date_field="last_modified", retry_failed=False):
         data_collections_coll = self.db.data_collections
@@ -538,7 +564,7 @@ class DatabaseManager:
             "build_num": self.config["build_num"]
         }
         return list(acquisitions_coll.find(query))
-
+    
     def insert_acquisition(self, metadata):
         if self.find_acquisition_by_id(metadata["acquisition_id"]) is None:
             utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
