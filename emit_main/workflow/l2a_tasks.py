@@ -19,7 +19,7 @@ from emit_main.workflow.output_targets import AcquisitionTarget
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.l1b_tasks import L1BCalibrate, L1BGeolocate
 from emit_main.workflow.slurm import SlurmJobTask
-from emit_utils.file_checks import envi_header, check_cloudfraction
+from emit_utils.file_checks import envi_header, check_cloudfraction, check_nodatafraction
 from emit_utils import daac_converter
 
 logger = logging.getLogger("emit-main")
@@ -790,7 +790,8 @@ class L2AMaskTf(SlurmJobTask):
 
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
         
-        cloud_fraction = check_cloudfraction(tmp_maskTf_path,mask_band = 9)
+        cloud_fraction = check_cloudfraction(tmp_maskTf_path, mask_band = 9)
+        nodata_fraction = check_nodatafraction(tmp_maskTf_path, band = 0, no_data_value = -9999)
 
         tmp_maskTf_png_path = os.path.join(tmp_output_dir, os.path.basename(acq.maskTf_png_path))
 
@@ -820,6 +821,7 @@ class L2AMaskTf(SlurmJobTask):
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         hdr["emit data product version"] = '02'
         hdr["emit acquisition daynight"] = acq.daynight
+        hdr["emit acquisition cloud fraction 02"] = cloud_fraction
         envi.write_envi_header(acq.maskTf_hdr_path, hdr)
 
         # PGE writes metadata to db
@@ -837,7 +839,8 @@ class L2AMaskTf(SlurmJobTask):
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {"products.mask.maskTf": product_dict})
         dm.update_acquisition_metadata(acq.acquisition_id, {"cloud_fraction_02": cloud_fraction})
-        
+        dm.update_acquisition_metadata(acq.acquisition_id, {"nodata_fraction": nodata_fraction})
+
         total_time = time.time() - start_time
         log_entry = {
             "task": self.task_family,
@@ -1008,6 +1011,10 @@ class L2AMaskTfDeliver(SlurmJobTask):
         hdr = envi.read_envi_header(acq.maskTf_hdr_path)
         software_build_version = hdr["emit software build version"]
 
+        # Use a cloud fraction that sums the nodata fraction (clouds screened on board) and the cloud fraction 02 value
+        # from the maskTf step.  These fractions are rounded separately.  Use min to ensure it doesn't go over 100.
+        cloud_fraction = min(acq.cloud_fraction_02 + acq.nodata_fraction, 100)
+
         # Create the UMM-G file
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.maskTf_nc_path), tz=datetime.timezone.utc)
         l2a_pge = wm.pges["emit-sds-masks"]
@@ -1020,7 +1027,7 @@ class L2AMaskTfDeliver(SlurmJobTask):
                                               orbit_segment=int(acq.scene), scene=int(acq.daac_scene),
                                               solar_zenith=acq.mean_solar_zenith,
                                               solar_azimuth=acq.mean_solar_azimuth,
-                                              cloud_fraction=acq.cloud_fraction)
+                                              cloud_fraction=cloud_fraction)
         ummg = daac_converter.add_data_files_ummg(
             ummg,
             [daac_maskTf_nc_path, daac_browse_path],

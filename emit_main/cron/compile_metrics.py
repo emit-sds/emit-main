@@ -141,12 +141,14 @@ def main():
             "timestamp": {"$gte": start_date, "$lt": stop_date}
         }
 
-        for apid in ["1674", "1675", "1676"]:
-            print(f"Exporting apid {apid} to CSV")
-            export_apid(apid, dm, query, args.export_to_dir, start, stop)
+        if "streams" in metrics_flags:
+            for apid in ["1674", "1675", "1676"]:
+                print(f"Exporting apid {apid} to CSV")
+                export_apid(apid, dm, query, args.export_to_dir, start, stop)
 
-        print("Exporting scene data to CSV")
-        export_scene(dm, query, args.export_to_dir, start, stop)
+        if "scenes" in metrics_flags:
+            print("Exporting scene data to CSV")
+            export_scene(dm, query, args.export_to_dir, start, stop)
         sys.exit()
 
     if "streams" in metrics_flags:
@@ -216,6 +218,11 @@ def main():
 
         # First, get data from acquisition directories
         print("Checking acquisition directories")
+        
+        acq_coll = dm.db.acquisitions
+        dcid_coll = dm.db.data_collections
+        stream_coll = dm.db.streams
+        
         for dir in date_dirs:
             acqs = [os.path.basename(a) for a in glob.glob(f"{dir}/*")]
             # print(f"Found acqs: {acqs}")
@@ -257,15 +264,20 @@ def main():
                 sensco2_tif_files = glob.glob(f"{dir}/{acq}/ghg/co2/{acq}*_ortsensco2_*tif")
                 uncertco2_img_files = glob.glob(f"{dir}/{acq}/ghg/co2/{acq}*_uncertco2_*img")
                 uncertco2_tif_files = glob.glob(f"{dir}/{acq}/ghg/co2/{acq}*_ortuncertco2_*tif")
-                df["l1a_raw_exists"], df["l1b_radiance_exists"] = False, False
-                df["l2a_reflectance_exists"], df["l2b_mineral_id_exists"] = False, False
-
+                frcovqc_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_frcovqc_*tif")
+                pv_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_pv_*tif")
+                pvunc_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_pvunc_*tif")
+                npv_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_npv_*tif")
+                npvunc_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_npvunc_*tif")
+                bare_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_bare_*tif")
+                bareunc_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_bareunc_*tif")
+                maskTf_img_files = glob.glob(f"{dir}/{acq}/mask/{acq}*_mask_*img")
+                maskTf_nc_files = glob.glob(f"{dir}/{acq}/mask/{acq}*_mask_*nc")
+                
                 if len(raw_img_files) > 0:
                     df["raw_img_size_bytes"] = os.path.getsize(raw_img_files[0])
-                    df["l1a_raw_exists"] = True
                 if len(rdn_img_files) > 0:
                     df["rdn_img_size_bytes"] = os.path.getsize(rdn_img_files[0])
-                    df["l1b_radiance_exists"] = True
                 if len(rdn_nc_files) > 0:
                     df["rdn_nc_size_bytes"] = os.path.getsize(rdn_nc_files[0])
                 if len(glt_img_files) > 0:
@@ -278,7 +290,6 @@ def main():
                     df["obs_nc_size_bytes"] = os.path.getsize(obs_nc_files[0])
                 if len(rfl_img_files) > 0:
                     df["rfl_img_size_bytes"] = os.path.getsize(rfl_img_files[0])
-                    df["l2a_reflectance_exists"] = True
                 if len(rfl_nc_files) > 0:
                     df["rfl_nc_size_bytes"] = os.path.getsize(rfl_nc_files[0])
                 if len(rflunc_img_files) > 0:
@@ -291,7 +302,6 @@ def main():
                     df["mask_nc_size_bytes"] = os.path.getsize(mask_nc_files[0])
                 if len(min_img_files) > 0:
                     df["min_img_size_bytes"] = os.path.getsize(min_img_files[0])
-                    df["l2b_mineral_id_exists"] = True
                 if len(min_nc_files) > 0:
                     df["min_nc_size_bytes"] = os.path.getsize(min_nc_files[0])
                 if len(minunc_img_files) > 0:
@@ -322,6 +332,25 @@ def main():
                     df["uncertco2_img_size_bytes"] = os.path.getsize(uncertco2_img_files[0])
                 if len(uncertco2_tif_files) > 0:
                     df["uncertco2_tif_size_bytes"] = os.path.getsize(uncertco2_tif_files[0])
+                if len(frcovqc_tif_files) > 0:
+                    df["frcovqc_tif_size_bytes"] = os.path.getsize(frcovqc_tif_files[0])
+                if len(pv_tif_files) > 0:
+                    df["pv_tif_size_bytes"] = os.path.getsize(pv_tif_files[0])
+                if len(pvunc_tif_files) > 0:
+                    df["pvunc_tif_size_bytes"] = os.path.getsize(pvunc_tif_files[0])
+                if len(npv_tif_files) > 0:
+                    df["npv_tif_size_bytes"] = os.path.getsize(npv_tif_files[0])
+                if len(npvunc_tif_files) > 0:
+                    df["npvunc_tif_size_bytes"] = os.path.getsize(npvunc_tif_files[0])
+                if len(bare_tif_files) > 0:
+                    df["bare_tif_size_bytes"] = os.path.getsize(bare_tif_files[0])
+                if len(bareunc_tif_files) > 0:
+                    df["bareunc_tif_size_bytes"] = os.path.getsize(bareunc_tif_files[0])
+                if len(maskTf_img_files) > 0:
+                    df["maskTf_img_size_bytes"] = os.path.getsize(maskTf_img_files[0])
+                if len(maskTf_nc_files) > 0:
+                    df["maskTf_nc_size_bytes"] = os.path.getsize(maskTf_nc_files[0])
+                    
                 # Get reassembly report info
                 if len(reassembly_reports) > 0:
                     num_lines, corrupt_lines, cloudy_frames = 0, 0, 0
@@ -366,7 +395,60 @@ def main():
                     hdr = envi.read_envi_header(rdn_hdr_files[0])
                     if "masked pixel noise" in hdr:
                         df["masked_pixel_noise"] = float(hdr["masked pixel noise"])
+                
+                # Get HOSC creation time
+                acq_doc = acq_coll.find_one({"acquisition_id": acq})
+                dcid = acq_doc["associated_dcid"]
 
+                dcid_doc = dcid_coll.find_one({"dcid": dcid}, {"associated_ccsds": 1, "_id": 0})
+                dcid_doc['associated_ccsds'].sort()
+                ccsds = os.path.basename(dcid_doc['associated_ccsds'][0])
+
+                stream_doc = stream_coll.find_one({"ccsds_name": ccsds}, {"products.raw.created": 1, "_id": 0})
+                
+                hosc_date = stream_doc['products']['raw']['created']
+                
+                l1a_delivery_date = acq_doc.get('products',{}).get('l1a',{}).get('raw_ummg',{}).get('created',{})
+                l1b_delivery_date = acq_doc.get('products',{}).get('l1b',{}).get('rdn_ummg',{}).get('created',{})
+                l2a_delivery_date = acq_doc.get('products',{}).get('l2a',{}).get('rfl_ummg',{}).get('created',{})
+                co2_delivery_date = acq_doc.get('products',{}).get('ghg',{}).get('co2',{}).get('co2_ummg',{}).get('created',{})
+                ch4_delivery_date = acq_doc.get('products',{}).get('ghg',{}).get('ch4',{}).get('ch4_ummg',{}).get('created',{})
+                abun_delivery_date = acq_doc.get('products',{}).get('l1b',{}).get('abun_ummg',{}).get('created',{})
+                maskTf_delivery_date = acq_doc.get('products',{}).get('mask',{}).get('maskTf_ummg',{}).get('created',{})
+                frcov_delivery_date = acq_doc.get('products',{}).get('frcov',{}).get('frcov_ummg',{}).get('created',{})
+       
+                if l1a_delivery_date:
+                    df["raw_to_l1a_deliver_seconds"] = (l1a_delivery_date - hosc_date).total_seconds()
+                    df["l1a_delivery_date"] = l1a_delivery_date
+
+                if l1b_delivery_date:
+                    df["raw_to_l1b_deliver_seconds"] = (l1b_delivery_date - hosc_date).total_seconds()
+                    df["l1b_delivery_date"] = l1b_delivery_date
+
+                if l2a_delivery_date:
+                    df["raw_to_l2a_deliver_seconds"] = (l2a_delivery_date - hosc_date).total_seconds()
+                    df["l2a_delivery_date"] = l2a_delivery_date
+
+                if co2_delivery_date:
+                    df["raw_to_co2_deliver_seconds"] = (co2_delivery_date - hosc_date).total_seconds()
+                    df["co2_delivery_date"] = co2_delivery_date
+
+                if ch4_delivery_date:
+                    df["raw_to_ch4_deliver_seconds"] = (ch4_delivery_date - hosc_date).total_seconds()
+                    df["ch4_delivery_date"] = ch4_delivery_date
+
+                if abun_delivery_date:
+                    df["raw_to_l2b_deliver_seconds"] = (abun_delivery_date - hosc_date).total_seconds()
+                    df["l2b_delivery_date"] = abun_delivery_date
+
+                if frcov_delivery_date:
+                    df["raw_to_frcov_deliver_seconds"] = (frcov_delivery_date - hosc_date).total_seconds()
+                    df["frcov_delivery_date"] = frcov_delivery_date
+
+                if maskTf_delivery_date:
+                    df["raw_to_maskTf_deliver_seconds"] = (maskTf_delivery_date - hosc_date).total_seconds()
+                    df["maskTf_delivery_date"] = maskTf_delivery_date
+                                
                 # Update the DB
                 trending_acqs_coll = dm.db.trending_acquisitions
                 query = {"timestamp": timestamp}
@@ -424,9 +506,14 @@ def main():
             # "l1a": "C2407975601-LPCLOUD",
             "l1b": "C2408009906-LPCLOUD",
             "l2a": "C2408750690-LPCLOUD",
-            "l2b": "C2408034484-LPCLOUD"
+            "l2b": "C2408034484-LPCLOUD",
+            "ch4": "C3242680113-LPCLOUD",
+            "co2": "C3243477145-LPCLOUD",
+            # "frcov": "",
+            # "mask": "",
         }
-        # token = "eyJ0eXAiOiJKV1QiLCJvcmlnaW4iOiJFYXJ0aGRhdGEgTG9naW4iLCJzaWciOiJlZGxqd3RwdWJrZXlfb3BzIiwiYWxnIjoiUlMyNTYifQ.eyJ0eXBlIjoiVXNlciIsInVpZCI6IndpbnN0b25vbHNvbiIsImV4cCI6MTcxODU3MDg3NywiaWF0IjoxNzEzMzg2ODc3LCJpc3MiOiJFYXJ0aGRhdGEgTG9naW4ifQ.3HAXsV3fzMYMY7LqztJa71Z_vfyXbleR3JZGkXv57uMfekYRHN_Y9rw38dX3twtccBiTsohlFXXprFnTpiBKMgqDxcS55eis8G46SF8Y7Nt4qikY8k4RkF7szMmfqcOJYpj1v1INONBhF9W7Pjew9DUpLJiMQgyKbC90gEmCADbPVZVgL0_rlzT7oL__w_vQTQMauwz7Exr3T63BeISJzAj1jz7zeDo3ROuGZrqtfSX9z-ngLRpCyO9CjCF_ABtL0Y6ZRBoZPiYE43sfm-YnSiKhAfy46ju5CpHomPxbAWrfzDqkN52OXX9tLFGkrK8ucW4snOWW8_LZn5rwGOVKFA"
+
+        trending_acqs_coll = dm.db.trending_acquisitions
         cur_date = start_date
         while cur_date < stop_date:
             cur_plus_one = cur_date + datetime.timedelta(days=1)
@@ -434,6 +521,12 @@ def main():
             print(f"### CMR prod_range: {prod_range}")
             # Loop through collections
             for level, coll in collections.items():
+                
+                level_pub_date = f"{level}_publish_date"
+                level_delivery_date = f"{level}_delivery_date"
+                acq_to_level_pub_seconds = f"acquisition_to_{level}_publish_seconds"
+                deliver_to_level_pub_seconds = f"deliver_to_{level}_publish_seconds"
+                    
                 response = requests.get(url, params={'concept_id': coll, 'page_size': 500, 'temporal': prod_range},
                                         headers={'Accept': 'application/json'
                                                  #'Authorization':f'Bearer {token}'
@@ -447,22 +540,26 @@ def main():
 
                 # Loop through json and get granules
                 for g in response.json()["items"]:
+                                        
                     timestamp = dt.datetime.strptime(g["meta"]["native-id"].split("_")[4], "%Y%m%dT%H%M%S")
                     last_publish_date = dt.datetime.strptime(g["meta"]["revision-date"], "%Y-%m-%dT%H:%M:%S.%fZ")
 
-                    level_pub_date = f"{level}_publish_date"
-                    acq_to_level_pub_seconds = f"acquisition_to_{level}_publish_seconds"
+                    query = {"timestamp": timestamp}
+                                       
                     df = {
                         "timestamp": timestamp,
                         level_pub_date: last_publish_date,
-                        acq_to_level_pub_seconds: (last_publish_date - timestamp).total_seconds()
+                        acq_to_level_pub_seconds: (last_publish_date - timestamp).total_seconds(),
                     }
-                    trending_acqs_coll = dm.db.trending_acquisitions
-                    query = {"timestamp": timestamp}
+                    
+                    doc = trending_acqs_coll.find_one(query, {level_delivery_date: 1, "_id": 0})
+                    delivery_date = doc.get(level_delivery_date)
+                    if delivery_date: # Not needed for ops, but keeping in place for dev/test where delivery may not have occured
+                        df[deliver_to_level_pub_seconds] = (last_publish_date - delivery_date).total_seconds()                   
+                    
                     update_collection(trending_acqs_coll, query, df)
 
             cur_date = cur_plus_one
-
 
 if __name__ == '__main__':
     main()
