@@ -933,38 +933,44 @@ class CH4Mosaic(SlurmJobTask):
         pge_commands = []
         
         target_dir = f'{wm.config["mirror_data_dir"]}/data_collections/by_dcid/{self.dcid[:5]}/{self.dcid}/ghg/ch4'
+        target = f'{wm.config["daac_server_internal"]}:{target_dir}'
+
         cmd_mkdir = ["ssh", wm.config["daac_server_internal"], "mkdir", "-p", target_dir]
         pge.run(cmd_mkdir, tmp_dir=self.tmp_dir)
-            
-        for product in ['ortch4', 'ortsensch4', 'ortuncertch4']:
-            input_files[product] = [ac['products']['ghg']['ch4'][product]['tif_path'] for ac in acquisitions]
-            
-            output_mosaic_path = os.path.join(self.tmp_dir,f'{mosaic_basename}_{product}_{version}.tif')
         
-            cmd = ["python",process_exe,
-                   ' '.join(input_files[product]),
-                   output_mosaic_path]
-            
-            pge_commands.append(" ".join(cmd))       
+        for product in ["ortch4", "ortsensch4", "ortuncertch4"]:
+            input_files[product] = [ac["products"]["ghg"]["ch4"][product]["tif_path"] for ac in acquisitions]
+
+            output_paths = [os.path.join(self.tmp_dir, f'{mosaic_basename}_{product}_{version}.tif'), 
+                            os.path.join(self.tmp_dir, f'{mosaic_basename}_{product}_{version}_2.tif')]
+
+            cmd = ["python",
+                    process_exe,
+                    " ".join(input_files[product]),
+                    output_paths[0]]
+
+            pge_commands.append(" ".join(cmd))
             pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
-            dcid_ch4_product_path = os.path.join(wm.data_collection.ch4_dir, os.path.basename(output_mosaic_path))
-    
-            output_files[f"{product}_mosaic_tif_path"] = dcid_ch4_product_path
-            
-            wm.copy(output_mosaic_path, dcid_ch4_product_path)
-    
-            target = f'{wm.config["daac_server_internal"]}:{target_dir}'
-            cmd_rsync = ["rsync", "-av", log_file_arg, output_mosaic_path, target]
-            pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
+            for idx, out_path in enumerate(output_paths):
+                if not os.path.exists(out_path):
+                    continue
 
-            # Update db
-            dm.update_data_collection_metadata(self.dcid, {f"products.ghg.ch4.{product}_mosaic": {
-                    "tif_path" : dcid_ch4_product_path,
-                    "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
+                dcid_path = os.path.join(wm.data_collection.ch4_dir, os.path.basename(out_path))
+                key = f"{product}_mosaic_tif_path" if idx == 0 else f"{product}_mosaic_tif_path_{idx+1}"
+                output_files[key] = dcid_path
 
-        creation_time = datetime.datetime.fromtimestamp(
-            os.path.getmtime(dcid_ch4_product_path), tz=datetime.timezone.utc)
+                wm.copy(out_path, dcid_path)
+
+                creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(dcid_path), tz=datetime.timezone.utc)
+
+                cmd_rsync = ["rsync", "-av", log_file_arg, out_path, target]
+                pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
+
+                meta_key = f"products.ghg.ch4.{product}_mosaic" if idx == 0 else f"products.ghg.ch4.{product}_mosaic_{idx+1}"
+
+                dm.update_data_collection_metadata(self.dcid,
+                                                    {meta_key: {"tif_path": dcid_path, "created": creation_time}})
 
         doc_version = "EMIT SDS GHG JPL-D 107866, v0.2"
 
