@@ -11,7 +11,7 @@ import os
 from emit_main.workflow.l1a_tasks import L1ADeliver
 from emit_main.workflow.l1b_tasks import L1BCalibrate, L1BRdnDeliver
 from emit_main.workflow.l2a_tasks import L2AMask, L2ADeliver, L2AMaskTf, L2AMaskTfDeliver
-from emit_main.workflow.l2b_tasks import L2BAbundance, L2BDeliver
+from emit_main.workflow.l2b_tasks import L2BAbundance, L2BDeliver, L2BFrCovFormat, L2BFrCovDeliver
 from emit_main.workflow.ghg_tasks import CH4, CO2, CH4Deliver, CO2Deliver
 from emit_main.workflow.l3_tasks import L3Unmix
 from emit_main.workflow.workflow_manager import WorkflowManager
@@ -161,6 +161,28 @@ class AcquisitionMonitor:
         for acq in acquisitions:
             logger.info(f"Creating L2BCO2 task for acquisition {acq['acquisition_id']}")
             tasks.append(CO2(config_path=self.config_path,
+                                      acquisition_id=acq["acquisition_id"],
+                                      level=self.level,
+                                      partition=self.partition))
+
+        return tasks
+
+    def get_frcov_format_tasks(self, start_time, stop_time, date_field="last_modified", retry_failed=False):
+        tasks = []
+        # Find acquisitions within time range
+        dm = self.wm.database_manager
+        acquisitions = dm.find_acquisitions_for_frcov_format(start=start_time, stop=stop_time, date_field=date_field,
+                                                            retry_failed=retry_failed)
+
+        # If no results, just return empty list
+        if len(acquisitions) == 0:
+            logger.info(f"Did not find any acquisitions with {date_field} between {start_time} and {stop_time} needing "
+                        f"frcov format tasks. Not executing any tasks.")
+            return tasks
+
+        for acq in acquisitions:
+            logger.info(f"Creating L2BFrCovFormat task for acquisition {acq['acquisition_id']}")
+            tasks.append(L2BFrCovFormat(config_path=self.config_path,
                                       acquisition_id=acq["acquisition_id"],
                                       level=self.level,
                                       partition=self.partition))
@@ -355,4 +377,27 @@ class AcquisitionMonitor:
                                     daac_ingest_queue=self.daac_ingest_queue,
                                     override_output = self.override_output))
 
+        return tasks
+    
+    def get_frcov_delivery_tasks(self, start_time, stop_time, date_field="last_modified", retry_failed=False):
+        tasks = []
+        # Find acquisitions within time range
+        dm = self.wm.database_manager
+        acquisitions = dm.find_acquisitions_for_frcov_delivery(start=start_time, stop=stop_time,
+                                                                date_field=date_field, retry_failed=retry_failed)
+
+        # If no results, just return empty list
+        if len(acquisitions) == 0:
+            logger.info(f"Did not find any acquisitions with {date_field} between {start_time} and {stop_time} needing "
+                        f"frcov delivery tasks. Not executing any tasks.")
+            return tasks
+
+        for acq in acquisitions:
+            logger.info(f"Creating L2BFrCovDeliver task for acquisition {acq['acquisition_id']}")
+            tasks.append(L2BFrCovDeliver(config_path=self.config_path,
+                                       acquisition_id=acq["acquisition_id"],
+                                       level=self.level,
+                                       partition=self.partition,
+                                       daac_ingest_queue=self.daac_ingest_queue,
+                                       override_output = self.override_output))
         return tasks
