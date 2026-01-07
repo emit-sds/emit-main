@@ -47,7 +47,7 @@ def parse_args():
                        "l1adaac", "l1abad", "l1bcal", "l1bgeo", "l1brdnformat", "l1brdndaac", "l1battdaac", "l1bmosaic",
                        "l2arefl", "l2amask", "l2amaskTf", "l2aformat","l2amaskTfformat", "l2adaac", "l2babun", "l2bformat",
                        "l2bdaac","l2amaskTfdaac", "l2bch4", "l2bco2","l2bch4daac", "l2bco2daac", "l2bch4mosaic",
-                       "l2bco2mosaic", "l3unmix", "daacscenes", "daacaddl", "recon"]
+                       "l2bco2mosaic","l2bfrcovformat", "l2bfrcovdaac", "l3unmix", "daacscenes", "daacaddl", "recon"]
     monitor_choices = ["ingest", "frames", "edp", "cal", "bad", "geo", "l2","maskTf", "l2b","ch4", "co2", "l3",
                        "email", "daacscenes", "dl0","dl1a", "dl1brdn", "dl1batt", "dl2a", "dmaskTf",
                        "dl2b", "dch4", "dco2", "mch4", "mco2", "ml1b", "reconresp"]
