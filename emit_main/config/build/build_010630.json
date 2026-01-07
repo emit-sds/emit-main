@@ -23,7 +23,7 @@
     {
       "url": "git@github.com:emit-sds/emit-sds-l1b.git",
       "tag": "v1.4.6",
-      "conda_env": "emit-l1b-20251106"
+      "conda_env": "emit-l1b-20250705"
     },
     {
       "url": "git@github.com:emit-sds/emit-sds-l1b-geo.git",
