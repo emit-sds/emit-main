@@ -524,7 +524,6 @@ class DatabaseManager:
             "products.ghg.ch4.ortuncertch4.tif_path": {"$exists": 1},
             "associated_dcid": dcid,
             "build_num": self.config["build_num"],
-            "num_valid_lines": {"$gte": 320}
         }
         return list(acquisitions_coll.find(query))
 
@@ -537,7 +536,6 @@ class DatabaseManager:
             "products.ghg.co2.ortuncertco2.tif_path": {"$exists": 1},
             "associated_dcid": dcid,
             "build_num": self.config["build_num"],
-            "num_valid_lines": {"$gte": 320}
         }
         return list(acquisitions_coll.find(query))
 
