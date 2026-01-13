@@ -54,9 +54,10 @@ class DataCollection:
         self.acquisitions_dir = self.frames_dir.replace("_frames_", "_acquisitions_")
         self.ch4_dir = os.path.join(self.dcid_dir,'ghg', 'ch4')
         self.co2_dir = os.path.join(self.dcid_dir,'ghg', 'co2')
+        self.l1b_dir = os.path.join(self.dcid_dir,'l1b')
         self.dirs.extend([self.data_collections_dir, self.by_dcid_dir, self.by_date_dir, self.dcid_hash_dir,
                           self.dcid_dir, self.frames_dir, self.decomp_dir, self.acquisitions_dir, self.ch4_dir,
-                          self.co2_dir])
+                          self.co2_dir, self.l1b_dir])
 
         # Make directories and symlinks if they don't exist
         from emit_main.workflow.workflow_manager import WorkflowManager
