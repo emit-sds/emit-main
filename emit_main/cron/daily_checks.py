@@ -158,7 +158,7 @@ def main():
     query = {
         "build_num": wm.config["build_num"],
         "submode": "science",
-        "num_valid_lines": {"$gte": 2},
+        "num_valid_lines": {"$gte": 320},
         "products.l1a.raw.img_path": {"$exists": 1},
         "products.l1b.rdn.img_path": {"$exists": 0}
     }

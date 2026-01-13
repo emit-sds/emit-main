@@ -109,11 +109,11 @@ class DatabaseManager:
 
     def find_acquisitions_for_calibration(self, start, stop, date_field="last_modified", retry_failed=False):
         acquisitions_coll = self.db.acquisitions
-        # Query for "science" acquisitions with non-zero valid lines and with complete l1a raw outputs but no l1b rdn
+        # Query for "science" acquisitions with at least 320 valid lines and with complete l1a raw outputs but no l1b rdn
         # outputs in time range
         query = {
             "submode": "science",
-            "num_valid_lines": {"$gte": 2},
+            "num_valid_lines": {"$gte": 320},
             "products.l1a.raw.img_path": {"$exists": 1},
             "products.l1b.rdn.img_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop},

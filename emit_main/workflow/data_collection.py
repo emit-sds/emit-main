@@ -120,7 +120,7 @@ class DataCollection:
 
         acquisitions_coll = dm.db.acquisitions
 
-        #Get list of acquisition ids expected to have CH4 products
+        # Get list of acquisition ids expected to have CH4 products
         query = {
             "associated_dcid": self.dcid,
             "mean_solar_zenith": {"$lt": 80},
