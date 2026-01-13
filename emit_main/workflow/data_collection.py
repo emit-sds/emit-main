@@ -114,7 +114,7 @@ class DataCollection:
         # If we made it this far, then return True
         return True
 
-    def has_complete_ch4_aqcuisitions(self):
+    def has_complete_ch4_acquisitions(self):
 
         dm = DatabaseManager(self.config_path)
 
@@ -124,7 +124,8 @@ class DataCollection:
         query = {
             "associated_dcid": self.dcid,
             "mean_solar_zenith": {"$lt": 80},
-            "build_num": self.config["build_num"]
+            "build_num": self.config["build_num"],
+            "num_valid_lines": {"$gte": 320},
         }
 
         expected = list(acquisitions_coll.find(query))
