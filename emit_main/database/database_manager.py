@@ -270,7 +270,8 @@ class DatabaseManager:
     
     def find_acquisitions_for_frcov_format(self, start, stop, date_field="last_modified", retry_failed=False):
         acquisitions_coll = self.db.acquisitions
-        # Query for acquisitions with complete l2a outputs but no l2b co2 outputs in time range
+        # Query for acquisitions with complete glt, rfl, maskTf, l3 cover paths, but not frcov cog
+        # Also, only run for scenes with cloud_fraction <= 80 for now since we deleted rfl files higher than that
         query = {
             "products.l1b.glt.img_path": {"$exists": 1},
             "products.l2a.rfl.img_path": {"$exists": 1},
@@ -278,6 +279,7 @@ class DatabaseManager:
             "products.l3.cover.img_path": {"$exists": 1},
             "products.l3.coveruncert.img_path": {"$exists": 1},
             "products.frcov.qc.tif_path": {"$exists": 0},
+            "cloud_fraction": {"$lte": 80},
             date_field: {"$gte": start, "$lte": stop},
             "build_num": self.config["build_num"]
         }
