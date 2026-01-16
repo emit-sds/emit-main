@@ -13,6 +13,8 @@ import os
 import requests
 import sys
 
+from netCDF4 import Dataset
+import numpy as np
 import pandas as pd
 
 import spectral.io.envi as envi
@@ -222,10 +224,13 @@ def main():
         acq_coll = dm.db.acquisitions
         dcid_coll = dm.db.data_collections
         stream_coll = dm.db.streams
+        orbit_coll = dm.db.orbits
         
+        geo_qa_cache = {}
         for dir in date_dirs:
             acqs = [os.path.basename(a) for a in glob.glob(f"{dir}/*")]
             # print(f"Found acqs: {acqs}")
+            
             for acq in acqs:
                 timestamp_str = os.path.basename(acq).split("_")[0][4:]
                 timestamp = dt.datetime.strptime(timestamp_str, "%Y%m%dt%H%M%S")
@@ -397,9 +402,11 @@ def main():
                         df["masked_pixel_noise"] = float(hdr["masked pixel noise"])
                 
                 # Get HOSC creation time
-                acq_doc = acq_coll.find_one({"acquisition_id": acq})
+                acq_doc = acq_coll.find_one({"acquisition_id": acq}, {"associated_dcid": 1, "orbit": 1, "build_num": 1, "_id": 0})
                 dcid = acq_doc["associated_dcid"]
-
+                orbit = acq_doc["orbit"]
+                build_num = acq_doc["build_num"]
+                
                 dcid_doc = dcid_coll.find_one({"dcid": dcid}, {"associated_ccsds": 1, "_id": 0})
                 dcid_doc['associated_ccsds'].sort()
                 ccsds = os.path.basename(dcid_doc['associated_ccsds'][0])
@@ -407,6 +414,45 @@ def main():
                 stream_doc = stream_coll.find_one({"ccsds_name": ccsds}, {"products.raw.created": 1, "_id": 0})
                 
                 hosc_date = stream_doc['products']['raw']['created']
+                
+                orbit_doc = orbit_coll.find_one(
+                    {
+                        "orbit_id": orbit,
+                        "products.l1b.corr_att_eph.nc_path": {"$exists": 1}
+                    },
+                    {
+                        "products.l1b.corr_att_eph.nc_path": 1,
+                        "_id": 0
+                    }
+                )
+                
+                if orbit_doc:
+                    eph_path =  orbit_doc["products"]["l1b"]["corr_att_eph"]["nc_path"]
+
+                    eph_dir, eph_base = os.path.split(eph_path)
+
+                    geo_qc_base = eph_base.replace('att', 'geoqa')
+                    geo_qc_subdir = f'o{orbit}_l1b_geo_b{build_num}_v01_work'
+
+                    geo_qc_nc = os.path.join(eph_dir,geo_qc_subdir, geo_qc_base)
+
+                    if os.path.isfile(geo_qc_nc):
+                        with Dataset(geo_qc_nc, "r") as ds:
+                            g = ds.groups["Accuracy Estimate"]
+                            scenes = g["Scenes"][:]
+                            idx = np.where(scenes == acq[4:])[0]
+
+                            if idx.size == 1:
+                                i = idx[0]
+                                pre_error = g["Accuracy Before Correction"][i]
+                                post_error = g["Final Accuracy"][i]
+                                
+                                if pre_error != -9999:
+                                    df["pre_geo_error_m"] = float(pre_error)
+                                if post_error != -9999:
+                                    df["post_geo_error_m"] = float(post_error)
+                    else:
+                        print(f'{geo_qc_nc} not found')
                 
                 l1a_delivery_date = acq_doc.get('products',{}).get('l1a',{}).get('raw_ummg',{}).get('created',{})
                 l1b_delivery_date = acq_doc.get('products',{}).get('l1b',{}).get('rdn_ummg',{}).get('created',{})
