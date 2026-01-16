@@ -109,11 +109,11 @@ class DatabaseManager:
 
     def find_acquisitions_for_calibration(self, start, stop, date_field="last_modified", retry_failed=False):
         acquisitions_coll = self.db.acquisitions
-        # Query for "science" acquisitions with non-zero valid lines and with complete l1a raw outputs but no l1b rdn
+        # Query for "science" acquisitions with at least 320 valid lines and with complete l1a raw outputs but no l1b rdn
         # outputs in time range
         query = {
             "submode": "science",
-            "num_valid_lines": {"$gte": 2},
+            "num_valid_lines": {"$gte": 320},
             "products.l1a.raw.img_path": {"$exists": 1},
             "products.l1b.rdn.img_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop},
@@ -270,7 +270,8 @@ class DatabaseManager:
     
     def find_acquisitions_for_frcov_format(self, start, stop, date_field="last_modified", retry_failed=False):
         acquisitions_coll = self.db.acquisitions
-        # Query for acquisitions with complete l2a outputs but no l2b co2 outputs in time range
+        # Query for acquisitions with complete glt, rfl, maskTf, l3 cover paths, but not frcov cog
+        # Also, only run for scenes with cloud_fraction <= 80 for now since we deleted rfl files higher than that
         query = {
             "products.l1b.glt.img_path": {"$exists": 1},
             "products.l2a.rfl.img_path": {"$exists": 1},
@@ -278,6 +279,7 @@ class DatabaseManager:
             "products.l3.cover.img_path": {"$exists": 1},
             "products.l3.coveruncert.img_path": {"$exists": 1},
             "products.frcov.qc.tif_path": {"$exists": 0},
+            "cloud_fraction": {"$lte": 80},
             date_field: {"$gte": start, "$lte": stop},
             "build_num": self.config["build_num"]
         }
@@ -498,6 +500,32 @@ class DatabaseManager:
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.CH4Mosaic"])
         return results
+    
+    def find_data_collections_for_l1b_mosaic(self, start, stop, date_field="last_modified", retry_failed=False):
+        data_collections_coll = self.db.data_collections
+        query = {
+            "geolocation_status": "complete",
+            "products.l1b.mosaic.tif_path": {"$exists": 0},
+            "build_num": self.config["build_num"],
+            date_field: {"$gte": start, "$lte": stop},
+        }
+        results =  list(data_collections_coll.find(query).sort("dcid", 1))
+        
+        if not retry_failed:
+            results = self._remove_results_with_failed_tasks(results, ["emit.L1BMosaic"])
+        return results
+    
+    def find_acquisitions_for_l1b_mosaic(self, dcid):
+        acquisitions_coll = self.db.acquisitions
+        query = {
+            "products.l1b.rdn.img_path": {"$exists": 1},    
+            "products.l1b.glt.img_path": {"$exists": 1},
+            "num_valid_lines": {"$gte": 320},
+            "associated_dcid": dcid,
+            "build_num": self.config["build_num"]
+        }
+        return list(acquisitions_coll.find(query))
+      
         
     def find_data_collections_for_co2_mosaic(self, start, stop, date_field="last_modified", retry_failed=False):
         data_collections_coll = self.db.data_collections
@@ -523,7 +551,7 @@ class DatabaseManager:
             "products.ghg.ch4.ortsensch4.tif_path": {"$exists": 1},
             "products.ghg.ch4.ortuncertch4.tif_path": {"$exists": 1},
             "associated_dcid": dcid,
-            "build_num": self.config["build_num"]
+            "build_num": self.config["build_num"],
         }
         return list(acquisitions_coll.find(query))
 
@@ -535,10 +563,10 @@ class DatabaseManager:
             "products.ghg.co2.ortsensco2.tif_path": {"$exists": 1},
             "products.ghg.co2.ortuncertco2.tif_path": {"$exists": 1},
             "associated_dcid": dcid,
-            "build_num": self.config["build_num"]
+            "build_num": self.config["build_num"],
         }
         return list(acquisitions_coll.find(query))
-
+    
     def insert_acquisition(self, metadata):
         if self.find_acquisition_by_id(metadata["acquisition_id"]) is None:
             utc_now = datetime.datetime.now(tz=datetime.timezone.utc)

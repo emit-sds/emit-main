@@ -1,6 +1,14 @@
 ### Changelog
 
-All notable changes to this project will be documented in this file. Dates are displayed in UTC.
+All notable changes to this project will be documented in this file. 
+
+#### [v1.6.33](https://github.com/emit-sds/emit-main/compare/v1.6.32...v1.6.33)
+
+> 6 January 2026
+
+* Update frcov and mask collection concept IDs by @adamchlus in https://github.com/emit-sds/emit-main/pull/94
+* L1B RGB Mosaic PGE by @adamchlus in https://github.com/emit-sds/emit-main/pull/95
+* GHG mosaic task updates by @adamchlus in https://github.com/emit-sds/emit-main/pull/96
 
 #### [v1.6.32](https://github.com/emit-sds/emit-main/compare/v1.6.31...v1.6.32)
 

@@ -10,6 +10,8 @@ import glob
 import json
 import logging
 import os
+import time
+import sys
 
 import h5netcdf.legacyapi as netCDF4
 import luigi
@@ -17,7 +19,7 @@ import spectral.io.envi as envi
 # import netCDF4
 
 from emit_main.workflow.acquisition import Acquisition
-from emit_main.workflow.output_targets import AcquisitionTarget, OrbitTarget
+from emit_main.workflow.output_targets import AcquisitionTarget, OrbitTarget, DataCollectionTarget
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_utils import daac_converter
@@ -364,8 +366,8 @@ class L1BGeolocate(SlurmJobTask):
             raise RuntimeError(f"Unable to run {self.task_family} on {self.orbit_id} due to missing radiance files in "
                                f"orbit.")
 
-        # Get acquisitions in orbit (only science with at least 1 valid line, not dark) - radiance and line timestamps
-        acquisitions_in_orbit = dm.find_acquisitions_by_orbit_id(orbit.orbit_id, "science", min_valid_lines=2)
+        # Get acquisitions in orbit (only science with at least 320 valid lines, not dark) - radiance and line timestamps
+        acquisitions_in_orbit = dm.find_acquisitions_by_orbit_id(orbit.orbit_id, "science", min_valid_lines=320)
 
         # Build input_files dictionary
         input_files = {
@@ -627,6 +629,11 @@ This product is generated at the orbit level."
             "output": output_prods
         }
         dm.insert_orbit_log_entry(orbit.orbit_id, log_entry)
+        
+        data_collections = dm.find_data_collections_by_orbit_id(orbit.orbit_id, submode="science")
+
+        for data_collect in data_collections:    
+            dm.update_data_collection_metadata(data_collect['dcid'], {"geolocation_status": "complete"})
 
 
 class L1BRdnFormat(SlurmJobTask):
@@ -1150,3 +1157,133 @@ class L1BAttDeliver(SlurmJobTask):
             }
         }
         dm.insert_orbit_log_entry(self.orbit_id, log_entry)
+
+class L1BMosaic(SlurmJobTask):
+    """
+    Create L1B RGB mosaic and copy to server
+    """
+
+    config_path = luigi.Parameter()
+    level = luigi.Parameter()
+    partition = luigi.Parameter()
+    dcid = luigi.Parameter()
+
+    n_cores = 16
+    memory = 90000
+
+    task_namespace = "emit"
+
+    def requires(self):
+
+        logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
+        wm = WorkflowManager(config_path=self.config_path, dcid=self.dcid)
+        dc = wm.dcid
+
+    def output(self):
+
+        logger.debug(f"{self.task_family} output: {self.dcid}")
+        wm = WorkflowManager(config_path=self.config_path, dcid=self.dcid)
+        return DataCollectionTarget(data_collection=wm.data_collection, task_family=self.task_family)
+
+    def work(self):
+
+        start_time = time.time()
+        logger.debug(f"{self.task_family} run: {self.dcid}")
+
+        wm = WorkflowManager(config_path=self.config_path, dcid=self.dcid)
+        dc = wm.dcid
+        pge = wm.pges["emit-sds-l1b"]
+        emit_utils_pge = wm.pges["emit-utils"]
+        dm = wm.database_manager
+
+        # PGE writes to tmp folder
+        tmp_output_dir = os.path.join(self.local_tmp_dir, "rgb")
+        wm.makedirs(tmp_output_dir)
+        env = os.environ.copy()
+        sys.path.append(pge.repo_dir)
+
+        acquisitions = dm.find_acquisitions_for_l1b_mosaic(dcid = self.dcid)
+        acquisition_ids = [ac['acquisition_id'] for ac in acquisitions]
+        acquisition_ids.sort()
+    
+        start_timestamp = datetime.datetime.strptime(acquisition_ids[0], "emit%Y%m%dt%H%M%S")
+        end_timestamp =  datetime.datetime.strptime(acquisition_ids[-1], "emit%Y%m%dt%H%M%S")
+
+        if start_timestamp == end_timestamp:
+            end_timestamp +=  datetime.timedelta(seconds=1)
+
+        fmt = "%Y-%m-%dT%H_%M_%SZ"
+        mosaic_basename = f"emit{self.dcid}_{start_timestamp.strftime(fmt)}-to-{end_timestamp.strftime(fmt)}"
+        
+        # Define exe's
+        process_exe = os.path.join(pge.repo_dir, "mosaic.py")
+        
+        log_file_arg = f"--log-file={os.path.join(self.tmp_dir, 'rsync.log')}"
+
+        version = 'v01'
+        input_files = {}
+        output_files = {}
+        pge_commands = []
+        
+        target_dir = f'{wm.config["mirror_data_dir"]}/data_collections/by_dcid/{self.dcid[:5]}/{self.dcid}/l1b'
+        cmd_mkdir = ["ssh", wm.config["daac_server_internal"], "mkdir", "-p", target_dir]
+        pge.run(cmd_mkdir, tmp_dir=self.tmp_dir)
+            
+        input_files = [ac['products']['l1b']['rdn']['img_path'] for ac in acquisitions]
+        glt_files = [ac['products']['l1b']['glt']['img_path'] for ac in acquisitions]
+
+        output_mosaic_paths = [os.path.join(self.tmp_dir, f'{mosaic_basename}_l1b_rgb_{version}.tif'),
+                               os.path.join(self.tmp_dir, f'{mosaic_basename}_l1b_rgb_{version}_2.tif')]
+
+        cmd = ["python",
+                process_exe,
+                f'--rdn {" ".join(input_files)}',
+                f'--glt {" ".join(glt_files)}',
+                f'--output {output_mosaic_paths[0]}']
+        
+        pge_commands.append(" ".join(cmd))
+        pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
+
+        target = f'{wm.config["daac_server_internal"]}:{target_dir}'
+
+        for idx, out_path in enumerate(output_mosaic_paths):
+            if not os.path.exists(out_path):
+                continue
+
+            dc_path = os.path.join(wm.data_collection.l1b_dir, os.path.basename(out_path))
+
+            key = "l1b_mosaic_tif_path" if idx == 0 else f"l1b_mosaic_tif_path_{idx+1}"
+            output_files[key] = dc_path
+
+            wm.copy(out_path, dc_path)
+
+            creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(dc_path),tz=datetime.timezone.utc)
+
+            cmd_rsync = ["rsync", "-av", log_file_arg, out_path, target]
+            pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
+
+            meta_key = "products.l1b.mosaic" if idx == 0 else f"products.l1b.mosaic_{idx+1}"
+            
+            dm.update_data_collection_metadata(
+                self.dcid,
+                {meta_key: {"tif_path": dc_path, "created": creation_time}})
+
+        doc_version = "EMIT SDS L1B JPL-D 107866, v0.2"
+
+        total_time = time.time() - start_time
+            
+        log_entry = {
+            "task": self.task_family,
+            "pge_name": pge.repo_url,
+            "pge_version": pge.version_tag,
+            "pge_input_files": input_files + glt_files,
+            "pge_run_command": pge_commands,
+            "documentation_version": doc_version,
+            "product_creation_time": creation_time,
+            "pge_runtime_seconds": total_time,
+            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
+            "completion_status": "SUCCESS",
+            "output": output_files
+            }
+
+        dm.insert_data_collection_log_entry(self.dcid, log_entry) 

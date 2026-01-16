@@ -1079,6 +1079,14 @@ class L2AMaskTfDeliver(SlurmJobTask):
                         "checksum": daac_converter.calc_checksum(daac_maskTf_nc_path, "sha512")
                     },
                     {
+                        "name": daac_browse_name,
+                        "uri": acq.aws_s3_uri_base + daac_browse_name,
+                        "type": "browse",
+                        "size": os.path.getsize(daac_browse_path),
+                        "checksumType": "sha512",
+                        "checksum": daac_converter.calc_checksum(daac_browse_path, "sha512")
+                    },
+                    {
                         "name": daac_ummg_name,
                         "uri": acq.aws_s3_uri_base + daac_ummg_name,
                         "type": "metadata",

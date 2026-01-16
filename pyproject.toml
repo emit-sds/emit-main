@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "emit_main"
-version = "1.6.32"
+version = "1.6.33"
 description = "Workflow and file management code for EMIT science data processing"
 authors = [
     { name = "Winston Olson-Duvall", email = "winston.olson-duvall@jpl.nasa.gov" },
