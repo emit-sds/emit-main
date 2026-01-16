@@ -366,8 +366,8 @@ class L1BGeolocate(SlurmJobTask):
             raise RuntimeError(f"Unable to run {self.task_family} on {self.orbit_id} due to missing radiance files in "
                                f"orbit.")
 
-        # Get acquisitions in orbit (only science with at least 1 valid line, not dark) - radiance and line timestamps
-        acquisitions_in_orbit = dm.find_acquisitions_by_orbit_id(orbit.orbit_id, "science", min_valid_lines=2)
+        # Get acquisitions in orbit (only science with at least 320 valid lines, not dark) - radiance and line timestamps
+        acquisitions_in_orbit = dm.find_acquisitions_by_orbit_id(orbit.orbit_id, "science", min_valid_lines=320)
 
         # Build input_files dictionary
         input_files = {
