@@ -402,11 +402,11 @@ def main():
                         df["masked_pixel_noise"] = float(hdr["masked pixel noise"])
                 
                 # Get HOSC creation time
-                acq_doc = acq_coll.find_one({"acquisition_id": acq}, {"associated_dcid": 1, "orbit": 1, "build_num": 1, "_id": 0})
+                acq_doc = acq_coll.find_one({"acquisition_id": acq}, {"associated_dcid": 1, "orbit": 1, "build_num": 1, "cloud_fraction_02": 1, "_id": 0})
                 dcid = acq_doc["associated_dcid"]
                 orbit = acq_doc["orbit"]
                 build_num = acq_doc["build_num"]
-                
+                                
                 dcid_doc = dcid_coll.find_one({"dcid": dcid}, {"associated_ccsds": 1, "_id": 0})
                 dcid_doc['associated_ccsds'].sort()
                 ccsds = os.path.basename(dcid_doc['associated_ccsds'][0])
@@ -425,6 +425,10 @@ def main():
                         "_id": 0
                     }
                 )
+                
+                cloud_fraction_02 = acq_doc.get("cloud_fraction_02")
+                if cloud_fraction_02:
+                    df["cloud_fraction_02"] = cloud_fraction_02
                 
                 if orbit_doc:
                     eph_path =  orbit_doc["products"]["l1b"]["corr_att_eph"]["nc_path"]
