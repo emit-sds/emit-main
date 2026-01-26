@@ -520,7 +520,6 @@ class DatabaseManager:
         query = {
             "products.l1b.rdn.img_path": {"$exists": 1},    
             "products.l1b.glt.img_path": {"$exists": 1},
-            "num_valid_lines": {"$gte": 320},
             "associated_dcid": dcid,
             "build_num": self.config["build_num"]
         }

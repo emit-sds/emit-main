@@ -2,9 +2,16 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v1.6.34](https://github.com/emit-sds/emit-main/compare/v1.6.33...v1.6.34)
+
+> 26 January 2026
+
+* Develop sync by @adamchlus in https://github.com/emit-sds/emit-main/pull/97
+* Metrics updates by @adamchlus in https://github.com/emit-sds/emit-main/pull/99
+
 #### [v1.6.33](https://github.com/emit-sds/emit-main/compare/v1.6.32...v1.6.33)
 
-> 6 January 2026
+> 16 January 2026
 
 * Update frcov and mask collection concept IDs by @adamchlus in https://github.com/emit-sds/emit-main/pull/94
 * L1B RGB Mosaic PGE by @adamchlus in https://github.com/emit-sds/emit-main/pull/95
