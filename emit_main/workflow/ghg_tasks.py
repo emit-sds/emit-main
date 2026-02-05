@@ -77,7 +77,6 @@ class CH4(SlurmJobTask):
         tmp_output_dir = os.path.join(self.local_tmp_dir, "ch4")
         wm.makedirs(tmp_output_dir)
         env = os.environ.copy()
-        env["RAY_worker_register_timeout_seconds"] = "600"
         env["PYTHONPATH"] = f"$PYTHONPATH:{pge.repo_dir}:{emit_utils_pge.repo_dir}"
         sys.path.append(pge.repo_dir)
 
@@ -245,7 +244,6 @@ class CO2(SlurmJobTask):
         tmp_output_dir = os.path.join(self.local_tmp_dir, "co2")
         wm.makedirs(tmp_output_dir)
         env = os.environ.copy()
-        env["RAY_worker_register_timeout_seconds"] = "600"
         env["PYTHONPATH"] = f"$PYTHONPATH:{pge.repo_dir}:{emit_utils_pge.repo_dir}"
         sys.path.append(pge.repo_dir)
 
