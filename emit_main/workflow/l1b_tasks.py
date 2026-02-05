@@ -1201,6 +1201,7 @@ class L1BMosaic(SlurmJobTask):
         tmp_output_dir = os.path.join(self.local_tmp_dir, "rgb")
         wm.makedirs(tmp_output_dir)
         env = os.environ.copy()
+        env["CPL_TMPDIR"] = "/local"
         sys.path.append(pge.repo_dir)
 
         acquisitions = dm.find_acquisitions_for_l1b_mosaic(dcid = self.dcid)

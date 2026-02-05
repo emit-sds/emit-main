@@ -905,6 +905,7 @@ class CH4Mosaic(SlurmJobTask):
         tmp_output_dir = os.path.join(self.local_tmp_dir, "ch4")
         wm.makedirs(tmp_output_dir)
         env = os.environ.copy()
+        env["CPL_TMPDIR"] = "/local"
         sys.path.append(pge.repo_dir)
 
         acquisitions = dm.find_acquisitions_for_ch4_mosaic(dcid = self.dcid)
@@ -1033,6 +1034,7 @@ class CO2Mosaic(SlurmJobTask):
         tmp_output_dir = os.path.join(self.local_tmp_dir, "co2")
         wm.makedirs(tmp_output_dir)
         env = os.environ.copy()
+        env["CPL_TMPDIR"] = "/local"
         sys.path.append(pge.repo_dir)
 
         acquisitions = dm.find_acquisitions_for_co2_mosaic(dcid = self.dcid)
