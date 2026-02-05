@@ -185,7 +185,6 @@ class DataCollection:
         #Get list of acquisition ids with completed radiances
         query = {
             "associated_dcid": self.dcid,
-            "submode": "science",
             "build_num": self.config["build_num"],
             "products.l1b.rdn.img_path": {"$exists": 1},
         }
