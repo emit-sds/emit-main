@@ -199,6 +199,7 @@ class L1BCalibrate(SlurmJobTask):
         env = os.environ.copy()
         env["PYTHONPATH"] = f"$PYTHONPATH:{utils_path}:{isofit_dir}"
         env["RAY_worker_register_timeout_seconds"] = "600"
+        env["RAY_TMPDIR"] = "/local/ray"
         cmd = ["python", emitrdn_wrapper_exe, tmp_runconfig_path]
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 

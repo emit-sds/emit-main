@@ -298,7 +298,8 @@ class L2AMask(SlurmJobTask):
         env["PYTHONPATH"] = f"$PYTHONPATH:{isofit_pge.repo_dir}:{emit_utils_pge.repo_dir}"
 
         env["RAY_worker_register_timeout_seconds"] = "600"
-
+        env["RAY_TMPDIR"] = "/local/ray"
+        
         cmd = ["python", make_masks_exe, acq.rdn_img_path, acq.loc_img_path, acq.atm_img_path,
                solar_irradiance_path, tmp_mask_path, "--n_cores", str(self.n_cores)]
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
