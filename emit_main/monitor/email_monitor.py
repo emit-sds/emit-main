@@ -18,8 +18,8 @@ from datetime import datetime
 from emit_main.workflow.l0_tasks import L0Deliver
 from emit_main.workflow.l1a_tasks import L1ADeliver
 from emit_main.workflow.l1b_tasks import L1BRdnDeliver, L1BAttDeliver
-from emit_main.workflow.l2a_tasks import L2ADeliver
-from emit_main.workflow.l2b_tasks import L2BDeliver
+from emit_main.workflow.l2a_tasks import L2ADeliver, L2AMaskTfDeliver
+from emit_main.workflow.l2b_tasks import L2BDeliver, L2BFrCovDeliver
 from emit_main.workflow.ghg_tasks import CH4Deliver, CO2Deliver
 from emit_main.workflow.workflow_manager import WorkflowManager
 
@@ -439,5 +439,29 @@ class EmailMonitor:
                                             partition=self.partition,
                                             daac_ingest_queue=self.daac_ingest_queue,
                                             override_output=True))
+
+                if g.startswith("EMIT_L2A_MASK"):
+                    # Get acquisition id
+                    timestamp = g.split("_")[4].replace("T", "t")
+                    acquisition_id = f"emit{timestamp}"
+                    logger.info(f"Creating L2AMaskTfDeliver task for acquisition {acquisition_id}")
+                    tasks.append(L2AMaskTfDeliver(config_path=self.config_path, 
+                                                  acquisition_id=acquisition_id,
+                                                  level=self.level,
+                                                  partition=self.partition,
+                                                  daac_ingest_queue=self.daac_ingest_queue,
+                                                  override_output=True))
+
+                if g.startswith("EMIT_L2B_FRCOV"):
+                    # Get acquisition id
+                    timestamp = g.split("_")[4].replace("T", "t")
+                    acquisition_id = f"emit{timestamp}"
+                    logger.info(f"Creating L2BFrCovDeliver task for acquisition {acquisition_id}")
+                    tasks.append(L2BFrCovDeliver(config_path=self.config_path,
+                                                 acquisition_id=acquisition_id,
+                                                 level=self.level,
+                                                 partition=self.partition,
+                                                 daac_ingest_queue=self.daac_ingest_queue,
+                                                 override_output=True))
 
         return tasks
