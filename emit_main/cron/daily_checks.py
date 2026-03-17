@@ -63,7 +63,7 @@ def main():
     print(f"Results: {len(results)}\n")
     if len(results) > 0:
         for r in results:
-            print(f"dcid: {r['dcid']}, start_time: {r['start_time']}, stop_time: {r['stop_time']}, orbit: {r['orbit']}")
+            print(f"dcid: {r['dcid']}, start_time: {r['start_time']}, stop_time: {r['stop_time']}, orbit: {r['orbit']}, last_modified: {r['last_modified']}")
         print("")
 
     # Check for orbits with missing BAD sto data
@@ -84,7 +84,7 @@ def main():
     print(f"Results: {len(results)}\n")
     if len(results) > 0:
         for r in results:
-            print(f"orbit_id: {r['orbit_id']}, start_time: {r['start_time']}, stop_time: {r['stop_time']}")
+            print(f"orbit_id: {r['orbit_id']}, start_time: {r['start_time']}, stop_time: {r['stop_time']}, last_modified: {r['last_modified']}")
         print("")
 
     # Check for orbits with missing raw
@@ -106,7 +106,7 @@ def main():
     print(f"Results: {len(results)}\n")
     if len(results) > 0:
         for r in results:
-            print(f"orbit_id: {r['orbit_id']}, start_time: {r['start_time']}, stop_time: {r['stop_time']}")
+            print(f"orbit_id: {r['orbit_id']}, start_time: {r['start_time']}, stop_time: {r['stop_time']}, last_modified: {r['last_modified']}")
         print("")
 
     # Check for orbits with missing radiance
@@ -129,7 +129,7 @@ def main():
     print(f"Results: {len(results)}\n")
     if len(results) > 0:
         for r in results:
-            print(f"orbit_id: {r['orbit_id']}, start_time: {r['start_time']}, stop_time: {r['stop_time']}")
+            print(f"orbit_id: {r['orbit_id']}, start_time: {r['start_time']}, stop_time: {r['stop_time']}, last_modified: {r['last_modified']}")
         print("")
 
     # Check for orbits that failed to geocorrect
@@ -151,7 +151,7 @@ def main():
     print(f"Results: {len(results)}\n")
     if len(results) > 0:
         for r in results:
-            print(f"orbit_id: {r['orbit_id']}, start_time: {r['start_time']}, stop_time: {r['stop_time']}")
+            print(f"orbit_id: {r['orbit_id']}, start_time: {r['start_time']}, stop_time: {r['stop_time']}, last_modified: {r['last_modified']}")
         print("")
 
     # Check for raw scenes with no radiance
@@ -175,7 +175,7 @@ def main():
     if len(results) > 0:
         for r in results:
             print(f"acquisition_id: {r['acquisition_id']}, start_time: {r['start_time']}, stop_time: {r['stop_time']}, "
-                  f"orbit: {r['orbit']}")
+                  f"orbit: {r['orbit']}, last_modified: {r['last_modified']}")
         print("")
 
     print("---------------------")
