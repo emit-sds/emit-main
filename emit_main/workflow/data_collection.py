@@ -174,3 +174,22 @@ class DataCollection:
         completed_acq_ids = [doc['acquisition_id'] for doc in completed]
  
         return set(expected_acq_ids) == set(completed_acq_ids)
+    
+    def has_radiance_for_l1b_mosaic(self):
+        # Check for at least one acquisition with complete radiance in a dcid
+        
+        dm = DatabaseManager(self.config_path)
+
+        acquisitions_coll = dm.db.acquisitions
+
+        #Get list of acquisition ids with completed radiances
+        query = {
+            "associated_dcid": self.dcid,
+            "build_num": self.config["build_num"],
+            "products.l1b.rdn.img_path": {"$exists": 1},
+        }
+ 
+        completed = list(acquisitions_coll.find(query))
+        
+        return len(completed) > 0
+    

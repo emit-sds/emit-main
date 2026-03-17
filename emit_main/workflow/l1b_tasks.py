@@ -632,9 +632,12 @@ This product is generated at the orbit level."
         
         data_collections = dm.find_data_collections_by_orbit_id(orbit.orbit_id, submode="science")
 
-        for data_collect in data_collections:    
-            dm.update_data_collection_metadata(data_collect['dcid'], {"geolocation_status": "complete"})
-
+        for data_collect in data_collections:                           
+            wm = WorkflowManager(config_path=self.config_path, dcid=data_collect['dcid'])
+            dc = wm.data_collection
+            
+            if dc.has_radiance_for_l1b_mosaic():
+                dm.update_data_collection_metadata(data_collect['dcid'], {"ready_for_l1b_mosaic": True})
 
 class L1BRdnFormat(SlurmJobTask):
     """
