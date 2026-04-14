@@ -504,7 +504,7 @@ class DatabaseManager:
     def find_data_collections_for_l1b_mosaic(self, start, stop, date_field="last_modified", retry_failed=False):
         data_collections_coll = self.db.data_collections
         query = {
-            "geolocation_status": "complete",
+            "ready_for_l1b_mosaic": True,
             "products.l1b.mosaic.tif_path": {"$exists": 0},
             "build_num": self.config["build_num"],
             date_field: {"$gte": start, "$lte": stop},

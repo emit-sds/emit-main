@@ -94,12 +94,14 @@ def main():
     parser.add_argument("--date", help="A single date - YYYYMMDD")
     parser.add_argument("--month", help="Start date of month - YYYYMMDD")
     parser.add_argument("--metrics", default="streams,scenes,cmr", help="Which metrics to collect (streams,scenes,cmr)")
+    parser.add_argument("--build_num", default="0106", help="Build number (only first 4 digits)")
     parser.add_argument("--tracking_json", default="/store/brodrick/emit/emit-visuals/track_coverage.json",
                         help="JSON containing scene metrics")
     parser.add_argument("--export_to_dir", default=None)
     args = parser.parse_args()
 
     env = args.env
+    build_num = args.build_num
 
     if args.dates is None and args.date is None and args.month is None:
         print("You must specify either --date or --dates")
@@ -402,22 +404,20 @@ def main():
                         df["masked_pixel_noise"] = float(hdr["masked pixel noise"])
                 
                 # Get HOSC creation time
-                acq_doc = acq_coll.find_one({"acquisition_id": acq}, {"associated_dcid": 1, "orbit": 1, "build_num": 1, "cloud_fraction_02": 1, "_id": 0})
+                acq_doc = acq_coll.find_one({"acquisition_id": acq, "build_num": build_num}, {"associated_dcid": 1, "orbit": 1, "build_num": 1, "products": 1, "cloud_fraction_02": 1, "_id": 0})
                 dcid = acq_doc["associated_dcid"]
                 orbit = acq_doc["orbit"]
-                build_num = acq_doc["build_num"]
-                                
-                dcid_doc = dcid_coll.find_one({"dcid": dcid}, {"associated_ccsds": 1, "_id": 0})
+                dcid_doc = dcid_coll.find_one({"dcid": dcid, "build_num": build_num}, {"associated_ccsds": 1, "_id": 0})
                 dcid_doc['associated_ccsds'].sort()
                 ccsds = os.path.basename(dcid_doc['associated_ccsds'][0])
-
-                stream_doc = stream_coll.find_one({"ccsds_name": ccsds}, {"products.raw.created": 1, "_id": 0})
+                stream_doc = stream_coll.find_one({"ccsds_name": ccsds, "build_num": build_num}, {"products.raw.created": 1, "_id": 0})
                 
                 hosc_date = stream_doc['products']['raw']['created']
-                
+
                 orbit_doc = orbit_coll.find_one(
                     {
-                        "orbit_id": orbit,
+                        "orbit_id": orbit, 
+                        "build_num": build_num,
                         "products.l1b.corr_att_eph.nc_path": {"$exists": 1}
                     },
                     {
@@ -463,7 +463,7 @@ def main():
                 l2a_delivery_date = acq_doc.get('products',{}).get('l2a',{}).get('rfl_ummg',{}).get('created',{})
                 co2_delivery_date = acq_doc.get('products',{}).get('ghg',{}).get('co2',{}).get('co2_ummg',{}).get('created',{})
                 ch4_delivery_date = acq_doc.get('products',{}).get('ghg',{}).get('ch4',{}).get('ch4_ummg',{}).get('created',{})
-                abun_delivery_date = acq_doc.get('products',{}).get('l1b',{}).get('abun_ummg',{}).get('created',{})
+                l2b_delivery_date = acq_doc.get('products',{}).get('l2b',{}).get('abun_ummg',{}).get('created',{})
                 maskTf_delivery_date = acq_doc.get('products',{}).get('mask',{}).get('maskTf_ummg',{}).get('created',{})
                 frcov_delivery_date = acq_doc.get('products',{}).get('frcov',{}).get('frcov_ummg',{}).get('created',{})
        
@@ -487,9 +487,9 @@ def main():
                     df["raw_to_ch4_deliver_seconds"] = (ch4_delivery_date - hosc_date).total_seconds()
                     df["ch4_delivery_date"] = ch4_delivery_date
 
-                if abun_delivery_date:
-                    df["raw_to_l2b_deliver_seconds"] = (abun_delivery_date - hosc_date).total_seconds()
-                    df["l2b_delivery_date"] = abun_delivery_date
+                if l2b_delivery_date:
+                    df["raw_to_l2b_deliver_seconds"] = (l2b_delivery_date - hosc_date).total_seconds()
+                    df["l2b_delivery_date"] = l2b_delivery_date
 
                 if frcov_delivery_date:
                     df["raw_to_frcov_deliver_seconds"] = (frcov_delivery_date - hosc_date).total_seconds()
@@ -560,7 +560,7 @@ def main():
             "ch4": "C3242680113-LPCLOUD",
             "co2": "C3243477145-LPCLOUD",
             "frcov": "C3911089796-LPCLOUD",
-            "mask": "C3882545269-LPCLOUD",
+            "maskTf": "C3882545269-LPCLOUD",
         }
 
         trending_acqs_coll = dm.db.trending_acquisitions

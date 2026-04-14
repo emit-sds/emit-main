@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v1.6.35](https://github.com/emit-sds/emit-main/compare/v1.6.34...v1.6.35)
+
+> 19 March 2026
+
+* L1B mosaic fix by @adamchlus in https://github.com/emit-sds/emit-main/pull/101
+* V1.6.35 misc prep by @winstonolson in https://github.com/emit-sds/emit-main/pull/102
+
 #### [v1.6.34](https://github.com/emit-sds/emit-main/compare/v1.6.33...v1.6.34)
 
 > 26 January 2026

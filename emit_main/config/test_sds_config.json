@@ -30,7 +30,7 @@
         "graph_api_base_url": "https://graph.microsoft.com/v1.0/users/"
     },
     "build_config": {
-        "extended_build_num": "010634",
+        "extended_build_num": "010635",
         "conda_base_dir": "/store/local/miniforge3/"
     },
     "daac_config": {
@@ -66,7 +66,7 @@
         "l1b_geo_install_dir": "/store/emit/ops/repos/emit_l1b_geo_installs/1.6.29",
         "l1b_geo_osp_dir": "/store/emit/ops/repos/emit_l1b_osp_installs/1.6.29",
         "isofit_surface_config": "/store/emit/test/repos/emit-sds-l2a/surface/surface_20240103.json",
-        "isofit_emulator_base": "/store/shared/sRTMnet_v120.h5",
+        "isofit_emulator_base": "/store/shared/sRTMnet/sRTMnet_v120.h5",
         "isofit_sixs_dir": "/store/shared/sixs",
         "isofit_ini_path": "/store/emit/test/resources/.isofit/isofit.ini",
         "specpr_path": "/store/shared/spectroscopy-tetracorder/specpr",
