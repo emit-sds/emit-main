@@ -199,6 +199,7 @@ class L1BCalibrate(SlurmJobTask):
         env = os.environ.copy()
         env["PYTHONPATH"] = f"$PYTHONPATH:{utils_path}:{isofit_dir}"
         env["RAY_worker_register_timeout_seconds"] = "600"
+        env["RAY_TMPDIR"] = "/local/ray"
         cmd = ["python", emitrdn_wrapper_exe, tmp_runconfig_path]
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
@@ -1203,6 +1204,7 @@ class L1BMosaic(SlurmJobTask):
         tmp_output_dir = os.path.join(self.local_tmp_dir, "rgb")
         wm.makedirs(tmp_output_dir)
         env = os.environ.copy()
+        env["CPL_TMPDIR"] = "/local"
         sys.path.append(pge.repo_dir)
 
         acquisitions = dm.find_acquisitions_for_l1b_mosaic(dcid = self.dcid)
