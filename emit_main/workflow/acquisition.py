@@ -106,26 +106,26 @@ class Acquisition:
         # Insert some placeholder fields so that we don't get missing keys on updates
         if "processing_log" not in self.metadata:
             self.metadata["processing_log"] = []
-        if "products" not in self.metadata:
-            self.metadata["products"] = {}
-        if "l1a" not in self.metadata["products"]:
-            self.metadata["products"]["l1a"] = {}
-        if "l1b" not in self.metadata["products"]:
-            self.metadata["products"]["l1b"] = {}
-        if "l2a" not in self.metadata["products"]:
-            self.metadata["products"]["l2a"] = {}
-        if "l2b" not in self.metadata["products"]:
-            self.metadata["products"]["l2b"] = {}
-        if "l3" not in self.metadata["products"]:
-            self.metadata["products"]["l3"] = {}
-        if "ghg" not in self.metadata["products"]:
-            self.metadata["products"]["ghg"] = {}
-        if "frcov" not in self.metadata["products"]:
-            self.metadata["products"]["frcov"] = {}
-        if "ch4" not in self.metadata["products"]["ghg"]:
-            self.metadata["products"]["ghg"]["ch4"] = {}
-        if "co2" not in self.metadata["products"]["ghg"]:
-            self.metadata["products"]["ghg"]["co2"] = {}
+        if "product_versions" not in self.metadata:
+            self.metadata["product_versions"] = {}
+        if "l1a" not in self.metadata["product_versions"]:
+            self.metadata["product_versions"]["l1a"] = {}
+        if "l1b" not in self.metadata["product_versions"]:
+            self.metadata["product_versions"]["l1b"] = {}
+        if "l2a" not in self.metadata["product_versions"]:
+            self.metadata["product_versions"]["l2a"] = {}
+        if "l2b" not in self.metadata["product_versions"]:
+            self.metadata["product_versions"]["l2b"] = {}
+        if "l3" not in self.metadata["product_versions"]:
+            self.metadata["product_versions"]["l3"] = {}
+        if "ghg" not in self.metadata["product_versions"]:
+            self.metadata["product_versions"]["ghg"] = {}
+        if "frcov" not in self.metadata["product_versions"]:
+            self.metadata["product_versions"]["frcov"] = {}
+        if "ch4" not in self.metadata["product_versions"]["ghg"]:
+            self.metadata["product_versions"]["ghg"]["ch4"] = {}
+        if "co2" not in self.metadata["product_versions"]["ghg"]:
+            self.metadata["product_versions"]["ghg"]["co2"] = {}
 
     def _build_acquisition_paths(self):
         product_map = {
@@ -134,15 +134,13 @@ class Acquisition:
                 "dark": ["img", "hdr"],
                 "rawqa": ["txt"]
             },
-            "l1brdn": {
+            "l1b": {
                 "rdn": ["img", "hdr", "png", "kmz", "nc"],
                 "destripedark": ["img", "hdr"],
                 "destripeff": ["img", "hdr"],
                 "bandmask": ["img", "hdr"],
                 "ffupdate": ["img", "hdr"],
-                "ffmedian": ["img", "hdr"]
-            },
-            "l1batt": {
+                "ffmedian": ["img", "hdr"],
                 "loc": ["img", "hdr"],
                 "obs": ["img", "hdr", "nc"],
                 "glt": ["img", "hdr"],
@@ -205,15 +203,11 @@ class Acquisition:
         }
         paths = {}
         for prod_group, prod_map in product_map.items():
-            if prod_group in ["l1brdn", "l1batt"]: # Combine l1b products
-                prod_group_data_dir = os.path.join(self.acquisition_id_dir, "l1b")
-                self.__dict__.update({prod_group + "_data_dir": prod_group_data_dir})
-                product_version = self.config["product_versions"][prod_group]
             if prod_group in ["co2","ch4"]: # Nest GHG products
                 prod_group_data_dir = os.path.join(self.acquisition_id_dir, f"ghg/{prod_group}")
                 self.__dict__.update({f"{prod_group}_data_dir": prod_group_data_dir})
-                product_version = self.config["product_versions"][prod_group]
                 prod_group = "ghg"
+                product_version = self.config["product_versions"][prod_group]
             else:
                 prod_group_data_dir = os.path.join(self.acquisition_id_dir, prod_group)
                 self.__dict__.update({prod_group + "_data_dir": prod_group_data_dir})
