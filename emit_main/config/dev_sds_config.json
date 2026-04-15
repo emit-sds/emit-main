@@ -52,13 +52,9 @@
             "EMITL1BATT": "10.5067/EMIT/EMITL1BATT.001",
             "EMITL1BRAD": "10.5067/EMIT/EMITL1BRAD.001",
             "EMITL2ARFL": "10.5067/EMIT/EMITL2ARFL.001",
-<<<<<<< HEAD
             "EMITL2AMASK": "10.5067/EMIT/EMITL2AMASK.002",
             "EMITL2BMIN": "10.5067/EMIT/EMITL2BMIN.001",
             "EMITL2BFRCOV": "10.5067/EMIT/EMITL2BFRCOV.001",
-=======
-            "EMITL2BMIN": "10.5067/EMIT/EMITL2BMIN.001",
->>>>>>> 0130423 (Update dev config based on new cluster)
             "EMITL3ASA": "10.5067/EMIT/EMITL3ASA.001",
             "EMITL2BCH4ENH": "10.5067/EMIT/EMITL2BCH4ENH.002",
             "EMITL2BCO2ENH": "10.5067/EMIT/EMITL2BCO2ENH.002"
@@ -67,20 +63,12 @@
     "product_config": {
         "decompression_constants_path": "/store/emit/dev/repos/emit-sds-l1a/decompression/constants.txt",
         "decompression_init_data_path": "/store/emit/dev/repos/emit-sds-l1a/decompression/FPGA_Data_Initialization_File_CREATE_COMPRESSION_INIT_DATA_328_e0.bin",
-<<<<<<< HEAD
         "l1b_geo_install_dir": "/store/emit/ops/repos/emit_l1b_geo_installs/1.6.29",
         "l1b_geo_osp_dir": "/store/emit/ops/repos/emit_l1b_osp_installs/1.6.29",
         "isofit_surface_config": "/store/emit/dev/repos/emit-sds-l2a/surface/surface_20240103.json",
         "isofit_emulator_base": "/store/shared/sRTMnet/sRTMnet_v120.h5",
         "isofit_sixs_dir": "/store/shared/sixs",
         "isofit_ini_path": "/store/emit/dev/resources/.isofit/isofit.ini",
-=======
-        "l1b_geo_install_dir": "/store/emit/ops/repos/emit_l1b_geo_installs/1.6.19",
-        "l1b_geo_osp_dir": "/store/emit/ops/repos/emit_l1b_osp_installs/1.6.19",
-        "isofit_surface_config": "/store/emit/dev/repos/emit-sds-l2a/surface/surface_20221020.json",
-        "isofit_emulator_base": "/store/shared/sRTMnet_v120.h5",
-        "isofit_sixs_dir": "/store/shared/sixs",
->>>>>>> 0130423 (Update dev config based on new cluster)
         "specpr_path": "/store/shared/spectroscopy-tetracorder/specpr",
         "tetracorder_path": "/store/shared/spectroscopy-tetracorder/tetracorder5.27",
         "tetracorder_cmds_path": "/store/shared/tetracorder5.27c.cmds",
@@ -90,26 +78,19 @@
         "ch4_lut_file": "/store/shared/ghg/dataset_ch4_full.hdf5",
         "co2_lut_file": "/store/shared/ghg/dataset_co2_full.hdf5",
         "unmixing_library": "/store/shared/unmixing_libraries/convex_hull__n_dims_4_unmix_library.csv",
-<<<<<<< HEAD
         "mirror_data_dir": "/data/emit/dev/data",
-=======
->>>>>>> 0130423 (Update dev config based on new cluster)
         "date_ranges": {
             "2022-08-10T00:00:00_to_2024-02-20T00:00:00": {
                 "tetracorder_library_basename": "em2208a",
                 "tetracorder_library_cmdname": "em2208a",
                 "l1b_config_path": "/store/emit/dev/repos/emit-sds-l1b/config/EMIT_20230119.json",
-<<<<<<< HEAD
                 "frame_hdr_format": "1.0",
-=======
->>>>>>> 0130423 (Update dev config based on new cluster)
                 "config_comments": "Post-IOC calibration solution to be applied to all scenes going back to the start of the mission."
             },
             "2024-02-20T00:00:00_to_2024-08-18T00:00:00": {
                 "tetracorder_library_basename": "em2402a",
                 "tetracorder_library_cmdname": "em2402a",
                 "l1b_config_path": "/store/emit/dev/repos/emit-sds-l1b/config/EMIT_20240227.json",
-<<<<<<< HEAD
                 "frame_hdr_format": "1.0",
                 "config_comments": "Calibration change in response to FSW reboot on 2024-02-19T12:38:13Z."
             },
@@ -147,16 +128,5 @@
         "emit.L2AReflectance": [
             "IndexError: index 2 is out of bounds for axis 1 with size 2"
         ]
-=======
-                "config_comments": "Calibration change in response to FSW reboot on 2024-02-19T12:38:13Z."
-            },
-            "2024-08-18T00:00:00_to_2030-01-01T00:00:00": {
-                "tetracorder_library_basename": "em2410a",
-                "tetracorder_library_cmdname": "em2410a",
-                "l1b_config_path": "/store/emit/dev/repos/emit-sds-l1b/config/EMIT_20241025.json",
-                "config_comments": "Calibration change in response to FUBAR anomaly on 2024-08-17T19:30:45Z."
-            }
-        }
->>>>>>> 0130423 (Update dev config based on new cluster)
     }
 }
