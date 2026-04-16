@@ -1,28 +1,4 @@
 {
-    "product_versions": {
-		"l0": "01",
-		"l1a": "01",
-		"l1b": "02",
-		"l2a": "02",
-		"l2b": "02",
-		"ghg": "02",
-        "mask": "03",
-        "frcov": "02",
-        "rflort": "02"
-	},
-	"product_versions_v1": {
-		"l0": "01",
-		"l1araw": "01",
-		"l1brdn": "02",
-		"l1batt": "02",
-		"l2arfl": "02",
-        "l2amask": "03",
-		"l2bmin":  "02",
-		"l2bch4": "02",
-		"l2bco2": "02",
-        "l2bfrcov": "02",
-        "l3rfl": "01"
-	},
     "repositories": [
         {
             "url": "git@github.com:emit-sds/emit-main.git",

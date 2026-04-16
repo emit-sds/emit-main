@@ -49,7 +49,7 @@ class DataCollection:
         self.dcid_dir = os.path.join(self.dcid_hash_dir, self.dcid)
         self.frames_dir = os.path.join(
             self.dcid_dir,
-            "_".join([self.dcid, "frames", "b" + self.config["build_num"], "v" + self.config["processing_version"]]))
+            "_".join([self.dcid, "frames", "b" + self.config["build_num"], "v" + self.config["product_versions"]["l1a"]]))
         self.decomp_dir = self.frames_dir.replace("_frames_", "_decomp_")
         self.acquisitions_dir = self.frames_dir.replace("_frames_", "_acquisitions_")
         self.ch4_dir = os.path.join(self.dcid_dir,'ghg', 'ch4')
@@ -69,10 +69,10 @@ class DataCollection:
         # Insert some placeholder fields so that we don't get missing keys on updates
         if "processing_log" not in self.metadata:
             self.metadata["processing_log"] = []
-        if "products" not in self.metadata:
-            self.metadata["products"] = {}
-        if "l1a" not in self.metadata["products"]:
-            self.metadata["products"]["l1a"] = {}
+        if "product_versions" not in self.metadata:
+            self.metadata["product_versions"] = {}
+        if "l1a" not in self.metadata["product_versions"]:
+            self.metadata["product_versions"]["l1a"] = {}
 
     def has_complete_set_of_frames(self):
         from emit_main.workflow.workflow_manager import WorkflowManager

@@ -2,10 +2,20 @@
     "general_config": {
         "instrument": "emit",
         "environment": "dev",
-        "processing_version": "01",
         "luigi_local_scheduler": false,
         "luigi_workers": 2
     },
+    "product_versions": {
+		"l0": "01",
+		"l1a": "01",
+		"l1b": "02",
+		"l2a": "02",
+		"l2b": "02",
+		"ghg": "02",
+        "mask": "03",
+        "frcov": "02",
+        "rflort": "02"
+	},
     "filesystem_config": {
         "local_store_dir": "/store/",
         "local_scratch_dir": "/store/scratch/"

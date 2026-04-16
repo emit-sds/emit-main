@@ -75,27 +75,23 @@ class Stream:
             wm.makedirs(d)
 
         # Build paths for DAAC delivery on staging server
-        self.daac_staging_dir = os.path.join(self.config["daac_base_dir"], wm.config['environment'], "products",
-                                             self.start_time.strftime("%Y%m%d"))
-        self.daac_uri_base = f"https://{self.config['daac_server_external']}/emit/lpdaac/{wm.config['environment']}/" \
-            f"products/{self.start_time.strftime('%Y%m%d')}/"
-        self.daac_partial_dir = os.path.join(self.config["daac_base_dir"], wm.config['environment'],
-                                             "partial_transfers")
-        self.aws_staging_dir = os.path.join(self.config["aws_s3_base_dir"], wm.config['environment'], "products",
-                                            self.start_time.strftime("%Y%m%d"))
+        self.daac_staging_dir = os.path.join(self.config["daac_base_dir"], wm.config['environment'], "products", self.start_time.strftime("%Y%m%d"))
+        self.daac_uri_base = f"https://{self.config['daac_server_external']}/emit/lpdaac/{wm.config['environment']}/products/{self.start_time.strftime('%Y%m%d')}/"
+        self.daac_partial_dir = os.path.join(self.config["daac_base_dir"], wm.config['environment'], "partial_transfers")
+        self.aws_staging_dir = os.path.join(self.config["aws_s3_base_dir"], wm.config['environment'], "products", self.start_time.strftime("%Y%m%d"))
         self.aws_s3_uri_base = f"s3://{self.config['aws_s3_bucket']}{self.aws_staging_dir}/"
 
     def _initialize_metadata(self):
         # Insert some placeholder fields so that we don't get missing keys on updates
         if "processing_log" not in self.metadata:
             self.metadata["processing_log"] = []
-        if "products" not in self.metadata:
+        if "product_versions" not in self.metadata:
             self.metadata["products"] = {}
-        if "raw" not in self.metadata["products"]:
-            self.metadata["products"]["raw"] = {}
-        if "l0" not in self.metadata["products"]:
-            self.metadata["products"]["l0"] = {}
-        if "l1a" not in self.metadata["products"]:
-            self.metadata["products"]["l1a"] = {}
-        if "daac" not in self.metadata["products"]:
-            self.metadata["products"]["daac"] = {}
+        if "raw" not in self.metadata["product_versions"]:
+            self.metadata["product_versions"]["raw"] = {}
+        if "l0" not in self.metadata["product_versions"]:
+            self.metadata["product_versions"]["l0"] = {}
+        if "l1a" not in self.metadata["product_versions"]:
+            self.metadata["product_versions"]["l1a"] = {}
+        if "daac" not in self.metadata["product_versions"]:
+            self.metadata["product_versions"]["daac"] = {}

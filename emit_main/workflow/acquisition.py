@@ -75,8 +75,6 @@ class Acquisition:
             self.obs_granule_ur = f"EMIT_L1B_OBS_0{self.config['product_versions']['l1brdn']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.rfl_granule_ur = f"EMIT_L2A_RFL_0{self.config['product_versions']['l2a']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.rfluncert_granule_ur = f"EMIT_L2A_RFLUNCERT_0{self.config['product_versions']['l2a']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            # Removing mask product in favor of maskTf
-            # self.mask_granule_ur = f"EMIT_L2A_MASK_0{self.config['product_versions']['l2a']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.maskTf_granule_ur = f"EMIT_L2A_MASK_0{self.config['product_versions']['maskTf']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.abun_granule_ur = f"EMIT_L2B_MIN_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.abununcert_granule_ur = f"EMIT_L2B_MINUNCERT_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
@@ -86,7 +84,6 @@ class Acquisition:
             self.co2_granule_ur = f"EMIT_L2B_CO2ENH_0{self.config['product_versions']['co2']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.co2uncert_granule_ur = f"EMIT_L2B_CO2UNCERT_0{self.config['product_versions']['co2']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.co2sens_granule_ur = f"EMIT_L2B_CO2SENS_0{self.config['product_versions']['c02']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            
             self.frcov_granule_ur = f"EMIT_L2B_FRCOV_0{self.config['product_versions']['frcov']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.frcovqc_granule_ur = f"EMIT_L2B_FRCOVQC_0{self.config['product_versions']['frcov']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.frcovpv_granule_ur = f"EMIT_L2B_FRCOVPV_0{self.config['product_versions']['frcov']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
@@ -120,12 +117,14 @@ class Acquisition:
             self.metadata["product_versions"]["l3"] = {}
         if "ghg" not in self.metadata["product_versions"]:
             self.metadata["product_versions"]["ghg"] = {}
-        if "frcov" not in self.metadata["product_versions"]:
-            self.metadata["product_versions"]["frcov"] = {}
         if "ch4" not in self.metadata["product_versions"]["ghg"]:
             self.metadata["product_versions"]["ghg"]["ch4"] = {}
         if "co2" not in self.metadata["product_versions"]["ghg"]:
             self.metadata["product_versions"]["ghg"]["co2"] = {}
+        if "mask" not in self.metadata["product_versions"]:
+            self.metadata["product_versions"]["mask"] = {}
+        if "frcov" not in self.metadata["product_versions"]:
+            self.metadata["product_versions"]["frcov"] = {}
 
     def _build_acquisition_paths(self):
         product_map = {

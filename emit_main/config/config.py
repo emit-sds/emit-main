@@ -55,6 +55,9 @@ class Config:
             # Add well known errors
             self.dictionary['well_known_errors'] = config['well_known_errors']
 
+            # Add product versions
+            self.dictionary['product_versions'] = config['product_versions']
+
     def _get_product_config_paths(self, product_config, timestamp):
         # Get the products paths that are either absolute paths or relative to the environment directory
         # (eg. /store/emit/ops).

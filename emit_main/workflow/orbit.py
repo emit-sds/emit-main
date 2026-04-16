@@ -54,9 +54,11 @@ class Orbit:
         # Create product names
         uncorr_fname = "_".join([f"emit{self.start_time.strftime('%Y%m%dt%H%M%S')}", f"o{self.short_oid}",
                                  "l1a", "att", f"b{self.config['build_num']}",
-                                 f"v{self.config['processing_version']}.nc"])
+                                 f"v{self.config['product_versions']['l1a']}.nc"])
         self.uncorr_att_eph_path = os.path.join(self.l1a_dir, uncorr_fname)
-        self.corr_att_eph_path = self.uncorr_att_eph_path.replace("l1a", "l1b")
+        self.corr_att_eph_path = "_".join([f"emit{self.start_time.strftime('%Y%m%dt%H%M%S')}", f"o{self.short_oid}", 
+                                           "l1b", "att", f"b{self.config['build_num']}", 
+                                           f"v{self.config['product_versions']['l1b']}.nc"])
 
         # Make directories and symlinks if they don't exist
         from emit_main.workflow.workflow_manager import WorkflowManager
@@ -65,27 +67,24 @@ class Orbit:
             wm.makedirs(d)
 
         # Build paths for DAAC delivery on staging server
-        self.daac_staging_dir = os.path.join(self.config["daac_base_dir"], wm.config['environment'], "products",
-                                             self.start_time.strftime("%Y%m%d"))
-        self.daac_uri_base = f"https://{self.config['daac_server_external']}/emit/lpdaac/{wm.config['environment']}/" \
-            f"products/{self.start_time.strftime('%Y%m%d')}/"
+        self.daac_staging_dir = os.path.join(self.config["daac_base_dir"], wm.config['environment'], "products", self.start_time.strftime("%Y%m%d"))
+        self.daac_uri_base = f"https://{self.config['daac_server_external']}/emit/lpdaac/{wm.config['environment']}/products/{self.start_time.strftime('%Y%m%d')}/"
         self.daac_partial_dir = os.path.join(self.config["daac_base_dir"], wm.config['environment'], "partial_transfers")
-        self.aws_staging_dir = os.path.join(self.config["aws_s3_base_dir"], wm.config['environment'], "products",
-                                            self.start_time.strftime("%Y%m%d"))
+        self.aws_staging_dir = os.path.join(self.config["aws_s3_base_dir"], wm.config['environment'], "products", self.start_time.strftime("%Y%m%d"))
         self.aws_s3_uri_base = f"s3://{self.config['aws_s3_bucket']}{self.aws_staging_dir}/"
 
     def _initialize_metadata(self):
         # Insert some placeholder fields so that we don't get missing keys on updates
         if "processing_log" not in self.metadata:
             self.metadata["processing_log"] = []
-        if "products" not in self.metadata:
-            self.metadata["products"] = {}
-        if "raw" not in self.metadata["products"]:
-            self.metadata["products"]["raw"] = {}
-        if "l1a" not in self.metadata["products"]:
-            self.metadata["products"]["l1a"] = {}
-        if "l1b" not in self.metadata["products"]:
-            self.metadata["products"]["l1b"] = {}
+        if "product_versions" not in self.metadata:
+            self.metadata["product_versions"] = {}
+        if "raw" not in self.metadata["product_versions"]:
+            self.metadata["product_versions"]["raw"] = {}
+        if "l1a" not in self.metadata["product_versions"]:
+            self.metadata["product_versions"]["l1a"] = {}
+        if "l1b" not in self.metadata["product_versions"]:
+            self.metadata["product_versions"]["l1b"] = {}
 
     def has_complete_bad_data(self):
         from emit_main.workflow.workflow_manager import WorkflowManager
