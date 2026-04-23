@@ -237,7 +237,7 @@ class L1BCalibrate(SlurmJobTask):
         hdr["emit documentation version"] = doc_version
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rdn_img_path), tz=datetime.timezone.utc)
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
-        hdr["emit data product version"] = wm.config["processing_version"]
+        hdr["emit data product version"] = wm.config["product_versions"]["l1b"]
         hdr["emit acquisition planned daynight"] = acq.daynight_planned
         if os.path.exists(tmp_ffmedian_img_path):
             hdr["emit flat field median-based destriping"] = 1
@@ -551,7 +551,7 @@ class L1BGeolocate(SlurmJobTask):
                     creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.obs_img_path),
                                                                     tz=datetime.timezone.utc)
                 hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
-                hdr["emit data product version"] = wm.config["processing_version"]
+                hdr["emit data product version"] = wm.config["product_versions"]["l1b"]
                 hdr["emit acquisition daynight"] = meta["daynight"]
 
                 envi.write_envi_header(hdr_path, hdr)
@@ -572,7 +572,7 @@ class L1BGeolocate(SlurmJobTask):
         # Update attitude/ephemeris netcdf metadata before copy
         ae_nc = netCDF4.Dataset(tmp_corr_att_eph_path, 'r+')
         daac_converter.makeGlobalAttrBase(ae_nc)
-        ae_nc.title = f"EMIT L1B Corrected Spacecraft Attitude and Ephemeris V0{wm.config['processing_version']}"
+        ae_nc.title = f"EMIT L1B Corrected Spacecraft Attitude and Ephemeris V0{wm.config['product_versions']['l1b']}"
         ae_nc.summary = ae_nc.summary + \
             f"\\n\\nThis collection contains L1B Corrected Spacecraft Attitude and Ephemeris (ATT). \
 ATT contains the uncorrected Broadcast Ancillary Data (BAD) ephemeris and attitude quaternions \
@@ -581,7 +581,7 @@ This product is generated at the orbit level."
         ae_nc.time_coverage_start = orbit.start_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         ae_nc.time_coverage_end = orbit.stop_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         ae_nc.software_build_version = wm.config["extended_build_num"]
-        ae_nc.product_version = "V0" + wm.config["processing_version"]
+        ae_nc.product_version = "V0" + wm.config["product_versions"]["l1b"]
         run_command = "PGE Run Command: {" + " ".join(cmd) + "}"
         nc_input_files = "PGE Input Files: {" + orbit.uncorr_att_eph_path + "}"
         ae_nc.history = run_command + ", " + nc_input_files
@@ -680,7 +680,7 @@ class L1BRdnFormat(SlurmJobTask):
         tmp_daac_obs_nc_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l1b_obs.nc")
         tmp_log_path = os.path.join(self.local_tmp_dir, "output_conversion_pge.log")
         cmd = ["python", output_generator_exe, tmp_daac_rdn_nc_path, tmp_daac_obs_nc_path, acq.rdn_img_path, acq.obs_img_path, acq.loc_img_path,
-               acq.glt_img_path, "V0" + str(wm.config["processing_version"]), wm.config["extended_build_num"],
+               acq.glt_img_path, "V0" + str(wm.config["product_versions"]["l1b"]), wm.config["extended_build_num"],
                "--log_file", tmp_log_path]
         # If we have the flat field update median file, then add it to NetCDF
         if os.path.exists(acq.ffmedian_img_path):
@@ -1013,7 +1013,7 @@ class L1BAttDeliver(SlurmJobTask):
         nc_ds.close()
 
         # Create local/tmp daac names and paths
-        collection_version = f"0{wm.config['processing_version']}"
+        collection_version = f"0{wm.config['product_versions']['l1b']}"
         start_time_str = orbit.start_time.strftime("%Y%m%dT%H%M%S")
         granule_ur = f"EMIT_L1B_ATT_{collection_version}_{start_time_str}_{orbit.orbit_id}"
         daac_nc_name = f"{granule_ur}.nc"
@@ -1223,7 +1223,7 @@ class L1BMosaic(SlurmJobTask):
         
         log_file_arg = f"--log-file={os.path.join(self.tmp_dir, 'rsync.log')}"
 
-        version = 'v01'
+        version = wm.config['product_versions']['l1b']
         input_files = {}
         output_files = {}
         pge_commands = []

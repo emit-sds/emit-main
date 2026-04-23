@@ -927,7 +927,7 @@ class CH4Mosaic(SlurmJobTask):
         
         log_file_arg = f"--log-file={os.path.join(self.tmp_dir, 'rsync.log')}"
 
-        version = 'v02'
+        version = "v" + wm.config['product_versions']['ghg']
         input_files = {}
         output_files = {}
         pge_commands = []
@@ -1055,7 +1055,7 @@ class CO2Mosaic(SlurmJobTask):
         
         log_file_arg = f"--log-file={os.path.join(self.tmp_dir, 'rsync.log')}"
 
-        version = 'v02'
+        version = "v" + wm.config['product_versions']['ghg']
         input_files = {}
         output_files = {}
         pge_commands = []

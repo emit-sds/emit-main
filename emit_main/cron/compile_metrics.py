@@ -22,6 +22,7 @@ import spectral.io.envi as envi
 from dateutil.relativedelta import relativedelta
 
 from emit_main.database.database_manager import DatabaseManager
+from emit_main.workflow.workflow_manager import WorkflowManager
 
 
 def update_collection(db_collection, query, data_frame):
@@ -135,6 +136,7 @@ def main():
     config_path = f"/store/emit/{args.env}/repos/emit-main/emit_main/config/{args.env}_sds_config.json"
     print(f"Using config_path {config_path}")
     dm = DatabaseManager(config_path)
+    wm = WorkflowManager(config_path)
 
     # If exporting, just export CSVs based on date range
     if args.export_to_dir:
@@ -436,6 +438,7 @@ def main():
                     eph_dir, eph_base = os.path.split(eph_path)
 
                     geo_qc_base = eph_base.replace('att', 'geoqa')
+                    # TODO: Check for v2_start_date and construct path as needed
                     geo_qc_subdir = f'o{orbit}_l1b_geo_b{build_num}_v01_work'
 
                     geo_qc_nc = os.path.join(eph_dir,geo_qc_subdir, geo_qc_base)
