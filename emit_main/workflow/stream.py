@@ -85,13 +85,13 @@ class Stream:
         # Insert some placeholder fields so that we don't get missing keys on updates
         if "processing_log" not in self.metadata:
             self.metadata["processing_log"] = []
-        if "product_versions" not in self.metadata:
+        if "products" not in self.metadata:
             self.metadata["products"] = {}
-        if "raw" not in self.metadata["product_versions"]:
-            self.metadata["product_versions"]["raw"] = {}
-        if "l0" not in self.metadata["product_versions"]:
-            self.metadata["product_versions"]["l0"] = {}
-        if "l1a" not in self.metadata["product_versions"]:
-            self.metadata["product_versions"]["l1a"] = {}
-        if "daac" not in self.metadata["product_versions"]:
-            self.metadata["product_versions"]["daac"] = {}
+        if "raw" not in self.metadata["products"]:
+            self.metadata["products"]["raw"] = {}
+        if "l0" not in self.metadata["products"]:
+            self.metadata["products"]["l0"] = {}
+        if "l1a" not in self.metadata["products"]:
+            self.metadata["products"]["l1a"] = {}
+        if "daac" not in self.metadata["products"]:
+            self.metadata["products"]["daac"] = {}

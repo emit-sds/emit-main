@@ -154,7 +154,6 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
                 # Insert DCID in database if it doesn't exist
                 dc_meta = {
                     "dcid": dcid,
-                    "build_num": wm.config["build_num"],
                     "start_time": start_time,
                     "stop_time": stop_time,
                     "frames_status": ""
@@ -487,7 +486,6 @@ class L1AReassembleRaw(SlurmJobTask):
             
             acq_meta = {
                 "acquisition_id": acq_id,
-                "build_num": wm.config["build_num"],
                 "start_time": start_time,
                 "stop_time": stop_time,
                 "orbit": orbit,

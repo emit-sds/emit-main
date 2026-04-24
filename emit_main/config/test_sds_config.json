@@ -5,17 +5,6 @@
         "luigi_local_scheduler": false,
         "luigi_workers": 2
     },
-    "product_versions": {
-		"l0": "01",
-		"l1a": "01",
-		"l1b": "02",
-		"l2a": "02",
-		"l2b": "02",
-		"ghg": "02",
-        "mask": "03",
-        "frcov": "02",
-        "rflort": "02"
-	},
     "filesystem_config": {
         "local_store_dir": "/store/",
         "local_scratch_dir": "/store/scratch/"
@@ -71,6 +60,18 @@
         }
     },
     "product_config": {
+        "product_versions": {
+            "l0": "01",
+            "l1a": "01",
+            "l1b": "02",
+            "l2a": "02",
+            "l2b": "02",
+            "ch4": "02",
+            "co2": "02",
+            "mask": "03",
+            "frcov": "02",
+            "l3rfl": "02"
+        },
         "decompression_constants_path": "/store/emit/test/repos/emit-sds-l1a/decompression/constants.txt",
         "decompression_init_data_path": "/store/emit/test/repos/emit-sds-l1a/decompression/FPGA_Data_Initialization_File_CREATE_COMPRESSION_INIT_DATA_328_e0.bin",
         "l1b_geo_install_dir": "/store/emit/ops/repos/emit_l1b_geo_installs/1.6.29",

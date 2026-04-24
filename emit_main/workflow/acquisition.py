@@ -103,28 +103,28 @@ class Acquisition:
         # Insert some placeholder fields so that we don't get missing keys on updates
         if "processing_log" not in self.metadata:
             self.metadata["processing_log"] = []
-        if "product_versions" not in self.metadata:
-            self.metadata["product_versions"] = {}
-        if "l1a" not in self.metadata["product_versions"]:
-            self.metadata["product_versions"]["l1a"] = {}
-        if "l1b" not in self.metadata["product_versions"]:
-            self.metadata["product_versions"]["l1b"] = {}
-        if "l2a" not in self.metadata["product_versions"]:
-            self.metadata["product_versions"]["l2a"] = {}
-        if "l2b" not in self.metadata["product_versions"]:
-            self.metadata["product_versions"]["l2b"] = {}
-        if "l3" not in self.metadata["product_versions"]:
-            self.metadata["product_versions"]["l3"] = {}
-        if "ghg" not in self.metadata["product_versions"]:
-            self.metadata["product_versions"]["ghg"] = {}
-        if "ch4" not in self.metadata["product_versions"]["ghg"]:
-            self.metadata["product_versions"]["ghg"]["ch4"] = {}
-        if "co2" not in self.metadata["product_versions"]["ghg"]:
-            self.metadata["product_versions"]["ghg"]["co2"] = {}
-        if "mask" not in self.metadata["product_versions"]:
-            self.metadata["product_versions"]["mask"] = {}
-        if "frcov" not in self.metadata["product_versions"]:
-            self.metadata["product_versions"]["frcov"] = {}
+        if "products" not in self.metadata:
+            self.metadata["products"] = {}
+        if "l1a" not in self.metadata["products"]:
+            self.metadata["products"]["l1a"] = {}
+        if "l1b" not in self.metadata["products"]:
+            self.metadata["products"]["l1b"] = {}
+        if "l2a" not in self.metadata["products"]:
+            self.metadata["products"]["l2a"] = {}
+        if "l2b" not in self.metadata["products"]:
+            self.metadata["products"]["l2b"] = {}
+        if "l3" not in self.metadata["products"]:
+            self.metadata["products"]["l3"] = {}
+        if "ghg" not in self.metadata["products"]:
+            self.metadata["products"]["ghg"] = {}
+        if "ch4" not in self.metadata["products"]["ghg"]:
+            self.metadata["products"]["ghg"]["ch4"] = {}
+        if "co2" not in self.metadata["products"]["ghg"]:
+            self.metadata["products"]["ghg"]["co2"] = {}
+        if "mask" not in self.metadata["products"]:
+            self.metadata["products"]["mask"] = {}
+        if "frcov" not in self.metadata["products"]:
+            self.metadata["products"]["frcov"] = {}
 
     def _build_acquisition_paths(self):
         product_map = {
@@ -215,13 +215,19 @@ class Acquisition:
             for prod, formats in prod_map.items():
                 for format in formats:
                     prod_key = prod + "_" + format + "_path"
-                    prod_prefix = "_".join([self.acquisition_id,
-                                            "o" + self.short_orb,
-                                            "s" + self.scene,
-                                            prod_group,
-                                            prod,
-                                            "b" + self.config["build_num"],
-                                            "v" + product_version])
+                    if self.start_time < self.config["v2_cutover_date"]:
+                        prod_prefix = "_".join([self.acquisition_id,
+                                                "o" + self.short_orb,
+                                                "s" + self.scene,
+                                                prod_group,
+                                                prod,
+                                                "b" + self.config["build_num"],
+                                                "v" + product_version])
+                    else:
+                        prod_prefix = "_".join([self.acquisition_id,
+                                                prod_group,
+                                                prod,
+                                                "v" + product_version])
                     prod_name = prod_prefix + "." + format
                     prod_path = os.path.join(prod_group_data_dir, prod_name)
                     paths[prod_key] = prod_path

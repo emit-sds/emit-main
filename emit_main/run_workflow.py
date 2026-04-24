@@ -276,7 +276,7 @@ def task_success(task):
         tmp_log_path = os.path.join(task.tmp_dir, "job.out")
         target_pge_log_path = os.path.join(wm.planning_products_dir,
                                            os.path.basename(task.plan_prod_path).replace(
-                                               ".json", f"_b{wm.config['build_num']}_pge.log"))
+                                               ".json", "_pge.log"))
         if os.path.exists(tmp_log_path):
             wm.copy(tmp_log_path, target_pge_log_path)
 

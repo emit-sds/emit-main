@@ -47,9 +47,14 @@ class DataCollection:
         self.by_date_dir = os.path.join(self.data_collections_dir, "by_date")
         self.dcid_hash_dir = os.path.join(self.by_dcid_dir, self.dcid[:5])
         self.dcid_dir = os.path.join(self.dcid_hash_dir, self.dcid)
-        self.frames_dir = os.path.join(
-            self.dcid_dir,
-            "_".join([self.dcid, "frames", "b" + self.config["build_num"], "v" + self.config["product_versions"]["l1a"]]))
+        if self.start_time < self.config["v2_cutover_date"]:
+            self.frames_dir = os.path.join(
+                self.dcid_dir,
+                "_".join([self.dcid, "frames", "b" + self.config["build_num"], "v" + self.config["product_versions"]["l1a"]]))
+        else:
+            self.frames_dir = os.path.join(
+                self.dcid_dir,
+                "_".join([self.dcid, "frames", "v" + self.config["product_versions"]["l1a"]]))            
         self.decomp_dir = self.frames_dir.replace("_frames_", "_decomp_")
         self.acquisitions_dir = self.frames_dir.replace("_frames_", "_acquisitions_")
         self.ch4_dir = os.path.join(self.dcid_dir,'ghg', 'ch4')
@@ -69,10 +74,10 @@ class DataCollection:
         # Insert some placeholder fields so that we don't get missing keys on updates
         if "processing_log" not in self.metadata:
             self.metadata["processing_log"] = []
-        if "product_versions" not in self.metadata:
-            self.metadata["product_versions"] = {}
-        if "l1a" not in self.metadata["product_versions"]:
-            self.metadata["product_versions"]["l1a"] = {}
+        if "products" not in self.metadata:
+            self.metadata["products"] = {}
+        if "l1a" not in self.metadata["products"]:
+            self.metadata["products"]["l1a"] = {}
 
     def has_complete_set_of_frames(self):
         from emit_main.workflow.workflow_manager import WorkflowManager
@@ -124,7 +129,6 @@ class DataCollection:
         query = {
             "associated_dcid": self.dcid,
             "mean_solar_zenith": {"$lt": 80},
-            "build_num": self.config["build_num"],
             "num_valid_lines": {"$gte": 320},
         }
 
@@ -136,8 +140,7 @@ class DataCollection:
             "associated_dcid": self.dcid,
             "products.ghg.ch4.ortch4.tif_path": {"$exists": 1},
             "products.ghg.ch4.ortsensch4.tif_path": {"$exists": 1},
-            "products.ghg.ch4.ortuncertch4.tif_path": {"$exists": 1},
-            "build_num": self.config["build_num"]
+            "products.ghg.ch4.ortuncertch4.tif_path": {"$exists": 1}
         }
 
         completed = list(acquisitions_coll.find(query))
@@ -154,8 +157,7 @@ class DataCollection:
         #Get list of acquisition ids expected to have CO2 products
         query = {
             "associated_dcid": self.dcid,
-            "mean_solar_zenith": {"$lt": 80},
-            "build_num": self.config["build_num"]
+            "mean_solar_zenith": {"$lt": 80}
         }
 
         expected = list(acquisitions_coll.find(query))
@@ -166,8 +168,7 @@ class DataCollection:
             "associated_dcid": self.dcid,
             "products.ghg.co2.ortco2.tif_path": {"$exists": 1},
             "products.ghg.co2.ortsensco2.tif_path": {"$exists": 1},
-            "products.ghg.co2.ortuncertco2.tif_path": {"$exists": 1},
-            "build_num": self.config["build_num"]
+            "products.ghg.co2.ortuncertco2.tif_path": {"$exists": 1}
         }
 
         completed = list(acquisitions_coll.find(query))
@@ -185,7 +186,6 @@ class DataCollection:
         #Get list of acquisition ids with completed radiances
         query = {
             "associated_dcid": self.dcid,
-            "build_num": self.config["build_num"],
             "products.l1b.rdn.img_path": {"$exists": 1},
         }
  

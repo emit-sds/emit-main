@@ -112,7 +112,6 @@ class L0StripHOSC(SlurmJobTask):
             "apid": apid,
             "start_time": datetime.datetime.strptime(timing["start_time"], "%Y-%m-%dT%H:%M:%S"),
             "stop_time": datetime.datetime.strptime(timing["stop_time"], "%Y-%m-%dT%H:%M:%S"),
-            "build_num": wm.config["build_num"],
             "hosc_name": hosc_name,
             "processing_log": []
         }
@@ -123,15 +122,25 @@ class L0StripHOSC(SlurmJobTask):
         stream = wm.stream
 
         # Build the CCSDS file name and report name using the UTC start time derived from the data
-        ccsds_name = "_".join([
-            wm.config["instrument"],
-            stream.apid,
-            stream.start_time.strftime("%Y%m%dt%H%M%S"),
-            "l0",
-            "ccsds",
-            "b" + wm.config["build_num"],
-            "v" + wm.config["product_versions"]["l0"]
-        ]) + ".bin"
+        if stream.start_time < wm.config["v2_cutover_date"]:
+            ccsds_name = "_".join([
+                wm.config["instrument"],
+                stream.apid,
+                stream.start_time.strftime("%Y%m%dt%H%M%S"),
+                "l0",
+                "ccsds",
+                "b" + wm.config["build_num"],
+                "v" + wm.config["product_versions"]["l0"]
+            ]) + ".bin"
+        else:
+            ccsds_name = "_".join([
+                wm.config["instrument"],
+                stream.apid,
+                stream.start_time.strftime("%Y%m%dt%H%M%S"),
+                "l0",
+                "ccsds",
+                "v" + wm.config["product_versions"]["l0"]
+            ]) + ".bin"                
         ccsds_path = os.path.join(stream.l0_dir, ccsds_name)
         report_path = ccsds_path.replace(".bin", "_report.txt")
 
@@ -266,7 +275,6 @@ class L0IngestBAD(SlurmJobTask):
             "apid": "bad",
             "start_time": start_time,
             "stop_time": stop_time,
-            "build_num": wm.config["build_num"],
             "bad_name": bad_name,
             "extended_bad_name": extended_bad_name,
             "processing_log": []
@@ -491,7 +499,6 @@ class L0ProcessPlanningProduct(SlurmJobTask):
 
                 orbit_meta = {
                     "orbit_id": orbit_id,
-                    "build_num": wm.config["build_num"],
                     "start_time": start_time
                 }
 
@@ -539,7 +546,6 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                 year = e["datetime"].strftime("%y")
                 dc_meta = {
                     "dcid": dcid,
-                    "build_num": wm.config["build_num"],
                     "orbit": year + str(e["orbit number"]).zfill(5),
                     "scene": str(e["scene number"]).zfill(3),
                     "submode": submode,
