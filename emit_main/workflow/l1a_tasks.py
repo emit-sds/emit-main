@@ -1057,7 +1057,6 @@ class L1AReformatEDP(SlurmJobTask):
 
         # Find corresponding 1676 stream file
         dm = wm.database_manager
-        # TODO: What should this query time be?  Up to 2 hours?
         anc_streams = dm.find_streams_touching_date_range("1676", "start_time",
                                                           stream.start_time - datetime.timedelta(seconds=1),
                                                           stream.start_time + datetime.timedelta(minutes=4)

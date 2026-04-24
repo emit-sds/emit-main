@@ -215,13 +215,14 @@ class Acquisition:
             for prod, formats in prod_map.items():
                 for format in formats:
                     prod_key = prod + "_" + format + "_path"
-                    if self.start_time < self.config["v2_cutover_date"]:
+                    # L1A products before the v2 cutover date have the old file naming schema 
+                    if prod_group == "l1a" and self.start_time < self.config["v2_cutover_date"]:
                         prod_prefix = "_".join([self.acquisition_id,
                                                 "o" + self.short_orb,
                                                 "s" + self.scene,
                                                 prod_group,
                                                 prod,
-                                                "b" + self.config["build_num"],
+                                                "b0106",
                                                 "v" + product_version])
                     else:
                         prod_prefix = "_".join([self.acquisition_id,

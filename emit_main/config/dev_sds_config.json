@@ -29,7 +29,7 @@
         "graph_api_base_url": "https://graph.microsoft.com/v1.0/users/"
     },
     "build_config": {
-        "extended_build_num": "010636",
+        "extended_build_num": "020000",
         "conda_base_dir": "/store/local/miniforge3/"
     },
     "daac_config": {
@@ -72,6 +72,7 @@
             "frcov": "02",
             "l3rfl": "02"
         },
+        "v2_cutover_date_str": "2026-04-01T00:00:00",
         "decompression_constants_path": "/store/emit/dev/repos/emit-sds-l1a/decompression/constants.txt",
         "decompression_init_data_path": "/store/emit/dev/repos/emit-sds-l1a/decompression/FPGA_Data_Initialization_File_CREATE_COMPRESSION_INIT_DATA_328_e0.bin",
         "l1b_geo_install_dir": "/store/emit/ops/repos/emit_l1b_geo_installs/1.6.29",

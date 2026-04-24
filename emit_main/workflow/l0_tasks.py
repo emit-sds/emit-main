@@ -122,6 +122,7 @@ class L0StripHOSC(SlurmJobTask):
         stream = wm.stream
 
         # Build the CCSDS file name and report name using the UTC start time derived from the data
+        # Stream files from before the v2 cutover date are assumed to have the old file naming schema
         if stream.start_time < wm.config["v2_cutover_date"]:
             ccsds_name = "_".join([
                 wm.config["instrument"],
@@ -129,7 +130,7 @@ class L0StripHOSC(SlurmJobTask):
                 stream.start_time.strftime("%Y%m%dt%H%M%S"),
                 "l0",
                 "ccsds",
-                "b" + wm.config["build_num"],
+                "b0106",
                 "v" + wm.config["product_versions"]["l0"]
             ]) + ".bin"
         else:

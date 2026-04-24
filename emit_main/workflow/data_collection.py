@@ -47,10 +47,11 @@ class DataCollection:
         self.by_date_dir = os.path.join(self.data_collections_dir, "by_date")
         self.dcid_hash_dir = os.path.join(self.by_dcid_dir, self.dcid[:5])
         self.dcid_dir = os.path.join(self.dcid_hash_dir, self.dcid)
+        # L1A directories before the v2 cutover date are assumed to have the old file naming schema
         if self.start_time < self.config["v2_cutover_date"]:
             self.frames_dir = os.path.join(
                 self.dcid_dir,
-                "_".join([self.dcid, "frames", "b" + self.config["build_num"], "v" + self.config["product_versions"]["l1a"]]))
+                "_".join([self.dcid, "frames", "b0106", "v" + self.config["product_versions"]["l1a"]]))
         else:
             self.frames_dir = os.path.join(
                 self.dcid_dir,
