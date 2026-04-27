@@ -113,14 +113,10 @@ class Acquisition:
             self.metadata["products"]["l2a"] = {}
         if "l2b" not in self.metadata["products"]:
             self.metadata["products"]["l2b"] = {}
-        if "l3" not in self.metadata["products"]:
-            self.metadata["products"]["l3"] = {}
-        if "ghg" not in self.metadata["products"]:
-            self.metadata["products"]["ghg"] = {}
-        if "ch4" not in self.metadata["products"]["ghg"]:
-            self.metadata["products"]["ghg"]["ch4"] = {}
-        if "co2" not in self.metadata["products"]["ghg"]:
-            self.metadata["products"]["ghg"]["co2"] = {}
+        if "ch4" not in self.metadata["products"]:
+            self.metadata["products"]["ch4"] = {}
+        if "co2" not in self.metadata["products"]:
+            self.metadata["products"]["co2"] = {}
         if "mask" not in self.metadata["products"]:
             self.metadata["products"]["mask"] = {}
         if "frcov" not in self.metadata["products"]:
@@ -164,12 +160,8 @@ class Acquisition:
             },
             "l2b": {
                 "tetra": ["dir"],
-                "abun": ["img", "hdr", "nc", "png"],
-                "abununcert": ["img", "hdr", "nc"]
-            },
-            "l3": {
-                "cover": ["img", "hdr"],
-                "coveruncert": ["img", "hdr"]
+                "min": ["img", "hdr", "nc", "png"],
+                "minuncert": ["img", "hdr", "nc"]
             },
             "ch4": {
                 "targetch4": ["txt"],
@@ -202,16 +194,13 @@ class Acquisition:
         }
         paths = {}
         for prod_group, prod_map in product_map.items():
-            if prod_group in ["co2","ch4"]: # Nest GHG products
-                prod_group_data_dir = os.path.join(self.acquisition_id_dir, f"ghg/{prod_group}")
-                self.__dict__.update({f"{prod_group}_data_dir": prod_group_data_dir})
-                prod_group = "ghg"
-                product_version = self.config["product_versions"][prod_group]
-            else:
-                prod_group_data_dir = os.path.join(self.acquisition_id_dir, prod_group)
-                self.__dict__.update({prod_group + "_data_dir": prod_group_data_dir})
-                product_version = self.config["product_versions"][prod_group]
+            # Set the data directory for the prod group (l1a, l1b, ch4, frcov, etc.)
+            prod_group_data_dir = os.path.join(self.acquisition_id_dir, prod_group)
+            self.__dict__.update({prod_group + "_data_dir": prod_group_data_dir})
             self.dirs.append(prod_group_data_dir)
+            product_version = self.config["product_versions"][prod_group]
+            if prod_group in ["co2","ch4"]:
+                prod_group = "l2b"
             for prod, formats in prod_map.items():
                 for format in formats:
                     prod_key = prod + "_" + format + "_path"

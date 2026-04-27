@@ -52,14 +52,14 @@ class DataCollection:
             self.frames_dir = os.path.join(
                 self.dcid_dir,
                 "_".join([self.dcid, "frames", "b0106", "v" + self.config["product_versions"]["l1a"]]))
+            self.decomp_dir = self.frames_dir.replace("_frames_", "_decomp_")
+            self.acquisitions_dir = self.frames_dir.replace("_frames_", "_acquisitions_")
         else:
-            self.frames_dir = os.path.join(
-                self.dcid_dir,
-                "_".join([self.dcid, "frames", "v" + self.config["product_versions"]["l1a"]]))            
-        self.decomp_dir = self.frames_dir.replace("_frames_", "_decomp_")
-        self.acquisitions_dir = self.frames_dir.replace("_frames_", "_acquisitions_")
-        self.ch4_dir = os.path.join(self.dcid_dir,'ghg', 'ch4')
-        self.co2_dir = os.path.join(self.dcid_dir,'ghg', 'co2')
+            self.frames_dir = os.path.join(self.dcid_dir, 'frames')
+            self.decomp_dir = os.path.join(self.dcid_dir, 'decomp')
+            self.acquisitions_dir = os.path.join(self.dcid_dir, 'acquisitions')
+        self.ch4_dir = os.path.join(self.dcid_dir, 'ch4')
+        self.co2_dir = os.path.join(self.dcid_dir, 'co2')
         self.l1b_dir = os.path.join(self.dcid_dir,'l1b')
         self.dirs.extend([self.data_collections_dir, self.by_dcid_dir, self.by_date_dir, self.dcid_hash_dir,
                           self.dcid_dir, self.frames_dir, self.decomp_dir, self.acquisitions_dir, self.ch4_dir,

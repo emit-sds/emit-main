@@ -57,7 +57,7 @@ class Orbit:
             uncorr_fname = "_".join([f"emit{self.start_time.strftime('%Y%m%dt%H%M%S')}", f"o{self.short_oid}",
                                  "l1a", "att", "b0106", f"v{self.config['product_versions']['l1a']}.nc"])
         else:      
-            uncorr_fname = "_".join([f"emit{self.start_time.strftime('%Y%m%dt%H%M%S')}", f"o{self.short_oid}",
+            uncorr_fname = "_".join([f"emit{self.start_time.strftime('%Y%m%dt%H%M%S')}", f"o{self.orbit_id}",
                                  "l1a", "att", f"v{self.config['product_versions']['l1a']}.nc"])
         
         self.uncorr_att_eph_path = os.path.join(self.l1a_dir, uncorr_fname)
