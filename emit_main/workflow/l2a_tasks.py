@@ -188,7 +188,7 @@ class L2AReflectance(SlurmJobTask):
             creation_time = datetime.datetime.fromtimestamp(
                 os.path.getmtime(img_path), tz=datetime.timezone.utc)
             hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
-            hdr["emit data product version"] = wm.config["product_versions"]["l2a"]
+            hdr["emit data product version"] = wm.config["prod_versions"]["l2a"]
             hdr["emit acquisition daynight"] = acq.daynight
             hdr["emit spectral quality"] = '{' + ', '.join(quality_results.astype(str).tolist()) + '}'
             envi.write_envi_header(hdr_path, hdr)
@@ -325,7 +325,7 @@ class L2AMask(SlurmJobTask):
         creation_time = datetime.datetime.fromtimestamp(
             os.path.getmtime(acq.mask_img_path), tz=datetime.timezone.utc)
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
-        hdr["emit data product version"] = wm.config["product_versions"]["l2a"]
+        hdr["emit data product version"] = wm.config["prod_versions"]["l2a"]
         hdr["emit acquisition daynight"] = acq.daynight
         hdr["emit acquisition cloudfraction"] = cloud_fraction
         envi.write_envi_header(acq.mask_hdr_path, hdr)
@@ -412,7 +412,7 @@ class L2AFormat(SlurmJobTask):
         cmd = ["python", output_generator_exe, tmp_daac_rfl_nc_path, tmp_daac_rfl_unc_nc_path,
                tmp_daac_mask_nc_path, acq.rfl_img_path, acq.rfluncert_img_path,
                acq.mask_img_path, acq.bandmask_img_path, acq.loc_img_path, acq.glt_img_path,
-               "V0" + str(wm.config["product_versions"]["l2a"]), wm.config["extended_build_num"],
+               "V0" + str(wm.config["prod_versions"]["l2a"]), wm.config["extended_build_num"],
                "--log_file", tmp_log_path]
 
         # Run this inside the emit-main conda environment to include emit-utils and other requirements

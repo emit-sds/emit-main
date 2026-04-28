@@ -70,28 +70,28 @@ class Acquisition:
         daac_start_time_str = self.start_time.strftime("%Y%m%dT%H%M%S")
 
         if "daac_scene" in self.metadata:
-            self.raw_granule_ur = f"EMIT_L1A_RAW_0{self.config['product_versions']['l1a']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.rdn_granule_ur = f"EMIT_L1B_RAD_0{self.config['product_versions']['l1brdn']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.obs_granule_ur = f"EMIT_L1B_OBS_0{self.config['product_versions']['l1brdn']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.rfl_granule_ur = f"EMIT_L2A_RFL_0{self.config['product_versions']['l2a']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.rfluncert_granule_ur = f"EMIT_L2A_RFLUNCERT_0{self.config['product_versions']['l2a']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.maskTf_granule_ur = f"EMIT_L2A_MASK_0{self.config['product_versions']['maskTf']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.raw_granule_ur = f"EMIT_L1A_RAW_0{self.config['prod_versions']['l1a']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.rdn_granule_ur = f"EMIT_L1B_RAD_0{self.config['prod_versions']['l1brdn']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.obs_granule_ur = f"EMIT_L1B_OBS_0{self.config['prod_versions']['l1brdn']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.rfl_granule_ur = f"EMIT_L2A_RFL_0{self.config['prod_versions']['l2a']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.rfluncert_granule_ur = f"EMIT_L2A_RFLUNCERT_0{self.config['prod_versions']['l2a']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.maskTf_granule_ur = f"EMIT_L2A_MASK_0{self.config['prod_versions']['maskTf']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.abun_granule_ur = f"EMIT_L2B_MIN_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.abununcert_granule_ur = f"EMIT_L2B_MINUNCERT_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.ch4_granule_ur = f"EMIT_L2B_CH4ENH_0{self.config['product_versions']['ch4']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.ch4uncert_granule_ur = f"EMIT_L2B_CH4UNCERT_0{self.config['product_versions']['ch4']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.ch4sens_granule_ur = f"EMIT_L2B_CH4SENS_0{self.config['product_versions']['ch4']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.co2_granule_ur = f"EMIT_L2B_CO2ENH_0{self.config['product_versions']['co2']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.co2uncert_granule_ur = f"EMIT_L2B_CO2UNCERT_0{self.config['product_versions']['co2']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.co2sens_granule_ur = f"EMIT_L2B_CO2SENS_0{self.config['product_versions']['c02']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.frcov_granule_ur = f"EMIT_L2B_FRCOV_0{self.config['product_versions']['frcov']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.frcovqc_granule_ur = f"EMIT_L2B_FRCOVQC_0{self.config['product_versions']['frcov']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.frcovpv_granule_ur = f"EMIT_L2B_FRCOVPV_0{self.config['product_versions']['frcov']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.frcovpvunc_granule_ur = f"EMIT_L2B_FRCOVPVUNC_0{self.config['product_versions']['frcov']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.frcovnpv_granule_ur = f"EMIT_L2B_FRCOVNPV_0{self.config['product_versions']['frcov']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.frcovnpvunc_granule_ur = f"EMIT_L2B_FRCOVNPVUNC_0{self.config['product_versions']['frcov']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.frcovbare_granule_ur = f"EMIT_L2B_FRCOVBARE_0{self.config['product_versions']['frcov']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.frcovbareunc_granule_ur = f"EMIT_L2B_FRCOVBAREUNC_0{self.config['product_versions']['frcov']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.ch4_granule_ur = f"EMIT_L2B_CH4ENH_0{self.config['prod_versions']['ch4']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.ch4uncert_granule_ur = f"EMIT_L2B_CH4UNCERT_0{self.config['prod_versions']['ch4']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.ch4sens_granule_ur = f"EMIT_L2B_CH4SENS_0{self.config['prod_versions']['ch4']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.co2_granule_ur = f"EMIT_L2B_CO2ENH_0{self.config['prod_versions']['co2']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.co2uncert_granule_ur = f"EMIT_L2B_CO2UNCERT_0{self.config['prod_versions']['co2']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.co2sens_granule_ur = f"EMIT_L2B_CO2SENS_0{self.config['prod_versions']['c02']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.frcov_granule_ur = f"EMIT_L2B_FRCOV_0{self.config['prod_versions']['frcov']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.frcovqc_granule_ur = f"EMIT_L2B_FRCOVQC_0{self.config['prod_versions']['frcov']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.frcovpv_granule_ur = f"EMIT_L2B_FRCOVPV_0{self.config['prod_versions']['frcov']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.frcovpvunc_granule_ur = f"EMIT_L2B_FRCOVPVUNC_0{self.config['prod_versions']['frcov']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.frcovnpv_granule_ur = f"EMIT_L2B_FRCOVNPV_0{self.config['prod_versions']['frcov']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.frcovnpvunc_granule_ur = f"EMIT_L2B_FRCOVNPVUNC_0{self.config['prod_versions']['frcov']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.frcovbare_granule_ur = f"EMIT_L2B_FRCOVBARE_0{self.config['prod_versions']['frcov']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.frcovbareunc_granule_ur = f"EMIT_L2B_FRCOVBAREUNC_0{self.config['prod_versions']['frcov']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             
         self.daac_staging_dir = os.path.join(self.config["daac_base_dir"], wm.config['environment'], "products", self.start_time.strftime("%Y%m%d"))
         self.daac_uri_base = f"https://{self.config['daac_server_external']}/emit/lpdaac/{wm.config['environment']}/products/{self.start_time.strftime('%Y%m%d')}/"
@@ -198,7 +198,7 @@ class Acquisition:
             prod_group_data_dir = os.path.join(self.acquisition_id_dir, prod_group)
             self.__dict__.update({prod_group + "_data_dir": prod_group_data_dir})
             self.dirs.append(prod_group_data_dir)
-            product_version = self.config["product_versions"][prod_group]
+            product_version = self.config["prod_versions"][prod_group]
             if prod_group in ["co2","ch4"]:
                 prod_group = "l2b"
             for prod, formats in prod_map.items():

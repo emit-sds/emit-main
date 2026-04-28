@@ -131,7 +131,7 @@ class L0StripHOSC(SlurmJobTask):
                 "l0",
                 "ccsds",
                 "b0106",
-                "v" + wm.config["product_versions"]["l0"]
+                "v" + wm.config["prod_versions"]["l0"]
             ]) + ".bin"
         else:
             ccsds_name = "_".join([
@@ -140,7 +140,7 @@ class L0StripHOSC(SlurmJobTask):
                 stream.start_time.strftime("%Y%m%dt%H%M%S"),
                 "l0",
                 "ccsds",
-                "v" + wm.config["product_versions"]["l0"]
+                "v" + wm.config["prod_versions"]["l0"]
             ]) + ".bin"                
         ccsds_path = os.path.join(stream.l0_dir, ccsds_name)
         report_path = ccsds_path.replace(".bin", "_report.txt")
@@ -172,13 +172,17 @@ class L0StripHOSC(SlurmJobTask):
             "ccsds_name": ccsds_name,
             "products": {
                 "raw": {
-                    "hosc_path": stream.hosc_path,
-                    "created": datetime.datetime.fromtimestamp(
-                        os.path.getmtime(stream.hosc_path), tz=datetime.timezone.utc)
+                    wm.config["prod_versions"]["l0"]: {
+                        "hosc_path": stream.hosc_path,
+                        "created": datetime.datetime.fromtimestamp(
+                            os.path.getmtime(stream.hosc_path), tz=datetime.timezone.utc)
+                    }
                 },
                 "l0": {
-                    "ccsds_path": ccsds_path,
-                    "created": datetime.datetime.fromtimestamp(os.path.getmtime(ccsds_path), tz=datetime.timezone.utc)
+                    wm.config["prod_versions"]["l0"]: {
+                        "ccsds_path": ccsds_path,
+                        "created": datetime.datetime.fromtimestamp(os.path.getmtime(ccsds_path), tz=datetime.timezone.utc)
+                    }
                 }
             }
         }
@@ -352,12 +356,16 @@ class L0IngestBAD(SlurmJobTask):
         metadata = {
             "products": {
                 "raw": {
-                    "bad_path": stream.bad_path,
-                    "created": creation_time_raw
+                    wm.config["prod_versions"]["l0"]: {
+                        "bad_path": stream.bad_path,
+                        "created": creation_time_raw
+                    }
                 },
                 "l0": {
-                    "bad_csv_path": l0_bad_csv_path,
-                    "created": creation_time_csv
+                    wm.config["prod_versions"]["l0"]: {
+                        "bad_csv_path": l0_bad_csv_path,
+                        "created": creation_time_csv
+                    }
                 }
             }
         }
@@ -649,7 +657,7 @@ class L0Deliver(SlurmJobTask):
 
         # Create GranuleUR and DAAC paths
         # Delivery file format: EMIT_L0_<VVV>_<APID>_<YYYYMMDDTHHMMSS>.bin
-        collection_version = f"0{wm.config['product_versions']['l0']}"
+        collection_version = f"0{wm.config['prod_versions']['l0']}"
         start_time_str = stream.start_time.strftime("%Y%m%dT%H%M%S")
         granule_ur = f"EMIT_L0_{collection_version}_{stream.apid}_{start_time_str}"
         daac_ccsds_name = f"{granule_ur}.bin"
@@ -772,16 +780,16 @@ class L0Deliver(SlurmJobTask):
             "ummg_json_path": ummg_path,
             "created": datetime.datetime.fromtimestamp(os.path.getmtime(ummg_path), tz=datetime.timezone.utc)
         }
-        dm.update_stream_metadata(stream.ccsds_name, {"products.daac.ccsds_ummg": product_dict_ummg})
+        dm.update_stream_metadata(stream.ccsds_name, {f"products.daac.{wm.config['prod_versions']['l0']}.ccsds_ummg": product_dict_ummg})
 
-        if "ccsds_daac_submissions" in stream.metadata["products"]["daac"] and \
-                stream.metadata["products"]["daac"]["ccsds_daac_submissions"] is not None:
-            stream.metadata["products"]["daac"]["ccsds_daac_submissions"].append(cnm_submission_path)
+        if "ccsds_daac_submissions" in stream.metadata["products"]["daac"][wm.config["prod_versions"]["l0"]] and \
+                stream.metadata["products"]["daac"][wm.config["prod_versions"]["l0"]]["ccsds_daac_submissions"] is not None:
+            stream.metadata["products"]["daac"][wm.config["prod_versions"]["l0"]]["ccsds_daac_submissions"].append(cnm_submission_path)
         else:
-            stream.metadata["products"]["daac"]["ccsds_daac_submissions"] = [cnm_submission_path]
+            stream.metadata["products"]["daac"][wm.config["prod_versions"]["l0"]]["ccsds_daac_submissions"] = [cnm_submission_path]
         dm.update_stream_metadata(
             stream.ccsds_name,
-            {"products.daac.ccsds_daac_submissions": stream.metadata["products"]["daac"]["ccsds_daac_submissions"]})
+            {f"products.daac.{[wm.config['prod_versions']['l0']]}.ccsds_daac_submissions": stream.metadata["products"]["daac"][wm.config["prod_versions"]["l0"]]["ccsds_daac_submissions"]})
 
         log_entry = {
             "task": self.task_family,

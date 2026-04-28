@@ -51,7 +51,7 @@ class DataCollection:
         if self.start_time < self.config["v2_cutover_date"]:
             self.frames_dir = os.path.join(
                 self.dcid_dir,
-                "_".join([self.dcid, "frames", "b0106", "v" + self.config["product_versions"]["l1a"]]))
+                "_".join([self.dcid, "frames", "b0106", "v" + self.config["prod_versions"]["l1a"]]))
             self.decomp_dir = self.frames_dir.replace("_frames_", "_decomp_")
             self.acquisitions_dir = self.frames_dir.replace("_frames_", "_acquisitions_")
         else:

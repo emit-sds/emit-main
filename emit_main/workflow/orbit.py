@@ -48,17 +48,17 @@ class Orbit:
         self.l1a_dir = os.path.join(self.orbit_id_dir, "l1a")
         self.l1b_dir = os.path.join(self.orbit_id_dir, "l1b")
         self.l1b_geo_work_dir = os.path.join(
-            self.l1b_dir, f"o{orbit_id}_l1b_geo_v{self.config['product_versions']['l1b']}_work")
+            self.l1b_dir, f"o{orbit_id}_l1b_geo_v{self.config['prod_versions']['l1b']}_work")
         self.dirs.extend([self.orbits_dir, self.date_dir, self.orbit_id_dir, self.raw_dir, self.l1a_dir, self.l1b_dir])
         
         # Create product names
         # L1A paths before the v2 cutover date are assumed to have the old file naming schema with "b0106"
         if self.start_time < self.config["v2_cutover_date"]:
             uncorr_fname = "_".join([f"emit{self.start_time.strftime('%Y%m%dt%H%M%S')}", f"o{self.short_oid}",
-                                 "l1a", "att", "b0106", f"v{self.config['product_versions']['l1a']}.nc"])
+                                 "l1a", "att", "b0106", f"v{self.config['prod_versions']['l1a']}.nc"])
         else:      
             uncorr_fname = "_".join([f"emit{self.start_time.strftime('%Y%m%dt%H%M%S')}", f"o{self.orbit_id}",
-                                 "l1a", "att", f"v{self.config['product_versions']['l1a']}.nc"])
+                                 "l1a", "att", f"v{self.config['prod_versions']['l1a']}.nc"])
         
         self.uncorr_att_eph_path = os.path.join(self.l1a_dir, uncorr_fname)
         self.corr_att_eph_path = self.uncorr_att_eph_path.replace("l1a", "l1b")

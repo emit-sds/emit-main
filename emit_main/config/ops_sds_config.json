@@ -60,7 +60,7 @@
         }
     },
     "product_config": {
-        "product_versions": {
+        "prod_versions": {
             "l0": "01",
             "l1a": "01",
             "l1b": "02",
