@@ -179,14 +179,14 @@ class L2BAbundance(SlurmJobTask):
                 "bands": hdr["bands"]
             }
         }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2b.abun": product_dict})
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l2b.{wm.config['prod_versions']['l2b']}.abun": product_dict})
 
         product_dict_abununcert = {
             "img_path": acq.abununcert_img_path,
             "hdr_path": acq.abununcert_hdr_path,
             "created": creation_time,
         }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2b.abununcert": product_dict_abununcert})
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l2b.{wm.config['prod_versions']['l2b']}.abununcert": product_dict_abununcert})
 
         total_time = time.time() - start_time
         log_entry = {
@@ -274,7 +274,7 @@ class L2BFormat(SlurmJobTask):
             "netcdf_abununcert_path": acq.abununcert_nc_path,
             "created": nc_creation_time
         }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2b.abun_netcdf": product_dict_netcdf})
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l2b.{wm.config['prod_versions']['l2b']}.abun_netcdf": product_dict_netcdf})
 
         log_entry = {
             "task": self.task_family,
@@ -497,16 +497,16 @@ class L2BDeliver(SlurmJobTask):
             "ummg_json_path": ummg_path,
             "created": datetime.datetime.fromtimestamp(os.path.getmtime(ummg_path), tz=datetime.timezone.utc)
         }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2b.abun_ummg": product_dict_ummg})
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l2b.{wm.config['prod_versions']['l2b']}.abun_ummg": product_dict_ummg})
 
-        if "abun_daac_submissions" in acq.metadata["products"]["l2b"] and \
-                acq.metadata["products"]["l2b"]["abun_daac_submissions"] is not None:
-            acq.metadata["products"]["l2b"]["abun_daac_submissions"].append(cnm_submission_path)
+        if "abun_daac_submissions" in acq.metadata["products"]["l2b"][wm.config["prod_versions"]["l2b"]] and \
+                acq.metadata["products"]["l2b"][wm.config["prod_versions"]["l2b"]]["abun_daac_submissions"] is not None:
+            acq.metadata["products"]["l2b"][wm.config["prod_versions"]["l2b"]]["abun_daac_submissions"].append(cnm_submission_path)
         else:
-            acq.metadata["products"]["l2b"]["abun_daac_submissions"] = [cnm_submission_path]
+            acq.metadata["products"]["l2b"][wm.config["prod_versions"]["l2b"]]["abun_daac_submissions"] = [cnm_submission_path]
         dm.update_acquisition_metadata(
             acq.acquisition_id,
-            {"products.l2b.abun_daac_submissions": acq.metadata["products"]["l2b"]["abun_daac_submissions"]})
+            {f"products.l2b.{wm.config['prod_versions']['l2b']}.abun_daac_submissions": acq.metadata["products"]["l2b"][wm.config["prod_versions"]["l2b"]]["abun_daac_submissions"]})
 
         log_entry = {
             "task": self.task_family,
@@ -623,28 +623,28 @@ class L2BFrCovFormat(SlurmJobTask):
         wm.copy(tmp_frcov_base + '_frcov.png', acq.frcov_png_path)
 
         # Update db
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.frcov.qc": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.frcov.{wm.config['prod_versions']['frcov']}.qc": {
                 "tif_path" : acq.frcovqc_tif_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.frcov.pv": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.frcov.{wm.config['prod_versions']['frcov']}.pv": {
                 "tif_path" : acq.frcovpv_tif_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.frcov.pvunc": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.frcov.{wm.config['prod_versions']['frcov']}.pvunc": {
                 "tif_path" : acq.frcovpvunc_tif_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.frcov.npv": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.frcov.{wm.config['prod_versions']['frcov']}.npv": {
                 "tif_path" : acq.frcovnpv_tif_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.frcov.npvunc": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.frcov.{wm.config['prod_versions']['frcov']}.npvunc": {
                 "tif_path" : acq.frcovnpvunc_tif_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.frcov.bare": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.frcov.{wm.config['prod_versions']['frcov']}.bare": {
                 "tif_path" : acq.frcovbareunc_tif_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.frcov.bareunc": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.frcov.{wm.config['prod_versions']['frcov']}.bareunc": {
                 "tif_path" : acq.frcovbareunc_tif_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.frcov.browse": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.frcov.{wm.config['prod_versions']['frcov']}.browse": {
                 "png_path" : acq.frcov_png_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
 
@@ -955,16 +955,16 @@ class L2BFrCovDeliver(SlurmJobTask):
             "ummg_json_path": ummg_path,
             "created": datetime.datetime.fromtimestamp(os.path.getmtime(ummg_path), tz=datetime.timezone.utc)
         }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.frcov.frcov_ummg": product_dict_ummg})
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.frcov.{wm.config['prod_versions']['frcov']}.frcov_ummg": product_dict_ummg})
 
-        if "frcov_daac_submissions" in acq.metadata["products"]["frcov"] and \
-                acq.metadata["products"]["frcov"]["frcov_daac_submissions"] is not None:
-            acq.metadata["products"]["frcov"]["frcov_daac_submissions"].append(cnm_submission_path)
+        if "frcov_daac_submissions" in acq.metadata["products"]["frcov"][wm.config["prod_versions"]["frcov"]] and \
+                acq.metadata["products"]["frcov"][wm.config["prod_versions"]["frcov"]]["frcov_daac_submissions"] is not None:
+            acq.metadata["products"]["frcov"][wm.config["prod_versions"]["frcov"]]["frcov_daac_submissions"].append(cnm_submission_path)
         else:
-            acq.metadata["products"]["frcov"]["frcov_daac_submissions"] = [cnm_submission_path]
+            acq.metadata["products"]["frcov"][wm.config["prod_versions"]["frcov"]]["frcov_daac_submissions"] = [cnm_submission_path]
         dm.update_acquisition_metadata(
             acq.acquisition_id,
-            {"products.frcov.frcov_daac_submissions": acq.metadata["products"]["frcov"]["frcov_daac_submissions"]})
+            {f"products.frcov.{wm.config['prod_versions']['frcov']}.frcov_daac_submissions": acq.metadata["products"]["frcov"][wm.config["prod_versions"]["frcov"]]["frcov_daac_submissions"]})
 
         log_entry = {
             "task": self.task_family,

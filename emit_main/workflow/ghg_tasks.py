@@ -135,28 +135,28 @@ class CH4(SlurmJobTask):
         wm.copy(ch4_of.uncert_ort_cog, acq.ortuncertch4_tif_path)
 
         # Update db
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.ch4.ch4": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.ch4.{wm.config['prod_versions']['ch4']}.ch4": {
                 "img_path" : acq.ch4_img_path,
                 "hdr_path" : acq.ch4_hdr_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.ch4.sensch4": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.ch4.{wm.config['prod_versions']['ch4']}.sensch4": {
                 "img_path" : acq.sensch4_img_path,
                 "hdr_path" : acq.sensch4_hdr_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.ch4.uncertch4": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.ch4.{wm.config['prod_versions']['ch4']}.uncertch4": {
                 "img_path" : acq.uncertch4_img_path,
                 "hdr_path" : acq.uncertch4_hdr_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.ch4.ortch4": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.ch4.{wm.config['prod_versions']['ch4']}.ortch4": {
                 "tif_path" : acq.ortch4_tif_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.ch4.ortch4ql": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.ch4.{wm.config['prod_versions']['ch4']}.ortch4ql": {
                 "png_path" : acq.ortch4_png_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.ch4.ortsensch4": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.ch4.{wm.config['prod_versions']['ch4']}.ortsensch4": {
                 "tif_path" : acq.ortsensch4_tif_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.ch4.ortuncertch4": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.ch4.{wm.config['prod_versions']['ch4']}.ortuncertch4": {
                 "tif_path" : acq.ortuncertch4_tif_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
 
@@ -303,28 +303,28 @@ class CO2(SlurmJobTask):
         wm.copy(co2_of.uncert_ort_cog, acq.ortuncertco2_tif_path)
 
         # Update db
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.co2.co2": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.co2.{wm.config['prod_versions']['co2']}.co2": {
                 "img_path" : acq.co2_img_path,
                 "hdr_path" : acq.co2_hdr_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.co2.sensco2": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.co2.{wm.config['prod_versions']['co2']}.sensco2": {
                 "img_path" : acq.sensco2_img_path,
                 "hdr_path" : acq.sensco2_hdr_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.co2.uncertco2": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.co2.{wm.config['prod_versions']['co2']}.uncertco2": {
                 "img_path" : acq.uncertco2_img_path,
                 "hdr_path" : acq.uncertco2_hdr_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.co2.ortco2": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.co2.{wm.config['prod_versions']['co2']}.ortco2": {
                 "tif_path" : acq.ortco2_tif_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.co2.ortco2ql": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.co2.{wm.config['prod_versions']['co2']}.ortco2ql": {
                 "png_path" : acq.ortco2_png_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.co2.ortsensco2": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.co2.{wm.config['prod_versions']['co2']}.ortsensco2": {
                 "tif_path" : acq.ortsensco2_tif_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.co2.ortuncertco2": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.co2.{wm.config['prod_versions']['co2']}.ortuncertco2": {
                 "tif_path" : acq.ortuncertco2_tif_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
 
@@ -584,16 +584,16 @@ class CH4Deliver(SlurmJobTask):
             "ummg_json_path": ummg_path,
             "created": datetime.datetime.fromtimestamp(os.path.getmtime(ummg_path), tz=datetime.timezone.utc)
         }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.ch4.ch4_ummg": product_dict_ummg})
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.ch4.{wm.config['prod_versions']['ch4']}.ch4_ummg": product_dict_ummg})
 
-        if "ch4_daac_submissions" in acq.metadata["products"]["ghg"]["ch4"] and \
-                acq.metadata["products"]["ghg"]["ch4"]["ch4_daac_submissions"] is not None:
-            acq.metadata["products"]["ghg"]["ch4"]["ch4_daac_submissions"].append(cnm_submission_path)
+        if "ch4_daac_submissions" in acq.metadata["products"]["ch4"][wm.config["prod_versions"]["ch4"]] and \
+                acq.metadata["products"]["ch4"][wm.config["prod_versions"]["ch4"]]["ch4_daac_submissions"] is not None:
+            acq.metadata["products"]["ch4"][wm.config["prod_versions"]["ch4"]]["ch4_daac_submissions"].append(cnm_submission_path)
         else:
-            acq.metadata["products"]["ghg"]["ch4"]["ch4_daac_submissions"] = [cnm_submission_path]
+            acq.metadata["products"]["ch4"][wm.config["prod_versions"]["ch4"]]["ch4_daac_submissions"] = [cnm_submission_path]
         dm.update_acquisition_metadata(
             acq.acquisition_id,
-            {"products.ghg.ch4.ch4_daac_submissions": acq.metadata["products"]["ghg"]["ch4"]["ch4_daac_submissions"]})
+            {f"products.ch4.{wm.config['prod_versions']['ch4']}.ch4_daac_submissions": acq.metadata["products"]["ch4"][wm.config["prod_versions"]["ch4"]]["ch4_daac_submissions"]})
 
         log_entry = {
             "task": self.task_family,
@@ -831,16 +831,16 @@ class CO2Deliver(SlurmJobTask):
             "ummg_json_path": ummg_path,
             "created": datetime.datetime.fromtimestamp(os.path.getmtime(ummg_path), tz=datetime.timezone.utc)
         }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.co2.co2_ummg": product_dict_ummg})
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.co2.{wm.config['prod_versions']['co2']}.co2_ummg": product_dict_ummg})
 
-        if "co2_daac_submissions" in acq.metadata["products"]["ghg"]["co2"] and \
-                acq.metadata["products"]["ghg"]["co2"]["co2_daac_submissions"] is not None:
-            acq.metadata["products"]["ghg"]["co2"]["co2_daac_submissions"].append(cnm_submission_path)
+        if "co2_daac_submissions" in acq.metadata["products"]["co2"][wm.config["prod_versions"]["co2"]] and \
+                acq.metadata["products"]["co2"][wm.config["prod_versions"]["co2"]]["co2_daac_submissions"] is not None:
+            acq.metadata["products"]["co2"][wm.config["prod_versions"]["co2"]]["co2_daac_submissions"].append(cnm_submission_path)
         else:
-            acq.metadata["products"]["ghg"]["co2"]["co2_daac_submissions"] = [cnm_submission_path]
+            acq.metadata["products"]["co2"][wm.config["prod_versions"]["co2"]]["co2_daac_submissions"] = [cnm_submission_path]
         dm.update_acquisition_metadata(
             acq.acquisition_id,
-            {"products.ghg.co2.co2_daac_submissions": acq.metadata["products"]["ghg"]["co2"]["co2_daac_submissions"]})
+            {f"products.co2.{wm.config['prod_versions']['co2']}.co2_daac_submissions": acq.metadata["products"]["co2"][wm.config["prod_versions"]["co2"]]["co2_daac_submissions"]})
 
         log_entry = {
             "task": self.task_family,
@@ -939,7 +939,7 @@ class CH4Mosaic(SlurmJobTask):
         pge.run(cmd_mkdir, tmp_dir=self.tmp_dir)
         
         for product in ["ortch4", "ortsensch4", "ortuncertch4"]:
-            input_files[product] = [ac["products"]["ghg"]["ch4"][product]["tif_path"] for ac in acquisitions]
+            input_files[product] = [ac["products"]["ch4"][wm.config["prod_versions"]["ch4"]][product]["tif_path"] for ac in acquisitions]
 
             output_paths = [os.path.join(self.tmp_dir, f'{mosaic_basename}_{product}_{version}.tif'), 
                             os.path.join(self.tmp_dir, f'{mosaic_basename}_{product}_{version}_2.tif')]
@@ -967,7 +967,7 @@ class CH4Mosaic(SlurmJobTask):
                 cmd_rsync = ["rsync", "-av", log_file_arg, out_path, target]
                 pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
 
-                meta_key = f"products.ghg.ch4.{product}_mosaic" if idx == 0 else f"products.ghg.ch4.{product}_mosaic_{idx+1}"
+                meta_key = f"products.ch4.{wm.config['prod_versions']['ch4']}.{product}_mosaic" if idx == 0 else f"products.ch4.{wm.config['prod_versions']['ch4']}.{product}_mosaic_{idx+1}"
 
                 dm.update_data_collection_metadata(self.dcid,
                                                     {meta_key: {"tif_path": dcid_path, "created": creation_time}})
@@ -1067,7 +1067,7 @@ class CO2Mosaic(SlurmJobTask):
         pge.run(cmd_mkdir, tmp_dir=self.tmp_dir)
         
         for product in ["ortco2", "ortsensco2", "ortuncertco2"]:
-            input_files[product] = [ac["products"]["ghg"]["co2"][product]["tif_path"] for ac in acquisitions]
+            input_files[product] = [ac["products"]["co2"][wm.config["prod_versions"]["co2"]][product]["tif_path"] for ac in acquisitions]
 
             output_paths = [os.path.join(self.tmp_dir, f'{mosaic_basename}_{product}_{version}.tif'), 
                             os.path.join(self.tmp_dir, f'{mosaic_basename}_{product}_{version}_2.tif')]
@@ -1095,7 +1095,7 @@ class CO2Mosaic(SlurmJobTask):
                 cmd_rsync = ["rsync", "-av", log_file_arg, out_path, target]
                 pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
 
-                meta_key = f"products.ghg.co2.{product}_mosaic" if idx == 0 else f"products.ghg.co2.{product}_mosaic_{idx+1}"
+                meta_key = f"products.co2.{wm.config['prod_versions']['co2']}.{product}_mosaic" if idx == 0 else f"products.co2.{wm.config['prod_versions']['co2']}.{product}_mosaic_{idx+1}"
 
                 dm.update_data_collection_metadata(self.dcid,
                                                     {meta_key: {"tif_path": dcid_path, "created": creation_time}})

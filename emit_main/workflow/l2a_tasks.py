@@ -206,10 +206,10 @@ class L2AReflectance(SlurmJobTask):
             }
             if "_rfl_" in img_path:
                 dm.update_acquisition_metadata(
-                    acq.acquisition_id, {"products.l2a.rfl": product_dict})
+                    acq.acquisition_id, {f"products.l2a.{wm.config['prod_versions']['l2a']}.rfl": product_dict})
             elif "_rfluncert_" in img_path:
                 dm.update_acquisition_metadata(
-                    acq.acquisition_id, {"products.l2a.rfluncert": product_dict})
+                    acq.acquisition_id, {f"products.l2a.{wm.config['prod_versions']['l2a']}.rfluncert": product_dict})
 
         total_time = time.time() - start_time
         log_entry = {
@@ -342,8 +342,9 @@ class L2AMask(SlurmJobTask):
                 "bands": hdr["bands"]
             }
         }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2a.mask": product_dict})
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l2a.{wm.config['prod_versions']['l2a']}.mask": product_dict})
         dm.update_acquisition_metadata(acq.acquisition_id, {"cloud_fraction": cloud_fraction})
+        # dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l2a.{wm.config['prod_versions']['l2a']}.mask.cloud_fraction": cloud_fraction})
 
         total_time = time.time() - start_time
         log_entry = {
@@ -435,7 +436,7 @@ class L2AFormat(SlurmJobTask):
             "netcdf_mask_path": acq.mask_nc_path,
             "created": nc_creation_time
         }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2a.rfl_netcdf": product_dict_netcdf})
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l2a.{wm.config['prod_versions']['l2a']}.rfl_netcdf": product_dict_netcdf})
 
         log_entry = {
             "task": self.task_family,
@@ -672,16 +673,16 @@ class L2ADeliver(SlurmJobTask):
             "ummg_json_path": ummg_path,
             "created": datetime.datetime.fromtimestamp(os.path.getmtime(ummg_path), tz=datetime.timezone.utc)
         }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2a.rfl_ummg": product_dict_ummg})
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l2a.{wm.config['prod_versions']['l2a']}.rfl_ummg": product_dict_ummg})
 
-        if "rfl_daac_submissions" in acq.metadata["products"]["l2a"] and \
-                acq.metadata["products"]["l2a"]["rfl_daac_submissions"] is not None:
-            acq.metadata["products"]["l2a"]["rfl_daac_submissions"].append(cnm_submission_path)
+        if "rfl_daac_submissions" in acq.metadata["products"]["l2a"][wm.config["prod_versions"]["l2a"]] and \
+                acq.metadata["products"]["l2a"][wm.config["prod_versions"]["l2a"]]["rfl_daac_submissions"] is not None:
+            acq.metadata["products"]["l2a"][wm.config["prod_versions"]["l2a"]]["rfl_daac_submissions"].append(cnm_submission_path)
         else:
-            acq.metadata["products"]["l2a"]["rfl_daac_submissions"] = [cnm_submission_path]
+            acq.metadata["products"]["l2a"][wm.config["prod_versions"]["l2a"]]["rfl_daac_submissions"] = [cnm_submission_path]
         dm.update_acquisition_metadata(
             acq.acquisition_id,
-            {"products.l2a.rfl_daac_submissions": acq.metadata["products"]["l2a"]["rfl_daac_submissions"]})
+            {f"products.l2a.{wm.config['prod_versions']['l2a']}.rfl_daac_submissions": acq.metadata["products"]["l2a"][wm.config["prod_versions"]["l2a"]]["rfl_daac_submissions"]})
 
         log_entry = {
             "task": self.task_family,
@@ -838,7 +839,7 @@ class L2AMaskTf(SlurmJobTask):
                 "bands": hdr["bands"]
             }
         }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.mask.maskTf": product_dict})
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.mask.{wm.config['prod_versions']['mask']}.maskTf": product_dict})
         dm.update_acquisition_metadata(acq.acquisition_id, {"cloud_fraction_02": cloud_fraction})
         dm.update_acquisition_metadata(acq.acquisition_id, {"nodata_fraction": nodata_fraction})
 
@@ -926,7 +927,7 @@ class L2AMaskTfFormat(SlurmJobTask):
             "netcdf_maskTf_path": acq.maskTf_nc_path,
             "created": nc_creation_time
         }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.mask.maskTf_netcdf": product_dict_netcdf})
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.mask.{wm.config['prod_versions']['mask']}.maskTf_netcdf": product_dict_netcdf})
 
         log_entry = {
             "task": self.task_family,
@@ -1140,16 +1141,16 @@ class L2AMaskTfDeliver(SlurmJobTask):
             "ummg_json_path": ummg_path,
             "created": datetime.datetime.fromtimestamp(os.path.getmtime(ummg_path), tz=datetime.timezone.utc)
         }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.mask.maskTf_ummg": product_dict_ummg})
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.mask.{wm.config['prod_versions']['mask']}.maskTf_ummg": product_dict_ummg})
 
-        if "maskTf_daac_submissions" in acq.metadata["products"]["mask"] and \
-                acq.metadata["products"]["mask"]["maskTf_daac_submissions"] is not None:
-            acq.metadata["products"]["mask"]["maskTf_daac_submissions"].append(cnm_submission_path)
+        if "maskTf_daac_submissions" in acq.metadata["products"]["mask"][wm.config["prod_versions"]["mask"]] and \
+                acq.metadata["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf_daac_submissions"] is not None:
+            acq.metadata["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf_daac_submissions"].append(cnm_submission_path)
         else:
-            acq.metadata["products"]["mask"]["maskTf_daac_submissions"] = [cnm_submission_path]
+            acq.metadata["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf_daac_submissions"] = [cnm_submission_path]
         dm.update_acquisition_metadata(
             acq.acquisition_id,
-            {"products.mask.maskTf_daac_submissions": acq.metadata["products"]["mask"]["maskTf_daac_submissions"]})
+            {f"products.mask.{wm.config['prod_versions']['mask']}.maskTf_daac_submissions": acq.metadata["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf_daac_submissions"]})
 
         log_entry = {
             "task": self.task_family,
