@@ -151,7 +151,7 @@ class Acquisition:
                 "radsubs": ["img", "hdr"],
                 "obssubs": ["img", "hdr"],
                 "locsubs": ["img", "hdr"],
-                "atm": ["img", "hdr"],
+                "state": ["img", "hdr"],
                 "quality": ["txt"],
             },
             "mask": {

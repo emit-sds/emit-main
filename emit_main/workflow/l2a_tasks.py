@@ -131,7 +131,7 @@ class L2AReflectance(SlurmJobTask):
         tmp_locsubs_path = os.path.join(
             self.local_tmp_dir, "input", self.acquisition_id + "_subs_loc")
         tmp_quality_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_rfl_quality.txt")
-        tmp_atm_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_atm_interp")
+        tmp_state_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_state_interp")
 
         # ensure that the tmp_rfl_path has a nodata value set, before we make the quicklook
         hdr = envi.read_envi_header(tmp_rfl_hdr_path)
@@ -163,8 +163,8 @@ class L2AReflectance(SlurmJobTask):
         wm.copy(tmp_rfl_png_path, acq.rfl_png_path)
         wm.copy(tmp_quality_path, acq.quality_txt_path)
 
-        wm.copy(tmp_atm_path, acq.atm_img_path)
-        wm.copy(envi_header(tmp_atm_path), acq.atm_hdr_path)
+        wm.copy(tmp_state_path, acq.state_img_path)
+        wm.copy(envi_header(tmp_state_path), acq.state_hdr_path)
 
         # Copy log file and rename
         log_path = acq.rfl_img_path.replace(".img", "_pge.log")
@@ -629,7 +629,7 @@ class L2AMaskTf(SlurmJobTask):
             "observation_parameters_file": acq.obs_img_path,
             "pixel_locations_file": acq.loc_img_path,
             "geolocation_table_file": acq.glt_img_path,
-            "atmosphere_file": acq.atm_img_path,
+            "state_file": acq.state_img_path,
             "solar_irradiance_file": solar_irradiance_path
         }
 
@@ -653,7 +653,7 @@ class L2AMaskTf(SlurmJobTask):
                acq.rdn_img_path,
                acq.loc_img_path,
                acq.obs_img_path,
-               acq.atm_img_path,
+               acq.state_img_path,
                tmp_maskTf_cloud_prob_path,
                solar_irradiance_path,
                tmp_maskTf_path,
