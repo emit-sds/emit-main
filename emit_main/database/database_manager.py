@@ -90,13 +90,13 @@ class DatabaseManager:
         acquisitions_coll = self.db.acquisitions
         query = {
             "start_time": {"$gt": q_start, "$lt": q_stop},
-            "products.l1b.ffupdate": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.ffupdate": {"$exists": 1},
             "mean_solar_zenith": {"$lt": 60}
         }
         projection = {
             "acquisition_id": 1,
             "start_time": 1,
-            "products.l1b.ffupdate": 1
+            f"products.l1b.{self.config['prod_versions']['l1b']}.ffupdate": 1
         }
         if use_future_flat:
             return list(acquisitions_coll.find(query, projection).sort("start_time", 1).limit(limit))
@@ -110,8 +110,8 @@ class DatabaseManager:
         query = {
             "submode": "science",
             "num_valid_lines": {"$gte": 320},
-            "products.l1a.raw.img_path": {"$exists": 1},
-            "products.l1b.rdn.img_path": {"$exists": 0},
+            f"products.l1a.{self.config['prod_versions']['l1a']}.raw.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.rdn.img_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }
         # Get acquistions for calibration - sort by start time to nominally forward process (
@@ -149,28 +149,16 @@ class DatabaseManager:
         acquisitions_coll = self.db.acquisitions
         # Query for acquisitions with complete l1b outputs but no rfl outputs in time range
         query = {
-            "products.l1b.rdn.img_path": {"$exists": 1},
-            "products.l1b.glt.img_path": {"$exists": 1},
-            "products.l1b.loc.img_path": {"$exists": 1},
-            "products.l1b.obs.img_path": {"$exists": 1},
-            "products.l2a.rfl.img_path": {"$exists": 0},
-            "products.l2a.mask.img_path": {"$exists": 0},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.rdn.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.glt.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.loc.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.obs.img_path": {"$exists": 1},
+            f"products.l2a.{self.config['prod_versions']['l2a']}.rfl.img_path": {"$exists": 0},
             "mean_solar_zenith": {"$lt": 80},
             date_field: {"$gte": start, "$lte": stop}
         }
         results = list(acquisitions_coll.find(query))
-        # Also query for case where rfl exists but not mask
-        query = {
-            "products.l1b.rdn.img_path": {"$exists": 1},
-            "products.l1b.glt.img_path": {"$exists": 1},
-            "products.l1b.loc.img_path": {"$exists": 1},
-            "products.l1b.obs.img_path": {"$exists": 1},
-            "products.l2a.rfl.img_path": {"$exists": 1},
-            "products.l2a.mask.img_path": {"$exists": 0},
-            "mean_solar_zenith": {"$lt": 80},
-            date_field: {"$gte": start, "$lte": stop}
-        }
-        results += list(acquisitions_coll.find(query))
+
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L2AReflectance"])
         else:
@@ -181,12 +169,12 @@ class DatabaseManager:
         acquisitions_coll = self.db.acquisitions
         # Query for acquisitions with complete l1b outputs but no rfl outputs in time range
         query = {
-            "products.l1b.rdn.img_path": {"$exists": 1},
-            "products.l1b.obs.img_path": {"$exists": 1},
-            "products.l1b.glt.img_path": {"$exists": 1},
-            "products.l1b.loc.img_path": {"$exists": 1},
-            "products.l2a.rfl.img_path": {"$exists": 1},
-            "products.mask.maskTf.img_path": {"$exists": 0},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.rdn.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.obs.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.glt.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.loc.img_path": {"$exists": 1},
+            f"products.l2a.{self.config['prod_versions']['l2a']}.rfl.img_path": {"$exists": 1},
+            f"products.mask.{self.config['prod_versions']['mask']}.maskTf.img_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }
         results = list(acquisitions_coll.find(query))
@@ -199,9 +187,8 @@ class DatabaseManager:
         acquisitions_coll = self.db.acquisitions
         # Query for acquisitions with complete l2a outputs but no l2b min outputs in time range
         query = {
-            "products.l2a.rfl.img_path": {"$exists": 1},
-            "products.l2a.mask.img_path": {"$exists": 1},
-            "products.l2b.min.img_path": {"$exists": 0},
+            f"products.l2a.{self.config['prod_versions']['l2a']}.rfl.img_path": {"$exists": 1},
+            f"products.l2b.{self.config['prod_versions']['l2b']}.min.img_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }
         results = list(acquisitions_coll.find(query))
@@ -213,15 +200,15 @@ class DatabaseManager:
         acquisitions_coll = self.db.acquisitions
         # Query for acquisitions with complete l2a outputs but no l2b ch4 outputs in time range
         query = {
-            "products.l1b.rdn.img_path": {"$exists": 1},
-            "products.l1b.bandmask.img_path": {"$exists": 1},
-            "products.l1b.glt.img_path": {"$exists": 1},
-            "products.l1b.loc.img_path": {"$exists": 1},
-            "products.l1b.obs.img_path": {"$exists": 1},
-            "products.l2a.rfl.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.rdn.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.bandmask.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.glt.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.loc.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.obs.img_path": {"$exists": 1},
+            f"products.l2a.{self.config['prod_versions']['l2a']}.rfl.img_path": {"$exists": 1},
             "products.l2a.mask.img_path": {"$exists": 1},
             "mean_solar_zenith": {"$lt": 80},
-            "products.ghg.ch4.ortch4.tif_path": {"$exists": 0},
+            f"products.ch4.{self.config['prod_versions']['ch4']}.ortch4.tif_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }
         # TODO: Remove this block when GHG reprocessing is complete
@@ -237,15 +224,15 @@ class DatabaseManager:
         acquisitions_coll = self.db.acquisitions
         # Query for acquisitions with complete l2a outputs but no l2b co2 outputs in time range
         query = {
-            "products.l1b.rdn.img_path": {"$exists": 1},
-            "products.l1b.bandmask.img_path": {"$exists": 1},
-            "products.l1b.glt.img_path": {"$exists": 1},
-            "products.l1b.loc.img_path": {"$exists": 1},
-            "products.l1b.obs.img_path": {"$exists": 1},
-            "products.l2a.rfl.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.rdn.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.bandmask.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.glt.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.loc.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.obs.img_path": {"$exists": 1},
+            f"products.l2a.{self.config['prod_versions']['l2a']}.rfl.img_path": {"$exists": 1},
             "products.l2a.mask.img_path": {"$exists": 1},
             "mean_solar_zenith": {"$lt": 80},
-            "products.ghg.co2.ortco2.tif_path": {"$exists": 0},
+            f"products.co2.{self.config['prod_versions']['co2']}.ortco2.tif_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }
         # TODO: Remove this block when GHG reprocessing is complete
@@ -262,12 +249,12 @@ class DatabaseManager:
         # Query for acquisitions with complete glt, rfl, maskTf, l3 cover paths, but not frcov cog
         # Also, only run for scenes with cloud_fraction <= 80 for now since we deleted rfl files higher than that
         query = {
-            "products.l1b.glt.img_path": {"$exists": 1},
-            "products.l2a.rfl.img_path": {"$exists": 1},
-            "products.mask.maskTf.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.glt.img_path": {"$exists": 1},
+            f"products.l2a.{self.config['prod_versions']['l2a']}.rfl.img_path": {"$exists": 1},
+            f"products.mask.{self.config['prod_versions']['mask']}.maskTf.img_path": {"$exists": 1},
             "products.l3.cover.img_path": {"$exists": 1},
             "products.l3.coveruncert.img_path": {"$exists": 1},
-            "products.frcov.qc.tif_path": {"$exists": 0},
+            f"products.frcov.{self.config['prod_versions']['frcov']}.qc.tif_path": {"$exists": 0},
             "cloud_fraction": {"$lte": 80},
             date_field: {"$gte": start, "$lte": stop}
         }
@@ -281,7 +268,7 @@ class DatabaseManager:
         acquisitions_coll = self.db.acquisitions
         # Query for acquisitions with complete l2a outputs but no l3 cover outputs in time range
         query = {
-            "products.l2a.rfl.img_path": {"$exists": 1},
+            f"products.l2a.{self.config['prod_versions']['l2a']}.rfl.img_path": {"$exists": 1},
             "products.l2a.mask.img_path": {"$exists": 1},
             "products.l3.cover.img_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
@@ -296,9 +283,9 @@ class DatabaseManager:
         # Query for acquisitions with daac scene numbers but no daac ummg products.  If science, then we also need the
         # l1b browse image
         query = {
-            "products.l1a.raw.img_path": {"$exists": 1},
+            f"products.l1a.{self.config['prod_versions']['l1a']}.raw.img_path": {"$exists": 1},
             "daac_scene": {"$exists": 1},
-            "products.l1a.raw_ummg.ummg_json_path": {"$exists": 0},
+            f"products.l1a.{self.config['prod_versions']['l1a']}.raw_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }
         results = list(acquisitions_coll.find(query))
@@ -311,30 +298,30 @@ class DatabaseManager:
         # Query for acquisitions with daac scene numbers but no daac ummg products. We also need the
         # l1b browse image
         query = {
-            "products.l1b.rdn.img_path": {"$exists": 1},
-            "products.l1b.glt.img_path": {"$exists": 1},
-            "products.l1b.loc.img_path": {"$exists": 1},
-            "products.l1b.obs.img_path": {"$exists": 1},
-            "products.l1b.rdn_png.png_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.rdn.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.glt.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.loc.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.obs.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.rdn_png.png_path": {"$exists": 1},
             "cloud_fraction": {"$exists": 1},
             "daac_scene": {"$exists": 1},
-            "products.l1b.rdn_ummg.ummg_json_path": {"$exists": 0},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.rdn_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }
 
         results = list(acquisitions_coll.find(query))
         # Also query for case where nighttime science RDN exists
         query = {
-            "products.l1b.rdn.img_path": {"$exists": 1},
-            "products.l1b.glt.img_path": {"$exists": 1},
-            "products.l1b.loc.img_path": {"$exists": 1},
-            "products.l1b.obs.img_path": {"$exists": 1},
-            "products.l1b.rdn_png.png_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.rdn.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.glt.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.loc.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.obs.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.rdn_png.png_path": {"$exists": 1},
             "cloud_fraction": {"$exists": 0},
             "submode": "science",
             "mean_solar_zenith": {"$gte": 80},
             "daac_scene": {"$exists": 1},
-            "products.l1b.rdn_ummg.ummg_json_path": {"$exists": 0},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.rdn_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }
         results += list(acquisitions_coll.find(query))
@@ -348,14 +335,13 @@ class DatabaseManager:
         # Query for acquisitions with daac scene numbers but no daac ummg products. We also need the
         # l2a browse image
         query = {
-            "products.l2a.rfl.img_path": {"$exists": 1},
-            "products.l2a.rfluncert.img_path": {"$exists": 1},
-            "products.l2a.mask.img_path": {"$exists": 1},
-            "products.l1b.glt.img_path": {"$exists": 1},
-            "products.l1b.loc.img_path": {"$exists": 1},
+            f"products.l2a.{self.config['prod_versions']['l2a']}.rfl.img_path": {"$exists": 1},
+            f"products.l2a.{self.config['prod_versions']['l2a']}.rfluncert.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.glt.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.loc.img_path": {"$exists": 1},
             "cloud_fraction": {"$exists": 1},
             "daac_scene": {"$exists": 1},
-            "products.l2a.rfl_ummg.ummg_json_path": {"$exists": 0},
+            f"products.l2a.{self.config['prod_versions']['l2a']}.rfl_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }
         results = list(acquisitions_coll.find(query))
@@ -367,12 +353,12 @@ class DatabaseManager:
         acquisitions_coll = self.db.acquisitions
         # Query for acquisitions with daac scene numbers but no daac ummg products.
         query = {
-            "products.mask.maskTf.img_path": {"$exists": 1},
-            "products.l1b.glt.img_path": {"$exists": 1},
-            "products.l1b.loc.img_path": {"$exists": 1},
+            f"products.mask.{self.config['prod_versions']['mask']}.maskTf.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.glt.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.loc.img_path": {"$exists": 1},
             "cloud_fraction_02": {"$exists": 1},
             "daac_scene": {"$exists": 1},
-            "products.mask.maskTf_ummg.ummg_json_path": {"$exists": 0},
+            f"products.mask.{self.config['prod_versions']['mask']}.maskTf_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }
         results = list(acquisitions_coll.find(query))
@@ -384,13 +370,13 @@ class DatabaseManager:
         acquisitions_coll = self.db.acquisitions
         # Query for acquisitions with daac scene numbers but no daac ummg products.
         query = {
-            "products.l2b.min.img_path": {"$exists": 1},
-            "products.l2b.minuncert.img_path": {"$exists": 1},
-            "products.l1b.glt.img_path": {"$exists": 1},
-            "products.l1b.loc.img_path": {"$exists": 1},
+            f"products.l2b.{self.config['prod_versions']['l2b']}.min.img_path": {"$exists": 1},
+            f"products.l2b.{self.config['prod_versions']['l2b']}.minuncert.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.glt.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.loc.img_path": {"$exists": 1},
             "cloud_fraction": {"$exists": 1},
             "daac_scene": {"$exists": 1},
-            "products.l2b.min_ummg.ummg_json_path": {"$exists": 0},
+            f"products.l2b.{self.config['prod_versions']['l2b']}.min_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }
         results = list(acquisitions_coll.find(query))
@@ -402,12 +388,12 @@ class DatabaseManager:
         acquisitions_coll = self.db.acquisitions
         # Query for acquisitions with daac scene numbers but no daac ummg products.
         query = {
-            "products.ghg.ch4.ortch4.tif_path": {"$exists": 1},
-            "products.ghg.ch4.ortsensch4.tif_path": {"$exists": 1},
-            "products.ghg.ch4.ortuncertch4.tif_path": {"$exists": 1},
+            f"products.ch4.{self.config['prod_versions']['ch4']}.ortch4.tif_path": {"$exists": 1},
+            f"products.ch4.{self.config['prod_versions']['ch4']}.ortsensch4.tif_path": {"$exists": 1},
+            f"products.ch4.{self.config['prod_versions']['ch4']}.ortuncertch4.tif_path": {"$exists": 1},
             "cloud_fraction": {"$exists": 1},
             "daac_scene": {"$exists": 1},
-            "products.ghg.ch4.ch4_ummg.ummg_json_path": {"$exists": 0},
+            f"products.ch4.{self.config['prod_versions']['ch4']}.ch4_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }
         # TODO: Remove this block when GHG reprocessing is complete
@@ -423,12 +409,12 @@ class DatabaseManager:
         acquisitions_coll = self.db.acquisitions
         # Query for acquisitions with daac scene numbers but no daac ummg products.
         query = {
-            "products.ghg.co2.ortco2.tif_path": {"$exists": 1},
-            "products.ghg.co2.ortsensco2.tif_path": {"$exists": 1},
-            "products.ghg.co2.ortuncertco2.tif_path": {"$exists": 1},
+            f"products.co2.{self.config['prod_versions']['co2']}.ortco2.tif_path": {"$exists": 1},
+            f"products.co2.{self.config['prod_versions']['co2']}.ortsensco2.tif_path": {"$exists": 1},
+            f"products.co2.{self.config['prod_versions']['co2']}.ortuncertco2.tif_path": {"$exists": 1},
             "cloud_fraction": {"$exists": 1},
             "daac_scene": {"$exists": 1},
-            "products.ghg.co2.co2_ummg.ummg_json_path": {"$exists": 0},
+            f"products.co2.{self.config['prod_versions']['co2']}.co2_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }
         # TODO: Remove this block when GHG reprocessing is complete
@@ -444,17 +430,17 @@ class DatabaseManager:
         acquisitions_coll = self.db.acquisitions
         # Query for acquisitions with daac scene numbers but no daac ummg products.
         query = {
-            "products.frcov.pv.tif_path": {"$exists": 1},
-            "products.frcov.npv.tif_path": {"$exists": 1},
-            "products.frcov.bare.tif_path": {"$exists": 1},
-            "products.frcov.pvunc.tif_path": {"$exists": 1},
-            "products.frcov.npvunc.tif_path": {"$exists": 1},
-            "products.frcov.bareunc.tif_path": {"$exists": 1},
-            "products.frcov.qc.tif_path": {"$exists": 1},
-            "products.frcov.browse.png_path": {"$exists": 1},
+            f"products.frcov.{self.config['prod_versions']['frcov']}.pv.tif_path": {"$exists": 1},
+            f"products.frcov.{self.config['prod_versions']['frcov']}.npv.tif_path": {"$exists": 1},
+            f"products.frcov.{self.config['prod_versions']['frcov']}.bare.tif_path": {"$exists": 1},
+            f"products.frcov.{self.config['prod_versions']['frcov']}.pvunc.tif_path": {"$exists": 1},
+            f"products.frcov.{self.config['prod_versions']['frcov']}.npvunc.tif_path": {"$exists": 1},
+            f"products.frcov.{self.config['prod_versions']['frcov']}.bareunc.tif_path": {"$exists": 1},
+            f"products.frcov.{self.config['prod_versions']['frcov']}.qc.tif_path": {"$exists": 1},
+            f"products.frcov.{self.config['prod_versions']['frcov']}.browse.png_path": {"$exists": 1},
             "cloud_fraction_02": {"$exists": 1},
             "daac_scene": {"$exists": 1},
-            "products.frcov.frcov_ummg.ummg_json_path": {"$exists": 0},
+            f"products.frcov.{self.config['prod_versions']['frcov']}.frcov_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }
         results = list(acquisitions_coll.find(query))
@@ -467,9 +453,9 @@ class DatabaseManager:
         data_collections_coll = self.db.data_collections
         query = {
             "ch4_status": "complete",
-            "products.ghg.ch4.ortch4_mosaic.tif_path": {"$exists": 0},
-            "products.ghg.ch4.ortsensch4_mosaic.tif_path": {"$exists": 0},
-            "products.ghg.ch4.ortuncertch4_mosaic.tif_path": {"$exists": 0},
+            f"products.ch4.{self.config['prod_versions']['ch4']}.ortch4_mosaic.tif_path": {"$exists": 0},
+            f"products.ch4.{self.config['prod_versions']['ch4']}.ortsensch4_mosaic.tif_path": {"$exists": 0},
+            f"products.ch4.{self.config['prod_versions']['ch4']}.ortuncertch4_mosaic.tif_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop},
         }
         results =  list(data_collections_coll.find(query).sort("dcid", 1))
@@ -482,7 +468,7 @@ class DatabaseManager:
         data_collections_coll = self.db.data_collections
         query = {
             "ready_for_l1b_mosaic": True,
-            "products.l1b.mosaic.tif_path": {"$exists": 0},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.mosaic.tif_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop},
         }
         results =  list(data_collections_coll.find(query).sort("dcid", 1))
@@ -494,8 +480,8 @@ class DatabaseManager:
     def find_acquisitions_for_l1b_mosaic(self, dcid):
         acquisitions_coll = self.db.acquisitions
         query = {
-            "products.l1b.rdn.img_path": {"$exists": 1},    
-            "products.l1b.glt.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.rdn.img_path": {"$exists": 1},    
+            f"products.l1b.{self.config['prod_versions']['l1b']}.glt.img_path": {"$exists": 1},
             "associated_dcid": dcid
         }
         return list(acquisitions_coll.find(query))
@@ -505,9 +491,9 @@ class DatabaseManager:
         data_collections_coll = self.db.data_collections
         query = {
             "co2_status": "complete",
-            "products.ghg.co2.ortco2_mosaic.tif_path": {"$exists": 0},
-            "products.ghg.co2.ortsensco2_mosaic.tif_path": {"$exists": 0},
-            "products.ghg.co2.ortuncertco2_mosaic.tif_path": {"$exists": 0},
+            f"products.co2.{self.config['prod_versions']['co2']}.ortco2_mosaic.tif_path": {"$exists": 0},
+            f"products.co2.{self.config['prod_versions']['co2']}.ortsensco2_mosaic.tif_path": {"$exists": 0},
+            f"products.co2.{self.config['prod_versions']['co2']}.ortuncertco2_mosaic.tif_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop},
         }
         results =  list(data_collections_coll.find(query).sort("dcid", 1))
@@ -520,9 +506,9 @@ class DatabaseManager:
         acquisitions_coll = self.db.acquisitions
         # Query for acquisitions with daac scene numbers but no daac ummg products.
         query = {
-            "products.ghg.ch4.ortch4.tif_path": {"$exists": 1},
-            "products.ghg.ch4.ortsensch4.tif_path": {"$exists": 1},
-            "products.ghg.ch4.ortuncertch4.tif_path": {"$exists": 1},
+            f"products.ch4.{self.config['prod_versions']['ch4']}.ortch4.tif_path": {"$exists": 1},
+            f"products.ch4.{self.config['prod_versions']['ch4']}.ortsensch4.tif_path": {"$exists": 1},
+            f"products.ch4.{self.config['prod_versions']['ch4']}.ortuncertch4.tif_path": {"$exists": 1},
             "associated_dcid": dcid
         }
         return list(acquisitions_coll.find(query))
@@ -531,9 +517,9 @@ class DatabaseManager:
         acquisitions_coll = self.db.acquisitions
         # Query for acquisitions with daac scene numbers but no daac ummg products.
         query = {
-            "products.ghg.co2.ortco2.tif_path": {"$exists": 1},
-            "products.ghg.co2.ortsensco2.tif_path": {"$exists": 1},
-            "products.ghg.co2.ortuncertco2.tif_path": {"$exists": 1},
+            f"products.co2.{self.config['prod_versions']['co2']}.ortco2.tif_path": {"$exists": 1},
+            f"products.co2.{self.config['prod_versions']['co2']}.ortsensco2.tif_path": {"$exists": 1},
+            f"products.co2.{self.config['prod_versions']['co2']}.ortuncertco2.tif_path": {"$exists": 1},
             "associated_dcid": dcid
         }
         return list(acquisitions_coll.find(query))
@@ -591,8 +577,8 @@ class DatabaseManager:
         query = {
             "apid": "1674",
             date_field: {"$gte": start, "$lte": stop},
-            "products.l0.ccsds_path": {"$exists": 1},
-            "products.l1a": {"$exists": 0}
+            f"products.l0.{self.config['prod_versions']['l0']}.ccsds_path": {"$exists": 1},
+            f"products.l1a.{self.config['prod_versions']['l1a']}": {"$exists": 0}
         }
         results = list(streams_coll.find(query))
         if not retry_failed:
@@ -605,8 +591,8 @@ class DatabaseManager:
         query = {
             "apid": "1675",
             date_field: {"$gte": start, "$lte": stop},
-            "products.l0.ccsds_path": {"$exists": 1},
-            "products.daac.ccsds_ummg": {"$exists": 0}
+            f"products.l0.{self.config['prod_versions']['l0']}.ccsds_path": {"$exists": 1},
+            f"products.daac.{self.config['prod_versions']['l0']}.ccsds_ummg": {"$exists": 0}
         }
         results = list(streams_coll.find(query))
         if not retry_failed:
@@ -775,7 +761,7 @@ class DatabaseManager:
             "radiance_status": "complete",
             date_field: {"$gte": start, "$lte": stop},
             "associated_bad_netcdf": {"$exists": 1},
-            "products.l1b.acquisitions": {"$exists": 0}
+            f"products.l1b.{self.config['prod_versions']['l1b']}.acquisitions": {"$exists": 0}
         }
         results = list(orbits_coll.find(query))
         if not retry_failed:
@@ -801,8 +787,8 @@ class DatabaseManager:
         orbits_coll = self.db.orbits
         # Query for orbits with complete set of raw files.
         query = {
-            "products.l1b.corr_att_eph.nc_path": {"$exists": 1},
-            "products.l1b.att_ummg.ummg_json_path": {"$exists": 0},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.corr_att_eph.nc_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.att_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }
         results = list(orbits_coll.find(query))
