@@ -10,7 +10,7 @@ import os
 
 from emit_main.workflow.l1a_tasks import L1ADeliver
 from emit_main.workflow.l1b_tasks import L1BCalibrate, L1BRdnDeliver
-from emit_main.workflow.l2a_tasks import L2AMask, L2ADeliver, L2AMaskTf, L2AMaskTfDeliver
+from emit_main.workflow.l2a_tasks import L2AReflectance, L2ADeliver, L2AMaskTf, L2AMaskTfDeliver
 from emit_main.workflow.l2b_tasks import L2BAbundance, L2BDeliver, L2BFrCovFormat, L2BFrCovDeliver
 from emit_main.workflow.ghg_tasks import CH4, CO2, CH4Deliver, CO2Deliver
 from emit_main.workflow.l3_tasks import L3Unmix
@@ -71,11 +71,11 @@ class AcquisitionMonitor:
             return tasks
 
         for acq in acquisitions:
-            logger.info(f"Creating L2AMask task for acquisition {acq['acquisition_id']}")
-            tasks.append(L2AMask(config_path=self.config_path,
-                                 acquisition_id=acq["acquisition_id"],
-                                 level=self.level,
-                                 partition=self.partition))
+            logger.info(f"Creating L2AReflectance task for acquisition {acq['acquisition_id']}")
+            tasks.append(L2AReflectance(config_path=self.config_path, 
+                                        acquisition_id=acq["acquisition_id"],
+                                        level=self.level,
+                                        partition=self.partition))
 
         return tasks
     

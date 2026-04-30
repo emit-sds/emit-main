@@ -172,9 +172,9 @@ class DatabaseManager:
         }
         results += list(acquisitions_coll.find(query))
         if not retry_failed:
-            results = self._remove_results_with_failed_tasks(results, ["emit.L2AReflectance", "emit.L2AMask"])
+            results = self._remove_results_with_failed_tasks(results, ["emit.L2AReflectance"])
         else:
-            results = self._remove_results_with_well_known_errors(results, ["emit.L2AReflectance", "emit.L2AMask"])
+            results = self._remove_results_with_well_known_errors(results, ["emit.L2AReflectance"])
         return results
 
     def find_acquisitions_for_maskTf(self, start, stop, date_field="last_modified", retry_failed=False):

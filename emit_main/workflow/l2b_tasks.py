@@ -18,7 +18,7 @@ from emit_main.workflow.acquisition import Acquisition
 from emit_main.workflow.output_targets import AcquisitionTarget
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.ghg_tasks import read_gdal_metadata
-from emit_main.workflow.l2a_tasks import L2AMask, L2AReflectance
+from emit_main.workflow.l2a_tasks import L2AReflectance
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_utils.file_checks import envi_header
 from emit_utils import daac_converter
@@ -45,9 +45,7 @@ class L2BAbundance(SlurmJobTask):
 
         logger.debug(self.task_family + " requires")
         return (L2AReflectance(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
-                               partition=self.partition),
-                L2AMask(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
-                        partition=self.partition))
+                               partition=self.partition))
 
     def output(self):
 
