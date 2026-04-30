@@ -152,7 +152,6 @@ class Acquisition:
                 "obssubs": ["img", "hdr"],
                 "locsubs": ["img", "hdr"],
                 "atm": ["img", "hdr"],
-                "mask": ["img", "hdr", "nc"],
                 "quality": ["txt"],
             },
             "mask": {
