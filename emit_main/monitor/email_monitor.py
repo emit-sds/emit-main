@@ -184,8 +184,8 @@ class EmailMonitor:
         for message in messages:
             m = self.get_message_as_dict(message)
 
-            # Check that the subject includes "AWS Notification Message"
-            if "AWS Notification Message" not in m["subject"]:
+            # Check that the subject includes "CNM Response"
+            if "CNM Response" not in m["subject"]:
                 continue
 
             # Check that body starts with "{" to indicate a JSON response

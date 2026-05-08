@@ -96,7 +96,7 @@ def main():
     parser.add_argument("--month", help="Start date of month - YYYYMMDD")
     parser.add_argument("--metrics", default="streams,scenes,cmr", help="Which metrics to collect (streams,scenes,cmr)")
     parser.add_argument("--build_num", default="0106", help="Build number (only first 4 digits)")
-    parser.add_argument("--tracking_json", default="/store/brodrick/emit/emit-visuals/track_coverage.json",
+    parser.add_argument("--tracking_json", default="/store/brodrick/emit/emit-visuals/track_coverage_pub.json",
                         help="JSON containing scene metrics")
     parser.add_argument("--export_to_dir", default=None)
     args = parser.parse_args()

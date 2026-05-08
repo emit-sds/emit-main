@@ -134,9 +134,6 @@
             "RuntimeError: Opening GDAL file",
             "reference_surface_intersect_approximate failed to find a solution"
         ],
-        "emit.L1BCalibrate": [
-            "AttributeError: 'NoneType' object has no attribute 'decode'"
-        ],
         "emit.L2AReflectance": [
             "IndexError: index 2 is out of bounds for axis 1 with size 2"
         ]
