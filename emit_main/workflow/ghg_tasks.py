@@ -442,6 +442,12 @@ class CH4Deliver(SlurmJobTask):
             print('Could not read software build version from COG metadata')
             sys.exit()
 
+        # Use a cloud fraction that sums the nodata fraction (clouds screened on board) and the cloud fraction value
+        # from the maskTf step.  These fractions are rounded separately.  Use min to ensure it doesn't go over 100.
+        cloud_fraction = acq["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["cloud_fraction"]
+        nodata_fraction = acq["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["nodata_fraction"]
+        cloud_cover = min(cloud_fraction + nodata_fraction, 100)
+        
         # Create the UMM-G file
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.ortch4_tif_path), tz=datetime.timezone.utc)
         ghg_pge = wm.pges["emit-ghg"]
@@ -454,7 +460,7 @@ class CH4Deliver(SlurmJobTask):
                                               orbit_segment=int(acq.scene), scene=int(acq.daac_scene),
                                               solar_zenith=acq.mean_solar_zenith,
                                               solar_azimuth=acq.mean_solar_azimuth,
-                                              cloud_fraction=acq.cloud_fraction)
+                                              cloud_cover=cloud_cover)
         ummg = daac_converter.add_data_files_ummg(
             ummg,
             [daac_ortch4_tif_path, daac_ortsensch4_tif_path, daac_ortuncertch4_tif_path, daac_browse_path],
@@ -689,6 +695,12 @@ class CO2Deliver(SlurmJobTask):
             print('Could not read software build version from COG metadata')
             sys.exit()
 
+        # Use a cloud fraction that sums the nodata fraction (clouds screened on board) and the cloud fraction value
+        # from the maskTf step.  These fractions are rounded separately.  Use min to ensure it doesn't go over 100.
+        cloud_fraction = acq["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["cloud_fraction"]
+        nodata_fraction = acq["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["nodata_fraction"]
+        cloud_cover = min(cloud_fraction + nodata_fraction, 100)
+        
         # Create the UMM-G file
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.ortco2_tif_path), tz=datetime.timezone.utc)
         ghg_pge = wm.pges["emit-ghg"]
@@ -701,7 +713,7 @@ class CO2Deliver(SlurmJobTask):
                                               orbit_segment=int(acq.scene), scene=int(acq.daac_scene),
                                               solar_zenith=acq.mean_solar_zenith,
                                               solar_azimuth=acq.mean_solar_azimuth,
-                                              cloud_fraction=acq.cloud_fraction)
+                                              cloud_cover=cloud_cover)
         ummg = daac_converter.add_data_files_ummg(
             ummg,
             [daac_ortco2_tif_path, daac_ortsensco2_tif_path, daac_ortuncertco2_tif_path, daac_browse_path],

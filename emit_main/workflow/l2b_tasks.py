@@ -362,6 +362,12 @@ class L2BDeliver(SlurmJobTask):
         hdr = envi.read_envi_header(acq.min_hdr_path)
         software_build_version = hdr["emit software build version"]
 
+        # Use a cloud fraction that sums the nodata fraction (clouds screened on board) and the cloud fraction value
+        # from the maskTf step.  These fractions are rounded separately.  Use min to ensure it doesn't go over 100.
+        cloud_fraction = acq["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["cloud_fraction"]
+        nodata_fraction = acq["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["nodata_fraction"]
+        cloud_cover = min(cloud_fraction + nodata_fraction, 100)
+
         # Create the UMM-G file
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.min_nc_path), tz=datetime.timezone.utc)
         l2b_pge = wm.pges["emit-sds-l2b"]
@@ -374,7 +380,7 @@ class L2BDeliver(SlurmJobTask):
                                               orbit_segment=int(acq.scene), scene=int(acq.daac_scene),
                                               solar_zenith=acq.mean_solar_zenith,
                                               solar_azimuth=acq.mean_solar_azimuth,
-                                              cloud_fraction=acq.cloud_fraction)
+                                              cloud_cover=cloud_cover)
         ummg = daac_converter.add_data_files_ummg(
             ummg,
             [daac_min_nc_path, daac_minuncert_nc_path, daac_browse_path],
@@ -772,7 +778,7 @@ class L2BFrCovDeliver(SlurmJobTask):
         # from the maskTf step.  These fractions are rounded separately.  Use min to ensure it doesn't go over 100.
         cloud_fraction = acq["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["cloud_fraction"]
         nodata_fraction = acq["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["nodata_fraction"]
-        cloud_fraction = min(cloud_fraction + nodata_fraction, 100)
+        cloud_cover = min(cloud_fraction + nodata_fraction, 100)
         
         # Create the UMM-G file
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.frcovqc_tif_path), tz=datetime.timezone.utc)
@@ -786,7 +792,7 @@ class L2BFrCovDeliver(SlurmJobTask):
                                               orbit_segment=int(acq.scene), scene=int(acq.daac_scene),
                                               solar_zenith=acq.mean_solar_zenith,
                                               solar_azimuth=acq.mean_solar_azimuth,
-                                              cloud_fraction=cloud_fraction)
+                                              cloud_cover=cloud_cover)
         ummg = daac_converter.add_data_files_ummg(
             ummg, daac_paths,
             acq.daynight,

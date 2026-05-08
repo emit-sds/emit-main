@@ -793,10 +793,15 @@ class L1BRdnDeliver(SlurmJobTask):
         hdr = envi.read_envi_header(acq.rdn_hdr_path)
         software_build_version = hdr["emit software build version"]
 
+        # Use a cloud fraction that sums the nodata fraction (clouds screened on board) and the cloud fraction value
+        # from the maskTf step.  These fractions are rounded separately.  Use min to ensure it doesn't go over 100.
+        cloud_fraction = acq["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["cloud_fraction"]
+        nodata_fraction = acq["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["nodata_fraction"]
+        cloud_cover = min(cloud_fraction + nodata_fraction, 100)
+
         # Create the UMM-G file
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rdn_nc_path), tz=datetime.timezone.utc)
         l1b_pge = wm.pges["emit-sds-l1b"]
-        cloud_fraction = acq.cloud_fraction if "cloud_fraction" in acq.metadata else 0
         ummg = daac_converter.initialize_ummg(acq.rdn_granule_ur, nc_creation_time, "EMITL1BRAD",
                                               acq.collection_version, acq.start_time,
                                               acq.stop_time, l1b_pge.repo_name, l1b_pge.version_tag,
@@ -806,7 +811,7 @@ class L1BRdnDeliver(SlurmJobTask):
                                               orbit_segment=int(acq.scene), scene=int(acq.daac_scene),
                                               solar_zenith=acq.mean_solar_zenith,
                                               solar_azimuth=acq.mean_solar_azimuth,
-                                              cloud_fraction=cloud_fraction)
+                                              cloud_cover=cloud_cover)
 
         ummg = daac_converter.add_data_files_ummg(ummg, [daac_rdn_nc_path, daac_obs_nc_path, daac_browse_path],
                                                   acq.daynight, ["NETCDF-4", "NETCDF-4", "PNG"])
