@@ -768,9 +768,11 @@ class L2BFrCovDeliver(SlurmJobTask):
                       daac_npv_tif_path, daac_npvunc_tif_path, daac_bare_tif_path, 
                       daac_bareunc_tif_path, daac_browse_path]
 
-        # Use a cloud fraction that sums the nodata fraction (clouds screened on board) and the cloud fraction 02 value
+        # Use a cloud fraction that sums the nodata fraction (clouds screened on board) and the cloud fraction value
         # from the maskTf step.  These fractions are rounded separately.  Use min to ensure it doesn't go over 100.
-        cloud_fraction = min(acq.cloud_fraction_02 + acq.nodata_fraction, 100)
+        cloud_fraction = acq["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["cloud_fraction"]
+        nodata_fraction = acq["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["nodata_fraction"]
+        cloud_fraction = min(cloud_fraction + nodata_fraction, 100)
         
         # Create the UMM-G file
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.frcovqc_tif_path), tz=datetime.timezone.utc)

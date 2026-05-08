@@ -267,12 +267,12 @@ class ReconciliationReport(SlurmJobTask):
         # First set up permissions if needed
         group = f"emit-{wm.config['environment']}" if wm.config["environment"] in ("test", "ops") else "emit-dev"
         # This command only makes the directory and changes ownership if the directory doesn't exist
-        cmd_make_target = ["ssh", wm.config["daac_server_internal"], "\"if", "[", "!", "-d",
+        cmd_make_target = ["ssh", "ngishpc1", "'" + "ssh", wm.config["daac_server_internal"], "\"if", "[", "!", "-d",
                            f"'{wm.daac_recon_staging_dir}'", "];", "then", "mkdir", f"{wm.daac_recon_staging_dir};",
-                           "chgrp", group, f"{wm.daac_recon_staging_dir};", "fi\""]
+                           "chgrp", group, f"{wm.daac_recon_staging_dir};", "fi\"" + "'"]
         pge.run(cmd_make_target, tmp_dir=self.tmp_dir)
         # Rsync the files
-        cmd_rsync = ["rsync", "-av", partial_dir_arg, log_file_arg, tmp_report_path, target]
+        cmd_rsync = ["ssh", "ngishpc1", "'" + "rsync", "-av", partial_dir_arg, log_file_arg, tmp_report_path, target + "'"]
         pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
 
         # Create a submission file

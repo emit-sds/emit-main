@@ -1229,7 +1229,7 @@ class L1BMosaic(SlurmJobTask):
         pge_commands = []
         
         target_dir = f'{wm.config["mirror_data_dir"]}/data_collections/by_dcid/{self.dcid[:5]}/{self.dcid}/l1b'
-        cmd_mkdir = ["ssh", wm.config["daac_server_internal"], "mkdir", "-p", target_dir]
+        cmd_mkdir = ["ssh", "ngishpc1", "'" + "ssh", wm.config["daac_server_internal"], "mkdir", "-p", target_dir + "'"]
         pge.run(cmd_mkdir, tmp_dir=self.tmp_dir)
             
         input_files = [ac['products']['l1b'][wm.config["prod_versions"]["l1b"]]['rdn']['img_path'] for ac in acquisitions]
@@ -1262,7 +1262,7 @@ class L1BMosaic(SlurmJobTask):
 
             creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(dc_path),tz=datetime.timezone.utc)
 
-            cmd_rsync = ["rsync", "-av", log_file_arg, out_path, target]
+            cmd_rsync = ["ssh", "ngishpc1", "'" + "rsync", "-av", log_file_arg, out_path, target + "'"]
             pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
 
             meta_key = f"products.l1b.{wm.config['prod_versions']['l1b']}.mosaic" if idx == 0 else f"products.l1b.{wm.config['prod_versions']['l1b']}.mosaic_{idx+1}"

@@ -935,7 +935,7 @@ class CH4Mosaic(SlurmJobTask):
         target_dir = f'{wm.config["mirror_data_dir"]}/data_collections/by_dcid/{self.dcid[:5]}/{self.dcid}/ghg/ch4'
         target = f'{wm.config["daac_server_internal"]}:{target_dir}'
 
-        cmd_mkdir = ["ssh", wm.config["daac_server_internal"], "mkdir", "-p", target_dir]
+        cmd_mkdir = ["ssh", "ngishpc1", "'" + "ssh", wm.config["daac_server_internal"], "mkdir", "-p", target_dir + "'"]
         pge.run(cmd_mkdir, tmp_dir=self.tmp_dir)
         
         for product in ["ortch4", "ortsensch4", "ortuncertch4"]:
@@ -964,7 +964,7 @@ class CH4Mosaic(SlurmJobTask):
 
                 creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(dcid_path), tz=datetime.timezone.utc)
 
-                cmd_rsync = ["rsync", "-av", log_file_arg, out_path, target]
+                cmd_rsync = ["ssh", "ngishpc1", "'" + "rsync", "-av", log_file_arg, out_path, target + "'"]
                 pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
 
                 meta_key = f"products.ch4.{wm.config['prod_versions']['ch4']}.{product}_mosaic" if idx == 0 else f"products.ch4.{wm.config['prod_versions']['ch4']}.{product}_mosaic_{idx+1}"
@@ -1063,7 +1063,7 @@ class CO2Mosaic(SlurmJobTask):
         target_dir = f'{wm.config["mirror_data_dir"]}/data_collections/by_dcid/{self.dcid[:5]}/{self.dcid}/ghg/co2'
         target = f'{wm.config["daac_server_internal"]}:{target_dir}'
 
-        cmd_mkdir = ["ssh", wm.config["daac_server_internal"], "mkdir", "-p", target_dir]
+        cmd_mkdir = ["ssh", "ngishpc1", "'" + "ssh", wm.config["daac_server_internal"], "mkdir", "-p", target_dir + "'"]
         pge.run(cmd_mkdir, tmp_dir=self.tmp_dir)
         
         for product in ["ortco2", "ortsensco2", "ortuncertco2"]:
@@ -1092,7 +1092,7 @@ class CO2Mosaic(SlurmJobTask):
 
                 creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(dcid_path), tz=datetime.timezone.utc)
 
-                cmd_rsync = ["rsync", "-av", log_file_arg, out_path, target]
+                cmd_rsync = ["ssh", "ngishpc1", "'" + "rsync", "-av", log_file_arg, out_path, target + "'"]
                 pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
 
                 meta_key = f"products.co2.{wm.config['prod_versions']['co2']}.{product}_mosaic" if idx == 0 else f"products.co2.{wm.config['prod_versions']['co2']}.{product}_mosaic_{idx+1}"

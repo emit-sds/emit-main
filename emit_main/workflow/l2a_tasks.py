@@ -710,7 +710,7 @@ class L2AMaskTf(SlurmJobTask):
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {f"products.mask.{wm.config['prod_versions']['mask']}.maskTf": product_dict})
         dm.update_acquisition_metadata(acq.acquisition_id, {"cloud_fraction_02": cloud_fraction})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"nodata_fraction": nodata_fraction})
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.mask.{wm.config['prod_versions']['mask']}.maskTf.nodata_fraction": nodata_fraction})
 
         total_time = time.time() - start_time
         log_entry = {
@@ -882,9 +882,11 @@ class L2AMaskTfDeliver(SlurmJobTask):
         hdr = envi.read_envi_header(acq.maskTf_hdr_path)
         software_build_version = hdr["emit software build version"]
 
-        # Use a cloud fraction that sums the nodata fraction (clouds screened on board) and the cloud fraction 02 value
+        # Use a cloud fraction that sums the nodata fraction (clouds screened on board) and the cloud fraction value
         # from the maskTf step.  These fractions are rounded separately.  Use min to ensure it doesn't go over 100.
-        cloud_fraction = min(acq.cloud_fraction_02 + acq.nodata_fraction, 100)
+        cloud_fraction = acq["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["cloud_fraction"]
+        nodata_fraction = acq["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["nodata_fraction"]
+        cloud_fraction = min(cloud_fraction + nodata_fraction, 100)
 
         # Create the UMM-G file
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.maskTf_nc_path), tz=datetime.timezone.utc)
