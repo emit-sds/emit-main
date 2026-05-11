@@ -206,7 +206,7 @@ class DatabaseManager:
             f"products.l1b.{self.config['prod_versions']['l1b']}.loc.img_path": {"$exists": 1},
             f"products.l1b.{self.config['prod_versions']['l1b']}.obs.img_path": {"$exists": 1},
             f"products.l2a.{self.config['prod_versions']['l2a']}.rfl.img_path": {"$exists": 1},
-            "products.l2a.mask.img_path": {"$exists": 1},
+            f"products.mask.{self.config['prod_versions']['mask']}.maskTf.img_path": {"$exists": 1},
             "mean_solar_zenith": {"$lt": 80},
             f"products.ch4.{self.config['prod_versions']['ch4']}.ortch4.tif_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
@@ -230,7 +230,7 @@ class DatabaseManager:
             f"products.l1b.{self.config['prod_versions']['l1b']}.loc.img_path": {"$exists": 1},
             f"products.l1b.{self.config['prod_versions']['l1b']}.obs.img_path": {"$exists": 1},
             f"products.l2a.{self.config['prod_versions']['l2a']}.rfl.img_path": {"$exists": 1},
-            "products.l2a.mask.img_path": {"$exists": 1},
+            f"products.mask.{self.config['prod_versions']['mask']}.maskTf.img_path": {"$exists": 1},
             "mean_solar_zenith": {"$lt": 80},
             f"products.co2.{self.config['prod_versions']['co2']}.ortco2.tif_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
@@ -267,7 +267,7 @@ class DatabaseManager:
         # Query for acquisitions with complete l2a outputs but no l3 cover outputs in time range
         query = {
             f"products.l2a.{self.config['prod_versions']['l2a']}.rfl.img_path": {"$exists": 1},
-            "products.l2a.mask.img_path": {"$exists": 1},
+            f"products.mask.{self.config['prod_versions']['mask']}.maskTf.img_path": {"$exists": 1},
             "products.l3.cover.img_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }

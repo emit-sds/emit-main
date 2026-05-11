@@ -99,14 +99,14 @@ class CH4(SlurmJobTask):
             "loc_file": acq.loc_img_path,
             "glt_file": acq.glt_img_path,
             "bandmask_file": acq.bandmask_img_path,
-            "mask_file": acq.mask_img_path,
+            "mask_file": acq.maskTf_img_path,
             "state_subs_file": acq.statesubs_img_path,
         }
 
         # Create command
         cmd = ["python", process_exe,
                acq.rdn_img_path, acq.obs_img_path, acq.loc_img_path, acq.glt_img_path,
-               acq.bandmask_img_path, acq.mask_img_path, ch4_base,
+               acq.bandmask_img_path, acq.maskTf_img_path, ch4_base,
                '--state_subs', acq.statesubs_img_path,
                "--noise_file",noise_file,'--lut_file',
                wm.config["ch4_lut_file"],
@@ -267,14 +267,14 @@ class CO2(SlurmJobTask):
             "loc_file": acq.loc_img_path,
             "glt_file": acq.glt_img_path,
             "bandmask_file": acq.bandmask_img_path,
-            "mask_file": acq.mask_img_path,
+            "mask_file": acq.maskTf_img_path,
             "state_subs_file": acq.statesubs_img_path,
         }
 
         # Create command
         cmd = ["python", process_exe,
                acq.rdn_img_path, acq.obs_img_path, acq.loc_img_path, acq.glt_img_path,
-               acq.bandmask_img_path, acq.mask_img_path, co2_base,
+               acq.bandmask_img_path, acq.maskTf_img_path, co2_base,
                '--state_subs', acq.statesubs_img_path,
                "--noise_file",noise_file, '--lut_file', wm.config["co2_lut_file"],
                "--logfile", co2_log_file, "--co2",
