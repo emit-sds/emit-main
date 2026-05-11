@@ -648,9 +648,9 @@ class L1AReassembleRaw(SlurmJobTask):
         wm_orbit = WorkflowManager(config_path=self.config_path, orbit_id=orbit)
         orbit = wm_orbit.orbit
         if orbit.has_complete_raw():
-            dm.update_orbit_metadata(orbit.orbit_id, {"raw_status": "complete"})
+            dm.update_orbit_metadata(orbit.orbit_id, {f"raw_status.{wm.config['prod_versions']['l1a']}": "complete"})
         else:
-            dm.update_orbit_metadata(orbit.orbit_id, {"raw_status": "incomplete"})
+            dm.update_orbit_metadata(orbit.orbit_id, {f"raw_status.{wm.config['prod_versions']['l1a']}": "incomplete"})
 
         # Add log entry to DB
         log_entry = {

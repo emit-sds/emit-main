@@ -429,7 +429,7 @@ class DatabaseManager:
     def find_data_collections_for_ch4_mosaic(self, start, stop, date_field="last_modified", retry_failed=False):
         data_collections_coll = self.db.data_collections
         query = {
-            "ch4_status": "complete",
+            f"ch4_status.{self.config['prod_versions']['ch4']}": "complete",
             f"products.ch4.{self.config['prod_versions']['ch4']}.ortch4_mosaic.tif_path": {"$exists": 0},
             f"products.ch4.{self.config['prod_versions']['ch4']}.ortsensch4_mosaic.tif_path": {"$exists": 0},
             f"products.ch4.{self.config['prod_versions']['ch4']}.ortuncertch4_mosaic.tif_path": {"$exists": 0},
@@ -440,11 +440,26 @@ class DatabaseManager:
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.CH4Mosaic"])
         return results
-    
+
+    def find_data_collections_for_co2_mosaic(self, start, stop, date_field="last_modified", retry_failed=False):
+        data_collections_coll = self.db.data_collections
+        query = {
+            f"co2_status.{self.config['prod_versions']['co2']}": "complete",
+            f"products.co2.{self.config['prod_versions']['co2']}.ortco2_mosaic.tif_path": {"$exists": 0},
+            f"products.co2.{self.config['prod_versions']['co2']}.ortsensco2_mosaic.tif_path": {"$exists": 0},
+            f"products.co2.{self.config['prod_versions']['co2']}.ortuncertco2_mosaic.tif_path": {"$exists": 0},
+            date_field: {"$gte": start, "$lte": stop},
+        }
+        results =  list(data_collections_coll.find(query).sort("dcid", 1))
+        
+        if not retry_failed:
+            results = self._remove_results_with_failed_tasks(results, ["emit.CO2Mosaic"])
+        return results
+
     def find_data_collections_for_l1b_mosaic(self, start, stop, date_field="last_modified", retry_failed=False):
         data_collections_coll = self.db.data_collections
         query = {
-            "ready_for_l1b_mosaic": True,
+            f"ready_for_l1b_mosaic.{self.config['prod_versions']['l1b']}": True,
             f"products.l1b.{self.config['prod_versions']['l1b']}.mosaic.tif_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop},
         }
@@ -462,22 +477,6 @@ class DatabaseManager:
             "associated_dcid": dcid
         }
         return list(acquisitions_coll.find(query))
-      
-        
-    def find_data_collections_for_co2_mosaic(self, start, stop, date_field="last_modified", retry_failed=False):
-        data_collections_coll = self.db.data_collections
-        query = {
-            "co2_status": "complete",
-            f"products.co2.{self.config['prod_versions']['co2']}.ortco2_mosaic.tif_path": {"$exists": 0},
-            f"products.co2.{self.config['prod_versions']['co2']}.ortsensco2_mosaic.tif_path": {"$exists": 0},
-            f"products.co2.{self.config['prod_versions']['co2']}.ortuncertco2_mosaic.tif_path": {"$exists": 0},
-            date_field: {"$gte": start, "$lte": stop},
-        }
-        results =  list(data_collections_coll.find(query).sort("dcid", 1))
-        
-        if not retry_failed:
-            results = self._remove_results_with_failed_tasks(results, ["emit.CO2Mosaic"])
-        return results
 
     def find_acquisitions_for_ch4_mosaic(self, dcid):
         acquisitions_coll = self.db.acquisitions
@@ -735,7 +734,7 @@ class DatabaseManager:
         # Query for orbits with complete set of radiance files, an associated BAD netcdf file, last modified within
         # start/stop range, and no products.l1b.acquisitions
         query = {
-            "radiance_status": "complete",
+            f"radiance_status.{self.config['prod_versions']['l1b']}": "complete",
             date_field: {"$gte": start, "$lte": stop},
             "associated_bad_netcdf": {"$exists": 1},
             f"products.l1b.{self.config['prod_versions']['l1b']}.acquisitions": {"$exists": 0}
@@ -751,7 +750,7 @@ class DatabaseManager:
         orbits_coll = self.db.orbits
         # Query for orbits with complete set of raw files.
         query = {
-            "raw_status": "complete",
+            f"raw_status.{self.config['prod_versions']['l1a']}": "complete",
             date_field: {"$gte": start, "$lte": stop},
             "num_scenes": {"$exists": 0}
         }

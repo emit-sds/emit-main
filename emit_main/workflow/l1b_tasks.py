@@ -288,9 +288,9 @@ class L1BCalibrate(SlurmJobTask):
         wm_orbit = WorkflowManager(config_path=self.config_path, orbit_id=acq.orbit)
         orbit = wm_orbit.orbit
         if orbit.has_complete_radiance():
-            dm.update_orbit_metadata(orbit.orbit_id, {"radiance_status": "complete"})
+            dm.update_orbit_metadata(orbit.orbit_id, {f"radiance_status.{wm.config['prod_versions']['l1b']}": "complete"})
         else:
-            dm.update_orbit_metadata(orbit.orbit_id, {"radiance_status": "incomplete"})
+            dm.update_orbit_metadata(orbit.orbit_id, {f"radiance_status.{wm.config['prod_versions']['l1b']}": "incomplete"})
 
         # Add flat field paths here for database log entry
         if len(flat_field_update_paths) >= 100:
@@ -637,7 +637,7 @@ This product is generated at the orbit level."
             dc = wm.data_collection
             
             if dc.has_radiance_for_l1b_mosaic():
-                dm.update_data_collection_metadata(data_collect['dcid'], {"ready_for_l1b_mosaic": True})
+                dm.update_data_collection_metadata(data_collect['dcid'], {f"ready_for_l1b_mosaic.{wm.config['prod_versions']['l1b']}": True})
 
 class L1BRdnFormat(SlurmJobTask):
     """

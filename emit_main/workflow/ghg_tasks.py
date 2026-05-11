@@ -198,9 +198,9 @@ class CH4(SlurmJobTask):
         dc = wm.data_collection
 
         if dc.has_complete_ch4_acquisitions():
-            dm.update_data_collection_metadata(acq.associated_dcid, {"ch4_status": "complete"})
+            dm.update_data_collection_metadata(acq.associated_dcid, {f"ch4_status.{wm.config['prod_versions']['ch4']}": "complete"})
         else:
-            dm.update_data_collection_metadata(acq.associated_dcid, {"ch4_status": "incomplete"})
+            dm.update_data_collection_metadata(acq.associated_dcid, {f"ch4_status.{wm.config['prod_versions']['ch4']}": "incomplete"})
 
 class CO2(SlurmJobTask):
     """
@@ -366,9 +366,9 @@ class CO2(SlurmJobTask):
         dc = wm.data_collection
 
         if dc.has_complete_co2_aqcuisitions():
-            dm.update_data_collection_metadata(acq.associated_dcid, {"co2_status": "complete"})
+            dm.update_data_collection_metadata(acq.associated_dcid, {f"co2_status.{wm.config['prod_versions']['co2']}": "complete"})
         else:
-            dm.update_data_collection_metadata(acq.associated_dcid, {"co2_status": "incomplete"})
+            dm.update_data_collection_metadata(acq.associated_dcid, {f"co2_status.{wm.config['prod_versions']['co2']}": "incomplete"})
 
 class CH4Deliver(SlurmJobTask):
     """
