@@ -301,7 +301,7 @@ class DatabaseManager:
             f"products.l1b.{self.config['prod_versions']['l1b']}.loc.img_path": {"$exists": 1},
             f"products.l1b.{self.config['prod_versions']['l1b']}.obs.img_path": {"$exists": 1},
             f"products.l1b.{self.config['prod_versions']['l1b']}.rdn_png.png_path": {"$exists": 1},
-            "cloud_fraction": {"$exists": 1},
+            f"products.mask.{self.config['prod_versions']['mask']}.maskTf.cloud_fraction": {"$exists": 1},
             "daac_scene": {"$exists": 1},
             f"products.l1b.{self.config['prod_versions']['l1b']}.rdn_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
@@ -315,7 +315,7 @@ class DatabaseManager:
             f"products.l1b.{self.config['prod_versions']['l1b']}.loc.img_path": {"$exists": 1},
             f"products.l1b.{self.config['prod_versions']['l1b']}.obs.img_path": {"$exists": 1},
             f"products.l1b.{self.config['prod_versions']['l1b']}.rdn_png.png_path": {"$exists": 1},
-            "cloud_fraction": {"$exists": 0},
+            f"products.mask.{self.config['prod_versions']['mask']}.maskTf.cloud_fraction": {"$exists": 0},
             "submode": "science",
             "mean_solar_zenith": {"$gte": 80},
             "daac_scene": {"$exists": 1},
@@ -337,7 +337,7 @@ class DatabaseManager:
             f"products.l2a.{self.config['prod_versions']['l2a']}.rfluncert.img_path": {"$exists": 1},
             f"products.l1b.{self.config['prod_versions']['l1b']}.glt.img_path": {"$exists": 1},
             f"products.l1b.{self.config['prod_versions']['l1b']}.loc.img_path": {"$exists": 1},
-            "cloud_fraction": {"$exists": 1},
+            f"products.mask.{self.config['prod_versions']['mask']}.maskTf.cloud_fraction": {"$exists": 1},
             "daac_scene": {"$exists": 1},
             f"products.l2a.{self.config['prod_versions']['l2a']}.rfl_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
@@ -354,7 +354,7 @@ class DatabaseManager:
             f"products.mask.{self.config['prod_versions']['mask']}.maskTf.img_path": {"$exists": 1},
             f"products.l1b.{self.config['prod_versions']['l1b']}.glt.img_path": {"$exists": 1},
             f"products.l1b.{self.config['prod_versions']['l1b']}.loc.img_path": {"$exists": 1},
-            "cloud_fraction_02": {"$exists": 1},
+            f"products.mask.{self.config['prod_versions']['mask']}.maskTf.cloud_fraction": {"$exists": 1},
             "daac_scene": {"$exists": 1},
             f"products.mask.{self.config['prod_versions']['mask']}.maskTf_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
@@ -372,7 +372,7 @@ class DatabaseManager:
             f"products.l2b.{self.config['prod_versions']['l2b']}.minuncert.img_path": {"$exists": 1},
             f"products.l1b.{self.config['prod_versions']['l1b']}.glt.img_path": {"$exists": 1},
             f"products.l1b.{self.config['prod_versions']['l1b']}.loc.img_path": {"$exists": 1},
-            "cloud_fraction": {"$exists": 1},
+            f"products.mask.{self.config['prod_versions']['mask']}.maskTf.cloud_fraction": {"$exists": 1},
             "daac_scene": {"$exists": 1},
             f"products.l2b.{self.config['prod_versions']['l2b']}.min_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
@@ -389,7 +389,7 @@ class DatabaseManager:
             f"products.ch4.{self.config['prod_versions']['ch4']}.ortch4.tif_path": {"$exists": 1},
             f"products.ch4.{self.config['prod_versions']['ch4']}.ortsensch4.tif_path": {"$exists": 1},
             f"products.ch4.{self.config['prod_versions']['ch4']}.ortuncertch4.tif_path": {"$exists": 1},
-            "cloud_fraction": {"$exists": 1},
+            f"products.mask.{self.config['prod_versions']['mask']}.maskTf.cloud_fraction": {"$exists": 1},
             "daac_scene": {"$exists": 1},
             f"products.ch4.{self.config['prod_versions']['ch4']}.ch4_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
@@ -410,7 +410,7 @@ class DatabaseManager:
             f"products.co2.{self.config['prod_versions']['co2']}.ortco2.tif_path": {"$exists": 1},
             f"products.co2.{self.config['prod_versions']['co2']}.ortsensco2.tif_path": {"$exists": 1},
             f"products.co2.{self.config['prod_versions']['co2']}.ortuncertco2.tif_path": {"$exists": 1},
-            "cloud_fraction": {"$exists": 1},
+            f"products.mask.{self.config['prod_versions']['mask']}.maskTf.cloud_fraction": {"$exists": 1},
             "daac_scene": {"$exists": 1},
             f"products.co2.{self.config['prod_versions']['co2']}.co2_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
@@ -436,7 +436,7 @@ class DatabaseManager:
             f"products.frcov.{self.config['prod_versions']['frcov']}.bareunc.tif_path": {"$exists": 1},
             f"products.frcov.{self.config['prod_versions']['frcov']}.qc.tif_path": {"$exists": 1},
             f"products.frcov.{self.config['prod_versions']['frcov']}.browse.png_path": {"$exists": 1},
-            "cloud_fraction_02": {"$exists": 1},
+            f"products.mask.{self.config['prod_versions']['mask']}.maskTf.cloud_fraction": {"$exists": 1},
             "daac_scene": {"$exists": 1},
             f"products.frcov.{self.config['prod_versions']['frcov']}.frcov_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}

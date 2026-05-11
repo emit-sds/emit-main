@@ -698,7 +698,7 @@ class L2AMaskTf(SlurmJobTask):
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         hdr["emit data product version"] = '02'
         hdr["emit acquisition daynight"] = acq.daynight
-        hdr["emit acquisition cloud fraction 02"] = cloud_fraction
+        hdr["emit acquisition cloud fraction"] = cloud_fraction
         envi.write_envi_header(acq.maskTf_hdr_path, hdr)
 
         # PGE writes metadata to db
@@ -715,7 +715,7 @@ class L2AMaskTf(SlurmJobTask):
             }
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {f"products.mask.{wm.config['prod_versions']['mask']}.maskTf": product_dict})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"cloud_fraction_02": cloud_fraction})
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.mask.{wm.config['prod_versions']['mask']}.maskTf.cloud_fraction": cloud_fraction})
         dm.update_acquisition_metadata(acq.acquisition_id, {f"products.mask.{wm.config['prod_versions']['mask']}.maskTf.nodata_fraction": nodata_fraction})
 
         total_time = time.time() - start_time
