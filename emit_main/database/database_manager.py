@@ -423,7 +423,7 @@ class DatabaseManager:
         }
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
-            results = self._remove_results_with_failed_tasks(results, ["emit.L2BFrCovDeliver"])
+            results = self._remove_results_with_failed_tasks(results, ["emit.L2BFrCovFormat", "emit.L2BFrCovDeliver"])
         return results
 
     def find_data_collections_for_ch4_mosaic(self, start, stop, date_field="last_modified", retry_failed=False):

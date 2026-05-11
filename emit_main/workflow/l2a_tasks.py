@@ -276,12 +276,10 @@ class L2AFormat(SlurmJobTask):
         wm.makedirs(tmp_output_dir)
         tmp_daac_rfl_nc_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l2a_rfl.nc")
         tmp_daac_rfl_unc_nc_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l2a_rfl_unc.nc")
-        tmp_daac_mask_nc_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l2a_mask.nc")
         tmp_log_path = os.path.join(self.local_tmp_dir, "output_conversion_pge.log")
 
         cmd = ["python", output_generator_exe, tmp_daac_rfl_nc_path, tmp_daac_rfl_unc_nc_path,
-               tmp_daac_mask_nc_path, acq.rfl_img_path, acq.rfluncert_img_path,
-               acq.mask_img_path, acq.bandmask_img_path, acq.loc_img_path, acq.glt_img_path,
+               acq.rfl_img_path, acq.rfluncert_img_path, acq.loc_img_path, acq.glt_img_path,
                "V0" + str(wm.config["prod_versions"]["l2a"]), wm.config["extended_build_num"],
                "--log_file", tmp_log_path]
 
@@ -293,7 +291,6 @@ class L2AFormat(SlurmJobTask):
         log_path = acq.rfl_nc_path.replace(".nc", "_nc_pge.log")
         wm.copy(tmp_daac_rfl_nc_path, acq.rfl_nc_path)
         wm.copy(tmp_daac_rfl_unc_nc_path, acq.rfluncert_nc_path)
-        wm.copy(tmp_daac_mask_nc_path, acq.mask_nc_path)
         wm.copy(tmp_log_path, log_path)
 
         # PGE writes metadata to db
@@ -302,7 +299,6 @@ class L2AFormat(SlurmJobTask):
         product_dict_netcdf = {
             "netcdf_rfl_path": acq.rfl_nc_path,
             "netcdf_rfl_unc_path": acq.rfluncert_nc_path,
-            "netcdf_mask_path": acq.mask_nc_path,
             "created": nc_creation_time
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l2a.{wm.config['prod_versions']['l2a']}.rfl_netcdf": product_dict_netcdf})
@@ -314,7 +310,6 @@ class L2AFormat(SlurmJobTask):
             "pge_input_files": {
                 "rfl_img_path": acq.rfl_img_path,
                 "rfluncert_img_path": acq.rfluncert_img_path,
-                "mask_img_path": acq.mask_img_path,
                 "loc_img_path": acq.loc_img_path,
                 "glt_img_path": acq.glt_img_path
             },
@@ -325,8 +320,7 @@ class L2AFormat(SlurmJobTask):
             "completion_status": "SUCCESS",
             "output": {
                 "l2a_rfl_netcdf_path": acq.rfl_nc_path,
-                "l2a_rfl_unc_netcdf_path": acq.rfluncert_nc_path,
-                "l2a_mask_netcdf_path": acq.mask_nc_path
+                "l2a_rfl_unc_netcdf_path": acq.rfluncert_nc_path
             }
         }
 
@@ -375,25 +369,21 @@ class L2ADeliver(SlurmJobTask):
         pge = wm.pges["emit-main"]
 
         # Get local SDS names
-        # nc_path = acq.rfl_img_path.replace(".img", ".nc")
         ummg_path = acq.rfl_nc_path.replace(".nc", ".cmr.json")
 
         # Create local/tmp daac names and paths
         daac_rfl_nc_name = f"{acq.rfl_granule_ur}.nc"
         daac_rfluncert_nc_name = f"{acq.rfluncert_granule_ur}.nc"
-        daac_mask_nc_name = f"{acq.mask_granule_ur}.nc"
         daac_browse_name = f"{acq.rfl_granule_ur}.png"
         daac_ummg_name = f"{acq.rfl_granule_ur}.cmr.json"
         daac_rfl_nc_path = os.path.join(self.tmp_dir, daac_rfl_nc_name)
         daac_rfluncert_nc_path = os.path.join(self.tmp_dir, daac_rfluncert_nc_name)
-        daac_mask_nc_path = os.path.join(self.tmp_dir, daac_mask_nc_name)
         daac_browse_path = os.path.join(self.tmp_dir, daac_browse_name)
         daac_ummg_path = os.path.join(self.tmp_dir, daac_ummg_name)
 
         # Copy files to tmp dir and rename
         wm.copy(acq.rfl_nc_path, daac_rfl_nc_path)
         wm.copy(acq.rfluncert_nc_path, daac_rfluncert_nc_path)
-        wm.copy(acq.mask_nc_path, daac_mask_nc_path)
         wm.copy(acq.rfl_png_path, daac_browse_path)
 
         # Get the software_build_version (extended build num when product was created)
@@ -421,9 +411,9 @@ class L2ADeliver(SlurmJobTask):
                                               cloud_cover=cloud_cover)
         ummg = daac_converter.add_data_files_ummg(
             ummg,
-            [daac_rfl_nc_path, daac_rfluncert_nc_path, daac_mask_nc_path, daac_browse_path],
+            [daac_rfl_nc_path, daac_rfluncert_nc_path, daac_browse_path],
             acq.daynight,
-            ["NETCDF-4", "NETCDF-4", "NETCDF-4", "PNG"])
+            ["NETCDF-4", "NETCDF-4", "PNG"])
         # ummg = daac_converter.add_related_url(ummg, l2a_pge.repo_url, "DOWNLOAD SOFTWARE")
         ummg = daac_converter.add_boundary_ummg(ummg, acq.gring)
         daac_converter.dump_json(ummg, ummg_path)
@@ -433,7 +423,7 @@ class L2ADeliver(SlurmJobTask):
         wm.copy(ummg_path, daac_ummg_path)
 
         # Copy files to S3 for staging
-        for path in (daac_rfl_nc_path, daac_rfluncert_nc_path, daac_mask_nc_path, daac_browse_path, daac_ummg_path):
+        for path in (daac_rfl_nc_path, daac_rfluncert_nc_path, daac_browse_path, daac_ummg_path):
             cmd_aws_s3 = ["ssh", "ngishpc1", "'" + wm.config["aws_cli_exe"], "s3", "cp", path, acq.aws_s3_uri_base,
                           "--profile", wm.config["aws_profile"] + "'"]
             pge.run(cmd_aws_s3, tmp_dir=self.tmp_dir)
@@ -445,7 +435,6 @@ class L2ADeliver(SlurmJobTask):
         target_src_map = {
             daac_rfl_nc_name: os.path.basename(acq.rfl_nc_path),
             daac_rfluncert_nc_name: os.path.basename(acq.rfluncert_nc_path),
-            daac_mask_nc_name: os.path.basename(acq.mask_nc_path),
             daac_browse_name: os.path.basename(acq.rfl_png_path),
             daac_ummg_name: os.path.basename(ummg_path)
         }
@@ -478,14 +467,6 @@ class L2ADeliver(SlurmJobTask):
                         "size": os.path.getsize(daac_rfluncert_nc_name),
                         "checksumType": "sha512",
                         "checksum": daac_converter.calc_checksum(daac_rfluncert_nc_path, "sha512")
-                    },
-                    {
-                        "name": daac_mask_nc_name,
-                        "uri": acq.aws_s3_uri_base + daac_mask_nc_name,
-                        "type": "data",
-                        "size": os.path.getsize(daac_mask_nc_name),
-                        "checksumType": "sha512",
-                        "checksum": daac_converter.calc_checksum(daac_mask_nc_path, "sha512")
                     },
                     {
                         "name": daac_browse_name,
@@ -566,7 +547,6 @@ class L2ADeliver(SlurmJobTask):
             "pge_input_files": {
                 "rfl_netcdf_path": acq.rfl_nc_path,
                 "rfluncert_netcdf_path": acq.rfluncert_nc_path,
-                "mask_netcdf_path": acq.mask_nc_path,
                 "rfl_png_path": acq.rfl_png_path
             },
             "pge_run_command": " ".join(cmd_aws),
