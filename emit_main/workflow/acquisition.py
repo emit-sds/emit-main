@@ -181,14 +181,15 @@ class Acquisition:
                 "ortuncertco2": ["tif"],
             },
             "frcov": {
+                "frcov": ["img", "hdr", "png"],
+                "frcovuncert": ["img", "hdr"],
                 "frcovqc": ["tif"],
                 "frcovbare": ["tif"],
                 "frcovbareunc": ["tif"],
                 "frcovpv": ["tif"],
                 "frcovpvunc": ["tif"],
                 "frcovnpv": ["tif"],
-                "frcovnpvunc": ["tif"],
-                "frcov": ["png"],            
+                "frcovnpvunc": ["tif"],      
                 }
         }
         paths = {}
@@ -198,7 +199,9 @@ class Acquisition:
             self.__dict__.update({prod_group + "_data_dir": prod_group_data_dir})
             self.dirs.append(prod_group_data_dir)
             product_version = self.config["prod_versions"][prod_group]
-            if prod_group in ["co2","ch4"]:
+            if prod_group in ["mask"]:
+                prod_group = "l2a"
+            if prod_group in ["co2","ch4", "frcov"]:
                 prod_group = "l2b"
             for prod, formats in prod_map.items():
                 for format in formats:

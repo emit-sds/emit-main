@@ -30,8 +30,7 @@ from emit_main.workflow.l1a_tasks import L1ADepacketizeScienceFrames, L1AReassem
     L1AFrameReport, L1AReformatBAD, L1ADeliver
 from emit_main.workflow.l1b_tasks import L1BGeolocate, L1BCalibrate, L1BRdnFormat, L1BRdnDeliver, L1BAttDeliver, L1BMosaic
 from emit_main.workflow.l2a_tasks import L2AReflectance, L2AFormat, L2ADeliver, L2AMaskTf, L2AMaskTfFormat, L2AMaskTfDeliver
-from emit_main.workflow.l2b_tasks import L2BMineral, L2BFormat, L2BDeliver, L2BFrCovFormat, L2BFrCovDeliver
-from emit_main.workflow.l3_tasks import L3Unmix
+from emit_main.workflow.l2b_tasks import L2BMineral, L2BFormat, L2BDeliver, L2BFrCov, L2BFrCovFormat, L2BFrCovDeliver
 from emit_main.workflow.ghg_tasks import CH4, CO2, CH4Deliver, CO2Deliver, CH4Mosaic, CO2Mosaic
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_main.workflow.workflow_manager import WorkflowManager
@@ -47,8 +46,8 @@ def parse_args():
                        "l1adaac", "l1abad", "l1bcal", "l1bgeo", "l1brdnformat", "l1brdndaac", "l1battdaac", "l1bmosaic",
                        "l2arefl", "l2amaskTf", "l2aformat","l2amaskTfformat", "l2adaac", "l2bmin", "l2bformat",
                        "l2bdaac","l2amaskTfdaac", "l2bch4", "l2bco2","l2bch4daac", "l2bco2daac", "l2bch4mosaic",
-                       "l2bco2mosaic","l2bfrcovformat", "l2bfrcovdaac", "l3unmix", "daacscenes", "daacaddl", "recon"]
-    monitor_choices = ["ingest", "frames", "edp", "cal", "bad", "geo", "l2","maskTf", "l2b","ch4", "co2", "l3", "frcov",
+                       "l2bco2mosaic", "l2bfrcov", "l2bfrcovformat", "l2bfrcovdaac", "daacscenes", "daacaddl", "recon"]
+    monitor_choices = ["ingest", "frames", "edp", "cal", "bad", "geo", "l2","maskTf", "l2b","ch4", "co2", "frcov",
                        "email", "daacscenes", "dl0","dl1a", "dl1brdn", "dl1batt", "dl2a", "dmaskTf", "dfrcov",
                        "dl2b", "dch4", "dco2", "mch4", "mco2", "ml1b", "reconresp"]
     parser = argparse.ArgumentParser(
@@ -239,11 +238,10 @@ def get_tasks_from_product_args(args):
         "l2bco2daac": lambda acq_id: CO2Deliver(acquisition_id=acq_id, daac_ingest_queue=args.daac_ingest_queue,
                                              override_output=args.override_output, **kwargs),
         "l2bco2mosaic": lambda: CO2Mosaic(dcid=args.dcid, **kwargs),
+        "l2bfrcov": lambda acq_id: L2BFrCov(acquisition_id=acq_id, **kwargs),
         "l2bfrcovformat": lambda acq_id: L2BFrCovFormat(acquisition_id=acq_id, **kwargs),
         "l2bfrcovdaac": lambda acq_id: L2BFrCovDeliver(acquisition_id=acq_id, daac_ingest_queue=args.daac_ingest_queue,
                                                 override_output=args.override_output, **kwargs),
-        "l3unmix": lambda acq_id: L3Unmix(acquisition_id=acq_id, **kwargs),
-        # "l3unmixformat": lambda acq_id: L3UnmixFormat(acquisition_id=acq_id, **kwargs),
         "daacscenes": lambda: AssignDAACSceneNumbers(orbit_id=args.orbit_id, override_output=args.override_output, **kwargs),
         "daacaddl": lambda acq_id: GetAdditionalMetadata(acquisition_id=acq_id, **kwargs),
         "recon": lambda: ReconciliationReport(start_time=args.start_time.strftime("%Y%m%dT%H%M%S"),
@@ -255,7 +253,7 @@ def get_tasks_from_product_args(args):
         if prod in {"l1adaac", "l1bcal", "l1brdnformat", "l1brdndaac",
                     "l2arefl", "l2aformat", "l2adaac", "l2bmin", "l2bformat",
                     "l2bdaac", "l2bch4", "l2bch4daac", "l2bco2", "l2bco2daac",
-                    "l3unmix", "daacaddl", "l2amaskTf","l2amaskTfformat",
+                    "l2bfrcov", "daacaddl", "l2amaskTf","l2amaskTfformat",
                     "l2amaskTfdaac", "l2bfrcovformat", "l2bfrcovdaac"}:
             for acq_id in acquisition_ids:
                 tasks.append(prod_task_map[prod](acq_id))
@@ -343,7 +341,7 @@ def task_failure(task, e):
     acquisition_tasks = ("emit.L1ADeliver", "emit.L1BCalibrate", "emit.L1BRdnFormat", "emit.L1BRdnDeliver",
                          "emit.L2AReflectance", "emit.L2AMaskTf", "emit.L2AFormat", "emit.L2AMaskTfFormat", 
                          "emit.L2ADeliver", "emit.L2AMaskTfDeliver", "emit.L2BMineral", "emit.L2BFormat", "emit.L2BDeliver", 
-                         "emit.L3Unmix", "emit.GetAdditionalMetadata", "emit.CH4", "emit.CO2", "emit.CH4Deliver", "emit.CO2Deliver")
+                         "emit.L2BFrCov", "emit.GetAdditionalMetadata", "emit.CH4", "emit.CO2", "emit.CH4Deliver", "emit.CO2Deliver")
     orbit_tasks = ("emit.L1AReformatBAD", "emit.L1BGeolocate", "emit.L1BAttDeliver", "emit.AssignDAACSceneNumbers")
 
     dm = wm.database_manager
@@ -513,24 +511,15 @@ def main():
         am_co2_tasks_str = "\n".join([str(t) for t in am_co2_tasks])
         logger.info(f"Acquisition monitor CO2 tasks to run:\n{am_co2_tasks_str}")
         tasks += am_co2_tasks
-        
-    # Get tasks from acquisition monitor for co2 tasks
+
+     # Get tasks from acquisition monitor for L2B frcov tasks
     if args.monitor and args.monitor == "frcov":
         am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
-        am_frcov_format_tasks = am.get_frcov_format_tasks(start_time=args.start_time, stop_time=args.stop_time,
-                                        date_field=args.date_field, retry_failed=args.retry_failed)
-        am_frcov_format_tasks_str = "\n".join([str(t) for t in am_frcov_format_tasks])
-        logger.info(f"Acquisition monitor FrCovFormat tasks to run:\n{am_frcov_format_tasks_str}")
-        tasks += am_frcov_format_tasks
-
-    # Get tasks from acquisition monitor for L3 tasks
-    if args.monitor and args.monitor == "l3":
-        am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
-        am_l3_tasks = am.get_l3_tasks(start_time=args.start_time, stop_time=args.stop_time,
+        am_frcov_tasks = am.get_frcov_tasks(start_time=args.start_time, stop_time=args.stop_time,
                                       date_field=args.date_field, retry_failed=args.retry_failed)
-        am_l3_tasks_str = "\n".join([str(t) for t in am_l3_tasks])
-        logger.info(f"Acquisition monitor L3 tasks to run:\n{am_l3_tasks_str}")
-        tasks += am_l3_tasks
+        am_frcov_tasks_str = "\n".join([str(t) for t in am_frcov_tasks])
+        logger.info(f"Acquisition monitor L2BFrCov tasks to run:\n{am_frcov_tasks_str}")
+        tasks += am_frcov_tasks
 
     # Get tasks from daacscenes monitor
     if args.monitor and args.monitor == "daacscenes":
@@ -636,7 +625,7 @@ def main():
         am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
                                 daac_ingest_queue=args.daac_ingest_queue, override_output=args.override_output)
         am_dfrcov_tasks = am.get_frcov_delivery_tasks(start_time=args.start_time, stop_time=args.stop_time,
-                                                  date_field=args.date_field, retry_failed=args.retry_failed)
+                                                      date_field=args.date_field, retry_failed=args.retry_failed)
         am_dfrcov_tasks_str = "\n".join([str(t) for t in am_dfrcov_tasks])
         logger.info(f"Acquisition monitor deliver frcov tasks to run:\n{am_dfrcov_tasks_str}")
         tasks += am_dfrcov_tasks

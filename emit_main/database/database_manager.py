@@ -243,37 +243,20 @@ class DatabaseManager:
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.CO2"])
         return results
-    
-    def find_acquisitions_for_frcov_format(self, start, stop, date_field="last_modified", retry_failed=False):
-        acquisitions_coll = self.db.acquisitions
-        # Query for acquisitions with complete glt, rfl, maskTf, l3 cover paths, but not frcov cog
-        query = {
-            f"products.l1b.{self.config['prod_versions']['l1b']}.glt.img_path": {"$exists": 1},
-            f"products.l2a.{self.config['prod_versions']['l2a']}.rfl.img_path": {"$exists": 1},
-            f"products.mask.{self.config['prod_versions']['mask']}.maskTf.img_path": {"$exists": 1},
-            "products.l3.cover.img_path": {"$exists": 1},
-            "products.l3.coveruncert.img_path": {"$exists": 1},
-            f"products.frcov.{self.config['prod_versions']['frcov']}.qc.tif_path": {"$exists": 0},
-            date_field: {"$gte": start, "$lte": stop}
-        }
 
-        results = list(acquisitions_coll.find(query))
-        if not retry_failed:
-            results = self._remove_results_with_failed_tasks(results, ["emit.L2BFrCovFormat"])
-        return results
-
-    def find_acquisitions_for_l3(self, start, stop, date_field="last_modified", retry_failed=False):
+    def find_acquisitions_for_frcov(self, start, stop, date_field="last_modified", retry_failed=False):
         acquisitions_coll = self.db.acquisitions
-        # Query for acquisitions with complete l2a outputs but no l3 cover outputs in time range
+        # Query for acquisitions with complete l2a outputs but no frcov outputs in time range
+        # Even though mask is not used in this step, the frcov formatting step needs it, so we check for it here
         query = {
             f"products.l2a.{self.config['prod_versions']['l2a']}.rfl.img_path": {"$exists": 1},
             f"products.mask.{self.config['prod_versions']['mask']}.maskTf.img_path": {"$exists": 1},
-            "products.l3.cover.img_path": {"$exists": 0},
+            f"products.frcov.{self.config['prod_versions']['frcov']}.frcov.img_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
-            results = self._remove_results_with_failed_tasks(results, ["emit.L3Unmix"])
+            results = self._remove_results_with_failed_tasks(results, ["emit.L2BFrCov"])
         return results
 
     def find_acquisitions_for_l1a_delivery(self, start, stop, date_field="last_modified", retry_failed=False):
@@ -428,14 +411,11 @@ class DatabaseManager:
         acquisitions_coll = self.db.acquisitions
         # Query for acquisitions with daac scene numbers but no daac ummg products.
         query = {
-            f"products.frcov.{self.config['prod_versions']['frcov']}.pv.tif_path": {"$exists": 1},
-            f"products.frcov.{self.config['prod_versions']['frcov']}.npv.tif_path": {"$exists": 1},
-            f"products.frcov.{self.config['prod_versions']['frcov']}.bare.tif_path": {"$exists": 1},
-            f"products.frcov.{self.config['prod_versions']['frcov']}.pvunc.tif_path": {"$exists": 1},
-            f"products.frcov.{self.config['prod_versions']['frcov']}.npvunc.tif_path": {"$exists": 1},
-            f"products.frcov.{self.config['prod_versions']['frcov']}.bareunc.tif_path": {"$exists": 1},
-            f"products.frcov.{self.config['prod_versions']['frcov']}.qc.tif_path": {"$exists": 1},
-            f"products.frcov.{self.config['prod_versions']['frcov']}.browse.png_path": {"$exists": 1},
+            f"products.frcov.{self.config['prod_versions']['frcov']}.frcov.img_path": {"$exists": 1},
+            f"products.frcov.{self.config['prod_versions']['frcov']}.frcovuncert.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.glt.img_path": {"$exists": 1},
+            f"products.l2a.{self.config['prod_versions']['l2a']}.rfl.img_path": {"$exists": 1},
+            f"products.mask.{self.config['prod_versions']['mask']}.maskTf.img_path": {"$exists": 1},
             f"products.mask.{self.config['prod_versions']['mask']}.maskTf.cloud_fraction": {"$exists": 1},
             "daac_scene": {"$exists": 1},
             f"products.frcov.{self.config['prod_versions']['frcov']}.frcov_ummg.ummg_json_path": {"$exists": 0},
@@ -445,7 +425,6 @@ class DatabaseManager:
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L2BFrCovDeliver"])
         return results
-
 
     def find_data_collections_for_ch4_mosaic(self, start, stop, date_field="last_modified", retry_failed=False):
         data_collections_coll = self.db.data_collections
