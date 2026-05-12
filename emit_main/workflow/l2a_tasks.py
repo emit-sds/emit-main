@@ -57,7 +57,8 @@ class L2AReflectance(SlurmJobTask):
 
         logger.debug(f"{self.task_family} output: {self.acquisition_id}")
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family)
+        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family,
+                                 product_version=wm.config["prod_versions"]["l2a"])
 
     def work(self):
 
@@ -223,6 +224,7 @@ class L2AReflectance(SlurmJobTask):
             "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l2a"],
             "output": {
                 "l2a_rfl_img_path": acq.rfl_img_path,
                 "l2a_rfl_hdr_path:": acq.rfl_hdr_path,
@@ -259,8 +261,9 @@ class L2AFormat(SlurmJobTask):
     def output(self):
 
         logger.debug(f"{self.task_family} output: {self.acquisition_id}")
-        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return AcquisitionTarget(acquisition=acq, task_family=self.task_family)
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family,
+                                 product_version=wm.config["prod_versions"]["l2a"])
 
     def work(self):
 
@@ -318,6 +321,7 @@ class L2AFormat(SlurmJobTask):
             "product_creation_time": nc_creation_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l2a"],
             "output": {
                 "l2a_rfl_netcdf_path": acq.rfl_nc_path,
                 "l2a_rfl_unc_netcdf_path": acq.rfluncert_nc_path
@@ -357,8 +361,9 @@ class L2ADeliver(SlurmJobTask):
         if self.override_output:
             return None
 
-        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return AcquisitionTarget(acquisition=acq, task_family=self.task_family)
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family,
+                                 product_version=wm.config["prod_versions"]["l2a"])
 
     def work(self):
 
@@ -554,6 +559,7 @@ class L2ADeliver(SlurmJobTask):
             "product_creation_time": cnm_creation_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l2a"],
             "output": {
                 "l2a_rfl_ummg_path:": ummg_path,
                 "l2a_rfl_cnm_submission_path": cnm_submission_path
@@ -588,7 +594,8 @@ class L2AMaskTf(SlurmJobTask):
 
         logger.debug(self.task_family + " output")
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family)
+        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family,
+                                 product_version=wm.config["prod_versions"]["mask"])
 
     def work(self):
 
@@ -710,6 +717,7 @@ class L2AMaskTf(SlurmJobTask):
             "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["mask"],
             "output": {
                 "l2a_maskTf_img_path": acq.maskTf_img_path,
                 "l2a_maskTf_hdr_path:": acq.maskTf_hdr_path
@@ -742,8 +750,9 @@ class L2AMaskTfFormat(SlurmJobTask):
     def output(self):
 
         logger.debug(f"{self.task_family} output: {self.acquisition_id}")
-        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return AcquisitionTarget(acquisition=acq, task_family=self.task_family)
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family,
+                                 product_version=wm.config["prod_versions"]["mask"])
 
     def work(self):
 
@@ -798,6 +807,7 @@ class L2AMaskTfFormat(SlurmJobTask):
             "product_creation_time": nc_creation_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["mask"],
             "output": {
                 "l2a_maskTf_netcdf_path": acq.maskTf_nc_path
             }
@@ -835,8 +845,9 @@ class L2AMaskTfDeliver(SlurmJobTask):
         if self.override_output:
             return None
 
-        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return AcquisitionTarget(acquisition=acq, task_family=self.task_family)
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family,
+                                 product_version=wm.config["prod_versions"]["mask"])
 
     def work(self):
 
@@ -1022,6 +1033,7 @@ class L2AMaskTfDeliver(SlurmJobTask):
             "product_creation_time": cnm_creation_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["mask"],
             "output": {
                 "l2a_maskTf_ummg_path:": ummg_path,
                 "l2a_maskTf_cnm_submission_path": cnm_submission_path

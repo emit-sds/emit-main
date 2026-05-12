@@ -328,20 +328,44 @@ def task_failure(task, e):
         wm.move(task.stream_path, ingest_errors_path)
 
     # Update DB processing_log with failure message
+    product_version = "01"
+    if "L0" in task.task_family:
+        product_version = wm.config["prod_versions"]["l0"]
+    if "L1A" in task.task_family:
+        product_version = wm.config["prod_versions"]["l1a"]
+    if "L1B" in task.task_family:
+        product_version = wm.config["prod_versions"]["l1b"]
+    if "L2A" in task.task_family:
+        product_version = wm.config["prod_versions"]["l2a"]
+    if "L2B" in task.task_family:
+        product_version = wm.config["prod_versions"]["l2b"]
+    if "MaskTf" in task.task_family:
+        # This will overwrite L2A
+        product_version = wm.config["prod_versions"]["mask"]
+    if "FrCov" in task.task_family:
+        # This will overwrite L2B
+        product_version = wm.config["prod_versions"]["frcov"]
+    if "CH4" in task.task_family:
+        product_version = wm.config["prod_versions"]["ch4"]
+    if "CO2" in task.task_family:
+        product_version = wm.config["prod_versions"]["co2"]
+    
     log_entry = {
         "task": task.task_family,
         "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
         "completion_status": "FAILURE",
+        "product_version": product_version,
         "error_message": str(e)
     }
 
     stream_tasks = ("emit.L0StripHOSC", "emit.L1ADepacketizeScienceFrames", "emit.L1AReformatEDP", "emit.L0IngestBAD",
                     "emit.L0Deliver")
-    data_collection_tasks = ("emit.L1AReassembleRaw", "emit.L1AFrameReport", "emit.CH4Mosaic", "emit.CO2Mosaic")
+    data_collection_tasks = ("emit.L1AReassembleRaw", "emit.L1AFrameReport", "emit.CH4Mosaic", "emit.CO2Mosaic", "emit.L1BMosaic")
     acquisition_tasks = ("emit.L1ADeliver", "emit.L1BCalibrate", "emit.L1BRdnFormat", "emit.L1BRdnDeliver",
                          "emit.L2AReflectance", "emit.L2AMaskTf", "emit.L2AFormat", "emit.L2AMaskTfFormat", 
                          "emit.L2ADeliver", "emit.L2AMaskTfDeliver", "emit.L2BMineral", "emit.L2BFormat", "emit.L2BDeliver", 
-                         "emit.L2BFrCov", "emit.GetAdditionalMetadata", "emit.CH4", "emit.CO2", "emit.CH4Deliver", "emit.CO2Deliver")
+                         "emit.L2BFrCov", "emit.L2BFrCovFormat", "emit.L2BFrCovDeliver" "emit.GetAdditionalMetadata", 
+                         "emit.CH4", "emit.CO2", "emit.CH4Deliver", "emit.CO2Deliver")
     orbit_tasks = ("emit.L1AReformatBAD", "emit.L1BGeolocate", "emit.L1BAttDeliver", "emit.AssignDAACSceneNumbers")
 
     dm = wm.database_manager

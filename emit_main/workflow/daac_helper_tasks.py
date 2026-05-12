@@ -102,6 +102,7 @@ class AssignDAACSceneNumbers(SlurmJobTask):
                 "documentation_version": "N/A",
                 "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
                 "completion_status": "SUCCESS",
+                "product_version": dm.config["prod_versions"]["l1a"],
                 "output": {
                     "daac_scene_number": str(daac_scene).zfill(3)
                 }
@@ -126,6 +127,7 @@ class AssignDAACSceneNumbers(SlurmJobTask):
             "documentation_version": "N/A",
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": dm.config["prod_versions"]["l1a"],
             "output": {
                 "number_of_scenes": num_scenes
             }
@@ -191,6 +193,7 @@ class GetAdditionalMetadata(SlurmJobTask):
             "documentation_version": "N/A",
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": dm.config["prod_versions"]["l1b"],
             "output": meta
         }
 

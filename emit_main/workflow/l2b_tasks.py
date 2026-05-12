@@ -51,7 +51,8 @@ class L2BMineral(SlurmJobTask):
 
         logger.debug(self.task_family + " output")
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family)
+        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family,
+                                 product_version=wm.config["prod_versions"]["l2b"])
 
     def work(self):
 
@@ -198,6 +199,7 @@ class L2BMineral(SlurmJobTask):
             "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l2b"],
             "output": {
                 "l2b_min_img_path": acq.min_img_path,
                 "l2b_min_hdr_path:": acq.min_hdr_path,
@@ -231,8 +233,9 @@ class L2BFormat(SlurmJobTask):
 
     def output(self):
         logger.debug(f"{self.task_family} output: {self.acquisition_id}")
-        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return AcquisitionTarget(acquisition=acq, task_family=self.task_family)
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family,
+                                 product_version=wm.config["prod_versions"]["l2b"])
 
     def work(self):
         logger.debug(f"{self.task_family} work: {self.acquisition_id}")
@@ -289,6 +292,7 @@ class L2BFormat(SlurmJobTask):
             "product_creation_time": nc_creation_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l2b"],
             "output": {
                 "l2b_min_netcdf_path": acq.min_nc_path,
                 "l2b_minuncert_netcdf_path": acq.minuncert_nc_path
@@ -328,8 +332,9 @@ class L2BDeliver(SlurmJobTask):
         if self.override_output:
             return None
 
-        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return AcquisitionTarget(acquisition=acq, task_family=self.task_family)
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family,
+                                 product_version=wm.config["prod_versions"]["l2b"])
 
     def work(self):
 
@@ -526,6 +531,7 @@ class L2BDeliver(SlurmJobTask):
             "product_creation_time": cnm_creation_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l2b"],
             "output": {
                 "l2b_min_ummg_path:": ummg_path,
                 "l2b_min_cnm_submission_path": cnm_submission_path
@@ -560,7 +566,8 @@ class L2BFrCov(SlurmJobTask):
 
         logger.debug(self.task_family + " output")
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family)
+        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family,
+                                 product_version=wm.config["prod_versions"]["frcov"])
 
     def work(self):
 
@@ -662,6 +669,7 @@ class L2BFrCov(SlurmJobTask):
             "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["frcov"],
             "output": {
                 "l2b_frcov_img_path": acq.frcov_img_path,
                 "l2b_frcov_hdr_path:": acq.frcov_hdr_path,
@@ -696,8 +704,9 @@ class L2BFrCovFormat(SlurmJobTask):
     def output(self):
 
         logger.debug(f"{self.task_family} output: {self.acquisition_id}")
-        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return AcquisitionTarget(acquisition=acq, task_family=self.task_family)
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family,
+                                 product_version=wm.config["prod_versions"]["frcov"])
 
     def work(self):
 
@@ -809,6 +818,7 @@ class L2BFrCovFormat(SlurmJobTask):
             "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["frcov"],
             "output": {
                 "frcovqc_tif_path": acq.frcovqc_tif_path,
                 "frcovpv_tif_path:": acq.frcovpv_tif_path,
@@ -854,8 +864,9 @@ class L2BFrCovDeliver(SlurmJobTask):
         if self.override_output:
             return None
 
-        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return AcquisitionTarget(acquisition=acq, task_family=self.task_family)
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family,
+                                 product_version=wm.config["prod_versions"]["frcov"])
 
     def work(self):
 
@@ -1132,6 +1143,7 @@ class L2BFrCovDeliver(SlurmJobTask):
             "product_creation_time": cnm_creation_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["frcov"],
             "output": {
                 "l2b_frcov_ummg_path:": ummg_path,
                 "l2b_frcov_cnm_submission_path": cnm_submission_path

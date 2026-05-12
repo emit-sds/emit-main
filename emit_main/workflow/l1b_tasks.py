@@ -55,7 +55,8 @@ class L1BCalibrate(SlurmJobTask):
 
         logger.debug(f"{self.task_family} output: {self.acquisition_id}")
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family)
+        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family,
+                                 product_version=wm.config["prod_versions"]["l1b"])
 
     def work(self):
 
@@ -306,6 +307,7 @@ class L1BCalibrate(SlurmJobTask):
             "product_creation_time": creation_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l1b"],
             "output": {
                 "l1b_rdn_img_path": acq.rdn_img_path,
                 "l1b_rdn_hdr_path:": acq.rdn_hdr_path,
@@ -350,8 +352,8 @@ class L1BGeolocate(SlurmJobTask):
 
         logger.debug(f"{self.task_family} output: {self.orbit_id}")
         wm = WorkflowManager(config_path=self.config_path, orbit_id=self.orbit_id)
-        return OrbitTarget(orbit=wm.orbit, task_family=self.task_family)
-        return None
+        return OrbitTarget(orbit=wm.orbit, task_family=self.task_family,
+                           product_version=wm.config["prod_versions"]["l1b"])
 
     def work(self):
 
@@ -626,6 +628,7 @@ This product is generated at the orbit level."
             "product_creation_time": creation_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l1b"],
             "output": output_prods
         }
         dm.insert_orbit_log_entry(orbit.orbit_id, log_entry)
@@ -662,8 +665,9 @@ class L1BRdnFormat(SlurmJobTask):
     def output(self):
 
         logger.debug(f"{self.task_family} output: {self.acquisition_id}")
-        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return AcquisitionTarget(acquisition=acq, task_family=self.task_family)
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family,
+                                 product_version=wm.config["prod_versions"]["l1b"])
 
     def work(self):
 
@@ -721,6 +725,7 @@ class L1BRdnFormat(SlurmJobTask):
             "product_creation_time": nc_creation_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l1b"],
             "output": {
                 "l1b_rdn_netcdf_path": acq.rdn_nc_path,
                 "l1b_obs_netcdf_path": acq.obs_nc_path
@@ -760,8 +765,9 @@ class L1BRdnDeliver(SlurmJobTask):
         if self.override_output:
             return None
 
-        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return AcquisitionTarget(acquisition=acq, task_family=self.task_family)
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family,
+                                 product_version=wm.config["prod_versions"]["l1b"])
 
     def work(self):
 
@@ -955,6 +961,7 @@ class L1BRdnDeliver(SlurmJobTask):
             "product_creation_time": cnm_creation_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l1b"],
             "output": {
                 "l1b_rdn_ummg_path:": ummg_path,
                 "l1b_rdn_cnm_submission_path": cnm_submission_path
@@ -993,7 +1000,8 @@ class L1BAttDeliver(SlurmJobTask):
             return None
 
         wm = WorkflowManager(config_path=self.config_path, orbit_id=self.orbit_id)
-        return OrbitTarget(orbit=wm.orbit, task_family=self.task_family)
+        return OrbitTarget(orbit=wm.orbit, task_family=self.task_family,
+                           product_version=wm.config["prod_versions"]["l1b"])
 
     def work(self):
 
@@ -1159,6 +1167,7 @@ class L1BAttDeliver(SlurmJobTask):
             "product_creation_time": cnm_creation_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l1b"],
             "output": {
                 "l1b_att_ummg_path:": ummg_path,
                 "l1b_att_cnm_submission_path": cnm_submission_path
@@ -1191,7 +1200,8 @@ class L1BMosaic(SlurmJobTask):
 
         logger.debug(f"{self.task_family} output: {self.dcid}")
         wm = WorkflowManager(config_path=self.config_path, dcid=self.dcid)
-        return DataCollectionTarget(data_collection=wm.data_collection, task_family=self.task_family)
+        return DataCollectionTarget(data_collection=wm.data_collection, task_family=self.task_family,
+                                    product_version=wm.config["prod_versions"]["l1b"])
 
     def work(self):
 
@@ -1291,6 +1301,7 @@ class L1BMosaic(SlurmJobTask):
             "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l1b"],
             "output": output_files
             }
 

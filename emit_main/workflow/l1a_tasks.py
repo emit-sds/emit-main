@@ -57,7 +57,8 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
             return None
 
         wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
-        return StreamTarget(stream=wm.stream, task_family=self.task_family)
+        return StreamTarget(stream=wm.stream, task_family=self.task_family, 
+                            product_version=wm.config["prod_versions"]["l1a"])
 
     def work(self):
 
@@ -264,6 +265,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
             "documentation_version": doc_version,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l1a"],
             "output": {
                 "l1a_frame_paths": output_frame_paths
             }
@@ -299,7 +301,8 @@ class L1AReassembleRaw(SlurmJobTask):
 
         logger.debug(f"{self.task_family} output: {self.dcid}")
         wm = WorkflowManager(config_path=self.config_path, dcid=self.dcid)
-        return DataCollectionTarget(data_collection=wm.data_collection, task_family=self.task_family)
+        return DataCollectionTarget(data_collection=wm.data_collection, task_family=self.task_family,
+                                    product_version=wm.config["prod_versions"]["l1a"])
 
     def work(self):
 
@@ -663,6 +666,7 @@ class L1AReassembleRaw(SlurmJobTask):
             "product_creation_time": creation_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l1a"],
             "output": output_paths
         }
 
@@ -698,7 +702,8 @@ class L1AFrameReport(SlurmJobTask):
 
         logger.debug(f"{self.task_family} output: {self.dcid}")
         wm = WorkflowManager(config_path=self.config_path, dcid=self.dcid)
-        return DataCollectionTarget(data_collection=wm.data_collection, task_family=self.task_family)
+        return DataCollectionTarget(data_collection=wm.data_collection, task_family=self.task_family,
+                                    product_version=wm.config["prod_versions"]["l1a"])
 
     def work(self):
 
@@ -782,6 +787,7 @@ class L1AFrameReport(SlurmJobTask):
             "product_creation_time": afr_creation_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l1a"],
             "output": {
                 "l1a_all_frames_report_path": all_frames_report,
                 "l1a_line_header_check_log_path": line_header_check_log
@@ -822,7 +828,8 @@ class L1ADeliver(SlurmJobTask):
             return None
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family)
+        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family,
+                                 product_version=wm.config["prod_versions"]["l1a"])
 
     def work(self):
 
@@ -1012,6 +1019,7 @@ class L1ADeliver(SlurmJobTask):
             "product_creation_time": cnm_creation_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l1a"],
             "output": {
                 "l1a_raw_ummg_path": ummg_path,
                 "l1a_raw_cnm_submission_path": cnm_submission_path
@@ -1048,7 +1056,8 @@ class L1AReformatEDP(SlurmJobTask):
 
         logger.debug(f"{self.task_family} output: {self.stream_path}")
         wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
-        return StreamTarget(stream=wm.stream, task_family=self.task_family)
+        return StreamTarget(stream=wm.stream, task_family=self.task_family, 
+                            product_version=wm.config["prod_versions"]["l1a"])
 
     def work(self):
 
@@ -1139,6 +1148,7 @@ class L1AReformatEDP(SlurmJobTask):
             "product_creation_time": product_dict["0x15"]["created"],
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l1a"],
             "output": outputs
         }
         dm.insert_stream_log_entry(stream.hosc_name, log_entry)
@@ -1169,7 +1179,8 @@ class L1AReformatBAD(SlurmJobTask):
 
         logger.debug(f"{self.task_family} output: {self.orbit_id}")
         wm = WorkflowManager(config_path=self.config_path, orbit_id=self.orbit_id)
-        return OrbitTarget(orbit=wm.orbit, task_family=self.task_family)
+        return OrbitTarget(orbit=wm.orbit, task_family=self.task_family, 
+                           product_version=wm.config["prod_versions"]["l1a"])
 
     def work(self):
 
@@ -1243,6 +1254,7 @@ class L1AReformatBAD(SlurmJobTask):
             "product_creation_time": creation_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l1a"],
             "output": {
                 "l1a_uncorr_att_eph_path": orbit.uncorr_att_eph_path
             }

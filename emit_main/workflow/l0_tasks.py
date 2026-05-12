@@ -43,7 +43,8 @@ class L0StripHOSC(SlurmJobTask):
     def output(self):
         logger.debug(f"{self.task_family} output: {self.stream_path}")
         wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
-        return StreamTarget(stream=wm.stream, task_family=self.task_family)
+        return StreamTarget(stream=wm.stream, task_family=self.task_family, 
+                            product_version=wm.config["prod_versions"]["l0"])
 
     def work(self):
         logger.debug(f"{self.task_family} work: {self.stream_path}")
@@ -203,6 +204,7 @@ class L0StripHOSC(SlurmJobTask):
                 os.path.getmtime(ccsds_path), tz=datetime.timezone.utc),
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l0"],
             "output": {
                 "raw_hosc_path": stream.hosc_path,
                 "l0_ccsds_path": ccsds_path,
@@ -233,7 +235,8 @@ class L0IngestBAD(SlurmJobTask):
     def output(self):
         logger.debug(f"{self.task_family} output: {self.stream_path}")
         wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
-        return StreamTarget(stream=wm.stream, task_family=self.task_family)
+        return StreamTarget(stream=wm.stream, task_family=self.task_family, 
+                            product_version=wm.config["prod_versions"]["l0"])
 
     def work(self):
         logger.debug(f"{self.task_family} work: {self.stream_path}")
@@ -384,6 +387,7 @@ class L0IngestBAD(SlurmJobTask):
             "product_creation_time": creation_time_raw,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l0"],
             "output": {
                 "raw_bad_path": stream.bad_path,
                 "l0_bad_csv_path": l0_bad_csv_path
@@ -608,6 +612,7 @@ class L0ProcessPlanningProduct(SlurmJobTask):
             "documentation_version": "N/A",
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l0"],
             "output": {
                 "raw_planning_product_path": target_pp_path
             }
@@ -646,7 +651,8 @@ class L0Deliver(SlurmJobTask):
             return None
 
         wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
-        return StreamTarget(stream=wm.stream, task_family=self.task_family)
+        return StreamTarget(stream=wm.stream, task_family=self.task_family, 
+                            product_version=wm.config["prod_versions"]["l0"])
 
     def work(self):
         logger.debug(f"{self.task_family} work: {self.acquisition_id}")
@@ -803,6 +809,7 @@ class L0Deliver(SlurmJobTask):
             "product_creation_time": cnm_creation_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l0"],
             "output": {
                 "l0_ccsds_ummg_path": ummg_path,
                 "l0_ccsds_cnm_submission_path": cnm_submission_path
