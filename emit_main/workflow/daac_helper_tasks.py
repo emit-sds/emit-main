@@ -288,9 +288,9 @@ class ReconciliationReport(SlurmJobTask):
         with open(tmp_submission_path, "w") as f:
             f.write(json.dumps(submission_dict))
 
-        # Submit notification via AWS SQS
-        cmd_aws = [wm.config["aws_cli_exe"], "sns", "publish", "--topic-arn", wm.config["daac_reconciliation_arn"],
-                   "--message", f"file://{tmp_submission_path}", "--profile", wm.config["aws_profile"]]
+        # Submit notification via AWS SNS
+        cmd_aws = ["ssh", "ngishpc1", "'" + wm.config["aws_cli_exe"], "sns", "publish", "--topic-arn", wm.config["daac_reconciliation_arn"],
+                   "--message", f"file://{tmp_submission_path}", "--profile", wm.config["aws_profile"] + "'"]
         pge.run(cmd_aws, tmp_dir=self.tmp_dir)
 
         # Copy reconciliation report and submission to reconciliation dir

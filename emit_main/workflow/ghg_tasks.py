@@ -561,8 +561,8 @@ class CH4Deliver(SlurmJobTask):
 
         # Submit notification via AWS SQS
         cnm_submission_output = cnm_submission_path.replace(".json", ".out")
-        cmd_aws = [wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", queue_url, "--message-body",
-                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"], ">", cnm_submission_output]
+        cmd_aws = ["ssh", "ngishpc1", "'" + wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", queue_url, "--message-body",
+                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"], ">", cnm_submission_output + "'"]
         pge.run(cmd_aws, tmp_dir=self.tmp_dir)
         wm.change_group_ownership(cnm_submission_output)
         cnm_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(cnm_submission_path),
@@ -816,8 +816,8 @@ class CO2Deliver(SlurmJobTask):
 
         # Submit notification via AWS SQS
         cnm_submission_output = cnm_submission_path.replace(".json", ".out")
-        cmd_aws = [wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", queue_url, "--message-body",
-                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"], ">", cnm_submission_output]
+        cmd_aws = ["ssh", "ngishpc1", "'" + wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", queue_url, "--message-body",
+                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"], ">", cnm_submission_output + "'"]
         pge.run(cmd_aws, tmp_dir=self.tmp_dir)
         wm.change_group_ownership(cnm_submission_output)
         cnm_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(cnm_submission_path),
