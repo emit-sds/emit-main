@@ -56,22 +56,22 @@ def parse_args():
                     "Operating Environment: Python 3.x. See setup.py file for specific dependencies.\n"
                     "Outputs: See list of product choices.",
         formatter_class=RawTextHelpFormatter)
-    parser.add_argument("-c", "--config_path",
-                        help="Path to config file")
+    parser.add_argument("-c", "--config_path", "--config-path",
+                        help="Path to config file", dest="config_path")
     parser.add_argument("-m", "--monitor",
                         help=("Which monitor to run. Choose from " + ", ".join(monitor_choices)))
-    parser.add_argument("-a", "--acquisition_id", default="",
-                        help="Acquisition ID or path to text file containing list of IDs")
-    parser.add_argument("-d", "--dcid", default="",
+    parser.add_argument("-a", "--acquisition_id", "--acquisition-id", default="",
+                        help="Acquisition ID or path to text file containing list of IDs", dest="acquisition_id")
+    parser.add_argument("-d", "--dcid",
                         help="Data Collection ID")
-    parser.add_argument("-s", "--stream_path", default="",
-                        help="Path to HOSC or CCSDS stream file")
-    parser.add_argument("-o", "--orbit_id", default="",
-                        help="Orbit number in the padded format XXXXXXX")
-    parser.add_argument("--plan_prod_path", default="",
-                        help="Path to planning product file")
-    parser.add_argument("--recon_resp_path",
-                        help="Path to reconciliation response file")
+    parser.add_argument("-s", "--stream_path", "--stream-path", default="",
+                        help="Path to HOSC or CCSDS stream file", dest="stream_path")
+    parser.add_argument("-o", "--orbit_id", "--orbit-id", default="",
+                        help="Orbit number in the padded format XXXXXXX", dest="orbit_id")
+    parser.add_argument("--plan_prod_path", "--plan-prod-path", default="",
+                        help="Path to planning product file", dest="plan_prod_path")
+    parser.add_argument("--recon_resp_path", "--recon-resp-path",
+                        help="Path to reconciliation response file", dest="recon_resp_path")
     parser.add_argument("-p", "--products",
                         help=("Comma delimited list of products to create (no spaces). "
                               "Choose from " + ", ".join(product_choices)))
@@ -79,44 +79,44 @@ def parse_args():
                         help="The log level (default: INFO)")
     parser.add_argument("--partition", default="emit",
                         help="The slurm partition to be used - emit (default), debug, standard, patient ")
-    parser.add_argument("--start_time",
-                        help="The start time to use for any monitor calls (YYYY-MM-DDTHH:MM:SS)")
-    parser.add_argument("--stop_time",
-                        help="The stop time to use for any monitor calls (YYYY-MM-DDTHH:MM:SS)")
-    parser.add_argument("--date_field", default="last_modified",
-                        help="The date field for the monitors to query")
-    parser.add_argument("--retry_failed", action="store_true",
-                        help="A flag to tell the monitors to retry failed tasks.")
-    parser.add_argument("--pkt_format", default="1.3",
-                        help="Flight software version to use for CCSDS depacketization format")
-    parser.add_argument("--miss_pkt_thresh", default="0.01",
-                        help="The threshold of missing packets to total packets which will cause a task to fail")
-    parser.add_argument("--ignore_missing_frames", action="store_true",
-                        help="Ignore missing frames when reasssembling raw cube")
-    parser.add_argument("--acq_chunksize", default=1280,
-                        help="The number of lines in which to split acquisitions")
-    parser.add_argument("--dark_path", default="",
-                        help="Path to dark file to use for L1B calibration")
-    parser.add_argument("--use_future_flat", action="store_true",
-                        help="Use future flat fields for destriping")
-    parser.add_argument("--ignore_missing_bad", action="store_true",
-                        help="Ignore missing BAD data in an orbit when reformatting BAD")
-    parser.add_argument("--ignore_missing_radiance", action="store_true",
-                        help="Ignore missing radiance files in an orbit when doing geolocation")
-    parser.add_argument("--daac_ingest_queue", default="forward",
-                        help="Options are 'forward' or 'backward' depending on which DAAC ingestion queue to use.")
-    parser.add_argument("--dry_run", action="store_true",
-                        help="Just return a list of paths to process from the ingest folder, but take no action")
-    parser.add_argument("--test_mode", action="store_true",
-                        help="Allows tasks to skip work during I&T by skipping certain checks")
-    parser.add_argument("--override_output", action="store_true",
-                        help="Ignore outputs of a task and run it on demand")
+    parser.add_argument("--start_time", "--start-time", default=None,
+                        help="The start time to use for any monitor calls (YYYY-MM-DDTHH:MM:SS)", dest="start_time")
+    parser.add_argument("--stop_time", "--stop-time", default=None,
+                        help="The stop time to use for any monitor calls (YYYY-MM-DDTHH:MM:SS)", dest="stop_time")
+    parser.add_argument("--date_field", "--date-field", default="last_modified",
+                        help="The date field for the monitors to query", dest="date_field")
+    parser.add_argument("--retry_failed", "--retry-failed", action="store_true",
+                        help="A flag to tell the monitors to retry failed tasks.", dest="retry_failed")
+    parser.add_argument("--pkt_format", "--pkt-format", default="1.3",
+                        help="Flight software version to use for CCSDS depacketization format", dest="pkt_format")
+    parser.add_argument("--miss_pkt_thresh", "--miss-pkt-thresh", default="0.01",
+                        help="The threshold of missing packets to total packets which will cause a task to fail", dest="miss_pkt_thresh")
+    parser.add_argument("--ignore_missing_frames", "--ignore-missing-frames", action="store_true",
+                        help="Ignore missing frames when reasssembling raw cube", dest="ignore_missing_frames")
+    parser.add_argument("--acq_chunksize", "--acq-chunksize", default=1280,
+                        help="The number of lines in which to split acquisitions", dest="acq_chunksize")
+    parser.add_argument("--dark_path", "--dark-path", default="",
+                        help="Path to dark file to use for L1B calibration", dest="dark_path")
+    parser.add_argument("--use_future_flat", "--use-future-flat", action="store_true",
+                        help="Use future flat fields for destriping", dest="use_future_flat")
+    parser.add_argument("--ignore_missing_bad", "--ignore-missing-bad", action="store_true",
+                        help="Ignore missing BAD data in an orbit when reformatting BAD", dest="ignore_missing_bad")
+    parser.add_argument("--ignore_missing_radiance", "--ignore-missing-radiance", action="store_true",
+                        help="Ignore missing radiance files in an orbit when doing geolocation", dest="ignore_missing_radiance")
+    parser.add_argument("--daac_ingest_queue", "--daac-ingest-queue", default="forward",
+                        help="Options are 'forward' or 'backward' depending on which DAAC ingestion queue to use.", dest="daac_ingest_queue")
+    parser.add_argument("--dry_run", "--dry-run", action="store_true",
+                        help="Just return a list of paths to process from the ingest folder, but take no action", dest="dry_run")
+    parser.add_argument("--test_mode", "--test-mode", action="store_true",
+                        help="Allows tasks to skip work during I&T by skipping certain checks", dest="test_mode")
+    parser.add_argument("--override_output", "--override-output", action="store_true",
+                        help="Ignore outputs of a task and run it on demand", dest="override_output")
     parser.add_argument("-w", "--workers",
                         help="Number of luigi workers")
-    parser.add_argument("--build_env", action="store_true",
-                        help="Build the runtime environment (primarily used to setup dev environments)")
-    parser.add_argument("--checkout_build", action="store_true",
-                        help="Checks out all repos and tags for a given build")
+    parser.add_argument("--build_env", "--build-env", action="store_true",
+                        help="Build the runtime environment (primarily used to setup dev environments)", dest="build_env")
+    parser.add_argument("--checkout_build", "--checkout-build", action="store_true",
+                        help="Checks out all repos and tags for a given build", dest="checkout_build")
     args = parser.parse_args()
 
     if args.config_path is None:
