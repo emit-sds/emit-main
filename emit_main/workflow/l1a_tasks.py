@@ -157,7 +157,6 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
                     "dcid": dcid,
                     "start_time": start_time,
                     "stop_time": stop_time,
-                    "frames_status": ""
                 }
                 dm.insert_data_collection(dc_meta)
                 logger.debug(f"Inserted data collection in DB with {dc_meta}")
@@ -219,9 +218,9 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
 
             # Check if data collection has complete set of frames
             if dc.has_complete_set_of_frames():
-                dm.update_data_collection_metadata(dcid, {"frames_status": "complete"})
+                dm.update_data_collection_metadata(dcid, {f"frames_status.{wm.config['prod_versions']['l1a']}": "complete"})
             else:
-                dm.update_data_collection_metadata(dcid, {"frames_status": "incomplete"})
+                dm.update_data_collection_metadata(dcid, {f"frames_status.{wm.config['prod_versions']['l1a']}": "incomplete"})
 
             # Add stream file to data collection metadata in DB so there is a link back to CCSDS packet stream for each
             # acquisition. There may be multiple stream files that contribute frames to a given acquisition

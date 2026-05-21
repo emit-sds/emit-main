@@ -649,7 +649,7 @@ class DatabaseManager:
         # Query for data collections with complete set of frames, last modified within start/stop range and
         # that don't have associated acquisitions
         query = {
-            "frames_status": "complete",
+            f"frames_status.{self.config['prod_versions']['l1a']}": "complete",
             date_field: {"$gte": start, "$lte": stop},
             "associated_acquisitions": {"$exists": 0}
         }
@@ -720,7 +720,7 @@ class DatabaseManager:
         # Query for orbits with complete set of bad data, last modified within start/stop range and
         # that don't have an associated bad netcdf file
         query = {
-            "bad_status": "complete",
+            f"bad_status.{self.config['prod_versions']['l0']}": "complete",
             date_field: {"$gte": start, "$lte": stop},
             "associated_bad_netcdf": {"$exists": 0}
         }

@@ -56,7 +56,7 @@ def parse_args():
                     "Operating Environment: Python 3.x. See setup.py file for specific dependencies.\n"
                     "Outputs: See list of product choices.",
         formatter_class=RawTextHelpFormatter)
-    parser.add_argument("-c", "--config_path", "--config-path",
+    parser.add_argument("-c", "--config_path", "--config-path", "--config",
                         help="Path to config file", dest="config_path")
     parser.add_argument("-m", "--monitor",
                         help=("Which monitor to run. Choose from " + ", ".join(monitor_choices)))
@@ -194,7 +194,7 @@ def get_tasks_from_product_args(args):
                                     override_output=args.override_output, **kwargs),
         "l0plan": lambda: L0ProcessPlanningProduct(plan_prod_path=args.plan_prod_path,
                                                    test_mode=args.test_mode, **kwargs),
-        "l0bad": lambda: L0IngestBAD(stream_path=args.stream_path, **kwargs),
+        "l0bad": lambda: L0IngestBAD(stream_path=args.stream_path, override_output=args.override_output, **kwargs),
         "l1aeng": lambda: L1AReformatEDP(stream_path=args.stream_path, pkt_format=args.pkt_format,
                                          miss_pkt_thresh=args.miss_pkt_thresh, **kwargs),
         "l1aframe": lambda: L1ADepacketizeScienceFrames(stream_path=args.stream_path, pkt_format=args.pkt_format,

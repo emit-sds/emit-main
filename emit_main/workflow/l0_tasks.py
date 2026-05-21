@@ -222,6 +222,7 @@ class L0IngestBAD(SlurmJobTask):
     stream_path = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
+    override_output = luigi.BoolParameter(default=False)
 
     memory = 18000
 
@@ -234,6 +235,10 @@ class L0IngestBAD(SlurmJobTask):
 
     def output(self):
         logger.debug(f"{self.task_family} output: {self.stream_path}")
+
+        if self.override_output:
+            return None
+
         wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
         return StreamTarget(stream=wm.stream, task_family=self.task_family, 
                             product_version=wm.config["prod_versions"]["l0"])
@@ -330,9 +335,9 @@ class L0IngestBAD(SlurmJobTask):
 
                 # Check if orbit has complete bad data
                 if orbit.has_complete_bad_data():
-                    dm.update_orbit_metadata(orbit_id, {"bad_status": "complete"})
+                    dm.update_orbit_metadata(orbit_id, {f"bad_status.{wm.config['prod_versions']['l0']}": "complete"})
                 else:
-                    dm.update_orbit_metadata(orbit_id, {"bad_status": "incomplete"})
+                    dm.update_orbit_metadata(orbit_id, {f"bad_status.{wm.config['prod_versions']['l0']}": "incomplete"})
 
                 # Save symlink paths to use after moving the file
                 orbit_symlink_paths.append(os.path.join(orbit.raw_dir, stream.extended_bad_name))
@@ -570,7 +575,6 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                     dm.update_data_collection_metadata(dcid, dc_meta)
                     wm.print(__name__, f"Updated data collection in DB with {dc_meta}")
                 else:
-                    dc_meta["frames_status"] = ""
                     dm.insert_data_collection(dc_meta)
                     wm.print(__name__, f"Inserted data collection in DB with {dc_meta}")
 
