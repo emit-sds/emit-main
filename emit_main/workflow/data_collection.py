@@ -139,9 +139,9 @@ class DataCollection:
         #Get list of acquisition ids with completed CH4 products
         query = {
             "associated_dcid": self.dcid,
-            "products.ghg.ch4.ortch4.tif_path": {"$exists": 1},
-            "products.ghg.ch4.ortsensch4.tif_path": {"$exists": 1},
-            "products.ghg.ch4.ortuncertch4.tif_path": {"$exists": 1}
+            f"products.ch4.{self.config['prod_versions']['ch4']}.ortch4.tif_path": {"$exists": 1},
+            f"products.ch4.{self.config['prod_versions']['ch4']}.ortsensch4.tif_path": {"$exists": 1},
+            f"products.ch4.{self.config['prod_versions']['ch4']}.ortuncertch4.tif_path": {"$exists": 1}
         }
 
         completed = list(acquisitions_coll.find(query))
@@ -167,9 +167,9 @@ class DataCollection:
         #Get list of acquisition ids with completed CO2 products
         query = {
             "associated_dcid": self.dcid,
-            "products.ghg.co2.ortco2.tif_path": {"$exists": 1},
-            "products.ghg.co2.ortsensco2.tif_path": {"$exists": 1},
-            "products.ghg.co2.ortuncertco2.tif_path": {"$exists": 1}
+            f"products.co2.{self.config['prod_versions']['co2']}.ortco2.tif_path": {"$exists": 1},
+            f"products.co2.{self.config['prod_versions']['co2']}.ortsensco2.tif_path": {"$exists": 1},
+            f"products.co2.{self.config['prod_versions']['co2']}.ortuncertco2.tif_path": {"$exists": 1}
         }
 
         completed = list(acquisitions_coll.find(query))
