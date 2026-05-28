@@ -26,14 +26,12 @@ class DataCollection:
         self.config_path = config_path
         self.dcid = dcid
 
-        # Read metadata from db
+        # Read metadata from db and get config properties
         dm = DatabaseManager(config_path)
         self.metadata = dm.find_data_collection_by_id(self.dcid)
+        self.config = Config(config_path, self.metadata["start_time"]).get_dictionary()
         self._initialize_metadata()
         self.__dict__.update(self.metadata)
-
-        # Get config properties
-        self.config = Config(config_path, self.start_time).get_dictionary()
 
         # Create base directories and add to list to create directories later
         self.dirs = []
@@ -79,6 +77,8 @@ class DataCollection:
             self.metadata["products"] = {}
         if "l1a" not in self.metadata["products"]:
             self.metadata["products"]["l1a"] = {}
+        if self.config["prod_versions"]["l1a"] not in self.metadata["products"]["l1a"]:
+            self.metadata["products"]["l1a"][self.config["prod_versions"]["l1a"]] = {}
 
     def has_complete_set_of_frames(self):
         from emit_main.workflow.workflow_manager import WorkflowManager

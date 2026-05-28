@@ -349,7 +349,7 @@ class EmailMonitor:
                             ccsds_name = ccsds_name.replace(".cmr.json", ".bin")
                     if ccsds_name is not None:
                         stream = dm.find_stream_by_name(ccsds_name)
-                        stream_path = stream["products"]["l0"]["ccsds_path"]
+                        stream_path = stream["products"]["l0"][self.wm.config["prod_versions"]["l0"]]["ccsds_path"]
                         logger.info(f"Creating L0Deliver task for path {stream_path}")
                         tasks.append(L0Deliver(config_path=self.config_path,
                                                stream_path=stream_path,

@@ -176,7 +176,7 @@ class Orbit:
             if acq is not None and acq["submode"] == "science" and acq["num_valid_lines"] >= 320:
                 num_science += 1
                 try:
-                    rdn_img_path = acq["products"]["l1b"]["rdn"]["img_path"]
+                    rdn_img_path = acq["products"]["l1b"][wm.config["prod_versions"]["l1b"]]["rdn"]["img_path"]
                 except KeyError:
                     wm.print(__name__, f"Acquisition {id} in orbit {self.orbit_id} does not have a radiance product "
                              f"yet.")
@@ -234,7 +234,7 @@ class Orbit:
                                    f"scenes")
                 return False
             try:
-                raw_img_path = acq["products"]["l1a"]["raw"]["img_path"]
+                raw_img_path = acq["products"]["l1a"][wm.config["prod_versions"]["l1a"]]["raw"]["img_path"]
             except KeyError:
                 wm.print(__name__, f"Acquisition {id} in orbit {self.orbit_id} does not have a raw product yet.")
                 return False

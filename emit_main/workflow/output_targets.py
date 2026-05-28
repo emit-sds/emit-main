@@ -22,14 +22,14 @@ class DataCollectionTarget(luigi.Target):
     def exists(self):
         if self._dc is None:
             return False
-        # For backwards compatibility, default the log's product version to "01" in all cases except 
-        # for ch4, co2, and maskTf tasks which were "02"
-        if "product_version" in log:
-            log_prod_version = log["product_version"]
-        else:
-            log_prod_version = "02" if any(x in self._task_family for x in ("CH4", "CO2", "MaskTf")) else "01"
         for log in reversed(self._dc.processing_log):
-            if log["task"] == self._task_family and log["completion_status"] == "SUCCESS" and log_prod_version ==  self._product_version:
+            # For backwards compatibility, default the log's product version to "01" in all cases except 
+            # for ch4, co2, and maskTf tasks which were "02"
+            if "product_version" in log:
+                log_prod_version = log["product_version"]
+            else:
+                log_prod_version = "02" if any(x in self._task_family for x in ("CH4", "CO2", "MaskTf")) else "01"
+            if log["task"] == self._task_family and log["completion_status"] == "SUCCESS" and log_prod_version == self._product_version:
                 # Check that outputs exist on filesystem
                 for val in log["output"].values():
                     if type(val) == list:
@@ -53,10 +53,10 @@ class OrbitTarget(luigi.Target):
         if self._orbit is None:
             logger.debug("Checking output for %s - Failed to find orbit in DB" % self._task_family)
             return False
-        # For backwards compatibility, default the log's product version to "01" which works for all orbit targets 
-        log_prod_version = log.get("product_version", "01")
         for log in reversed(self._orbit.processing_log):
-            if log["task"] == self._task_family and log["completion_status"] == "SUCCESS" and log_prod_version ==  self._product_version:
+            # For backwards compatibility, default the log's product version to "01" which works for all orbit targets
+            log_prod_version = log.get("product_version", "01")
+            if log["task"] == self._task_family and log["completion_status"] == "SUCCESS" and log_prod_version == self._product_version:
                 # Check that outputs exist on filesystem
                 for val in log["output"].values():
                     if type(val) == list:
@@ -92,14 +92,14 @@ class AcquisitionTarget(luigi.Target):
         if self._acquisition is None:
             logger.debug("Checking output for %s - Failed to find acquisition in DB" % self._task_family)
             return False
-        # For backwards compatibility, default the log's product version to "01" in all cases except 
-        # for ch4, co2, and maskTf tasks which were "02"
-        if "product_version" in log:
-            log_prod_version = log["product_version"]
-        else:
-            log_prod_version = "02" if any(x in self._task_family for x in ("CH4", "CO2", "MaskTf")) else "01"
         for log in reversed(self._acquisition.processing_log):
-            if log["task"] == self._task_family and log["completion_status"] == "SUCCESS" and log_prod_version ==  self._product_version:
+            # For backwards compatibility, default the log's product version to "01" in all cases except 
+            # for ch4, co2, and maskTf tasks which were "02"
+            if "product_version" in log:
+                log_prod_version = log["product_version"]
+            else:
+                log_prod_version = "02" if any(x in self._task_family for x in ("CH4", "CO2", "MaskTf")) else "01"
+            if log["task"] == self._task_family and log["completion_status"] == "SUCCESS" and log_prod_version == self._product_version:
                 # Check that outputs exist on filesystem
                 for path in log["output"].values():
                     if not os.path.exists(path):
@@ -118,10 +118,10 @@ class StreamTarget(luigi.Target):
     def exists(self):
         if self._stream is None:
             return False
-        # For backwards compatibility, default the log's product version to "01" which works for all stream targets 
-        log_prod_version = log.get("product_version", "01")
         for log in reversed(self._stream.processing_log):
-            if log["task"] == self._task_family and log["completion_status"] == "SUCCESS" and log_prod_version ==  self._product_version:
+            # For backwards compatibility, default the log's product version to "01" which works for all stream targets 
+            log_prod_version = log.get("product_version", "01")
+            if log["task"] == self._task_family and log["completion_status"] == "SUCCESS" and log_prod_version == self._product_version:
                 # Check that outputs exist on filesystem
                 for val in log["output"].values():
                     if type(val) == list:
