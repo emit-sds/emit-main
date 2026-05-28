@@ -26,14 +26,12 @@ class Orbit:
         self.orbit_id = orbit_id
         self.short_oid = self.orbit_id[2:] if len(self.orbit_id) == 7 else self.orbit_id
 
-        # Read metadata from db
+        # Read metadata from db and get config properties
         dm = DatabaseManager(config_path)
         self.metadata = dm.find_orbit_by_id(self.orbit_id)
+        self.config = Config(config_path, self.metadata["start_time"]).get_dictionary()
         self._initialize_metadata()
         self.__dict__.update(self.metadata)
-
-        # Get config properties
-        self.config = Config(config_path, self.start_time).get_dictionary()
 
         # Create base directories and add to list to create directories later
         self.dirs = []
@@ -86,8 +84,12 @@ class Orbit:
             self.metadata["products"]["raw"] = {}
         if "l1a" not in self.metadata["products"]:
             self.metadata["products"]["l1a"] = {}
+        if self.config["prod_versions"]["l1a"] not in self.metadata["products"]["l1a"]:
+            self.metadata["products"]["l1a"][self.config["prod_versions"]["l1a"]] = {}
         if "l1b" not in self.metadata["products"]:
             self.metadata["products"]["l1b"] = {}
+        if self.config["prod_versions"]["l1b"] not in self.metadata["products"]["l1b"]:
+            self.metadata["products"]["l1b"][self.config["prod_versions"]["l1b"]] = {}
 
     def has_complete_bad_data(self):
         from emit_main.workflow.workflow_manager import WorkflowManager

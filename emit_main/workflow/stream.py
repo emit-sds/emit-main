@@ -28,14 +28,12 @@ class Stream:
         self.ccsds_name = None
         self.bad_name = None
 
-        # Read metadata from db
+        # Read metadata from db and get config properties
         dm = DatabaseManager(config_path)
         self.metadata = dm.find_stream_by_name(os.path.basename(stream_path))
+        self.config = Config(config_path, self.metadata["start_time"]).get_dictionary()
         self._initialize_metadata()
         self.__dict__.update(self.metadata)
-
-        # Get config properties
-        self.config = Config(config_path, self.start_time).get_dictionary()
 
         # Create base directories and add to list to create directories later
         self.dirs = []
@@ -89,9 +87,17 @@ class Stream:
             self.metadata["products"] = {}
         if "raw" not in self.metadata["products"]:
             self.metadata["products"]["raw"] = {}
+        if self.config["prod_versions"]["l0"] not in self.metadata["products"]["raw"]:
+            self.metadata["products"]["raw"][self.config["prod_versions"]["l0"]] = {}
         if "l0" not in self.metadata["products"]:
             self.metadata["products"]["l0"] = {}
+        if self.config["prod_versions"]["l0"] not in self.metadata["products"]["l0"]:
+            self.metadata["products"]["l0"][self.config["prod_versions"]["l0"]] = {}
         if "l1a" not in self.metadata["products"]:
             self.metadata["products"]["l1a"] = {}
+        if self.config["prod_versions"]["l1a"] not in self.metadata["products"]["l1a"]:
+            self.metadata["products"]["l1a"][self.config["prod_versions"]["l1a"]] = {}
         if "daac" not in self.metadata["products"]:
             self.metadata["products"]["daac"] = {}
+        if self.config["prod_versions"]["l0"] not in self.metadata["products"]["daac"]:
+            self.metadata["products"]["daac"][self.config["prod_versions"]["l0"]] = {}

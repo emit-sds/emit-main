@@ -24,14 +24,12 @@ class Acquisition:
         self.config_path = config_path
         self.acquisition_id = acquisition_id
 
-        # Read metadata from db
+        # Read metadata from db and get config properties
         dm = DatabaseManager(config_path)
         self.metadata = dm.find_acquisition_by_id(self.acquisition_id)
+        self.config = Config(config_path, self.metadata["start_time"]).get_dictionary()
         self._initialize_metadata()
         self.__dict__.update(self.metadata)
-
-        # Get config properties
-        self.config = Config(config_path, self.start_time).get_dictionary()
 
         # Create start/stop time date objects with UTC tzinfo property for printing
         self.start_time_with_tz = pytz.utc.localize(self.start_time)
@@ -107,20 +105,40 @@ class Acquisition:
             self.metadata["products"] = {}
         if "l1a" not in self.metadata["products"]:
             self.metadata["products"]["l1a"] = {}
+        if self.config["prod_versions"]["l1a"] not in self.metadata["products"]["l1a"]:
+            self.metadata["products"]["l1a"][self.config["prod_versions"]["l1a"]] = {}
         if "l1b" not in self.metadata["products"]:
             self.metadata["products"]["l1b"] = {}
+        if self.config["prod_versions"]["l1b"] not in self.metadata["products"]["l1b"]:
+            self.metadata["products"]["l1b"][self.config["prod_versions"]["l1b"]] = {}
         if "l2a" not in self.metadata["products"]:
             self.metadata["products"]["l2a"] = {}
+        if self.config["prod_versions"]["l2a"] not in self.metadata["products"]["l2a"]:
+            self.metadata["products"]["l2a"][self.config["prod_versions"]["l2a"]] = {}
         if "l2b" not in self.metadata["products"]:
             self.metadata["products"]["l2b"] = {}
+        if self.config["prod_versions"]["l2b"] not in self.metadata["products"]["l2b"]:
+            self.metadata["products"]["l2b"][self.config["prod_versions"]["l2b"]] = {}
         if "ch4" not in self.metadata["products"]:
             self.metadata["products"]["ch4"] = {}
+        if self.config["prod_versions"]["ch4"] not in self.metadata["products"]["ch4"]:
+            self.metadata["products"]["ch4"][self.config["prod_versions"]["ch4"]] = {}
         if "co2" not in self.metadata["products"]:
             self.metadata["products"]["co2"] = {}
+        if self.config["prod_versions"]["co2"] not in self.metadata["products"]["co2"]:
+            self.metadata["products"]["co2"][self.config["prod_versions"]["co2"]] = {}
         if "mask" not in self.metadata["products"]:
             self.metadata["products"]["mask"] = {}
+        if self.config["prod_versions"]["mask"] not in self.metadata["products"]["mask"]:
+            self.metadata["products"]["mask"][self.config["prod_versions"]["mask"]] = {}
         if "frcov" not in self.metadata["products"]:
             self.metadata["products"]["frcov"] = {}
+        if self.config["prod_versions"]["frcov"] not in self.metadata["products"]["frcov"]:
+            self.metadata["products"]["frcov"][self.config["prod_versions"]["frcov"]] = {}
+        if "l3rfl" not in self.metadata["products"]:
+            self.metadata["products"]["l3rfl"] = {}
+        if self.config["prod_versions"]["l3rfl"] not in self.metadata["products"]["l3rfl"]:
+            self.metadata["products"]["l3rfl"][self.config["prod_versions"]["l3rfl"]] = {}
 
     def _build_acquisition_paths(self):
         product_map = {
