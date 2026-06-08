@@ -183,6 +183,7 @@ class L1BCalibrate(SlurmJobTask):
             "repository_dir": pge.repo_dir,
             "isofit_dir": isofit_dir,
             "tmp_dir": tmp_dir,
+            "product_version": wm.config["prod_versions"]["l1b"],
             "level": self.level,
             "instrument_mode": instrument_mode,
             "raw_img_path": acq.raw_img_path,
