@@ -402,10 +402,11 @@ class L2ADeliver(SlurmJobTask):
         cloud_cover = min(cloud_fraction + nodata_fraction, 100)
         
         # Create the UMM-G file
+        collection_version = f"0{wm.config['prod_versions']['l2a']}"
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rfl_nc_path), tz=datetime.timezone.utc)
         l2a_pge = wm.pges["emit-sds-l2a"]
         ummg = daac_converter.initialize_ummg(acq.rfl_granule_ur, nc_creation_time, "EMITL2ARFL",
-                                              acq.collection_version, acq.start_time,
+                                              collection_version, acq.start_time,
                                               acq.stop_time, l2a_pge.repo_name, l2a_pge.version_tag,
                                               software_build_version=software_build_version,
                                               software_delivery_version=wm.config["extended_build_num"],
@@ -455,7 +456,7 @@ class L2ADeliver(SlurmJobTask):
             "version": wm.config["cnm_version"],
             "product": {
                 "name": acq.rfl_granule_ur,
-                "dataVersion": acq.collection_version,
+                "dataVersion": collection_version,
                 "files": [
                     {
                         "name": daac_rfl_nc_name,

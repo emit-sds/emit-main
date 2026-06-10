@@ -374,10 +374,11 @@ class L2BDeliver(SlurmJobTask):
         cloud_cover = min(cloud_fraction + nodata_fraction, 100)
 
         # Create the UMM-G file
+        collection_version = f"0{wm.config['prod_versions']['l2b']}"
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.min_nc_path), tz=datetime.timezone.utc)
         l2b_pge = wm.pges["emit-sds-l2b"]
         ummg = daac_converter.initialize_ummg(acq.min_granule_ur, nc_creation_time, "EMITL2BMIN",
-                                              acq.collection_version, acq.start_time,
+                                              collection_version, acq.start_time,
                                               acq.stop_time, l2b_pge.repo_name, l2b_pge.version_tag,
                                               software_build_version=software_build_version,
                                               software_delivery_version=wm.config["extended_build_num"],
@@ -427,7 +428,7 @@ class L2BDeliver(SlurmJobTask):
             "version": wm.config["cnm_version"],
             "product": {
                 "name": acq.min_granule_ur,
-                "dataVersion": acq.collection_version,
+                "dataVersion": collection_version,
                 "files": [
                     {
                         "name": daac_min_nc_name,
@@ -750,6 +751,7 @@ class L2BFrCovFormat(SlurmJobTask):
 
         tmp_frcov_base = os.path.join(tmp_output_dir, self.acquisition_id)
 
+        collection_version = f"0{wm.config['prod_versions']['frcov']}"
         format_cmd = ["python",
                format_exe,
                acq.frcov_img_path, 
@@ -757,7 +759,7 @@ class L2BFrCovFormat(SlurmJobTask):
                tmp_frcovqc_tif_path,
                acq.glt_img_path,
                "--software_version", wm.config["extended_build_num"],
-               "--product_version", acq.collection_version,
+               "--product_version", collection_version,
                tmp_frcov_base]
 
         main_pge.run(format_cmd, tmp_dir=self.tmp_dir)
@@ -933,10 +935,11 @@ class L2BFrCovDeliver(SlurmJobTask):
         cloud_cover = min(cloud_fraction + nodata_fraction, 100)
         
         # Create the UMM-G file
+        collection_version = f"0{wm.config['prod_versions']['frcov']}"
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.frcovqc_tif_path), tz=datetime.timezone.utc)
         frcov_pge = wm.pges["emit-sds-frcov"]
         ummg = daac_converter.initialize_ummg(acq.frcov_granule_ur, creation_time, "EMITL2BFRCOV",
-                                              acq.collection_version, acq.start_time,
+                                              collection_version, acq.start_time,
                                               acq.stop_time, frcov_pge.repo_name, frcov_pge.version_tag,
                                               software_build_version=software_build_version,
                                               software_delivery_version=wm.config["extended_build_num"],
@@ -994,7 +997,7 @@ class L2BFrCovDeliver(SlurmJobTask):
             "version": wm.config["cnm_version"],
             "product": {
                 "name": acq.frcov_granule_ur,
-                "dataVersion": acq.collection_version,
+                "dataVersion": collection_version,
                 "files": [
                     {
                         "name": daac_frcovqc_tif_name,

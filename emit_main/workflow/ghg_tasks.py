@@ -414,7 +414,7 @@ class CH4Deliver(SlurmJobTask):
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
-        collection_version = '002'
+        collection_version = f"0{wm.config['prod_versions']['ch4']}"
         pge = wm.pges["emit-main"]
 
         # Get local SDS names
@@ -669,7 +669,7 @@ class CO2Deliver(SlurmJobTask):
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
-        collection_version = '002'
+        collection_version = f"0{wm.config['prod_versions']['co2']}"
         pge = wm.pges["emit-main"]
 
         # Get local SDS names

@@ -69,11 +69,11 @@ class Acquisition:
 
         if "daac_scene" in self.metadata:
             self.raw_granule_ur = f"EMIT_L1A_RAW_0{self.config['prod_versions']['l1a']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.rdn_granule_ur = f"EMIT_L1B_RAD_0{self.config['prod_versions']['l1brdn']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.obs_granule_ur = f"EMIT_L1B_OBS_0{self.config['prod_versions']['l1brdn']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.rdn_granule_ur = f"EMIT_L1B_RAD_0{self.config['prod_versions']['l1b']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.obs_granule_ur = f"EMIT_L1B_OBS_0{self.config['prod_versions']['l1b']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.rfl_granule_ur = f"EMIT_L2A_RFL_0{self.config['prod_versions']['l2a']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.rfluncert_granule_ur = f"EMIT_L2A_RFLUNCERT_0{self.config['prod_versions']['l2a']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.maskTf_granule_ur = f"EMIT_L2A_MASK_0{self.config['prod_versions']['maskTf']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.maskTf_granule_ur = f"EMIT_L2A_MASK_0{self.config['prod_versions']['mask']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.min_granule_ur = f"EMIT_L2B_MIN_0{self.config['prod_versions']['l2b']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.minuncert_granule_ur = f"EMIT_L2B_MINUNCERT_0{self.config['prod_versions']['l2b']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.ch4_granule_ur = f"EMIT_L2B_CH4ENH_0{self.config['prod_versions']['ch4']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
