@@ -103,7 +103,7 @@ class L3ReflectanceFormat(SlurmJobTask):
             "netcdf_l3obs_path": acq.l3obs_nc_path,
             "created": nc_creation_time
         }
-        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l3.{wm.config['prod_versions']['l3rfl']}.rfl_netcdf": product_dict_netcdf})
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l3rfl.{wm.config['prod_versions']['l3rfl']}.rfl_netcdf": product_dict_netcdf})
 
         total_time = time.time() - start_time
         log_entry = {
@@ -183,22 +183,22 @@ class L3ReflectanceDeliver(SlurmJobTask):
         ummg_path = acq.rfl_nc_path.replace(".nc", ".cmr.json")
 
         # Create local/tmp daac names and paths
-        daac_l3rfl_nc_name = f"{acq.l3rfl_granule_ur}.nc"
-        daac_l3rfluncert_nc_name = f"{acq.l3rfluncert_granule_ur}.nc"
-        daac_l3obs_nc_name = f"{acq.l3obs_granule_ur}.nc"
-        daac_l3rflbrowse_name = f"{acq.l3rfl_granule_ur}.png"
+        daac_rfl_nc_name = f"{acq.l3rfl_granule_ur}.nc"
+        daac_rfluncert_nc_name = f"{acq.l3rfluncert_granule_ur}.nc"
+        daac_obs_nc_name = f"{acq.l3obs_granule_ur}.nc"
+        daac_rflbrowse_name = f"{acq.l3rfl_granule_ur}.png"
         daac_ummg_name = f"{acq.l3rfl_granule_ur}.cmr.json"
-        daac_l3rfl_nc_path = os.path.join(self.tmp_dir, daac_l3rfl_nc_name)
-        daac_l3rfluncert_nc_path = os.path.join(self.tmp_dir, daac_l3rfluncert_nc_name)
-        daac_l3obs_nc_path = os.path.join(self.tmp_dir, daac_l3rfluncert_nc_name)
-        daac_l3rflbrowse_path = os.path.join(self.tmp_dir, daac_l3rflbrowse_name)
+        daac_rfl_nc_path = os.path.join(self.tmp_dir, daac_rfl_nc_name)
+        daac_rfluncert_nc_path = os.path.join(self.tmp_dir, daac_rfluncert_nc_name)
+        daac_obs_nc_path = os.path.join(self.tmp_dir, daac_rfluncert_nc_name)
+        daac_rflbrowse_path = os.path.join(self.tmp_dir, daac_rflbrowse_name)
         daac_ummg_path = os.path.join(self.tmp_dir, daac_ummg_name)
 
         # Copy files to tmp dir and rename
-        wm.copy(acq.l3rfl_nc_path, daac_l3rfl_nc_path)
-        wm.copy(acq.l3rfluncert_nc_path, daac_l3rfluncert_nc_path)
-        wm.copy(acq.l3rfluncert_nc_path, daac_l3rfluncert_nc_path)
-        wm.copy(acq.l3rfl_png_path, daac_l3rflbrowse_path)
+        wm.copy(acq.l3rfl_nc_path, daac_rfl_nc_path)
+        wm.copy(acq.l3rfluncert_nc_path, daac_rfluncert_nc_path)
+        wm.copy(acq.l3rfluncert_nc_path, daac_rfluncert_nc_path)
+        wm.copy(acq.l3rfl_png_path, daac_rflbrowse_path)
 
         # Get the software_build_version (extended build num when product was created)
         hdr = envi.read_envi_header(acq.l3rfl_hdr_path)
@@ -225,7 +225,7 @@ class L3ReflectanceDeliver(SlurmJobTask):
                                               cloud_cover=cloud_cover)
         ummg = daac_converter.add_data_files_ummg(
             ummg,
-            [daac_l3rfl_nc_path, daac_l3rfluncert_nc_path, daac_l3obs_nc_path, daac_l3rflbrowse_path],
+            [daac_rfl_nc_path, daac_rfluncert_nc_path, daac_obs_nc_path, daac_rflbrowse_path],
             acq.daynight,
             ["NETCDF-4", "NETCDF-4", "NETCDF-4", "PNG"])
         ummg = daac_converter.add_boundary_ummg(ummg, acq.gring)
@@ -236,7 +236,7 @@ class L3ReflectanceDeliver(SlurmJobTask):
         wm.copy(ummg_path, daac_ummg_path)
 
         # Copy files to S3 for staging
-        for path in (daac_l3rfl_nc_path, daac_l3rfluncert_nc_path, daac_l3obs_nc_path, daac_l3rflbrowse_path, daac_ummg_path):
+        for path in (daac_rfl_nc_path, daac_rfluncert_nc_path, daac_obs_nc_path, daac_rflbrowse_path, daac_ummg_path):
             cmd_aws_s3 = ["ssh", "ngishpc1", "'" + wm.config["aws_cli_exe"], "s3", "cp", path, acq.aws_s3_uri_base,
                           "--profile", wm.config["aws_profile"] + "'"]
             pge.run(cmd_aws_s3, tmp_dir=self.tmp_dir)
@@ -246,10 +246,10 @@ class L3ReflectanceDeliver(SlurmJobTask):
         cnm_submission_id = f"{acq.l3rfl_granule_ur}_{utc_now.strftime('%Y%m%dt%H%M%S')}"
         cnm_submission_path = os.path.join(acq.l3rfl_data_dir, cnm_submission_id + "_cnm.json")
         target_src_map = {
-            daac_l3rfl_nc_name: os.path.basename(acq.l3rfl_nc_path),
-            daac_l3rfluncert_nc_name: os.path.basename(acq.l3rfluncert_nc_path),
-            daac_l3obs_nc_name: os.path.basename(acq.l3obs_nc_path),
-            daac_l3rflbrowse_name: os.path.basename(acq.l3rfl_png_path),
+            daac_rfl_nc_name: os.path.basename(acq.l3rfl_nc_path),
+            daac_rfluncert_nc_name: os.path.basename(acq.l3rfluncert_nc_path),
+            daac_obs_nc_name: os.path.basename(acq.l3obs_nc_path),
+            daac_rflbrowse_name: os.path.basename(acq.l3rfl_png_path),
             daac_ummg_name: os.path.basename(ummg_path)
         }
         provider = wm.config["daac_provider_forward"]
@@ -267,36 +267,36 @@ class L3ReflectanceDeliver(SlurmJobTask):
                 "dataVersion": acq.collection_version,
                 "files": [
                     {
-                        "name": daac_l3rfl_nc_name,
-                        "uri": acq.aws_s3_uri_base + daac_l3rfl_nc_name,
+                        "name": daac_rfl_nc_name,
+                        "uri": acq.aws_s3_uri_base + daac_rfl_nc_name,
                         "type": "data",
-                        "size": os.path.getsize(daac_l3rfl_nc_name),
+                        "size": os.path.getsize(daac_rfl_nc_name),
                         "checksumType": "sha512",
-                        "checksum": daac_converter.calc_checksum(daac_l3rfl_nc_path, "sha512")
+                        "checksum": daac_converter.calc_checksum(daac_rfl_nc_path, "sha512")
                     },
                     {
-                        "name": daac_l3rfluncert_nc_name,
-                        "uri": acq.aws_s3_uri_base + daac_l3rfluncert_nc_name,
+                        "name": daac_rfluncert_nc_name,
+                        "uri": acq.aws_s3_uri_base + daac_rfluncert_nc_name,
                         "type": "data",
-                        "size": os.path.getsize(daac_l3rfluncert_nc_name),
+                        "size": os.path.getsize(daac_rfluncert_nc_name),
                         "checksumType": "sha512",
-                        "checksum": daac_converter.calc_checksum(daac_l3rfluncert_nc_path, "sha512")
+                        "checksum": daac_converter.calc_checksum(daac_rfluncert_nc_path, "sha512")
                     },
                                         {
-                        "name": daac_l3rfluncert_nc_name,
-                        "uri": acq.aws_s3_uri_base + daac_l3rfluncert_nc_name,
+                        "name": daac_rfluncert_nc_name,
+                        "uri": acq.aws_s3_uri_base + daac_rfluncert_nc_name,
                         "type": "data",
-                        "size": os.path.getsize(daac_l3rfluncert_nc_name),
+                        "size": os.path.getsize(daac_rfluncert_nc_name),
                         "checksumType": "sha512",
-                        "checksum": daac_converter.calc_checksum(daac_l3rfluncert_nc_path, "sha512")
+                        "checksum": daac_converter.calc_checksum(daac_rfluncert_nc_path, "sha512")
                     },
                     {
-                        "name": daac_l3rflbrowse_name,
-                        "uri": acq.aws_s3_uri_base + daac_l3rflbrowse_name,
+                        "name": daac_rflbrowse_name,
+                        "uri": acq.aws_s3_uri_base + daac_rflbrowse_name,
                         "type": "browse",
-                        "size": os.path.getsize(daac_l3rflbrowse_path),
+                        "size": os.path.getsize(daac_rflbrowse_path),
                         "checksumType": "sha512",
-                        "checksum": daac_converter.calc_checksum(daac_l3rflbrowse_path, "sha512")
+                        "checksum": daac_converter.calc_checksum(daac_rflbrowse_path, "sha512")
                     },
                     {
                         "name": daac_ummg_name,
@@ -351,7 +351,7 @@ class L3ReflectanceDeliver(SlurmJobTask):
             "ummg_json_path": ummg_path,
             "created": datetime.datetime.fromtimestamp(os.path.getmtime(ummg_path), tz=datetime.timezone.utc)
         }
-        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l3.{wm.config['prod_versions']['l3rfl']}.rfl_ummg": product_dict_ummg})
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l3rfl.{wm.config['prod_versions']['l3rfl']}.rfl_ummg": product_dict_ummg})
 
         if "rfl_daac_submissions" in acq.metadata["products"]["l3rfl"][wm.config["prod_versions"]["l3rfl"]] and \
                 acq.metadata["products"]["l3rfl"][wm.config["prod_versions"]["l3rfl"]]["rfl_daac_submissions"] is not None:
@@ -360,7 +360,7 @@ class L3ReflectanceDeliver(SlurmJobTask):
             acq.metadata["products"]["l3rfl"][wm.config["prod_versions"]["l3rfl"]]["rfl_daac_submissions"] = [cnm_submission_path]
         dm.update_acquisition_metadata(
             acq.acquisition_id,
-            {f"products.l3.{wm.config['prod_versions']['l3rfl']}.rfl_daac_submissions": acq.metadata["products"]["l3rfl"][wm.config["prod_versions"]["l3rfl"]]["rfl_daac_submissions"]})
+            {f"products.l3rfl.{wm.config['prod_versions']['l3rfl']}.rfl_daac_submissions": acq.metadata["products"]["l3rfl"][wm.config["prod_versions"]["l3rfl"]]["rfl_daac_submissions"]})
 
         total_time = time.time() - start_time
         log_entry = {

@@ -378,3 +378,50 @@ class AcquisitionMonitor:
                                        daac_ingest_queue=self.daac_ingest_queue,
                                        override_output = self.override_output))
         return tasks
+ 
+ 
+     def get_l3rfl_tasks(self, start_time, stop_time, date_field="last_modified", retry_failed=False):
+        tasks = []
+        # Find acquisitions within time range
+        dm = self.wm.database_manager
+        acquisitions = dm.find_acquisitions_for_l3rfl(start=start_time, stop=stop_time, date_field=date_field,
+                                                    retry_failed=retry_failed)
+
+        # If no results, just return empty list
+        if len(acquisitions) == 0:
+            logger.info(f"Did not find any acquisitions with {date_field} between {start_time} and {stop_time} needing "
+                        f"l3 reflectance tasks. Not executing any tasks.")
+            return tasks
+
+        for acq in acquisitions:
+            logger.info(f"Creating L3ReflectanceFormat task for acquisition {acq['acquisition_id']}")
+            tasks.append(L3ReflectanceFormat(config_path=self.config_path,
+                                      acquisition_id=acq["acquisition_id"],
+                                      level=self.level,
+                                      partition=self.partition))
+
+        return tasks
+    
+    def get_l3rfl_delivery_tasks(self, start_time, stop_time, date_field="last_modified", retry_failed=False):
+        tasks = []
+        # Find acquisitions within time range
+        dm = self.wm.database_manager
+        acquisitions = dm.find_acquisitions_for_l3rfl_delivery(start=start_time, stop=stop_time,
+                                                             date_field=date_field, retry_failed=retry_failed)
+
+        # If no results, just return empty list
+        if len(acquisitions) == 0:
+            logger.info(f"Did not find any acquisitions with {date_field} between {start_time} and {stop_time} needing "
+                        f"l3 reflectance delivery tasks. Not executing any tasks.")
+            return tasks
+
+        for acq in acquisitions:
+            logger.info(f"Creating L3ReflectanceDeliver task for acquisition {acq['acquisition_id']}")
+            tasks.append(L3ReflectanceDeliver(config_path=self.config_path,
+                                    acquisition_id=acq["acquisition_id"],
+                                    level=self.level,
+                                    partition=self.partition,
+                                    daac_ingest_queue=self.daac_ingest_queue,
+                                    override_output = self.override_output))
+
+        return tasks

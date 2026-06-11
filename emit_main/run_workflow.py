@@ -32,6 +32,7 @@ from emit_main.workflow.l1b_tasks import L1BGeolocate, L1BCalibrate, L1BRdnForma
 from emit_main.workflow.l2a_tasks import L2AReflectance, L2AFormat, L2ADeliver, L2AMaskTf, L2AMaskTfFormat, L2AMaskTfDeliver
 from emit_main.workflow.l2b_tasks import L2BMineral, L2BFormat, L2BDeliver, L2BFrCov, L2BFrCovFormat, L2BFrCovDeliver
 from emit_main.workflow.ghg_tasks import CH4, CO2, CH4Deliver, CO2Deliver, CH4Mosaic, CO2Mosaic
+from emit_main.workflow.l3_tasks import L3ReflectanceFormat, L3ReflectanceDeliver
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_main.workflow.workflow_manager import WorkflowManager
 
@@ -46,10 +47,11 @@ def parse_args():
                        "l1adaac", "l1abad", "l1bcal", "l1bgeo", "l1brdnformat", "l1brdndaac", "l1battdaac", "l1bmosaic",
                        "l2arefl", "l2amaskTf", "l2aformat","l2amaskTfformat", "l2adaac", "l2bmin", "l2bformat",
                        "l2bdaac","l2amaskTfdaac", "l2bch4", "l2bco2","l2bch4daac", "l2bco2daac", "l2bch4mosaic",
-                       "l2bco2mosaic", "l2bfrcov", "l2bfrcovformat", "l2bfrcovdaac", "daacscenes", "daacaddl", "recon"]
-    monitor_choices = ["ingest", "frames", "edp", "cal", "bad", "geo", "l2","maskTf", "l2b","ch4", "co2", "frcov",
+                       "l2bco2mosaic", "l2bfrcov", "l2bfrcovformat", "l2bfrcovdaac", "l3rflformat", "l3rfldaac",
+                       "daacscenes", "daacaddl", "recon"]
+    monitor_choices = ["ingest", "frames", "edp", "cal", "bad", "geo", "l2","maskTf", "l2b","ch4", "co2", "frcov", "l3rfl"
                        "email", "daacscenes", "dl0","dl1a", "dl1brdn", "dl1batt", "dl2a", "dmaskTf", "dfrcov",
-                       "dl2b", "dch4", "dco2", "mch4", "mco2", "ml1b", "reconresp"]
+                       "dl2b", "dch4", "dco2", "dl3rfl", "mch4", "mco2", "ml1b", "reconresp"]
     parser = argparse.ArgumentParser(
         description="Description: This is the top-level run script for executing the various EMIT SDS workflow and "
                     "monitor tasks.\n"
@@ -242,6 +244,9 @@ def get_tasks_from_product_args(args):
         "l2bfrcovformat": lambda acq_id: L2BFrCovFormat(acquisition_id=acq_id, **kwargs),
         "l2bfrcovdaac": lambda acq_id: L2BFrCovDeliver(acquisition_id=acq_id, daac_ingest_queue=args.daac_ingest_queue,
                                                 override_output=args.override_output, **kwargs),
+        "l3rflformat": lambda acq_id: L3ReflectanceFormat (acquisition_id=acq_id, **kwargs),
+        "l3rfldaac": lambda acq_id: L3ReflectanceDeliver(acquisition_id=acq_id, daac_ingest_queue=args.daac_ingest_queue,
+                                             override_output=args.override_output, **kwargs),
         "daacscenes": lambda: AssignDAACSceneNumbers(orbit_id=args.orbit_id, override_output=args.override_output, **kwargs),
         "daacaddl": lambda acq_id: GetAdditionalMetadata(acquisition_id=acq_id, **kwargs),
         "recon": lambda: ReconciliationReport(start_time=args.start_time.strftime("%Y%m%dT%H%M%S"),
@@ -254,7 +259,8 @@ def get_tasks_from_product_args(args):
                     "l2arefl", "l2aformat", "l2adaac", "l2bmin", "l2bformat",
                     "l2bdaac", "l2bch4", "l2bch4daac", "l2bco2", "l2bco2daac",
                     "l2bfrcov", "daacaddl", "l2amaskTf","l2amaskTfformat",
-                    "l2amaskTfdaac", "l2bfrcovformat", "l2bfrcovdaac"}:
+                    "l2amaskTfdaac", "l2bfrcovformat", "l2bfrcovdaac", 
+                    "l3rflformat", "l3rfldaac"}:
             for acq_id in acquisition_ids:
                 tasks.append(prod_task_map[prod](acq_id))
         else:
@@ -349,7 +355,8 @@ def task_failure(task, e):
         product_version = wm.config["prod_versions"]["ch4"]
     if "CO2" in task.task_family:
         product_version = wm.config["prod_versions"]["co2"]
-    
+    if "L3Rfl" in task.task_family: #May be wrong
+        product_version = wm.config["prod_versions"]["l3rfl"]
     log_entry = {
         "task": task.task_family,
         "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
@@ -365,7 +372,8 @@ def task_failure(task, e):
                          "emit.L2AReflectance", "emit.L2AMaskTf", "emit.L2AFormat", "emit.L2AMaskTfFormat", 
                          "emit.L2ADeliver", "emit.L2AMaskTfDeliver", "emit.L2BMineral", "emit.L2BFormat", "emit.L2BDeliver", 
                          "emit.L2BFrCov", "emit.L2BFrCovFormat", "emit.L2BFrCovDeliver" "emit.GetAdditionalMetadata", 
-                         "emit.CH4", "emit.CO2", "emit.CH4Deliver", "emit.CO2Deliver")
+                         "emit.CH4", "emit.CO2", "emit.CH4Deliver", "emit.CO2Deliver", "emit.L3ReflectanceFormat",
+                         "emit.L3ReflectanceDeliver")
     orbit_tasks = ("emit.L1AReformatBAD", "emit.L1BGeolocate", "emit.L1BAttDeliver", "emit.AssignDAACSceneNumbers")
 
     dm = wm.database_manager
@@ -545,6 +553,15 @@ def main():
         logger.info(f"Acquisition monitor L2BFrCov tasks to run:\n{am_frcov_tasks_str}")
         tasks += am_frcov_tasks
 
+    # Get tasks from acquisition monitor for L3 Reflectance tasks
+    if args.monitor and args.monitor == "l3rfl":
+        am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
+        am_l3rfl_tasks = am.get_l3rfl_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                        date_field=args.date_field, retry_failed=args.retry_failed)
+        am_l3rfl_tasks_str = "\n".join([str(t) for t in am_l3rfl_tasks])
+        logger.info(f"Acquisition monitor L3 Reflectance tasks to run:\n{am_l2b_tasks_str}")
+        tasks += am_l3rfl_tasks
+
     # Get tasks from daacscenes monitor
     if args.monitor and args.monitor == "daacscenes":
         om = OrbitMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
@@ -654,7 +671,17 @@ def main():
         logger.info(f"Acquisition monitor deliver frcov tasks to run:\n{am_dfrcov_tasks_str}")
         tasks += am_dfrcov_tasks
         
-        # Get tasks from mch4 (mosaic ch4) monitor
+    # Get tasks from dl3rfl (deliver l3 reflectance) monitor
+    if args.monitor and args.monitor == "dl3rfl":
+        am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition,
+                                daac_ingest_queue=args.daac_ingest_queue, override_output=args.override_output)
+        am_dl3rfl_tasks = am.get_l3rfl_delivery_tasks(start_time=args.start_time, stop_time=args.stop_time,
+                                                  date_field=args.date_field, retry_failed=args.retry_failed)
+        am_dl3rfl_tasks_str = "\n".join([str(t) for t in am_dl3rfl_tasks])
+        logger.info(f"Acquisition monitor deliver l3 reflectance tasks to run:\n{am_dl2b_tasks_str}")
+        tasks += am_dl3rfl_tasks    
+        
+    # Get tasks from mch4 (mosaic ch4) monitor
     if args.monitor and args.monitor == "mch4":
         dm = FramesMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
         dm_ch4_mosaic_tasks = dm.get_ch4_mosaic_tasks(start_time=args.start_time, stop_time=args.stop_time,
