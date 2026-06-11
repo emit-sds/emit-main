@@ -89,13 +89,16 @@ class L3ReflectanceFormat(SlurmJobTask):
         main_pge.run(cmd, tmp_dir=self.tmp_dir)
 
         # Copy and rename output files back to /store
-        log_path = acq.rfl_nc_path.replace(".nc", "_nc_pge.log")
-        wm.copy(tmp_daac_rfl_nc_path, acq.rfl_nc_path)
-        wm.copy(tmp_daac_rfl_unc_nc_path, acq.rfluncert_nc_path)
+        log_path = acq.l3rfl_nc_path.replace(".nc", "_nc_pge.log")
+        wm.copy(tmp_daac_rfl_nc_path, acq.l3rfl_nc_path)
+        wm.copy(tmp_daac_rfl_unc_nc_path, acq.l3rfluncert_nc_path)
+        wm.copy(tmp_daac_obs_nc_path, acq.l3obs_nc_path)
+        wm.copy(tmp_daac_browse_png_path, acq.l3rfl_png_path)
+
         wm.copy(tmp_log_path, log_path)
 
         # PGE writes metadata to db
-        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rfl_nc_path), tz=datetime.timezone.utc)
+        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.l3rfl_nc_path), tz=datetime.timezone.utc)
         dm = wm.database_manager
         product_dict_netcdf = {
             "netcdf_l3rfl_path": acq.l3rfl_nc_path,
@@ -116,7 +119,7 @@ class L3ReflectanceFormat(SlurmJobTask):
                 "state_img_path": acq.state_img_path,
                 "maskTf_img_path": acq.maskTf_img_path,
                 "loc_img_path": acq.loc_img_path,
-                "obs_img_path": acq.glt_img_path
+                "obs_img_path": acq.obs_img_path
             },
             "pge_run_command": " ".join(cmd),
             "documentation_version": "TBD",
@@ -180,7 +183,7 @@ class L3ReflectanceDeliver(SlurmJobTask):
         pge = wm.pges["emit-main"]
 
         # Get local SDS names
-        ummg_path = acq.rfl_nc_path.replace(".nc", ".cmr.json")
+        ummg_path = acq.l3rfl_nc_path.replace(".nc", ".cmr.json")
 
         # Create local/tmp daac names and paths
         daac_rfl_nc_name = f"{acq.l3rfl_granule_ur}.nc"
@@ -211,7 +214,7 @@ class L3ReflectanceDeliver(SlurmJobTask):
         cloud_cover = min(cloud_fraction + nodata_fraction, 100)
         
         # Create the UMM-G file
-        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rfl_nc_path), tz=datetime.timezone.utc)
+        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.l3rfl_nc_path), tz=datetime.timezone.utc)
         l3rfl_pge = wm.pges["emit-sds-l3rfl"]
         ummg = daac_converter.initialize_ummg(acq.l3rfl_granule_ur, nc_creation_time, "EMITL3RFL",
                                               acq.collection_version, acq.start_time,
@@ -368,9 +371,10 @@ class L3ReflectanceDeliver(SlurmJobTask):
             "pge_name": pge.repo_url,
             "pge_version": pge.version_tag,
             "pge_input_files": {
-                "rfl_netcdf_path": acq.rfl_nc_path,
-                "rfluncert_netcdf_path": acq.rfluncert_nc_path,
-                "rfl_png_path": acq.rfl_png_path
+                "l3rfl_netcdf_path": acq.l3rfl_nc_path,
+                "l3rfluncert_netcdf_path": acq.l3rfluncert_nc_path,
+                "l3obs_netcdf_path": acq.l3obs_nc_path,
+                "l3rfl_png_path": acq.l3rfl_png_path
             },
             "pge_run_command": " ".join(cmd_aws),
             "documentation_version": "TBD",

@@ -355,7 +355,7 @@ def task_failure(task, e):
         product_version = wm.config["prod_versions"]["ch4"]
     if "CO2" in task.task_family:
         product_version = wm.config["prod_versions"]["co2"]
-    if "L3Rfl" in task.task_family: #May be wrong
+    if "L3Reflectance" in task.task_family:
         product_version = wm.config["prod_versions"]["l3rfl"]
     log_entry = {
         "task": task.task_family,

@@ -261,8 +261,7 @@ class DatabaseManager:
 
     def find_acquisitions_for_l3rfl(self, start, stop, date_field="last_modified", retry_failed=False):
         acquisitions_coll = self.db.acquisitions
-        # Query for acquisitions with complete l2a outputs but no frcov outputs in time range
-        # Even though mask is not used in this step, the frcov formatting step needs it, so we check for it here
+        # Query for acquisitions with complete l2a, mask and l1b outputs but no l3 outputs in time range
         query = {
             f"products.l2a.{self.config['prod_versions']['l2a']}.rfl.img_path": {"$exists": 1},
             f"products.l2a.{self.config['prod_versions']['l2a']}.rfluncert.img_path": {"$exists": 1},
@@ -280,7 +279,6 @@ class DatabaseManager:
         }
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
-             # Should this include emit.L3ReflectanceFormat????
             results = self._remove_results_with_failed_tasks(results, ["emit.L3ReflectanceFormat"])
         return results
     
