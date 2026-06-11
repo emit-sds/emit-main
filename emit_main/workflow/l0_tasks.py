@@ -47,6 +47,8 @@ class L0StripHOSC(SlurmJobTask):
                             product_version=wm.config["prod_versions"]["l0"])
 
     def work(self):
+        
+        start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.stream_path}")
 
         wm = WorkflowManager(config_path=self.config_path)
@@ -191,6 +193,7 @@ class L0StripHOSC(SlurmJobTask):
 
         doc_version = "Space Packet Protocol, CCSDS 133.0-B-1 (with Issue 1, Cor. 1, Sept. 2010 and Issue 1, Cor. 2, " \
                       "Sept. 2012 addendums)"
+        total_time = time.time() - start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -199,6 +202,7 @@ class L0StripHOSC(SlurmJobTask):
                 "ingested_hosc_path": self.stream_path,
             },
             "pge_run_command": " ".join(cmd),
+            "pge_runtime_seconds": total_time,
             "documentation_version": doc_version,
             "product_creation_time": datetime.datetime.fromtimestamp(
                 os.path.getmtime(ccsds_path), tz=datetime.timezone.utc),
@@ -244,6 +248,8 @@ class L0IngestBAD(SlurmJobTask):
                             product_version=wm.config["prod_versions"]["l0"])
 
     def work(self):
+        
+        start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.stream_path}")
 
         # Get workflow manager
@@ -380,6 +386,7 @@ class L0IngestBAD(SlurmJobTask):
         dm = wm.database_manager
         dm.update_stream_metadata(stream.bad_name, metadata)
 
+        total_time = time.time() - start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -390,6 +397,7 @@ class L0IngestBAD(SlurmJobTask):
             "pge_run_command": " ".join(cmd),
             "documentation_version": "N/A",
             "product_creation_time": creation_time_raw,
+            "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "product_version": wm.config["prod_versions"]["l0"],
@@ -428,6 +436,7 @@ class L0ProcessPlanningProduct(SlurmJobTask):
 
     def work(self):
 
+        start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.plan_prod_path}")
         wm = WorkflowManager(config_path=self.config_path)
         dm = wm.database_manager
@@ -607,12 +616,14 @@ class L0ProcessPlanningProduct(SlurmJobTask):
         wm.move(self.plan_prod_path, target_pp_path)
 
         # Add processing log entry for orbits and data collections
+        total_time = time.time() - start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
             "pge_version": pge.version_tag,
             "pge_input_files": self.plan_prod_path,
             "pge_run_command": "N/A - database updates only",
+            "pge_runtime_seconds": total_time,
             "documentation_version": "N/A",
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
@@ -659,6 +670,8 @@ class L0Deliver(SlurmJobTask):
                             product_version=wm.config["prod_versions"]["l0"])
 
     def work(self):
+        
+        start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
@@ -801,6 +814,7 @@ class L0Deliver(SlurmJobTask):
             stream.ccsds_name,
             {f"products.daac.{[wm.config['prod_versions']['l0']]}.ccsds_daac_submissions": stream.metadata["products"]["daac"][wm.config["prod_versions"]["l0"]]["ccsds_daac_submissions"]})
 
+        total_time = time.time() - start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -811,6 +825,7 @@ class L0Deliver(SlurmJobTask):
             "pge_run_command": " ".join(cmd_aws),
             "documentation_version": "TBD",
             "product_creation_time": cnm_creation_time,
+            "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "product_version": wm.config["prod_versions"]["l0"],
