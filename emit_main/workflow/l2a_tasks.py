@@ -267,6 +267,7 @@ class L2AFormat(SlurmJobTask):
 
     def work(self):
 
+        start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
@@ -306,6 +307,7 @@ class L2AFormat(SlurmJobTask):
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l2a.{wm.config['prod_versions']['l2a']}.rfl_netcdf": product_dict_netcdf})
 
+        total_time = time.time() - start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -319,6 +321,7 @@ class L2AFormat(SlurmJobTask):
             "pge_run_command": " ".join(cmd),
             "documentation_version": "TBD",
             "product_creation_time": nc_creation_time,
+            "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "product_version": wm.config["prod_versions"]["l2a"],
@@ -367,6 +370,7 @@ class L2ADeliver(SlurmJobTask):
 
     def work(self):
 
+        start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
@@ -545,6 +549,7 @@ class L2ADeliver(SlurmJobTask):
             acq.acquisition_id,
             {f"products.l2a.{wm.config['prod_versions']['l2a']}.rfl_daac_submissions": acq.metadata["products"]["l2a"][wm.config["prod_versions"]["l2a"]]["rfl_daac_submissions"]})
 
+        total_time = time.time() - start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -557,6 +562,7 @@ class L2ADeliver(SlurmJobTask):
             "pge_run_command": " ".join(cmd_aws),
             "documentation_version": "TBD",
             "product_creation_time": cnm_creation_time,
+            "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "product_version": wm.config["prod_versions"]["l2a"],
@@ -756,6 +762,7 @@ class L2AMaskTfFormat(SlurmJobTask):
 
     def work(self):
 
+        start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
@@ -793,6 +800,7 @@ class L2AMaskTfFormat(SlurmJobTask):
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {f"products.mask.{wm.config['prod_versions']['mask']}.maskTf_netcdf": product_dict_netcdf})
 
+        total_time = time.time() - start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -805,6 +813,7 @@ class L2AMaskTfFormat(SlurmJobTask):
             "pge_run_command": " ".join(cmd),
             "documentation_version": "TBD",
             "product_creation_time": nc_creation_time,
+            "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "product_version": wm.config["prod_versions"]["mask"],
@@ -851,6 +860,7 @@ class L2AMaskTfDeliver(SlurmJobTask):
 
     def work(self):
 
+        start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
@@ -1020,6 +1030,7 @@ class L2AMaskTfDeliver(SlurmJobTask):
             acq.acquisition_id,
             {f"products.mask.{wm.config['prod_versions']['mask']}.maskTf_daac_submissions": acq.metadata["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf_daac_submissions"]})
 
+        total_time = time.time() - start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -1031,6 +1042,7 @@ class L2AMaskTfDeliver(SlurmJobTask):
             "pge_run_command": " ".join(cmd_aws),
             "documentation_version": "TBD",
             "product_creation_time": cnm_creation_time,
+            "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "product_version": wm.config["prod_versions"]["mask"],
