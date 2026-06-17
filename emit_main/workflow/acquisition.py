@@ -211,7 +211,7 @@ class Acquisition:
                 "frcovpvunc": ["tif"],
                 "frcovnpv": ["tif"],
                 "frcovnpvunc": ["tif"],      
-                }
+            },
             "l3rfl": {
                 "l3rfl": ["nc", "png"],
                 "l3rfluncert": ["nc"],

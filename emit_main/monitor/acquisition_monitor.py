@@ -11,7 +11,8 @@ import os
 from emit_main.workflow.l1a_tasks import L1ADeliver
 from emit_main.workflow.l1b_tasks import L1BCalibrate, L1BRdnDeliver
 from emit_main.workflow.l2a_tasks import L2AReflectance, L2ADeliver, L2AMaskTf, L2AMaskTfDeliver
-from emit_main.workflow.l2b_tasks import L2BMineral, L2BDeliver, L2BFrCov, L2BFrCovFormat, L2BFrCovDeliver
+from emit_main.workflow.l2b_tasks import L2BMineral, L2BDeliver, L2BFrCov, L2BFrCovDeliver
+from emit_main.workflow.l3_tasks import L3ReflectanceFormat, L3ReflectanceDeliver
 from emit_main.workflow.ghg_tasks import CH4, CO2, CH4Deliver, CO2Deliver
 from emit_main.workflow.workflow_manager import WorkflowManager
 
@@ -380,7 +381,7 @@ class AcquisitionMonitor:
         return tasks
  
  
-     def get_l3rfl_tasks(self, start_time, stop_time, date_field="last_modified", retry_failed=False):
+    def get_l3rfl_tasks(self, start_time, stop_time, date_field="last_modified", retry_failed=False):
         tasks = []
         # Find acquisitions within time range
         dm = self.wm.database_manager

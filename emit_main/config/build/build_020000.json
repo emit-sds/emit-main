@@ -27,7 +27,7 @@
         },
         {
             "url": "git@github.com:emit-sds/emit-sds-l1b-geo.git",
-            "tag": "v1.6.29_rc2",
+            "tag": "v1.6.36_rc1",
             "conda_env": "emit-main-20251031"
         },
         {

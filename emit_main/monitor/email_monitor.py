@@ -465,7 +465,7 @@ class EmailMonitor:
                                                  daac_ingest_queue=self.daac_ingest_queue,
                                                  override_output=True))
                     
-               if g.startswith("EMIT_L3_RFL"):
+                if g.startswith("EMIT_L3_RFL"):
                     # Get acquisition id
                     timestamp = g.split("_")[4].replace("T", "t")
                     acquisition_id = f"emit{timestamp}"
