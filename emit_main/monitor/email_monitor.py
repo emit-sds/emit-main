@@ -20,6 +20,7 @@ from emit_main.workflow.l1a_tasks import L1ADeliver
 from emit_main.workflow.l1b_tasks import L1BRdnDeliver, L1BAttDeliver
 from emit_main.workflow.l2a_tasks import L2ADeliver, L2AMaskTfDeliver
 from emit_main.workflow.l2b_tasks import L2BDeliver, L2BFrCovDeliver
+from emit_main.workflow.l3_tasks import L3ReflectanceDeliver
 from emit_main.workflow.ghg_tasks import CH4Deliver, CO2Deliver
 from emit_main.workflow.workflow_manager import WorkflowManager
 
@@ -458,6 +459,18 @@ class EmailMonitor:
                     acquisition_id = f"emit{timestamp}"
                     logger.info(f"Creating L2BFrCovDeliver task for acquisition {acquisition_id}")
                     tasks.append(L2BFrCovDeliver(config_path=self.config_path,
+                                                 acquisition_id=acquisition_id,
+                                                 level=self.level,
+                                                 partition=self.partition,
+                                                 daac_ingest_queue=self.daac_ingest_queue,
+                                                 override_output=True))
+                    
+               if g.startswith("EMIT_L3_RFL"):
+                    # Get acquisition id
+                    timestamp = g.split("_")[4].replace("T", "t")
+                    acquisition_id = f"emit{timestamp}"
+                    logger.info(f"Creating L3ReflectanceDeliver task for acquisition {acquisition_id}")
+                    tasks.append(L3ReflectanceDeliver(config_path=self.config_path,
                                                  acquisition_id=acquisition_id,
                                                  level=self.level,
                                                  partition=self.partition,
