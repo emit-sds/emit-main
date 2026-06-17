@@ -90,7 +90,10 @@ class Acquisition:
             self.frcovnpvunc_granule_ur = f"EMIT_L2B_FRCOVNPVUNC_0{self.config['prod_versions']['frcov']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.frcovbare_granule_ur = f"EMIT_L2B_FRCOVBARE_0{self.config['prod_versions']['frcov']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
             self.frcovbareunc_granule_ur = f"EMIT_L2B_FRCOVBAREUNC_0{self.config['prod_versions']['frcov']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            
+            self.l3rfl_granule_ur = f"EMIT_L3_RFL_0{self.config['prod_versions']['l3rfl']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.l3rfluncert_granule_ur = f"EMIT_L3_RFLUNCERT_0{self.config['prod_versions']['l3rfl']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.l3obs_granule_ur = f"EMIT_L3_OBS_0{self.config['prod_versions']['l3rfl']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+
         self.daac_staging_dir = os.path.join(self.config["daac_base_dir"], wm.config['environment'], "products", self.start_time.strftime("%Y%m%d"))
         self.daac_uri_base = f"https://{self.config['daac_server_external']}/emit/lpdaac/{wm.config['environment']}/products/{self.start_time.strftime('%Y%m%d')}/"
         self.daac_partial_dir = os.path.join(self.config["daac_base_dir"], wm.config['environment'], "partial_transfers")
@@ -209,6 +212,12 @@ class Acquisition:
                 "frcovnpv": ["tif"],
                 "frcovnpvunc": ["tif"],      
                 }
+            "l3rfl": {
+                "l3rfl": ["nc", "png"],
+                "l3rfluncert": ["nc"],
+                "l3obs": ["nc"],
+
+            },
         }
         paths = {}
         for prod_group, prod_map in product_map.items():

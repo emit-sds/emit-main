@@ -62,6 +62,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
 
     def work(self):
 
+        start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.stream_path}")
         wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
         dm = wm.database_manager
@@ -255,12 +256,14 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
         wm.copy(tmp_report_path, sdp_report_path)
 
         doc_version = "EMIT IOS SDS ICD JPL-D 104239, Initial"
+        total_time = time.time() - start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
             "pge_version": pge.version_tag,
             "pge_input_files": input_files,
             "pge_run_command": " ".join(cmd),
+            "pge_runtime_seconds": total_time,
             "documentation_version": doc_version,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
@@ -305,6 +308,7 @@ class L1AReassembleRaw(SlurmJobTask):
 
     def work(self):
 
+        start_time = time.time()
         logger.debug(f"{self.task_family} run: {self.dcid}")
 
         wm = WorkflowManager(config_path=self.config_path, dcid=self.dcid)
@@ -655,6 +659,7 @@ class L1AReassembleRaw(SlurmJobTask):
             dm.update_orbit_metadata(orbit.orbit_id, {f"raw_status.{wm.config['prod_versions']['l1a']}": "incomplete"})
 
         # Add log entry to DB
+        total_time = time.time() - start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge_reassemble.repo_url,
@@ -663,6 +668,7 @@ class L1AReassembleRaw(SlurmJobTask):
             "pge_run_command": " ".join(cmd),
             "documentation_version": doc_version,
             "product_creation_time": creation_time,
+            "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "product_version": wm.config["prod_versions"]["l1a"],
@@ -706,6 +712,7 @@ class L1AFrameReport(SlurmJobTask):
 
     def work(self):
 
+        start_time = time.time()
         logger.debug(f"{self.task_family} run: {self.dcid}")
 
         wm = WorkflowManager(config_path=self.config_path, dcid=self.dcid)
@@ -776,6 +783,7 @@ class L1AFrameReport(SlurmJobTask):
         }
         dm.update_data_collection_metadata(dc.dcid, {f"products.l1a.{wm.config['prod_versions']['l1a']}.line_header_check_log": lhc_product_dict})
 
+        total_time = time.time() - start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -784,6 +792,7 @@ class L1AFrameReport(SlurmJobTask):
             "pge_run_command": " ".join(cmd_check_list),
             "documentation_version": "N/A",
             "product_creation_time": afr_creation_time,
+            "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "product_version": wm.config["prod_versions"]["l1a"],
@@ -832,6 +841,7 @@ class L1ADeliver(SlurmJobTask):
 
     def work(self):
 
+        start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
@@ -1005,6 +1015,7 @@ class L1ADeliver(SlurmJobTask):
             acq.acquisition_id,
             {f"products.l1a.{wm.config['prod_versions']['l1a']}.raw_daac_submissions": acq.metadata["products"]["l1a"][wm.config["prod_versions"]["l1a"]]["raw_daac_submissions"]})
 
+        total_time = time.time() - start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -1016,6 +1027,7 @@ class L1ADeliver(SlurmJobTask):
             "pge_run_command": " ".join(cmd_aws),
             "documentation_version": "TBD",
             "product_creation_time": cnm_creation_time,
+            "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "product_version": wm.config["prod_versions"]["l1a"],
@@ -1060,6 +1072,7 @@ class L1AReformatEDP(SlurmJobTask):
 
     def work(self):
 
+        start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.stream_path}")
         wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
         stream = wm.stream
@@ -1137,6 +1150,7 @@ class L1AReformatEDP(SlurmJobTask):
         dm.update_stream_metadata(stream.hosc_name, {f"products.l1a.{wm.config['prod_versions']['l1a']}": product_dict})
 
         doc_version = "EMIT IOS SDS ICD JPL-D 104239, Initial"
+        total_time = time.time() - start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -1145,6 +1159,7 @@ class L1AReformatEDP(SlurmJobTask):
             "pge_run_command": " ".join(cmd),
             "documentation_version": doc_version,
             "product_creation_time": product_dict["0x15"]["created"],
+            "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "product_version": wm.config["prod_versions"]["l1a"],
@@ -1183,6 +1198,7 @@ class L1AReformatBAD(SlurmJobTask):
 
     def work(self):
 
+        start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.orbit_id}")
         wm = WorkflowManager(config_path=self.config_path, orbit_id=self.orbit_id)
         dm = wm.database_manager
@@ -1241,6 +1257,7 @@ class L1AReformatBAD(SlurmJobTask):
         dm.update_orbit_metadata(orbit.orbit_id, metadata)
 
         doc_version = "N/A"
+        total_time = time.time() - start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -1251,6 +1268,7 @@ class L1AReformatBAD(SlurmJobTask):
             "pge_run_command": " ".join(cmd),
             "documentation_version": doc_version,
             "product_creation_time": creation_time,
+            "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
             "product_version": wm.config["prod_versions"]["l1a"],

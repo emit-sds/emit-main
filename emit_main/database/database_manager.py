@@ -259,6 +259,29 @@ class DatabaseManager:
             results = self._remove_results_with_failed_tasks(results, ["emit.L2BFrCov"])
         return results
 
+    def find_acquisitions_for_l3rfl(self, start, stop, date_field="last_modified", retry_failed=False):
+        acquisitions_coll = self.db.acquisitions
+        # Query for acquisitions with complete l2a, mask and l1b outputs but no l3 outputs in time range
+        query = {
+            f"products.l2a.{self.config['prod_versions']['l2a']}.rfl.img_path": {"$exists": 1},
+            f"products.l2a.{self.config['prod_versions']['l2a']}.rfluncert.img_path": {"$exists": 1},
+            f"products.l2a.{self.config['prod_versions']['l2a']}.state.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.obs.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.loc.img_path": {"$exists": 1},
+            f"products.mask.{self.config['prod_versions']['mask']}.maskTf.img_path": {"$exists": 1},
+            "$or": [
+                {f"products.l3rfl.{self.config['prod_versions']['l3rfl']}.rfl.nc_path": {"$exists": 0}},
+                {f"products.l3rfl.{self.config['prod_versions']['l3rfl']}.rfluncert.nc_path": {"$exists": 0}},
+                {f"products.l3rfl.{self.config['prod_versions']['l3rfl']}.obs.nc_path": {"$exists": 0}},
+                {f"products.l3rfl.{self.config['prod_versions']['l3rfl']}.rfl.png_path": {"$exists": 0}},
+            ],
+            date_field: {"$gte": start, "$lte": stop}
+        }
+        results = list(acquisitions_coll.find(query))
+        if not retry_failed:
+            results = self._remove_results_with_failed_tasks(results, ["emit.L3ReflectanceFormat"])
+        return results
+    
     def find_acquisitions_for_l1a_delivery(self, start, stop, date_field="last_modified", retry_failed=False):
         acquisitions_coll = self.db.acquisitions
         # Query for acquisitions with daac scene numbers but no daac ummg products.  If science, then we also need the
@@ -424,6 +447,25 @@ class DatabaseManager:
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L2BFrCovFormat", "emit.L2BFrCovDeliver"])
+        return results
+
+    def find_acquisitions_for_l3rfl_delivery(self, start, stop, date_field="last_modified", retry_failed=False):
+        acquisitions_coll = self.db.acquisitions
+        # Query for acquisitions with daac scene numbers but no daac ummg products.
+        query = {
+            f"products.l2a.{self.config['prod_versions']['l2a']}.rfl.img_path": {"$exists": 1},
+            f"products.l2a.{self.config['prod_versions']['l2a']}.rfluncert.img_path": {"$exists": 1},
+            f"products.l2a.{self.config['prod_versions']['l2a']}.state.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.obs.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.loc.img_path": {"$exists": 1},
+            f"products.mask.{self.config['prod_versions']['mask']}.maskTf.img_path": {"$exists": 1},
+
+            f"products.l3rfl.{self.config['prod_versions']['l3rfl']}.rfl_ummg.ummg_json_path": {"$exists": 0},
+            date_field: {"$gte": start, "$lte": stop}
+        }
+        results = list(acquisitions_coll.find(query))
+        if not retry_failed:
+            results = self._remove_results_with_failed_tasks(results, ["emit.L3ReflectanceFormat", "emit.L3ReflectanceDeliver"])
         return results
 
     def find_data_collections_for_ch4_mosaic(self, start, stop, date_field="last_modified", retry_failed=False):
