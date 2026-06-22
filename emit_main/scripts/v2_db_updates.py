@@ -45,10 +45,7 @@ def main():
     wm = WorkflowManager(config_path=config_path)
     db = wm.database_manager.db
 
-    # TODO: Check all product fields - can I put "raw" and "daac" here or handle them specially?
     prod_versions_v1 = {
-        "raw": "01",
-        "daac": "01",
         "l0": "01",
         "l1a": "01",
         "l1b": "01",
@@ -82,8 +79,13 @@ def main():
             if products_old:
                 products_new = {}
                 for p in products_old.keys():
+                    # Handle product keys that don't have product versions
+                    if p in ["raw", "daac"]:
+                        prod_version = "01"
+                    else:
+                        prod_version =  prod_versions_v1[p]
                     products_new[p] = {
-                        prod_versions_v1[p]: products_old[p]
+                        prod_version: products_old[p]
                     }
 
                 # Append to updates for bulk write
