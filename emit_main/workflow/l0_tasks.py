@@ -10,6 +10,7 @@ import json
 import logging
 import luigi
 import os
+import time
 
 from emit_main.workflow.output_targets import StreamTarget
 from emit_main.workflow.slurm import SlurmJobTask
@@ -812,7 +813,7 @@ class L0Deliver(SlurmJobTask):
             stream.metadata["products"]["daac"][wm.config["prod_versions"]["l0"]]["ccsds_daac_submissions"] = [cnm_submission_path]
         dm.update_stream_metadata(
             stream.ccsds_name,
-            {f"products.daac.{[wm.config['prod_versions']['l0']]}.ccsds_daac_submissions": stream.metadata["products"]["daac"][wm.config["prod_versions"]["l0"]]["ccsds_daac_submissions"]})
+            {f"products.daac.{wm.config['prod_versions']['l0']}.ccsds_daac_submissions": stream.metadata["products"]["daac"][wm.config["prod_versions"]["l0"]]["ccsds_daac_submissions"]})
 
         total_time = time.time() - start_time
         log_entry = {

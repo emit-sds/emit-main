@@ -7,9 +7,9 @@ Author: Winston Olson-Duvall, winston.olson-duvall@jpl.nasa.gov
 import datetime
 import json
 import logging
+import numpy as np
 import os
 import time
-import numpy as np
 
 import luigi
 import spectral.io.envi as envi
@@ -132,19 +132,20 @@ class L2AReflectance(SlurmJobTask):
         tmp_locsubs_path = os.path.join(
             self.local_tmp_dir, "input", self.acquisition_id + "_subs_loc")
         tmp_quality_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_rfl_quality.txt")
-        tmp_state_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_state_interp")
+        # TODO: Change to "_state_interp" or as needed for updated isofit
+        tmp_state_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_atm_interp")
 
         # ensure that the tmp_rfl_path has a nodata value set, before we make the quicklook
         hdr = envi.read_envi_header(tmp_rfl_hdr_path)
         hdr["data ignore value"] = -9999
         envi.write_envi_header(tmp_rfl_hdr_path, hdr)
 
-        cmd = ["gdal_translate", tmp_rfl_path, tmp_rfl_png_path, "-b", "35", "-b", "23", "-b",
-               "11", "-ot", "Byte", "-scale", "-exponent", "0.6", "-of", "PNG", "-co", "ZLEVEL=9"]
-        pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
+        browse_cmd = ["gdal_translate", tmp_rfl_path, tmp_rfl_png_path, "-b", "35", "-b", "23", "-b", 
+                         "11", "-ot", "Byte", "-scale", "-exponent", "0.6", "-of", "PNG", "-co", "ZLEVEL=9"]
+        pge.run(browse_cmd, tmp_dir=self.tmp_dir, env=env)
 
-        cmd = ["python", os.path.join(pge.repo_dir, "spectrum_quality.py"), tmp_rfl_path, tmp_quality_path]
-        pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
+        quality_cmd = ["python", os.path.join(pge.repo_dir, "spectrum_quality.py"), tmp_rfl_path, tmp_quality_path]
+        pge.run(quality_cmd, tmp_dir=self.tmp_dir, env=env)
         quality_results = np.genfromtxt(tmp_quality_path, dtype=str, delimiter="\n")
 
         wm.copy(tmp_rfl_path, acq.rfl_img_path)
@@ -163,7 +164,6 @@ class L2AReflectance(SlurmJobTask):
         wm.copy(envi_header(tmp_locsubs_path), acq.locsubs_hdr_path)
         wm.copy(tmp_rfl_png_path, acq.rfl_png_path)
         wm.copy(tmp_quality_path, acq.quality_txt_path)
-
         wm.copy(tmp_state_path, acq.state_img_path)
         wm.copy(envi_header(tmp_state_path), acq.state_hdr_path)
 
@@ -175,7 +175,8 @@ class L2AReflectance(SlurmJobTask):
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
         doc_version = "EMIT SDS L2A JPL-D 104236, Rev B"
         dm = wm.database_manager
-        for img_path, hdr_path in [(acq.rfl_img_path, acq.rfl_hdr_path), (acq.rfluncert_img_path, acq.rfluncert_hdr_path)]:
+        for img_path, hdr_path in [(acq.rfl_img_path, acq.rfl_hdr_path), (acq.rfluncert_img_path, acq.rfluncert_hdr_path), 
+                                   (acq.state_img_path, acq.state_hdr_path)]:
             hdr = envi.read_envi_header(hdr_path)
             hdr["description"] = "{{EMIT L2A surface reflectance (0-1)}}"
             hdr["emit acquisition start time"] = acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
@@ -211,6 +212,9 @@ class L2AReflectance(SlurmJobTask):
             elif "_rfluncert_" in img_path:
                 dm.update_acquisition_metadata(
                     acq.acquisition_id, {f"products.l2a.{wm.config['prod_versions']['l2a']}.rfluncert": product_dict})
+            elif "_state_" in img_path:
+                dm.update_acquisition_metadata(
+                    acq.acquisition_id, {f"products.l2a.{wm.config['prod_versions']['l2a']}.state": product_dict})
 
         total_time = time.time() - start_time
         log_entry = {
@@ -401,8 +405,8 @@ class L2ADeliver(SlurmJobTask):
 
         # Use a cloud fraction that sums the nodata fraction (clouds screened on board) and the cloud fraction value
         # from the maskTf step.  These fractions are rounded separately.  Use min to ensure it doesn't go over 100.
-        cloud_fraction = acq["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["cloud_fraction"]
-        nodata_fraction = acq["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["nodata_fraction"]
+        cloud_fraction = acq.metadata["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["cloud_fraction"]
+        nodata_fraction = acq.metadata["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["nodata_fraction"]
         cloud_cover = min(cloud_fraction + nodata_fraction, 100)
         
         # Create the UMM-G file
@@ -637,7 +641,7 @@ class L2AMaskTf(SlurmJobTask):
         emit_utils_pge = wm.pges["emit-utils"]
         env["PYTHONPATH"] = f"$PYTHONPATH:{emit_utils_pge.repo_dir}"
 
-        #First run specTF
+        # First run specTF
         cmd = ["spectf-cloud", "deploy-pt",
                 tmp_maskTf_cloud_path,
                 acq.obs_hdr_path,
@@ -647,19 +651,19 @@ class L2AMaskTf(SlurmJobTask):
         
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
-        # Create remainder of masks and combin with previous 
-        cmd = ["python",
-               make_masks_exe,
-               acq.rdn_img_path,
-               acq.loc_img_path,
-               acq.obs_img_path,
-               acq.state_img_path,
-               tmp_maskTf_cloud_prob_path,
-               solar_irradiance_path,
-               tmp_maskTf_path,
-               "--n_cores", str(self.n_cores)]
+        # Create remainder of masks and combine with previous 
+        make_masks_cmd = ["python",
+                          make_masks_exe,
+                          acq.rdn_img_path,
+                          acq.loc_img_path,
+                          acq.obs_img_path,
+                          acq.state_img_path,
+                          tmp_maskTf_cloud_prob_path,
+                          solar_irradiance_path,
+                          tmp_maskTf_path,
+                          "--n_cores", str(self.n_cores)]
 
-        pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
+        pge.run(make_masks_cmd, tmp_dir=self.tmp_dir, env=env)
         
         cloud_fraction = check_cloudfraction(tmp_maskTf_path, mask_band = 9)
         nodata_fraction = check_nodatafraction(tmp_maskTf_path, band = 0, no_data_value = -9999)
@@ -693,6 +697,7 @@ class L2AMaskTf(SlurmJobTask):
         hdr["emit data product version"] = '02'
         hdr["emit acquisition daynight"] = acq.daynight
         hdr["emit acquisition cloud fraction"] = cloud_fraction
+        hdr["emit acquisition nodata fraction"] = nodata_fraction
         envi.write_envi_header(acq.maskTf_hdr_path, hdr)
 
         # PGE writes metadata to db
@@ -892,8 +897,8 @@ class L2AMaskTfDeliver(SlurmJobTask):
 
         # Use a cloud fraction that sums the nodata fraction (clouds screened on board) and the cloud fraction value
         # from the maskTf step.  These fractions are rounded separately.  Use min to ensure it doesn't go over 100.
-        cloud_fraction = acq["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["cloud_fraction"]
-        nodata_fraction = acq["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["nodata_fraction"]
+        cloud_fraction = acq.metadata["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["cloud_fraction"]
+        nodata_fraction = acq.metadata["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["nodata_fraction"]
         cloud_cover = min(cloud_fraction + nodata_fraction, 100)
 
         # Create the UMM-G file

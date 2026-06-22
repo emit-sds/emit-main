@@ -211,10 +211,7 @@ class DatabaseManager:
             f"products.ch4.{self.config['prod_versions']['ch4']}.ortch4.tif_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }
-        # TODO: Remove this block when GHG reprocessing is complete
-        if date_field == "last_modified":
-            ghg_forward_start = datetime.datetime.strptime("2025-04-01T00:00:00", "%Y-%m-%dT%H:%M:%S")
-            query["start_time"] = {"$gte": ghg_forward_start}
+
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.CH4"])
@@ -235,10 +232,7 @@ class DatabaseManager:
             f"products.co2.{self.config['prod_versions']['co2']}.ortco2.tif_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }
-        # TODO: Remove this block when GHG reprocessing is complete
-        if date_field == "last_modified":
-            ghg_forward_start = datetime.datetime.strptime("2025-04-01T00:00:00", "%Y-%m-%dT%H:%M:%S")
-            query["start_time"] = {"$gte": ghg_forward_start}
+
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.CO2"])
@@ -400,10 +394,7 @@ class DatabaseManager:
             f"products.ch4.{self.config['prod_versions']['ch4']}.ch4_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }
-        # TODO: Remove this block when GHG reprocessing is complete
-        if date_field == "last_modified":
-            ghg_forward_start = datetime.datetime.strptime("2025-04-01T00:00:00", "%Y-%m-%dT%H:%M:%S")
-            query["start_time"] = {"$gte": ghg_forward_start}
+
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.CH4Deliver"])
@@ -421,10 +412,7 @@ class DatabaseManager:
             f"products.co2.{self.config['prod_versions']['co2']}.co2_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }
-        # TODO: Remove this block when GHG reprocessing is complete
-        if date_field == "last_modified":
-            ghg_forward_start = datetime.datetime.strptime("2025-04-01T00:00:00", "%Y-%m-%dT%H:%M:%S")
-            query["start_time"] = {"$gte": ghg_forward_start}
+
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.CO2Deliver"])

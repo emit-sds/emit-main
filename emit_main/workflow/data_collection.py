@@ -187,7 +187,7 @@ class DataCollection:
         #Get list of acquisition ids with completed radiances
         query = {
             "associated_dcid": self.dcid,
-            "products.l1b.rdn.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.rdn.img_path": {"$exists": 1},
         }
  
         completed = list(acquisitions_coll.find(query))

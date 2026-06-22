@@ -374,8 +374,8 @@ class L2BDeliver(SlurmJobTask):
 
         # Use a cloud fraction that sums the nodata fraction (clouds screened on board) and the cloud fraction value
         # from the maskTf step.  These fractions are rounded separately.  Use min to ensure it doesn't go over 100.
-        cloud_fraction = acq["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["cloud_fraction"]
-        nodata_fraction = acq["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["nodata_fraction"]
+        cloud_fraction = acq.metadata["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["cloud_fraction"]
+        nodata_fraction = acq.metadata["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["nodata_fraction"]
         cloud_cover = min(cloud_fraction + nodata_fraction, 100)
 
         # Create the UMM-G file
@@ -651,7 +651,7 @@ class L2BFrCov(SlurmJobTask):
                 "bands": hdr["bands"]
             }
         }
-        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.frcov.{self.config['prod_versions']['frcov']}.frcov": product_dict_frcov})
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.frcov.{wm.config['prod_versions']['frcov']}.frcov": product_dict_frcov})
 
         product_dict_frcov_uncert = {
             "img_path": acq.frcovuncert_img_path,
@@ -663,7 +663,7 @@ class L2BFrCov(SlurmJobTask):
                 "bands": hdr["bands"]
             }
         }
-        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.frcov.{self.config['prod_versions']['frcov']}.frcovuncert": product_dict_frcov_uncert})
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.frcov.{wm.config['prod_versions']['frcov']}.frcovuncert": product_dict_frcov_uncert})
 
         total_time = time.time() - start_time
         log_entry = {
@@ -938,8 +938,8 @@ class L2BFrCovDeliver(SlurmJobTask):
 
         # Use a cloud fraction that sums the nodata fraction (clouds screened on board) and the cloud fraction value
         # from the maskTf step.  These fractions are rounded separately.  Use min to ensure it doesn't go over 100.
-        cloud_fraction = acq["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["cloud_fraction"]
-        nodata_fraction = acq["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["nodata_fraction"]
+        cloud_fraction = acq.metadata["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["cloud_fraction"]
+        nodata_fraction = acq.metadata["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["nodata_fraction"]
         cloud_cover = min(cloud_fraction + nodata_fraction, 100)
         
         # Create the UMM-G file

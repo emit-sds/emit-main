@@ -45,11 +45,11 @@ logger = logging.getLogger("emit-main")
 def parse_args():
     product_choices = ["l0hosc", "l0daac", "l0plan", "l0bad", "l1aeng", "l1aframe", "l1araw", "l1aframereport",
                        "l1adaac", "l1abad", "l1bcal", "l1bgeo", "l1brdnformat", "l1brdndaac", "l1battdaac", "l1bmosaic",
-                       "l2arefl", "l2amaskTf", "l2aformat","l2amaskTfformat", "l2adaac", "l2bmin", "l2bformat",
+                       "l2arfl", "l2amaskTf", "l2aformat","l2amaskTfformat", "l2adaac", "l2bmin", "l2bformat",
                        "l2bdaac","l2amaskTfdaac", "l2bch4", "l2bco2","l2bch4daac", "l2bco2daac", "l2bch4mosaic",
                        "l2bco2mosaic", "l2bfrcov", "l2bfrcovformat", "l2bfrcovdaac", "l3rflformat", "l3rfldaac",
                        "daacscenes", "daacaddl", "recon"]
-    monitor_choices = ["ingest", "frames", "edp", "cal", "bad", "geo", "l2","maskTf", "l2b","ch4", "co2", "frcov", "l3rfl"
+    monitor_choices = ["ingest", "frames", "edp", "cal", "bad", "geo", "l2","maskTf", "l2b","ch4", "co2", "frcov", "l3rfl",
                        "email", "daacscenes", "dl0","dl1a", "dl1brdn", "dl1batt", "dl2a", "dmaskTf", "dfrcov",
                        "dl2b", "dch4", "dco2", "dl3rfl", "mch4", "mco2", "ml1b", "reconresp"]
     parser = argparse.ArgumentParser(
@@ -220,7 +220,7 @@ def get_tasks_from_product_args(args):
         "l1battdaac": lambda: L1BAttDeliver(orbit_id=args.orbit_id, daac_ingest_queue=args.daac_ingest_queue,
                                             override_output=args.override_output, **kwargs),
         "l1bmosaic": lambda: L1BMosaic(dcid=args.dcid, **kwargs),
-        "l2arefl": lambda acq_id: L2AReflectance(acquisition_id=acq_id, **kwargs),
+        "l2arfl": lambda acq_id: L2AReflectance(acquisition_id=acq_id, **kwargs),
         "l2amaskTf": lambda acq_id: L2AMaskTf(acquisition_id=acq_id, **kwargs),
         "l2amaskTfformat": lambda acq_id: L2AMaskTfFormat(acquisition_id=acq_id, **kwargs),
         "l2amaskTfdaac": lambda acq_id: L2AMaskTfDeliver(acquisition_id=acq_id, daac_ingest_queue=args.daac_ingest_queue,
@@ -256,7 +256,7 @@ def get_tasks_from_product_args(args):
     tasks = []
     for prod in products:
         if prod in {"l1adaac", "l1bcal", "l1brdnformat", "l1brdndaac",
-                    "l2arefl", "l2aformat", "l2adaac", "l2bmin", "l2bformat",
+                    "l2arfl", "l2aformat", "l2adaac", "l2bmin", "l2bformat",
                     "l2bdaac", "l2bch4", "l2bch4daac", "l2bco2", "l2bco2daac",
                     "l2bfrcov", "daacaddl", "l2amaskTf","l2amaskTfformat",
                     "l2amaskTfdaac", "l2bfrcovformat", "l2bfrcovdaac", 
@@ -559,7 +559,7 @@ def main():
         am_l3rfl_tasks = am.get_l3rfl_tasks(start_time=args.start_time, stop_time=args.stop_time,
                                         date_field=args.date_field, retry_failed=args.retry_failed)
         am_l3rfl_tasks_str = "\n".join([str(t) for t in am_l3rfl_tasks])
-        logger.info(f"Acquisition monitor L3 Reflectance tasks to run:\n{am_l2b_tasks_str}")
+        logger.info(f"Acquisition monitor L3 Reflectance tasks to run:\n{am_l3rfl_tasks_str}")
         tasks += am_l3rfl_tasks
 
     # Get tasks from daacscenes monitor

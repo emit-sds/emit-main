@@ -42,7 +42,7 @@ def _do_work_on_compute_node(work_dir):
     # Do the work contained
     try:
         job.work()
-    except RuntimeError as e:
+    except Exception as e:
         # Move local tmp folder to "error" subfolder under "scratch"
         print("Encountered error with task:  %s" % job)
         error_task_dir = job.tmp_dir.replace("/tmp/", "/error/")
