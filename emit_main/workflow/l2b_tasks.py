@@ -801,7 +801,7 @@ class L2BFrCovFormat(SlurmJobTask):
                 "tif_path" : acq.frcovnpvunc_tif_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
         dm.update_acquisition_metadata(acq.acquisition_id, {f"products.frcov.{wm.config['prod_versions']['frcov']}.bare": {
-                "tif_path" : acq.frcovbareunc_tif_path,
+                "tif_path" : acq.frcovbare_tif_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
         dm.update_acquisition_metadata(acq.acquisition_id, {f"products.frcov.{wm.config['prod_versions']['frcov']}.bareunc": {
                 "tif_path" : acq.frcovbareunc_tif_path,
