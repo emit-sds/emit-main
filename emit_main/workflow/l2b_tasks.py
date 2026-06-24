@@ -740,6 +740,9 @@ class L2BFrCovFormat(SlurmJobTask):
             "frcovuncert_file": acq.frcovuncert_img_path,
         }
 
+        env = os.environ.copy()
+        env["CPL_TMPDIR"] = "/local"
+
         cmd = ["python",
                mask_generator_exe,
                "create-masks",
@@ -752,7 +755,7 @@ class L2BFrCovFormat(SlurmJobTask):
                
         # Run this inside the emit-main conda environment to include emit-utils and other requirements
         main_pge = wm.pges["emit-sds-frcov"]
-        main_pge.run(cmd, tmp_dir=self.tmp_dir)
+        main_pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
         format_exe = os.path.join(pge.repo_dir, "format_outputs.py")
 
