@@ -10,10 +10,10 @@ import os
 
 from emit_main.workflow.l1a_tasks import L1ADeliver
 from emit_main.workflow.l1b_tasks import L1BCalibrate, L1BRdnDeliver
-from emit_main.workflow.l2a_tasks import L2AMask, L2ADeliver, L2AMaskTf, L2AMaskTfDeliver
-from emit_main.workflow.l2b_tasks import L2BAbundance, L2BDeliver, L2BFrCovFormat, L2BFrCovDeliver
+from emit_main.workflow.l2a_tasks import L2AReflectance, L2ADeliver, L2AMaskTf, L2AMaskTfDeliver
+from emit_main.workflow.l2b_tasks import L2BMineral, L2BDeliver, L2BFrCov, L2BFrCovDeliver
+from emit_main.workflow.l3_tasks import L3ReflectanceFormat, L3ReflectanceDeliver
 from emit_main.workflow.ghg_tasks import CH4, CO2, CH4Deliver, CO2Deliver
-from emit_main.workflow.l3_tasks import L3Unmix
 from emit_main.workflow.workflow_manager import WorkflowManager
 
 logger = logging.getLogger("emit-main")
@@ -71,11 +71,11 @@ class AcquisitionMonitor:
             return tasks
 
         for acq in acquisitions:
-            logger.info(f"Creating L2AMask task for acquisition {acq['acquisition_id']}")
-            tasks.append(L2AMask(config_path=self.config_path,
-                                 acquisition_id=acq["acquisition_id"],
-                                 level=self.level,
-                                 partition=self.partition))
+            logger.info(f"Creating L2AReflectance task for acquisition {acq['acquisition_id']}")
+            tasks.append(L2AReflectance(config_path=self.config_path, 
+                                        acquisition_id=acq["acquisition_id"],
+                                        level=self.level,
+                                        partition=self.partition))
 
         return tasks
     
@@ -111,12 +111,12 @@ class AcquisitionMonitor:
         # If no results, just return empty list
         if len(acquisitions) == 0:
             logger.info(f"Did not find any acquisitions with {date_field} between {start_time} and {stop_time} needing "
-                        f"l2b abundance tasks. Not executing any tasks.")
+                        f"l2b mineral tasks. Not executing any tasks.")
             return tasks
 
         for acq in acquisitions:
-            logger.info(f"Creating L2BAbundance task for acquisition {acq['acquisition_id']}")
-            tasks.append(L2BAbundance(config_path=self.config_path,
+            logger.info(f"Creating L2BMineral task for acquisition {acq['acquisition_id']}")
+            tasks.append(L2BMineral(config_path=self.config_path,
                                       acquisition_id=acq["acquisition_id"],
                                       level=self.level,
                                       partition=self.partition))
@@ -167,47 +167,25 @@ class AcquisitionMonitor:
 
         return tasks
 
-    def get_frcov_format_tasks(self, start_time, stop_time, date_field="last_modified", retry_failed=False):
+    def get_frcov_tasks(self, start_time, stop_time, date_field="last_modified", retry_failed=False):
         tasks = []
         # Find acquisitions within time range
         dm = self.wm.database_manager
-        acquisitions = dm.find_acquisitions_for_frcov_format(start=start_time, stop=stop_time, date_field=date_field,
-                                                            retry_failed=retry_failed)
-
-        # If no results, just return empty list
-        if len(acquisitions) == 0:
-            logger.info(f"Did not find any acquisitions with {date_field} between {start_time} and {stop_time} needing "
-                        f"frcov format tasks. Not executing any tasks.")
-            return tasks
-
-        for acq in acquisitions:
-            logger.info(f"Creating L2BFrCovFormat task for acquisition {acq['acquisition_id']}")
-            tasks.append(L2BFrCovFormat(config_path=self.config_path,
-                                      acquisition_id=acq["acquisition_id"],
-                                      level=self.level,
-                                      partition=self.partition))
-
-        return tasks
-
-    def get_l3_tasks(self, start_time, stop_time, date_field="last_modified", retry_failed=False):
-        tasks = []
-        # Find acquisitions within time range
-        dm = self.wm.database_manager
-        acquisitions = dm.find_acquisitions_for_l3(start=start_time, stop=stop_time, date_field=date_field,
+        acquisitions = dm.find_acquisitions_for_frcov(start=start_time, stop=stop_time, date_field=date_field,
                                                    retry_failed=retry_failed)
 
         # If no results, just return empty list
         if len(acquisitions) == 0:
             logger.info(f"Did not find any acquisitions with {date_field} between {start_time} and {stop_time} needing "
-                        f"l3 unmix tasks. Not executing any tasks.")
+                        f"l2b frcov tasks. Not executing any tasks.")
             return tasks
 
         for acq in acquisitions:
-            logger.info(f"Creating L3Unmix task for acquisition {acq['acquisition_id']}")
-            tasks.append(L3Unmix(config_path=self.config_path,
-                                 acquisition_id=acq["acquisition_id"],
-                                 level=self.level,
-                                 partition=self.partition))
+            logger.info(f"Creating L2BFrCov task for acquisition {acq['acquisition_id']}")
+            tasks.append(L2BFrCov(config_path=self.config_path, 
+                                  acquisition_id=acq["acquisition_id"],
+                                  level=self.level,
+                                  partition=self.partition))
 
         return tasks
 
@@ -316,7 +294,7 @@ class AcquisitionMonitor:
         # If no results, just return empty list
         if len(acquisitions) == 0:
             logger.info(f"Did not find any acquisitions with {date_field} between {start_time} and {stop_time} needing "
-                        f"l2b abundance delivery tasks. Not executing any tasks.")
+                        f"l2b mineral delivery tasks. Not executing any tasks.")
             return tasks
 
         for acq in acquisitions:
@@ -400,4 +378,51 @@ class AcquisitionMonitor:
                                        partition=self.partition,
                                        daac_ingest_queue=self.daac_ingest_queue,
                                        override_output = self.override_output))
+        return tasks
+ 
+ 
+    def get_l3rfl_tasks(self, start_time, stop_time, date_field="last_modified", retry_failed=False):
+        tasks = []
+        # Find acquisitions within time range
+        dm = self.wm.database_manager
+        acquisitions = dm.find_acquisitions_for_l3rfl(start=start_time, stop=stop_time, date_field=date_field,
+                                                    retry_failed=retry_failed)
+
+        # If no results, just return empty list
+        if len(acquisitions) == 0:
+            logger.info(f"Did not find any acquisitions with {date_field} between {start_time} and {stop_time} needing "
+                        f"l3 reflectance tasks. Not executing any tasks.")
+            return tasks
+
+        for acq in acquisitions:
+            logger.info(f"Creating L3ReflectanceFormat task for acquisition {acq['acquisition_id']}")
+            tasks.append(L3ReflectanceFormat(config_path=self.config_path,
+                                      acquisition_id=acq["acquisition_id"],
+                                      level=self.level,
+                                      partition=self.partition))
+
+        return tasks
+    
+    def get_l3rfl_delivery_tasks(self, start_time, stop_time, date_field="last_modified", retry_failed=False):
+        tasks = []
+        # Find acquisitions within time range
+        dm = self.wm.database_manager
+        acquisitions = dm.find_acquisitions_for_l3rfl_delivery(start=start_time, stop=stop_time,
+                                                             date_field=date_field, retry_failed=retry_failed)
+
+        # If no results, just return empty list
+        if len(acquisitions) == 0:
+            logger.info(f"Did not find any acquisitions with {date_field} between {start_time} and {stop_time} needing "
+                        f"l3 reflectance delivery tasks. Not executing any tasks.")
+            return tasks
+
+        for acq in acquisitions:
+            logger.info(f"Creating L3ReflectanceDeliver task for acquisition {acq['acquisition_id']}")
+            tasks.append(L3ReflectanceDeliver(config_path=self.config_path,
+                                    acquisition_id=acq["acquisition_id"],
+                                    level=self.level,
+                                    partition=self.partition,
+                                    daac_ingest_queue=self.daac_ingest_queue,
+                                    override_output = self.override_output))
+
         return tasks

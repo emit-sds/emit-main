@@ -74,7 +74,7 @@ class IngestMonitor:
             return tasks
 
         for stream in streams:
-            stream_path = stream["products"]["l0"]["ccsds_path"]
+            stream_path = stream["products"]["l0"][self.wm.config["prod_versions"]["l0"]]["ccsds_path"]
             logger.info(f"Creating L1AReformatEDP task for path {stream_path}")
             tasks.append(L1AReformatEDP(config_path=self.config_path,
                                         stream_path=stream_path,
@@ -99,7 +99,7 @@ class IngestMonitor:
             return tasks
 
         for stream in streams:
-            stream_path = stream["products"]["l0"]["ccsds_path"]
+            stream_path = stream["products"]["l0"][self.wm.config["prod_versions"]["l0"]]["ccsds_path"]
             logger.info(f"Creating L0Deliver task for path {stream_path}")
             tasks.append(L0Deliver(config_path=self.config_path,
                                    stream_path=stream_path,

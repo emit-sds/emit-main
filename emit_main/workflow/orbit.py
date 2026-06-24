@@ -26,14 +26,12 @@ class Orbit:
         self.orbit_id = orbit_id
         self.short_oid = self.orbit_id[2:] if len(self.orbit_id) == 7 else self.orbit_id
 
-        # Read metadata from db
+        # Read metadata from db and get config properties
         dm = DatabaseManager(config_path)
         self.metadata = dm.find_orbit_by_id(self.orbit_id)
+        self.config = Config(config_path, self.metadata["start_time"]).get_dictionary()
         self._initialize_metadata()
         self.__dict__.update(self.metadata)
-
-        # Get config properties
-        self.config = Config(config_path, self.start_time).get_dictionary()
 
         # Create base directories and add to list to create directories later
         self.dirs = []
@@ -47,16 +45,26 @@ class Orbit:
         self.raw_dir = os.path.join(self.orbit_id_dir, "raw")
         self.l1a_dir = os.path.join(self.orbit_id_dir, "l1a")
         self.l1b_dir = os.path.join(self.orbit_id_dir, "l1b")
+        self.l1b_acquisition_products_dir = os.path.join(self.l1b_dir, f"acquisition_products_v{self.config['prod_versions']['l1b']}")
         self.l1b_geo_work_dir = os.path.join(
-            self.l1b_dir, f"o{orbit_id}_l1b_geo_b{self.config['build_num']}_v{self.config['processing_version']}_work")
-        self.dirs.extend([self.orbits_dir, self.date_dir, self.orbit_id_dir, self.raw_dir, self.l1a_dir, self.l1b_dir])
-
+            self.l1b_dir, f"o{orbit_id}_l1b_geo_v{self.config['prod_versions']['l1b']}_work")
+        self.dirs.extend([self.orbits_dir, self.date_dir, self.orbit_id_dir, self.raw_dir, self.l1a_dir, self.l1b_dir, self.l1b_acquisition_products_dir])
+        
         # Create product names
-        uncorr_fname = "_".join([f"emit{self.start_time.strftime('%Y%m%dt%H%M%S')}", f"o{self.short_oid}",
-                                 "l1a", "att", f"b{self.config['build_num']}",
-                                 f"v{self.config['processing_version']}.nc"])
+        # L1A paths before the v2 cutover date are assumed to have the old file naming schema with "b0106"
+        if self.start_time < self.config["v2_cutover_date"]:
+            uncorr_fname = "_".join([f"emit{self.start_time.strftime('%Y%m%dt%H%M%S')}", f"o{self.short_oid}",
+                                 "l1a", "att", "b0106", f"v{self.config['prod_versions']['l1a']}.nc"])
+        else:      
+            uncorr_fname = "_".join([f"emit{self.start_time.strftime('%Y%m%dt%H%M%S')}", f"o{self.orbit_id}",
+                                 "l1a", "att", f"v{self.config['prod_versions']['l1a']}.nc"])
+        
+        # The L1B corr filename will be the same regardless of the cutover date since it will get regenerated
+        corr_fname = "_".join([f"emit{self.start_time.strftime('%Y%m%dt%H%M%S')}", f"o{self.orbit_id}",
+                                 "l1b", "att", f"v{self.config['prod_versions']['l1b']}.nc"])
+        
         self.uncorr_att_eph_path = os.path.join(self.l1a_dir, uncorr_fname)
-        self.corr_att_eph_path = self.uncorr_att_eph_path.replace("l1a", "l1b")
+        self.corr_att_eph_path = os.path.join(self.l1b_dir, corr_fname)
 
         # Make directories and symlinks if they don't exist
         from emit_main.workflow.workflow_manager import WorkflowManager
@@ -65,13 +73,10 @@ class Orbit:
             wm.makedirs(d)
 
         # Build paths for DAAC delivery on staging server
-        self.daac_staging_dir = os.path.join(self.config["daac_base_dir"], wm.config['environment'], "products",
-                                             self.start_time.strftime("%Y%m%d"))
-        self.daac_uri_base = f"https://{self.config['daac_server_external']}/emit/lpdaac/{wm.config['environment']}/" \
-            f"products/{self.start_time.strftime('%Y%m%d')}/"
+        self.daac_staging_dir = os.path.join(self.config["daac_base_dir"], wm.config['environment'], "products", self.start_time.strftime("%Y%m%d"))
+        self.daac_uri_base = f"https://{self.config['daac_server_external']}/emit/lpdaac/{wm.config['environment']}/products/{self.start_time.strftime('%Y%m%d')}/"
         self.daac_partial_dir = os.path.join(self.config["daac_base_dir"], wm.config['environment'], "partial_transfers")
-        self.aws_staging_dir = os.path.join(self.config["aws_s3_base_dir"], wm.config['environment'], "products",
-                                            self.start_time.strftime("%Y%m%d"))
+        self.aws_staging_dir = os.path.join(self.config["aws_s3_base_dir"], wm.config['environment'], "products", self.start_time.strftime("%Y%m%d"))
         self.aws_s3_uri_base = f"s3://{self.config['aws_s3_bucket']}{self.aws_staging_dir}/"
 
     def _initialize_metadata(self):
@@ -84,8 +89,12 @@ class Orbit:
             self.metadata["products"]["raw"] = {}
         if "l1a" not in self.metadata["products"]:
             self.metadata["products"]["l1a"] = {}
+        if self.config["prod_versions"]["l1a"] not in self.metadata["products"]["l1a"]:
+            self.metadata["products"]["l1a"][self.config["prod_versions"]["l1a"]] = {}
         if "l1b" not in self.metadata["products"]:
             self.metadata["products"]["l1b"] = {}
+        if self.config["prod_versions"]["l1b"] not in self.metadata["products"]["l1b"]:
+            self.metadata["products"]["l1b"][self.config["prod_versions"]["l1b"]] = {}
 
     def has_complete_bad_data(self):
         from emit_main.workflow.workflow_manager import WorkflowManager
@@ -174,7 +183,7 @@ class Orbit:
             if acq is not None and acq["submode"] == "science" and acq["num_valid_lines"] >= 320:
                 num_science += 1
                 try:
-                    rdn_img_path = acq["products"]["l1b"]["rdn"]["img_path"]
+                    rdn_img_path = acq["products"]["l1b"][wm.config["prod_versions"]["l1b"]]["rdn"]["img_path"]
                 except KeyError:
                     wm.print(__name__, f"Acquisition {id} in orbit {self.orbit_id} does not have a radiance product "
                              f"yet.")
@@ -232,7 +241,7 @@ class Orbit:
                                    f"scenes")
                 return False
             try:
-                raw_img_path = acq["products"]["l1a"]["raw"]["img_path"]
+                raw_img_path = acq["products"]["l1a"][wm.config["prod_versions"]["l1a"]]["raw"]["img_path"]
             except KeyError:
                 wm.print(__name__, f"Acquisition {id} in orbit {self.orbit_id} does not have a raw product yet.")
                 return False

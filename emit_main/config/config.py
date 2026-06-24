@@ -55,6 +55,7 @@ class Config:
             # Add well known errors
             self.dictionary['well_known_errors'] = config['well_known_errors']
 
+
     def _get_product_config_paths(self, product_config, timestamp):
         # Get the products paths that are either absolute paths or relative to the environment directory
         # (eg. /store/emit/ops).
@@ -72,6 +73,7 @@ class Config:
             # Remove "date_ranges" and return dictionary
             del product_config["date_ranges"]
 
+        product_config["v2_cutover_date"] = datetime.datetime.strptime(product_config["v2_cutover_date_str"], "%Y-%m-%dT%H:%M:%S")
         return product_config
 
     def _get_passwords(self):

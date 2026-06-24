@@ -26,14 +26,12 @@ class DataCollection:
         self.config_path = config_path
         self.dcid = dcid
 
-        # Read metadata from db
+        # Read metadata from db and get config properties
         dm = DatabaseManager(config_path)
         self.metadata = dm.find_data_collection_by_id(self.dcid)
+        self.config = Config(config_path, self.metadata["start_time"]).get_dictionary()
         self._initialize_metadata()
         self.__dict__.update(self.metadata)
-
-        # Get config properties
-        self.config = Config(config_path, self.start_time).get_dictionary()
 
         # Create base directories and add to list to create directories later
         self.dirs = []
@@ -47,13 +45,19 @@ class DataCollection:
         self.by_date_dir = os.path.join(self.data_collections_dir, "by_date")
         self.dcid_hash_dir = os.path.join(self.by_dcid_dir, self.dcid[:5])
         self.dcid_dir = os.path.join(self.dcid_hash_dir, self.dcid)
-        self.frames_dir = os.path.join(
-            self.dcid_dir,
-            "_".join([self.dcid, "frames", "b" + self.config["build_num"], "v" + self.config["processing_version"]]))
-        self.decomp_dir = self.frames_dir.replace("_frames_", "_decomp_")
-        self.acquisitions_dir = self.frames_dir.replace("_frames_", "_acquisitions_")
-        self.ch4_dir = os.path.join(self.dcid_dir,'ghg', 'ch4')
-        self.co2_dir = os.path.join(self.dcid_dir,'ghg', 'co2')
+        # L1A directories before the v2 cutover date are assumed to have the old file naming schema
+        if self.start_time < self.config["v2_cutover_date"]:
+            self.frames_dir = os.path.join(
+                self.dcid_dir,
+                "_".join([self.dcid, "frames", "b0106", "v" + self.config["prod_versions"]["l1a"]]))
+            self.decomp_dir = self.frames_dir.replace("_frames_", "_decomp_")
+            self.acquisitions_dir = self.frames_dir.replace("_frames_", "_acquisitions_")
+        else:
+            self.frames_dir = os.path.join(self.dcid_dir, 'frames')
+            self.decomp_dir = os.path.join(self.dcid_dir, 'decomp')
+            self.acquisitions_dir = os.path.join(self.dcid_dir, 'acquisitions')
+        self.ch4_dir = os.path.join(self.dcid_dir, 'ch4')
+        self.co2_dir = os.path.join(self.dcid_dir, 'co2')
         self.l1b_dir = os.path.join(self.dcid_dir,'l1b')
         self.dirs.extend([self.data_collections_dir, self.by_dcid_dir, self.by_date_dir, self.dcid_hash_dir,
                           self.dcid_dir, self.frames_dir, self.decomp_dir, self.acquisitions_dir, self.ch4_dir,
@@ -73,6 +77,8 @@ class DataCollection:
             self.metadata["products"] = {}
         if "l1a" not in self.metadata["products"]:
             self.metadata["products"]["l1a"] = {}
+        if self.config["prod_versions"]["l1a"] not in self.metadata["products"]["l1a"]:
+            self.metadata["products"]["l1a"][self.config["prod_versions"]["l1a"]] = {}
 
     def has_complete_set_of_frames(self):
         from emit_main.workflow.workflow_manager import WorkflowManager
@@ -124,7 +130,6 @@ class DataCollection:
         query = {
             "associated_dcid": self.dcid,
             "mean_solar_zenith": {"$lt": 80},
-            "build_num": self.config["build_num"],
             "num_valid_lines": {"$gte": 320},
         }
 
@@ -134,10 +139,9 @@ class DataCollection:
         #Get list of acquisition ids with completed CH4 products
         query = {
             "associated_dcid": self.dcid,
-            "products.ghg.ch4.ortch4.tif_path": {"$exists": 1},
-            "products.ghg.ch4.ortsensch4.tif_path": {"$exists": 1},
-            "products.ghg.ch4.ortuncertch4.tif_path": {"$exists": 1},
-            "build_num": self.config["build_num"]
+            f"products.ch4.{self.config['prod_versions']['ch4']}.ortch4.tif_path": {"$exists": 1},
+            f"products.ch4.{self.config['prod_versions']['ch4']}.ortsensch4.tif_path": {"$exists": 1},
+            f"products.ch4.{self.config['prod_versions']['ch4']}.ortuncertch4.tif_path": {"$exists": 1}
         }
 
         completed = list(acquisitions_coll.find(query))
@@ -154,8 +158,7 @@ class DataCollection:
         #Get list of acquisition ids expected to have CO2 products
         query = {
             "associated_dcid": self.dcid,
-            "mean_solar_zenith": {"$lt": 80},
-            "build_num": self.config["build_num"]
+            "mean_solar_zenith": {"$lt": 80}
         }
 
         expected = list(acquisitions_coll.find(query))
@@ -164,10 +167,9 @@ class DataCollection:
         #Get list of acquisition ids with completed CO2 products
         query = {
             "associated_dcid": self.dcid,
-            "products.ghg.co2.ortco2.tif_path": {"$exists": 1},
-            "products.ghg.co2.ortsensco2.tif_path": {"$exists": 1},
-            "products.ghg.co2.ortuncertco2.tif_path": {"$exists": 1},
-            "build_num": self.config["build_num"]
+            f"products.co2.{self.config['prod_versions']['co2']}.ortco2.tif_path": {"$exists": 1},
+            f"products.co2.{self.config['prod_versions']['co2']}.ortsensco2.tif_path": {"$exists": 1},
+            f"products.co2.{self.config['prod_versions']['co2']}.ortuncertco2.tif_path": {"$exists": 1}
         }
 
         completed = list(acquisitions_coll.find(query))
@@ -185,8 +187,7 @@ class DataCollection:
         #Get list of acquisition ids with completed radiances
         query = {
             "associated_dcid": self.dcid,
-            "build_num": self.config["build_num"],
-            "products.l1b.rdn.img_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.rdn.img_path": {"$exists": 1},
         }
  
         completed = list(acquisitions_coll.find(query))
