@@ -106,12 +106,9 @@ class WorkflowManager:
             self.makedirs(d)
 
         # Build paths for DAAC delivery on staging server
-        self.daac_recon_staging_dir = os.path.join(self.config["daac_base_dir"], self.config['environment'],
-                                                   "reconciliation")
-        self.daac_recon_uri_base = f"https://{self.config['daac_server_external']}/emit/lpdaac/" \
-                                   f"{self.config['environment']}/reconciliation/"
-        self.daac_partial_dir = os.path.join(self.config["daac_base_dir"], self.config['environment'],
-                                             "partial_transfers")
+        self.daac_recon_staging_dir = os.path.join(self.config["daac_base_dir"], self.config['environment'], "reconciliation")
+        self.daac_recon_uri_base = f"https://{self.config['daac_server_external']}/emit/lpdaac/{self.config['environment']}/reconciliation/"
+        self.daac_partial_dir = os.path.join(self.config["daac_base_dir"], self.config['environment'], "partial_transfers")
 
         # Create repository paths and PGEs based on build config
         self.pges = {}
@@ -180,8 +177,6 @@ class WorkflowManager:
             s.login(self.config["email_user"], self.config["email_password"])
             s.sendmail(sender, recipient_list, msg.as_string())
             s.quit()
-        # except socket.timeout:
-        #     logger.error(f"Timeout encountered while trying to send failure notification for task: {task}")
         except Exception as e:
             logger.error(f"An exception occurred while trying to send failure notification for task: {task}")
             logger.error(f"Exception: {e}")

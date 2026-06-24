@@ -60,7 +60,8 @@ class CH4(SlurmJobTask):
 
         logger.debug(f"{self.task_family} output: {self.acquisition_id}")
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family)
+        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family,
+                                 product_version=wm.config["prod_versions"]["ch4"])
 
     def work(self):
 
@@ -98,14 +99,14 @@ class CH4(SlurmJobTask):
             "loc_file": acq.loc_img_path,
             "glt_file": acq.glt_img_path,
             "bandmask_file": acq.bandmask_img_path,
-            "mask_file": acq.mask_img_path,
+            "mask_file": acq.maskTf_img_path,
             "state_subs_file": acq.statesubs_img_path,
         }
 
         # Create command
         cmd = ["python", process_exe,
                acq.rdn_img_path, acq.obs_img_path, acq.loc_img_path, acq.glt_img_path,
-               acq.bandmask_img_path, acq.mask_img_path, ch4_base,
+               acq.bandmask_img_path, acq.maskTf_img_path, ch4_base,
                '--state_subs', acq.statesubs_img_path,
                "--noise_file",noise_file,'--lut_file',
                wm.config["ch4_lut_file"],
@@ -134,28 +135,28 @@ class CH4(SlurmJobTask):
         wm.copy(ch4_of.uncert_ort_cog, acq.ortuncertch4_tif_path)
 
         # Update db
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.ch4.ch4": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.ch4.{wm.config['prod_versions']['ch4']}.ch4": {
                 "img_path" : acq.ch4_img_path,
                 "hdr_path" : acq.ch4_hdr_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.ch4.sensch4": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.ch4.{wm.config['prod_versions']['ch4']}.sensch4": {
                 "img_path" : acq.sensch4_img_path,
                 "hdr_path" : acq.sensch4_hdr_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.ch4.uncertch4": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.ch4.{wm.config['prod_versions']['ch4']}.uncertch4": {
                 "img_path" : acq.uncertch4_img_path,
                 "hdr_path" : acq.uncertch4_hdr_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.ch4.ortch4": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.ch4.{wm.config['prod_versions']['ch4']}.ortch4": {
                 "tif_path" : acq.ortch4_tif_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.ch4.ortch4ql": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.ch4.{wm.config['prod_versions']['ch4']}.ortch4ql": {
                 "png_path" : acq.ortch4_png_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.ch4.ortsensch4": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.ch4.{wm.config['prod_versions']['ch4']}.ortsensch4": {
                 "tif_path" : acq.ortsensch4_tif_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.ch4.ortuncertch4": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.ch4.{wm.config['prod_versions']['ch4']}.ortuncertch4": {
                 "tif_path" : acq.ortuncertch4_tif_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
 
@@ -176,6 +177,7 @@ class CH4(SlurmJobTask):
             "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["ch4"],
             "output": {
                 "ch4_img_path": acq.ch4_img_path,
                 "ch4_hdr_path:": acq.ch4_hdr_path,
@@ -197,9 +199,9 @@ class CH4(SlurmJobTask):
         dc = wm.data_collection
 
         if dc.has_complete_ch4_acquisitions():
-            dm.update_data_collection_metadata(acq.associated_dcid, {"ch4_status": "complete"})
+            dm.update_data_collection_metadata(acq.associated_dcid, {f"ch4_status.{wm.config['prod_versions']['ch4']}": "complete"})
         else:
-            dm.update_data_collection_metadata(acq.associated_dcid, {"ch4_status": "incomplete"})
+            dm.update_data_collection_metadata(acq.associated_dcid, {f"ch4_status.{wm.config['prod_versions']['ch4']}": "incomplete"})
 
 class CO2(SlurmJobTask):
     """
@@ -227,7 +229,8 @@ class CO2(SlurmJobTask):
 
         logger.debug(f"{self.task_family} output: {self.acquisition_id}")
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family)
+        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family,
+                                 product_version=wm.config["prod_versions"]["co2"])
 
     def work(self):
 
@@ -265,14 +268,14 @@ class CO2(SlurmJobTask):
             "loc_file": acq.loc_img_path,
             "glt_file": acq.glt_img_path,
             "bandmask_file": acq.bandmask_img_path,
-            "mask_file": acq.mask_img_path,
+            "mask_file": acq.maskTf_img_path,
             "state_subs_file": acq.statesubs_img_path,
         }
 
         # Create command
         cmd = ["python", process_exe,
                acq.rdn_img_path, acq.obs_img_path, acq.loc_img_path, acq.glt_img_path,
-               acq.bandmask_img_path, acq.mask_img_path, co2_base,
+               acq.bandmask_img_path, acq.maskTf_img_path, co2_base,
                '--state_subs', acq.statesubs_img_path,
                "--noise_file",noise_file, '--lut_file', wm.config["co2_lut_file"],
                "--logfile", co2_log_file, "--co2",
@@ -301,28 +304,28 @@ class CO2(SlurmJobTask):
         wm.copy(co2_of.uncert_ort_cog, acq.ortuncertco2_tif_path)
 
         # Update db
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.co2.co2": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.co2.{wm.config['prod_versions']['co2']}.co2": {
                 "img_path" : acq.co2_img_path,
                 "hdr_path" : acq.co2_hdr_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.co2.sensco2": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.co2.{wm.config['prod_versions']['co2']}.sensco2": {
                 "img_path" : acq.sensco2_img_path,
                 "hdr_path" : acq.sensco2_hdr_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.co2.uncertco2": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.co2.{wm.config['prod_versions']['co2']}.uncertco2": {
                 "img_path" : acq.uncertco2_img_path,
                 "hdr_path" : acq.uncertco2_hdr_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.co2.ortco2": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.co2.{wm.config['prod_versions']['co2']}.ortco2": {
                 "tif_path" : acq.ortco2_tif_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.co2.ortco2ql": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.co2.{wm.config['prod_versions']['co2']}.ortco2ql": {
                 "png_path" : acq.ortco2_png_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.co2.ortsensco2": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.co2.{wm.config['prod_versions']['co2']}.ortsensco2": {
                 "tif_path" : acq.ortsensco2_tif_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.co2.ortuncertco2": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.co2.{wm.config['prod_versions']['co2']}.ortuncertco2": {
                 "tif_path" : acq.ortuncertco2_tif_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
 
@@ -343,6 +346,7 @@ class CO2(SlurmJobTask):
             "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["co2"],
             "output": {
                 "co2_img_path": acq.co2_img_path,
                 "co2_hdr_path:": acq.co2_hdr_path,
@@ -364,9 +368,9 @@ class CO2(SlurmJobTask):
         dc = wm.data_collection
 
         if dc.has_complete_co2_aqcuisitions():
-            dm.update_data_collection_metadata(acq.associated_dcid, {"co2_status": "complete"})
+            dm.update_data_collection_metadata(acq.associated_dcid, {f"co2_status.{wm.config['prod_versions']['co2']}": "complete"})
         else:
-            dm.update_data_collection_metadata(acq.associated_dcid, {"co2_status": "incomplete"})
+            dm.update_data_collection_metadata(acq.associated_dcid, {f"co2_status.{wm.config['prod_versions']['co2']}": "incomplete"})
 
 class CH4Deliver(SlurmJobTask):
     """
@@ -398,16 +402,18 @@ class CH4Deliver(SlurmJobTask):
         if self.override_output:
             return None
 
-        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return AcquisitionTarget(acquisition=acq, task_family=self.task_family)
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family,
+                                 product_version=wm.config["prod_versions"]["ch4"])
 
     def work(self):
 
+        start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
-        collection_version = '002'
+        collection_version = f"0{wm.config['prod_versions']['ch4']}"
         pge = wm.pges["emit-main"]
 
         # Get local SDS names
@@ -440,6 +446,12 @@ class CH4Deliver(SlurmJobTask):
             print('Could not read software build version from COG metadata')
             sys.exit()
 
+        # Use a cloud fraction that sums the nodata fraction (clouds screened on board) and the cloud fraction value
+        # from the maskTf step.  These fractions are rounded separately.  Use min to ensure it doesn't go over 100.
+        cloud_fraction = acq.metadata["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["cloud_fraction"]
+        nodata_fraction = acq.metadata["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["nodata_fraction"]
+        cloud_cover = min(cloud_fraction + nodata_fraction, 100)
+        
         # Create the UMM-G file
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.ortch4_tif_path), tz=datetime.timezone.utc)
         ghg_pge = wm.pges["emit-ghg"]
@@ -452,7 +464,7 @@ class CH4Deliver(SlurmJobTask):
                                               orbit_segment=int(acq.scene), scene=int(acq.daac_scene),
                                               solar_zenith=acq.mean_solar_zenith,
                                               solar_azimuth=acq.mean_solar_azimuth,
-                                              cloud_fraction=acq.cloud_fraction)
+                                              cloud_cover=cloud_cover)
         ummg = daac_converter.add_data_files_ummg(
             ummg,
             [daac_ortch4_tif_path, daac_ortsensch4_tif_path, daac_ortuncertch4_tif_path, daac_browse_path],
@@ -548,8 +560,8 @@ class CH4Deliver(SlurmJobTask):
 
         # Submit notification via AWS SQS
         cnm_submission_output = cnm_submission_path.replace(".json", ".out")
-        cmd_aws = [wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", queue_url, "--message-body",
-                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"], ">", cnm_submission_output]
+        cmd_aws = ["ssh", "ngishpc1", "'" + wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", queue_url, "--message-body",
+                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"], ">", cnm_submission_output + "'"]
         pge.run(cmd_aws, tmp_dir=self.tmp_dir)
         wm.change_group_ownership(cnm_submission_output)
         cnm_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(cnm_submission_path),
@@ -582,17 +594,18 @@ class CH4Deliver(SlurmJobTask):
             "ummg_json_path": ummg_path,
             "created": datetime.datetime.fromtimestamp(os.path.getmtime(ummg_path), tz=datetime.timezone.utc)
         }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.ch4.ch4_ummg": product_dict_ummg})
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.ch4.{wm.config['prod_versions']['ch4']}.ch4_ummg": product_dict_ummg})
 
-        if "ch4_daac_submissions" in acq.metadata["products"]["ghg"]["ch4"] and \
-                acq.metadata["products"]["ghg"]["ch4"]["ch4_daac_submissions"] is not None:
-            acq.metadata["products"]["ghg"]["ch4"]["ch4_daac_submissions"].append(cnm_submission_path)
+        if "ch4_daac_submissions" in acq.metadata["products"]["ch4"][wm.config["prod_versions"]["ch4"]] and \
+                acq.metadata["products"]["ch4"][wm.config["prod_versions"]["ch4"]]["ch4_daac_submissions"] is not None:
+            acq.metadata["products"]["ch4"][wm.config["prod_versions"]["ch4"]]["ch4_daac_submissions"].append(cnm_submission_path)
         else:
-            acq.metadata["products"]["ghg"]["ch4"]["ch4_daac_submissions"] = [cnm_submission_path]
+            acq.metadata["products"]["ch4"][wm.config["prod_versions"]["ch4"]]["ch4_daac_submissions"] = [cnm_submission_path]
         dm.update_acquisition_metadata(
             acq.acquisition_id,
-            {"products.ghg.ch4.ch4_daac_submissions": acq.metadata["products"]["ghg"]["ch4"]["ch4_daac_submissions"]})
+            {f"products.ch4.{wm.config['prod_versions']['ch4']}.ch4_daac_submissions": acq.metadata["products"]["ch4"][wm.config["prod_versions"]["ch4"]]["ch4_daac_submissions"]})
 
+        total_time = time.time() - start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -606,8 +619,10 @@ class CH4Deliver(SlurmJobTask):
             "pge_run_command": " ".join(cmd_aws),
             "documentation_version": "TBD",
             "product_creation_time": cnm_creation_time,
+            "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["ch4"],
             "output": {
                 "l2b_ch4_ummg_path:": ummg_path,
                 "l2b_ch4_cnm_submission_path": cnm_submission_path
@@ -645,16 +660,18 @@ class CO2Deliver(SlurmJobTask):
         if self.override_output:
             return None
 
-        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return AcquisitionTarget(acquisition=acq, task_family=self.task_family)
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family,
+                                 product_version=wm.config["prod_versions"]["co2"])
 
     def work(self):
 
+        start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
-        collection_version = '002'
+        collection_version = f"0{wm.config['prod_versions']['co2']}"
         pge = wm.pges["emit-main"]
 
         # Get local SDS names
@@ -687,6 +704,12 @@ class CO2Deliver(SlurmJobTask):
             print('Could not read software build version from COG metadata')
             sys.exit()
 
+        # Use a cloud fraction that sums the nodata fraction (clouds screened on board) and the cloud fraction value
+        # from the maskTf step.  These fractions are rounded separately.  Use min to ensure it doesn't go over 100.
+        cloud_fraction = acq.metadata["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["cloud_fraction"]
+        nodata_fraction = acq.metadata["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["nodata_fraction"]
+        cloud_cover = min(cloud_fraction + nodata_fraction, 100)
+        
         # Create the UMM-G file
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.ortco2_tif_path), tz=datetime.timezone.utc)
         ghg_pge = wm.pges["emit-ghg"]
@@ -699,7 +722,7 @@ class CO2Deliver(SlurmJobTask):
                                               orbit_segment=int(acq.scene), scene=int(acq.daac_scene),
                                               solar_zenith=acq.mean_solar_zenith,
                                               solar_azimuth=acq.mean_solar_azimuth,
-                                              cloud_fraction=acq.cloud_fraction)
+                                              cloud_cover=cloud_cover)
         ummg = daac_converter.add_data_files_ummg(
             ummg,
             [daac_ortco2_tif_path, daac_ortsensco2_tif_path, daac_ortuncertco2_tif_path, daac_browse_path],
@@ -795,8 +818,8 @@ class CO2Deliver(SlurmJobTask):
 
         # Submit notification via AWS SQS
         cnm_submission_output = cnm_submission_path.replace(".json", ".out")
-        cmd_aws = [wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", queue_url, "--message-body",
-                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"], ">", cnm_submission_output]
+        cmd_aws = ["ssh", "ngishpc1", "'" + wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", queue_url, "--message-body",
+                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"], ">", cnm_submission_output + "'"]
         pge.run(cmd_aws, tmp_dir=self.tmp_dir)
         wm.change_group_ownership(cnm_submission_output)
         cnm_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(cnm_submission_path),
@@ -829,17 +852,18 @@ class CO2Deliver(SlurmJobTask):
             "ummg_json_path": ummg_path,
             "created": datetime.datetime.fromtimestamp(os.path.getmtime(ummg_path), tz=datetime.timezone.utc)
         }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.ghg.co2.co2_ummg": product_dict_ummg})
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.co2.{wm.config['prod_versions']['co2']}.co2_ummg": product_dict_ummg})
 
-        if "co2_daac_submissions" in acq.metadata["products"]["ghg"]["co2"] and \
-                acq.metadata["products"]["ghg"]["co2"]["co2_daac_submissions"] is not None:
-            acq.metadata["products"]["ghg"]["co2"]["co2_daac_submissions"].append(cnm_submission_path)
+        if "co2_daac_submissions" in acq.metadata["products"]["co2"][wm.config["prod_versions"]["co2"]] and \
+                acq.metadata["products"]["co2"][wm.config["prod_versions"]["co2"]]["co2_daac_submissions"] is not None:
+            acq.metadata["products"]["co2"][wm.config["prod_versions"]["co2"]]["co2_daac_submissions"].append(cnm_submission_path)
         else:
-            acq.metadata["products"]["ghg"]["co2"]["co2_daac_submissions"] = [cnm_submission_path]
+            acq.metadata["products"]["co2"][wm.config["prod_versions"]["co2"]]["co2_daac_submissions"] = [cnm_submission_path]
         dm.update_acquisition_metadata(
             acq.acquisition_id,
-            {"products.ghg.co2.co2_daac_submissions": acq.metadata["products"]["ghg"]["co2"]["co2_daac_submissions"]})
+            {f"products.co2.{wm.config['prod_versions']['co2']}.co2_daac_submissions": acq.metadata["products"]["co2"][wm.config["prod_versions"]["co2"]]["co2_daac_submissions"]})
 
+        total_time = time.time() - start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -853,8 +877,10 @@ class CO2Deliver(SlurmJobTask):
             "pge_run_command": " ".join(cmd_aws),
             "documentation_version": "TBD",
             "product_creation_time": cnm_creation_time,
+            "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["co2"],
             "output": {
                 "l2b_co2_ummg_path:": ummg_path,
                 "l2b_co2_cnm_submission_path": cnm_submission_path
@@ -888,7 +914,8 @@ class CH4Mosaic(SlurmJobTask):
 
         logger.debug(f"{self.task_family} output: {self.dcid}")
         wm = WorkflowManager(config_path=self.config_path, dcid=self.dcid)
-        return DataCollectionTarget(data_collection=wm.data_collection, task_family=self.task_family)
+        return DataCollectionTarget(data_collection=wm.data_collection, task_family=self.task_family,
+                                    product_version=wm.config["prod_versions"]["ch4"])
 
     def work(self):
 
@@ -926,7 +953,7 @@ class CH4Mosaic(SlurmJobTask):
         
         log_file_arg = f"--log-file={os.path.join(self.tmp_dir, 'rsync.log')}"
 
-        version = 'v02'
+        version = "v" + wm.config['prod_versions']['ghg']
         input_files = {}
         output_files = {}
         pge_commands = []
@@ -934,11 +961,11 @@ class CH4Mosaic(SlurmJobTask):
         target_dir = f'{wm.config["mirror_data_dir"]}/data_collections/by_dcid/{self.dcid[:5]}/{self.dcid}/ghg/ch4'
         target = f'{wm.config["daac_server_internal"]}:{target_dir}'
 
-        cmd_mkdir = ["ssh", wm.config["daac_server_internal"], "mkdir", "-p", target_dir]
+        cmd_mkdir = ["ssh", "ngishpc1", "'" + "ssh", wm.config["daac_server_internal"], "mkdir", "-p", target_dir + "'"]
         pge.run(cmd_mkdir, tmp_dir=self.tmp_dir)
         
         for product in ["ortch4", "ortsensch4", "ortuncertch4"]:
-            input_files[product] = [ac["products"]["ghg"]["ch4"][product]["tif_path"] for ac in acquisitions]
+            input_files[product] = [ac["products"]["ch4"][wm.config["prod_versions"]["ch4"]][product]["tif_path"] for ac in acquisitions]
 
             output_paths = [os.path.join(self.tmp_dir, f'{mosaic_basename}_{product}_{version}.tif'), 
                             os.path.join(self.tmp_dir, f'{mosaic_basename}_{product}_{version}_2.tif')]
@@ -963,10 +990,10 @@ class CH4Mosaic(SlurmJobTask):
 
                 creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(dcid_path), tz=datetime.timezone.utc)
 
-                cmd_rsync = ["rsync", "-av", log_file_arg, out_path, target]
+                cmd_rsync = ["ssh", "ngishpc1", "'" + "rsync", "-av", log_file_arg, out_path, target + "'"]
                 pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
 
-                meta_key = f"products.ghg.ch4.{product}_mosaic" if idx == 0 else f"products.ghg.ch4.{product}_mosaic_{idx+1}"
+                meta_key = f"products.ch4.{wm.config['prod_versions']['ch4']}.{product}_mosaic" if idx == 0 else f"products.ch4.{wm.config['prod_versions']['ch4']}.{product}_mosaic_{idx+1}"
 
                 dm.update_data_collection_metadata(self.dcid,
                                                     {meta_key: {"tif_path": dcid_path, "created": creation_time}})
@@ -974,7 +1001,6 @@ class CH4Mosaic(SlurmJobTask):
         doc_version = "EMIT SDS GHG JPL-D 107866, v0.2"
 
         total_time = time.time() - start_time
-            
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -986,6 +1012,7 @@ class CH4Mosaic(SlurmJobTask):
             "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["ch4"],
             "output": output_files
             }
 
@@ -1017,7 +1044,8 @@ class CO2Mosaic(SlurmJobTask):
 
         logger.debug(f"{self.task_family} output: {self.dcid}")
         wm = WorkflowManager(config_path=self.config_path, dcid=self.dcid)
-        return DataCollectionTarget(data_collection=wm.data_collection, task_family=self.task_family)
+        return DataCollectionTarget(data_collection=wm.data_collection, task_family=self.task_family,
+                                    product_version=wm.config["prod_versions"]["co2"])
 
     def work(self):
 
@@ -1055,7 +1083,7 @@ class CO2Mosaic(SlurmJobTask):
         
         log_file_arg = f"--log-file={os.path.join(self.tmp_dir, 'rsync.log')}"
 
-        version = 'v02'
+        version = "v" + wm.config['prod_versions']['ghg']
         input_files = {}
         output_files = {}
         pge_commands = []
@@ -1063,11 +1091,11 @@ class CO2Mosaic(SlurmJobTask):
         target_dir = f'{wm.config["mirror_data_dir"]}/data_collections/by_dcid/{self.dcid[:5]}/{self.dcid}/ghg/co2'
         target = f'{wm.config["daac_server_internal"]}:{target_dir}'
 
-        cmd_mkdir = ["ssh", wm.config["daac_server_internal"], "mkdir", "-p", target_dir]
+        cmd_mkdir = ["ssh", "ngishpc1", "'" + "ssh", wm.config["daac_server_internal"], "mkdir", "-p", target_dir + "'"]
         pge.run(cmd_mkdir, tmp_dir=self.tmp_dir)
         
         for product in ["ortco2", "ortsensco2", "ortuncertco2"]:
-            input_files[product] = [ac["products"]["ghg"]["co2"][product]["tif_path"] for ac in acquisitions]
+            input_files[product] = [ac["products"]["co2"][wm.config["prod_versions"]["co2"]][product]["tif_path"] for ac in acquisitions]
 
             output_paths = [os.path.join(self.tmp_dir, f'{mosaic_basename}_{product}_{version}.tif'), 
                             os.path.join(self.tmp_dir, f'{mosaic_basename}_{product}_{version}_2.tif')]
@@ -1092,10 +1120,10 @@ class CO2Mosaic(SlurmJobTask):
 
                 creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(dcid_path), tz=datetime.timezone.utc)
 
-                cmd_rsync = ["rsync", "-av", log_file_arg, out_path, target]
+                cmd_rsync = ["ssh", "ngishpc1", "'" + "rsync", "-av", log_file_arg, out_path, target + "'"]
                 pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
 
-                meta_key = f"products.ghg.co2.{product}_mosaic" if idx == 0 else f"products.ghg.co2.{product}_mosaic_{idx+1}"
+                meta_key = f"products.co2.{wm.config['prod_versions']['co2']}.{product}_mosaic" if idx == 0 else f"products.co2.{wm.config['prod_versions']['co2']}.{product}_mosaic_{idx+1}"
 
                 dm.update_data_collection_metadata(self.dcid,
                                                     {meta_key: {"tif_path": dcid_path, "created": creation_time}})
@@ -1103,7 +1131,6 @@ class CO2Mosaic(SlurmJobTask):
         doc_version = "EMIT SDS GHG JPL-D 107866, v0.2"
 
         total_time = time.time() - start_time
-            
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -1115,6 +1142,7 @@ class CO2Mosaic(SlurmJobTask):
             "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["co2"],
             "output": output_files
             }
 

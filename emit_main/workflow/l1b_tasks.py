@@ -55,10 +55,12 @@ class L1BCalibrate(SlurmJobTask):
 
         logger.debug(f"{self.task_family} output: {self.acquisition_id}")
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family)
+        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family,
+                                 product_version=wm.config["prod_versions"]["l1b"])
 
     def work(self):
 
+        start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
@@ -144,18 +146,18 @@ class L1BCalibrate(SlurmJobTask):
             recent_dark_offset = None
             future_dark_offset = None
             if recent_darks is not None and len(recent_darks) > 0:
-                dark_img_path = recent_darks[0]["products"]["l1a"]["raw"]["img_path"]
+                dark_img_path = recent_darks[0]["products"]["l1a"][wm.config["prod_versions"]["l1a"]]["raw"]["img_path"]
                 recent_dark_offset = abs((acq.start_time - recent_darks[0]["stop_time"]).total_seconds())
                 wm.print(__name__, f"Recent dark offset: {recent_dark_offset}")
 
             if future_darks is not None and len(future_darks) > 0:
-                dark_img_path = future_darks[0]["products"]["l1a"]["raw"]["img_path"]
+                dark_img_path = future_darks[0]["products"]["l1a"][wm.config["prod_versions"]["l1a"]]["raw"]["img_path"]
                 future_dark_offset = abs((future_darks[0]["start_time"] - acq.stop_time).total_seconds())
                 wm.print(__name__, f"Future dark offset: {future_dark_offset}")
 
             # If we have both, then set the dark image path back to recent dark if the offset is smaller
             if recent_dark_offset and future_dark_offset and recent_dark_offset <= future_dark_offset:
-                dark_img_path = recent_darks[0]["products"]["l1a"]["raw"]["img_path"]
+                dark_img_path = recent_darks[0]["products"]["l1a"][wm.config["prod_versions"]["l1a"]]["raw"]["img_path"]
                 wm.print(__name__, "Recent dark offset is less than future dark offset")
 
         # Add to input files
@@ -168,8 +170,8 @@ class L1BCalibrate(SlurmJobTask):
             ffupdate_acqs.reverse()
         flat_field_update_paths = []
         for acq_obj in ffupdate_acqs:
-            if os.path.exists(acq_obj["products"]["l1b"]["ffupdate"]["img_path"]):
-                flat_field_update_paths.append(acq_obj["products"]["l1b"]["ffupdate"]["img_path"])
+            if os.path.exists(acq_obj["products"]["l1b"][wm.config["prod_versions"]["l1b"]]["ffupdate"]["img_path"]):
+                flat_field_update_paths.append(acq_obj["products"]["l1b"][wm.config["prod_versions"]["l1b"]]["ffupdate"]["img_path"])
         # If the number of paths is less than 100, then set to empty because we can't use them
         if len(flat_field_update_paths) < 100:
             flat_field_update_paths = []
@@ -182,6 +184,7 @@ class L1BCalibrate(SlurmJobTask):
             "repository_dir": pge.repo_dir,
             "isofit_dir": isofit_dir,
             "tmp_dir": tmp_dir,
+            "product_version": wm.config["prod_versions"]["l1b"],
             "level": self.level,
             "instrument_mode": instrument_mode,
             "raw_img_path": acq.raw_img_path,
@@ -238,7 +241,7 @@ class L1BCalibrate(SlurmJobTask):
         hdr["emit documentation version"] = doc_version
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rdn_img_path), tz=datetime.timezone.utc)
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
-        hdr["emit data product version"] = wm.config["processing_version"]
+        hdr["emit data product version"] = wm.config["prod_versions"]["l1b"]
         hdr["emit acquisition planned daynight"] = acq.daynight_planned
         if os.path.exists(tmp_ffmedian_img_path):
             hdr["emit flat field median-based destriping"] = 1
@@ -260,14 +263,14 @@ class L1BCalibrate(SlurmJobTask):
                 "bands": hdr["bands"]
             }
         }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn": product_dict})
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l1b.{wm.config['prod_versions']['l1b']}.rdn": product_dict})
 
         product_dict_bm = {
             "img_path": acq.bandmask_img_path,
             "hdr_path": acq.bandmask_hdr_path,
             "created": creation_time
         }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.bandmask": product_dict_bm})
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l1b.{wm.config['prod_versions']['l1b']}.bandmask": product_dict_bm})
 
         if os.path.exists(acq.ffupdate_img_path):
             product_dict_ffupdate = {
@@ -275,7 +278,7 @@ class L1BCalibrate(SlurmJobTask):
                 "hdr_path": acq.ffupdate_hdr_path,
                 "created": creation_time,
             }
-            dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.ffupdate": product_dict_ffupdate})
+            dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l1b.{wm.config['prod_versions']['l1b']}.ffupdate": product_dict_ffupdate})
 
         if os.path.exists(acq.ffmedian_img_path):
             product_dict_ffmedian = {
@@ -283,20 +286,21 @@ class L1BCalibrate(SlurmJobTask):
                 "hdr_path": acq.ffmedian_hdr_path,
                 "created": creation_time,
             }
-            dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.ffmedian": product_dict_ffmedian})
+            dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l1b.{wm.config['prod_versions']['l1b']}.ffmedian": product_dict_ffmedian})
 
         # Check if orbit now has complete set of radiance files and update orbit metadata
         wm_orbit = WorkflowManager(config_path=self.config_path, orbit_id=acq.orbit)
         orbit = wm_orbit.orbit
         if orbit.has_complete_radiance():
-            dm.update_orbit_metadata(orbit.orbit_id, {"radiance_status": "complete"})
+            dm.update_orbit_metadata(orbit.orbit_id, {f"radiance_status.{wm.config['prod_versions']['l1b']}": "complete"})
         else:
-            dm.update_orbit_metadata(orbit.orbit_id, {"radiance_status": "incomplete"})
+            dm.update_orbit_metadata(orbit.orbit_id, {f"radiance_status.{wm.config['prod_versions']['l1b']}": "incomplete"})
 
         # Add flat field paths here for database log entry
         if len(flat_field_update_paths) >= 100:
             input_files["flat_field_update_paths"] = flat_field_update_paths
 
+        total_time = time.time() - start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -305,8 +309,10 @@ class L1BCalibrate(SlurmJobTask):
             "pge_run_command": " ".join(cmd),
             "documentation_version": doc_version,
             "product_creation_time": creation_time,
+            "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l1b"],
             "output": {
                 "l1b_rdn_img_path": acq.rdn_img_path,
                 "l1b_rdn_hdr_path:": acq.rdn_hdr_path,
@@ -351,11 +357,12 @@ class L1BGeolocate(SlurmJobTask):
 
         logger.debug(f"{self.task_family} output: {self.orbit_id}")
         wm = WorkflowManager(config_path=self.config_path, orbit_id=self.orbit_id)
-        return OrbitTarget(orbit=wm.orbit, task_family=self.task_family)
-        return None
+        return OrbitTarget(orbit=wm.orbit, task_family=self.task_family,
+                           product_version=wm.config["prod_versions"]["l1b"])
 
     def work(self):
 
+        start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, orbit_id=self.orbit_id)
@@ -377,8 +384,8 @@ class L1BGeolocate(SlurmJobTask):
         }
         for acq in acquisitions_in_orbit:
             try:
-                line_timestamps_path = acq["products"]["l1a"]["raw_line_timestamps"]["txt_path"]
-                rdn_img_path = acq["products"]["l1b"]["rdn"]["img_path"]
+                line_timestamps_path = acq["products"]["l1a"][wm.config["prod_versions"]["l1a"]]["raw_line_timestamps"]["txt_path"]
+                rdn_img_path = acq["products"]["l1b"][wm.config["prod_versions"]["l1b"]]["rdn"]["img_path"]
             except KeyError:
                 wm.print(__name__, f"Could not find a radiance image path for {acq['acquisition_id']} in DB.")
                 continue
@@ -453,14 +460,14 @@ class L1BGeolocate(SlurmJobTask):
             wm.copy(tmp_rdn_png_path, acq.rdn_png_path)
             wm.copy(tmp_rdn_proj_png_path, acq.rdn_png_path.replace(".png", "_proj.png"))
             # Symlink from orbits l1b dir to acquisitions l1b dir
-            wm.symlink(acq.glt_img_path, os.path.join(orbit.l1b_dir, os.path.basename(acq.glt_img_path)))
-            wm.symlink(acq.glt_hdr_path, os.path.join(orbit.l1b_dir, os.path.basename(acq.glt_hdr_path)))
-            wm.symlink(acq.loc_img_path, os.path.join(orbit.l1b_dir, os.path.basename(acq.loc_img_path)))
-            wm.symlink(acq.loc_hdr_path, os.path.join(orbit.l1b_dir, os.path.basename(acq.loc_hdr_path)))
-            wm.symlink(acq.obs_img_path, os.path.join(orbit.l1b_dir, os.path.basename(acq.obs_img_path)))
-            wm.symlink(acq.obs_hdr_path, os.path.join(orbit.l1b_dir, os.path.basename(acq.obs_hdr_path)))
-            wm.symlink(acq.rdn_kmz_path, os.path.join(orbit.l1b_dir, os.path.basename(acq.rdn_kmz_path)))
-            wm.symlink(acq.rdn_png_path, os.path.join(orbit.l1b_dir, os.path.basename(acq.rdn_png_path)))
+            wm.symlink(acq.glt_img_path, os.path.join(orbit.l1b_acquisition_products_dir, os.path.basename(acq.glt_img_path)))
+            wm.symlink(acq.glt_hdr_path, os.path.join(orbit.l1b_acquisition_products_dir, os.path.basename(acq.glt_hdr_path)))
+            wm.symlink(acq.loc_img_path, os.path.join(orbit.l1b_acquisition_products_dir, os.path.basename(acq.loc_img_path)))
+            wm.symlink(acq.loc_hdr_path, os.path.join(orbit.l1b_acquisition_products_dir, os.path.basename(acq.loc_hdr_path)))
+            wm.symlink(acq.obs_img_path, os.path.join(orbit.l1b_acquisition_products_dir, os.path.basename(acq.obs_img_path)))
+            wm.symlink(acq.obs_hdr_path, os.path.join(orbit.l1b_acquisition_products_dir, os.path.basename(acq.obs_hdr_path)))
+            wm.symlink(acq.rdn_kmz_path, os.path.join(orbit.l1b_acquisition_products_dir, os.path.basename(acq.rdn_kmz_path)))
+            wm.symlink(acq.rdn_png_path, os.path.join(orbit.l1b_acquisition_products_dir, os.path.basename(acq.rdn_png_path)))
             # Keep track of output paths for processing log
             output_prods["l1b_glt_img_paths"].append(acq.glt_img_path)
             output_prods["l1b_glt_hdr_paths"].append(acq.glt_hdr_path)
@@ -552,17 +559,17 @@ class L1BGeolocate(SlurmJobTask):
                     creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.obs_img_path),
                                                                     tz=datetime.timezone.utc)
                 hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
-                hdr["emit data product version"] = wm.config["processing_version"]
+                hdr["emit data product version"] = wm.config["prod_versions"]["l1b"]
                 hdr["emit acquisition daynight"] = meta["daynight"]
 
                 envi.write_envi_header(hdr_path, hdr)
 
             # Write product dict
-            dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.glt": acq_prod_map[id]["glt"]})
-            dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.loc": acq_prod_map[id]["loc"]})
-            dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.obs": acq_prod_map[id]["obs"]})
-            dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn_kmz": acq_prod_map[id]["rdn_kmz"]})
-            dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn_png": acq_prod_map[id]["rdn_png"]})
+            dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l1b.{wm.config['prod_versions']['l1b']}.glt": acq_prod_map[id]["glt"]})
+            dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l1b.{wm.config['prod_versions']['l1b']}.loc": acq_prod_map[id]["loc"]})
+            dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l1b.{wm.config['prod_versions']['l1b']}.obs": acq_prod_map[id]["obs"]})
+            dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l1b.{wm.config['prod_versions']['l1b']}.rdn_kmz": acq_prod_map[id]["rdn_kmz"]})
+            dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l1b.{wm.config['prod_versions']['l1b']}.rdn_png": acq_prod_map[id]["rdn_png"]})
 
             dm.update_acquisition_metadata(acq.acquisition_id, meta)
 
@@ -573,7 +580,7 @@ class L1BGeolocate(SlurmJobTask):
         # Update attitude/ephemeris netcdf metadata before copy
         ae_nc = netCDF4.Dataset(tmp_corr_att_eph_path, 'r+')
         daac_converter.makeGlobalAttrBase(ae_nc)
-        ae_nc.title = f"EMIT L1B Corrected Spacecraft Attitude and Ephemeris V0{wm.config['processing_version']}"
+        ae_nc.title = f"EMIT L1B Corrected Spacecraft Attitude and Ephemeris V0{wm.config['prod_versions']['l1b']}"
         ae_nc.summary = ae_nc.summary + \
             f"\\n\\nThis collection contains L1B Corrected Spacecraft Attitude and Ephemeris (ATT). \
 ATT contains the uncorrected Broadcast Ancillary Data (BAD) ephemeris and attitude quaternions \
@@ -582,7 +589,7 @@ This product is generated at the orbit level."
         ae_nc.time_coverage_start = orbit.start_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         ae_nc.time_coverage_end = orbit.stop_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         ae_nc.software_build_version = wm.config["extended_build_num"]
-        ae_nc.product_version = "V0" + wm.config["processing_version"]
+        ae_nc.product_version = "V0" + wm.config["prod_versions"]["l1b"]
         run_command = "PGE Run Command: {" + " ".join(cmd) + "}"
         nc_input_files = "PGE Input Files: {" + orbit.uncorr_att_eph_path + "}"
         ae_nc.history = run_command + ", " + nc_input_files
@@ -612,11 +619,13 @@ This product is generated at the orbit level."
             "created": datetime.datetime.fromtimestamp(os.path.getmtime(orbit.corr_att_eph_path),
                                                        tz=datetime.timezone.utc)
         }
-        dm.update_orbit_metadata(orbit.orbit_id, {"products.l1b.corr_att_eph": corr_att_product_dict})
-        dm.update_orbit_metadata(orbit.orbit_id, {"products.l1b.acquisitions": acq_prod_map})
+        dm.update_orbit_metadata(orbit.orbit_id, {f"products.l1b.{wm.config['prod_versions']['l1b']}.corr_att_eph": corr_att_product_dict})
+        dm.update_orbit_metadata(orbit.orbit_id, {f"products.l1b.{wm.config['prod_versions']['l1b']}.acquisitions": acq_prod_map})
 
         # Add processing log
         doc_version = "EMIT SDS L1B JPL-D 104187, Initial"
+        
+        total_time = time.time() - start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -625,8 +634,10 @@ This product is generated at the orbit level."
             "pge_run_command": " ".join(cmd),
             "documentation_version": doc_version,
             "product_creation_time": creation_time,
+            "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l1b"],
             "output": output_prods
         }
         dm.insert_orbit_log_entry(orbit.orbit_id, log_entry)
@@ -638,7 +649,7 @@ This product is generated at the orbit level."
             dc = wm.data_collection
             
             if dc.has_radiance_for_l1b_mosaic():
-                dm.update_data_collection_metadata(data_collect['dcid'], {"ready_for_l1b_mosaic": True})
+                dm.update_data_collection_metadata(data_collect['dcid'], {f"ready_for_l1b_mosaic.{wm.config['prod_versions']['l1b']}": True})
 
 class L1BRdnFormat(SlurmJobTask):
     """
@@ -663,11 +674,13 @@ class L1BRdnFormat(SlurmJobTask):
     def output(self):
 
         logger.debug(f"{self.task_family} output: {self.acquisition_id}")
-        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return AcquisitionTarget(acquisition=acq, task_family=self.task_family)
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family,
+                                 product_version=wm.config["prod_versions"]["l1b"])
 
     def work(self):
 
+        start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
@@ -681,7 +694,7 @@ class L1BRdnFormat(SlurmJobTask):
         tmp_daac_obs_nc_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l1b_obs.nc")
         tmp_log_path = os.path.join(self.local_tmp_dir, "output_conversion_pge.log")
         cmd = ["python", output_generator_exe, tmp_daac_rdn_nc_path, tmp_daac_obs_nc_path, acq.rdn_img_path, acq.obs_img_path, acq.loc_img_path,
-               acq.glt_img_path, "V0" + str(wm.config["processing_version"]), wm.config["extended_build_num"],
+               acq.glt_img_path, "V0" + str(wm.config["prod_versions"]["l1b"]), wm.config["extended_build_num"],
                "--log_file", tmp_log_path]
         # If we have the flat field update median file, then add it to NetCDF
         if os.path.exists(acq.ffmedian_img_path):
@@ -705,8 +718,9 @@ class L1BRdnFormat(SlurmJobTask):
             "netcdf_obs_path": acq.obs_nc_path,
             "created": nc_creation_time
         }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn_netcdf": product_dict_netcdf})
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l1b.{wm.config['prod_versions']['l1b']}.rdn_netcdf": product_dict_netcdf})
 
+        total_time = time.time() - start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -720,8 +734,10 @@ class L1BRdnFormat(SlurmJobTask):
             "pge_run_command": " ".join(cmd),
             "documentation_version": "TBD",
             "product_creation_time": nc_creation_time,
+            "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l1b"],
             "output": {
                 "l1b_rdn_netcdf_path": acq.rdn_nc_path,
                 "l1b_obs_netcdf_path": acq.obs_nc_path
@@ -761,11 +777,13 @@ class L1BRdnDeliver(SlurmJobTask):
         if self.override_output:
             return None
 
-        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return AcquisitionTarget(acquisition=acq, task_family=self.task_family)
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family,
+                                 product_version=wm.config["prod_versions"]["l1b"])
 
     def work(self):
 
+        start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
@@ -794,12 +812,18 @@ class L1BRdnDeliver(SlurmJobTask):
         hdr = envi.read_envi_header(acq.rdn_hdr_path)
         software_build_version = hdr["emit software build version"]
 
+        # Use a cloud fraction that sums the nodata fraction (clouds screened on board) and the cloud fraction value
+        # from the maskTf step.  These fractions are rounded separately.  Use min to ensure it doesn't go over 100.
+        cloud_fraction = acq.metadata["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["cloud_fraction"]
+        nodata_fraction = acq.metadata["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["nodata_fraction"]
+        cloud_cover = min(cloud_fraction + nodata_fraction, 100)
+
         # Create the UMM-G file
+        collection_version = f"0{wm.config['prod_versions']['l1b']}"
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.rdn_nc_path), tz=datetime.timezone.utc)
         l1b_pge = wm.pges["emit-sds-l1b"]
-        cloud_fraction = acq.cloud_fraction if "cloud_fraction" in acq.metadata else 0
         ummg = daac_converter.initialize_ummg(acq.rdn_granule_ur, nc_creation_time, "EMITL1BRAD",
-                                              acq.collection_version, acq.start_time,
+                                              collection_version, acq.start_time,
                                               acq.stop_time, l1b_pge.repo_name, l1b_pge.version_tag,
                                               software_build_version=software_build_version,
                                               software_delivery_version=wm.config["extended_build_num"],
@@ -807,7 +831,7 @@ class L1BRdnDeliver(SlurmJobTask):
                                               orbit_segment=int(acq.scene), scene=int(acq.daac_scene),
                                               solar_zenith=acq.mean_solar_zenith,
                                               solar_azimuth=acq.mean_solar_azimuth,
-                                              cloud_fraction=cloud_fraction)
+                                              cloud_cover=cloud_cover)
 
         ummg = daac_converter.add_data_files_ummg(ummg, [daac_rdn_nc_path, daac_obs_nc_path, daac_browse_path],
                                                   acq.daynight, ["NETCDF-4", "NETCDF-4", "PNG"])
@@ -847,7 +871,7 @@ class L1BRdnDeliver(SlurmJobTask):
             "version": wm.config["cnm_version"],
             "product": {
                 "name": acq.rdn_granule_ur,
-                "dataVersion": acq.collection_version,
+                "dataVersion": collection_version,
                 "files": [
                     {
                         "name": daac_rdn_nc_name,
@@ -892,8 +916,8 @@ class L1BRdnDeliver(SlurmJobTask):
 
         # Submit notification via AWS SQS
         cnm_submission_output = cnm_submission_path.replace(".json", ".out")
-        cmd_aws = [wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", queue_url, "--message-body",
-                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"], ">", cnm_submission_output]
+        cmd_aws = ["ssh", "ngishpc1", "'" + wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", queue_url, "--message-body",
+                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"], ">", cnm_submission_output + "'"]
         pge.run(cmd_aws, tmp_dir=self.tmp_dir)
         wm.change_group_ownership(cnm_submission_output)
         cnm_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(cnm_submission_path),
@@ -926,17 +950,18 @@ class L1BRdnDeliver(SlurmJobTask):
             "ummg_json_path": ummg_path,
             "created": datetime.datetime.fromtimestamp(os.path.getmtime(ummg_path), tz=datetime.timezone.utc)
         }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1b.rdn_ummg": product_dict_ummg})
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l1b.{wm.config['prod_versions']['l1b']}.rdn_ummg": product_dict_ummg})
 
-        if "rdn_daac_submissions" in acq.metadata["products"]["l1b"] and \
-                acq.metadata["products"]["l1b"]["rdn_daac_submissions"] is not None:
-            acq.metadata["products"]["l1b"]["rdn_daac_submissions"].append(cnm_submission_path)
+        if "rdn_daac_submissions" in acq.metadata["products"]["l1b"][wm.config["prod_versions"]["l1b"]] and \
+                acq.metadata["products"]["l1b"][wm.config["prod_versions"]["l1b"]]["rdn_daac_submissions"] is not None:
+            acq.metadata["products"]["l1b"][wm.config["prod_versions"]["l1b"]]["rdn_daac_submissions"].append(cnm_submission_path)
         else:
-            acq.metadata["products"]["l1b"]["rdn_daac_submissions"] = [cnm_submission_path]
+            acq.metadata["products"]["l1b"][wm.config["prod_versions"]["l1b"]]["rdn_daac_submissions"] = [cnm_submission_path]
         dm.update_acquisition_metadata(
             acq.acquisition_id,
-            {"products.l1b.rdn_daac_submissions": acq.metadata["products"]["l1b"]["rdn_daac_submissions"]})
+            {f"products.l1b.{wm.config['prod_versions']['l1b']}.rdn_daac_submissions": acq.metadata["products"]["l1b"][wm.config["prod_versions"]["l1b"]]["rdn_daac_submissions"]})
 
+        total_time = time.time() - start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -949,8 +974,10 @@ class L1BRdnDeliver(SlurmJobTask):
             "pge_run_command": " ".join(cmd_aws),
             "documentation_version": "TBD",
             "product_creation_time": cnm_creation_time,
+            "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l1b"],
             "output": {
                 "l1b_rdn_ummg_path:": ummg_path,
                 "l1b_rdn_cnm_submission_path": cnm_submission_path
@@ -989,10 +1016,12 @@ class L1BAttDeliver(SlurmJobTask):
             return None
 
         wm = WorkflowManager(config_path=self.config_path, orbit_id=self.orbit_id)
-        return OrbitTarget(orbit=wm.orbit, task_family=self.task_family)
+        return OrbitTarget(orbit=wm.orbit, task_family=self.task_family,
+                           product_version=wm.config["prod_versions"]["l1b"])
 
     def work(self):
-
+        
+        start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, orbit_id=self.orbit_id)
@@ -1014,7 +1043,7 @@ class L1BAttDeliver(SlurmJobTask):
         nc_ds.close()
 
         # Create local/tmp daac names and paths
-        collection_version = f"0{wm.config['processing_version']}"
+        collection_version = f"0{wm.config['prod_versions']['l1b']}"
         start_time_str = orbit.start_time.strftime("%Y%m%dT%H%M%S")
         granule_ur = f"EMIT_L1B_ATT_{collection_version}_{start_time_str}_{orbit.orbit_id}"
         daac_nc_name = f"{granule_ur}.nc"
@@ -1098,8 +1127,8 @@ class L1BAttDeliver(SlurmJobTask):
 
         # Submit notification via AWS SQS
         cnm_submission_output = cnm_submission_path.replace(".json", ".out")
-        cmd_aws = [wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", queue_url, "--message-body",
-                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"], ">", cnm_submission_output]
+        cmd_aws = ["ssh", "ngishpc1", "'" + wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", queue_url, "--message-body",
+                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"], ">", cnm_submission_output + "'"]
         pge.run(cmd_aws, tmp_dir=self.tmp_dir)
         wm.change_group_ownership(cnm_submission_output)
         cnm_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(cnm_submission_path),
@@ -1132,17 +1161,18 @@ class L1BAttDeliver(SlurmJobTask):
             "ummg_json_path": ummg_path,
             "created": datetime.datetime.fromtimestamp(os.path.getmtime(ummg_path), tz=datetime.timezone.utc)
         }
-        dm.update_orbit_metadata(orbit.orbit_id, {"products.l1b.att_ummg": product_dict_ummg})
+        dm.update_orbit_metadata(orbit.orbit_id, {f"products.l1b.{wm.config['prod_versions']['l1b']}.att_ummg": product_dict_ummg})
 
-        if "att_daac_submissions" in orbit.metadata["products"]["l1b"] and \
-                orbit.metadata["products"]["l1b"]["att_daac_submissions"] is not None:
-            orbit.metadata["products"]["l1b"]["att_daac_submissions"].append(cnm_submission_path)
+        if "att_daac_submissions" in orbit.metadata["products"]["l1b"][wm.config["prod_versions"]["l1b"]] and \
+                orbit.metadata["products"]["l1b"]["att_daac_submissions"][wm.config["prod_versions"]["l1b"]] is not None:
+            orbit.metadata["products"]["l1b"][wm.config["prod_versions"]["l1b"]]["att_daac_submissions"].append(cnm_submission_path)
         else:
-            orbit.metadata["products"]["l1b"]["att_daac_submissions"] = [cnm_submission_path]
+            orbit.metadata["products"]["l1b"][wm.config["prod_versions"]["l1b"]]["att_daac_submissions"] = [cnm_submission_path]
         dm.update_orbit_metadata(
             orbit.orbit_id,
-            {"products.l1b.att_daac_submissions": orbit.metadata["products"]["l1b"]["att_daac_submissions"]})
+            {f"products.l1b.{wm.config['prod_versions']['l1b']}.att_daac_submissions": orbit.metadata["products"]["l1b"][wm.config["prod_versions"]["l1b"]]["att_daac_submissions"]})
 
+        total_time = time.time() - start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -1153,8 +1183,10 @@ class L1BAttDeliver(SlurmJobTask):
             "pge_run_command": " ".join(cmd_aws),
             "documentation_version": "TBD",
             "product_creation_time": cnm_creation_time,
+            "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l1b"],
             "output": {
                 "l1b_att_ummg_path:": ummg_path,
                 "l1b_att_cnm_submission_path": cnm_submission_path
@@ -1187,7 +1219,8 @@ class L1BMosaic(SlurmJobTask):
 
         logger.debug(f"{self.task_family} output: {self.dcid}")
         wm = WorkflowManager(config_path=self.config_path, dcid=self.dcid)
-        return DataCollectionTarget(data_collection=wm.data_collection, task_family=self.task_family)
+        return DataCollectionTarget(data_collection=wm.data_collection, task_family=self.task_family,
+                                    product_version=wm.config["prod_versions"]["l1b"])
 
     def work(self):
 
@@ -1225,17 +1258,17 @@ class L1BMosaic(SlurmJobTask):
         
         log_file_arg = f"--log-file={os.path.join(self.tmp_dir, 'rsync.log')}"
 
-        version = 'v01'
+        version = wm.config['prod_versions']['l1b']
         input_files = {}
         output_files = {}
         pge_commands = []
         
         target_dir = f'{wm.config["mirror_data_dir"]}/data_collections/by_dcid/{self.dcid[:5]}/{self.dcid}/l1b'
-        cmd_mkdir = ["ssh", wm.config["daac_server_internal"], "mkdir", "-p", target_dir]
+        cmd_mkdir = ["ssh", "ngishpc1", "'" + "ssh", wm.config["daac_server_internal"], "mkdir", "-p", target_dir + "'"]
         pge.run(cmd_mkdir, tmp_dir=self.tmp_dir)
             
-        input_files = [ac['products']['l1b']['rdn']['img_path'] for ac in acquisitions]
-        glt_files = [ac['products']['l1b']['glt']['img_path'] for ac in acquisitions]
+        input_files = [ac['products']['l1b'][wm.config["prod_versions"]["l1b"]]['rdn']['img_path'] for ac in acquisitions]
+        glt_files = [ac['products']['l1b'][wm.config["prod_versions"]["l1b"]]['glt']['img_path'] for ac in acquisitions]
 
         output_mosaic_paths = [os.path.join(self.tmp_dir, f'{mosaic_basename}_l1b_rgb_{version}.tif'),
                                os.path.join(self.tmp_dir, f'{mosaic_basename}_l1b_rgb_{version}_2.tif')]
@@ -1264,10 +1297,10 @@ class L1BMosaic(SlurmJobTask):
 
             creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(dc_path),tz=datetime.timezone.utc)
 
-            cmd_rsync = ["rsync", "-av", log_file_arg, out_path, target]
+            cmd_rsync = ["ssh", "ngishpc1", "'" + "rsync", "-av", log_file_arg, out_path, target + "'"]
             pge.run(cmd_rsync, tmp_dir=self.tmp_dir)
 
-            meta_key = "products.l1b.mosaic" if idx == 0 else f"products.l1b.mosaic_{idx+1}"
+            meta_key = f"products.l1b.{wm.config['prod_versions']['l1b']}.mosaic" if idx == 0 else f"products.l1b.{wm.config['prod_versions']['l1b']}.mosaic_{idx+1}"
             
             dm.update_data_collection_metadata(
                 self.dcid,
@@ -1276,7 +1309,6 @@ class L1BMosaic(SlurmJobTask):
         doc_version = "EMIT SDS L1B JPL-D 107866, v0.2"
 
         total_time = time.time() - start_time
-            
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -1288,6 +1320,7 @@ class L1BMosaic(SlurmJobTask):
             "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l1b"],
             "output": output_files
             }
 

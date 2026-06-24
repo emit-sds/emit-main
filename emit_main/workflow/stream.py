@@ -28,14 +28,12 @@ class Stream:
         self.ccsds_name = None
         self.bad_name = None
 
-        # Read metadata from db
+        # Read metadata from db and get config properties
         dm = DatabaseManager(config_path)
         self.metadata = dm.find_stream_by_name(os.path.basename(stream_path))
+        self.config = Config(config_path, self.metadata["start_time"]).get_dictionary()
         self._initialize_metadata()
         self.__dict__.update(self.metadata)
-
-        # Get config properties
-        self.config = Config(config_path, self.start_time).get_dictionary()
 
         # Create base directories and add to list to create directories later
         self.dirs = []
@@ -75,14 +73,10 @@ class Stream:
             wm.makedirs(d)
 
         # Build paths for DAAC delivery on staging server
-        self.daac_staging_dir = os.path.join(self.config["daac_base_dir"], wm.config['environment'], "products",
-                                             self.start_time.strftime("%Y%m%d"))
-        self.daac_uri_base = f"https://{self.config['daac_server_external']}/emit/lpdaac/{wm.config['environment']}/" \
-            f"products/{self.start_time.strftime('%Y%m%d')}/"
-        self.daac_partial_dir = os.path.join(self.config["daac_base_dir"], wm.config['environment'],
-                                             "partial_transfers")
-        self.aws_staging_dir = os.path.join(self.config["aws_s3_base_dir"], wm.config['environment'], "products",
-                                            self.start_time.strftime("%Y%m%d"))
+        self.daac_staging_dir = os.path.join(self.config["daac_base_dir"], wm.config['environment'], "products", self.start_time.strftime("%Y%m%d"))
+        self.daac_uri_base = f"https://{self.config['daac_server_external']}/emit/lpdaac/{wm.config['environment']}/products/{self.start_time.strftime('%Y%m%d')}/"
+        self.daac_partial_dir = os.path.join(self.config["daac_base_dir"], wm.config['environment'], "partial_transfers")
+        self.aws_staging_dir = os.path.join(self.config["aws_s3_base_dir"], wm.config['environment'], "products", self.start_time.strftime("%Y%m%d"))
         self.aws_s3_uri_base = f"s3://{self.config['aws_s3_bucket']}{self.aws_staging_dir}/"
 
     def _initialize_metadata(self):
@@ -93,9 +87,17 @@ class Stream:
             self.metadata["products"] = {}
         if "raw" not in self.metadata["products"]:
             self.metadata["products"]["raw"] = {}
+        if self.config["prod_versions"]["l0"] not in self.metadata["products"]["raw"]:
+            self.metadata["products"]["raw"][self.config["prod_versions"]["l0"]] = {}
         if "l0" not in self.metadata["products"]:
             self.metadata["products"]["l0"] = {}
+        if self.config["prod_versions"]["l0"] not in self.metadata["products"]["l0"]:
+            self.metadata["products"]["l0"][self.config["prod_versions"]["l0"]] = {}
         if "l1a" not in self.metadata["products"]:
             self.metadata["products"]["l1a"] = {}
+        if self.config["prod_versions"]["l1a"] not in self.metadata["products"]["l1a"]:
+            self.metadata["products"]["l1a"][self.config["prod_versions"]["l1a"]] = {}
         if "daac" not in self.metadata["products"]:
             self.metadata["products"]["daac"] = {}
+        if self.config["prod_versions"]["l0"] not in self.metadata["products"]["daac"]:
+            self.metadata["products"]["daac"][self.config["prod_versions"]["l0"]] = {}

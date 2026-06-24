@@ -397,7 +397,7 @@ def main():
         query = {
             "build_num": "0106",
             "start_time": {"$gte": start_time},
-            "products.l2b.abun.img_path": {"$exists": 1}
+            "products.l2b.min.img_path": {"$exists": 1}
         }
         num_minid = len(list(acq_coll.find(query)))
 
