@@ -23,7 +23,7 @@ from emit_main.workflow.output_targets import AcquisitionTarget, OrbitTarget, Da
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_utils import daac_converter
-from emit_utils.file_checks import envi_header, get_gring_boundary_points, get_band_mean
+from emit_utils.file_checks import envi_header, get_gring_boundary_points, get_band_means
 
 logger = logging.getLogger("emit-main")
 
@@ -511,14 +511,29 @@ class L1BGeolocate(SlurmJobTask):
 
             # Get additional attributes and add to DB
             glt_gring = get_gring_boundary_points(acq.glt_hdr_path)
-            mean_solar_azimuth = get_band_mean(acq.obs_img_path, 3)
-            mean_solar_zenith = get_band_mean(acq.obs_img_path, 4)
+            
+            #Calculate OBS bandwise means
+            mean_obs = get_band_means(acq.obs_img_path,circular_bands = [1,3,7])
+            mean_solar_zenith = mean_obs[4]
+
             meta = {
                 "gring": glt_gring,
-                "mean_solar_azimuth": mean_solar_azimuth,
+                "mean_solar_azimuth": mean_obs[3],
                 "mean_solar_zenith": mean_solar_zenith,
-                "daynight": "Day" if mean_solar_zenith < 90 else "Night" 
-                
+                "daynight": "Day" if mean_solar_zenith < 90 else "Night",
+                "obs_mean": {
+                    "pathlength": mean_obs[0],
+                    "sensor_zenith": mean_obs[1],
+                    "sensor_azimuth": mean_obs[2],
+                    "solar_azimuth": mean_obs[3],
+                    "solar_zenith": mean_obs[4],
+                    "solar_phase": mean_obs[5],
+                    "slope": mean_obs[6],
+                    "aspect": mean_obs[7],
+                    "cosine_i": mean_obs[8],
+                    "utc_time": mean_obs[9],
+                    "earth_sun_dist": mean_obs[10],
+                },
             }
                         
             # Update acquisition header files and DB

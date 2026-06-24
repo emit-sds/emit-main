@@ -19,7 +19,7 @@ from emit_main.workflow.output_targets import AcquisitionTarget
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.l1b_tasks import L1BCalibrate, L1BGeolocate
 from emit_main.workflow.slurm import SlurmJobTask
-from emit_utils.file_checks import envi_header, check_cloudfraction, check_nodatafraction
+from emit_utils.file_checks import envi_header, check_cloudfraction, check_nodatafraction, get_band_means
 from emit_utils import daac_converter
 
 logger = logging.getLogger("emit-main")
@@ -700,6 +700,19 @@ class L2AMaskTf(SlurmJobTask):
         hdr["emit acquisition nodata fraction"] = nodata_fraction
         envi.write_envi_header(acq.maskTf_hdr_path, hdr)
 
+        mean_state, band_names = get_band_means(acq.state_img_path, return_names=True)
+
+        state_mean = {}
+        
+        if 'H2OSTR' in band_names:
+            state_mean['h2o'] = mean_state[band_names.index('H2OSTR')]
+        if 'AOT550' in band_names:
+            state_mean['aot'] = mean_state[band_names.index('AOT550')]
+        if 'surface_elevation_km' in band_names:
+            state_mean['surface_elevation_km'] = mean_state[band_names.index('surface_elevation_km')]   
+        
+        meta = {"state_mean": state_mean}
+
         # PGE writes metadata to db
         dm = wm.database_manager
         product_dict = {
@@ -716,6 +729,9 @@ class L2AMaskTf(SlurmJobTask):
         dm.update_acquisition_metadata(acq.acquisition_id, {f"products.mask.{wm.config['prod_versions']['mask']}.maskTf": product_dict})
         dm.update_acquisition_metadata(acq.acquisition_id, {f"products.mask.{wm.config['prod_versions']['mask']}.maskTf.cloud_fraction": cloud_fraction})
         dm.update_acquisition_metadata(acq.acquisition_id, {f"products.mask.{wm.config['prod_versions']['mask']}.maskTf.nodata_fraction": nodata_fraction})
+
+        dm.update_acquisition_metadata(acq.acquisition_id, meta)
+
 
         total_time = time.time() - start_time
         log_entry = {
