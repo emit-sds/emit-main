@@ -92,38 +92,45 @@
         "unmixing_library": "/store/shared/unmixing_libraries/convex_hull__n_dims_4_unmix_library.csv",
         "mirror_data_dir": "/data/emit/test/data",
         "date_ranges": {
-            "2022-08-10T00:00:00_to_2024-02-20T00:00:00": {
+            "2022-08-10T00:00:00_to_2022-12-01T00:00:00": {
                 "tetracorder_library_basename": "em2208a",
                 "tetracorder_library_cmdname": "em2208a",
-                "l1b_config_path": "/store/emit/test/repos/emit-sds-l1b/config/EMIT_20230119.json",
+                "l1b_config_path": "/store/emit/test/repos/emit-sds-l1b/config/EMIT_20260105a.json",
                 "frame_hdr_format": "1.0",
-                "config_comments": "Post-IOC calibration solution to be applied to all scenes going back to the start of the mission."
+                "config_comments": "Post-FPA position adjustments, with channel clipping. There was an FPA tilt update on 13 August 2022. Radiometry for this time range updated Jan 2026, wavelengths updated June 2026."
             },
-            "2024-02-20T00:00:00_to_2024-08-18T00:00:00": {
+            "2022-12-01T00:00:00_to_2023-05-01T00:00:00": {
                 "tetracorder_library_basename": "em2402a",
                 "tetracorder_library_cmdname": "em2402a",
-                "l1b_config_path": "/store/emit/test/repos/emit-sds-l1b/config/EMIT_20240227.json",
+                "l1b_config_path": "/store/emit/test/repos/emit-sds-l1b/config/EMIT_20260105b.json",
                 "frame_hdr_format": "1.0",
-                "config_comments": "Calibration change in response to FSW reboot on 2024-02-19T12:38:13Z."
+                "config_comments": "Wavelength solution after extended down period, based on June 2026 wavelength solve.  Radiometry for this time range updated Jan 2026."
             },
-            "2024-08-18T00:00:00_to_2025-07-13T16:25:00": {
+            "2023-05-01T00:00:00_to_2024-02-18T00:00:00": {
                 "tetracorder_library_basename": "em2410a",
                 "tetracorder_library_cmdname": "em2410a",
-                "l1b_config_path": "/store/emit/test/repos/emit-sds-l1b/config/EMIT_20241025.json",
+                "l1b_config_path": "/store/emit/test/repos/emit-sds-l1b/config/EMIT_20260105c.json",
                 "frame_hdr_format": "1.0",
-                "config_comments": "Calibration change in response to FUBAR anomaly on 2024-08-17T19:30:45Z."
+                "config_comments": "Wavelength solution from longterm trend, based on June 2026 wavelength solve.  Radiometry for this time range updated Jan 2026."
             },
-            "2025-07-13T16:25:00_to_2025-10-07T18:10:00": {
+            "2024-02-18T00:00:00_to_2024-08-18T00:00:00": {
                 "tetracorder_library_basename": "em2507a",
                 "tetracorder_library_cmdname": "em2507a",
-                "l1b_config_path": "/store/emit/test/repos/emit-sds-l1b/config/EMIT_20250721.json",
+                "l1b_config_path": "/store/emit/test/repos/emit-sds-l1b/config/EMIT_20260105d.json",
                 "frame_hdr_format": "1.0",
-                "config_comments": "Calibration change in response to anomaly on 2025-07-13T16:25:00Z."
+                "config_comments": "Wavelength solution from longterm trend, based on June 2026 wavelength solve.  Radiometry for this time range updated Jan 2026."
+            },
+            "2024-08-18T00:00:00_to_2025-10-07T18:10:00": {
+                "tetracorder_library_basename": "em2507a",
+                "tetracorder_library_cmdname": "em2507a",
+                "l1b_config_path": "/store/emit/test/repos/emit-sds-l1b/config/EMIT_20260105e.json",
+                "frame_hdr_format": "1.0",
+                "config_comments": "New wavelength solution after thermal cycle.  New flat field update to calibrate out localized [contamination?].  Radiometry updated in Jan 2026."
             },
             "2025-10-07T18:10:00_to_2030-01-01T00:00:00": {
                 "tetracorder_library_basename": "em2507a",
                 "tetracorder_library_cmdname": "em2507a",
-                "l1b_config_path": "/store/emit/test/repos/emit-sds-l1b/config/EMIT_20250721.json",
+                "l1b_config_path": "/store/emit/test/repos/emit-sds-l1b/config/EMIT_20260105e.json",
                 "frame_hdr_format": "1.5",
                 "config_comments": "Update frame header to version 1.5 to match FSW v1.5.0 uplink."
             }
