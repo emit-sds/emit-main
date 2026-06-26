@@ -49,7 +49,7 @@ class L0StripHOSC(SlurmJobTask):
 
     def work(self):
         
-        start_time = time.time()
+        pge_start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.stream_path}")
 
         wm = WorkflowManager(config_path=self.config_path)
@@ -194,7 +194,7 @@ class L0StripHOSC(SlurmJobTask):
 
         doc_version = "Space Packet Protocol, CCSDS 133.0-B-1 (with Issue 1, Cor. 1, Sept. 2010 and Issue 1, Cor. 2, " \
                       "Sept. 2012 addendums)"
-        total_time = time.time() - start_time
+        total_time = time.time() - pge_start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -250,7 +250,7 @@ class L0IngestBAD(SlurmJobTask):
 
     def work(self):
         
-        start_time = time.time()
+        pge_start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.stream_path}")
 
         # Get workflow manager
@@ -387,7 +387,7 @@ class L0IngestBAD(SlurmJobTask):
         dm = wm.database_manager
         dm.update_stream_metadata(stream.bad_name, metadata)
 
-        total_time = time.time() - start_time
+        total_time = time.time() - pge_start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -437,7 +437,7 @@ class L0ProcessPlanningProduct(SlurmJobTask):
 
     def work(self):
 
-        start_time = time.time()
+        pge_start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.plan_prod_path}")
         wm = WorkflowManager(config_path=self.config_path)
         dm = wm.database_manager
@@ -617,7 +617,7 @@ class L0ProcessPlanningProduct(SlurmJobTask):
         wm.move(self.plan_prod_path, target_pp_path)
 
         # Add processing log entry for orbits and data collections
-        total_time = time.time() - start_time
+        total_time = time.time() - pge_start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -672,7 +672,7 @@ class L0Deliver(SlurmJobTask):
 
     def work(self):
         
-        start_time = time.time()
+        pge_start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
@@ -815,7 +815,7 @@ class L0Deliver(SlurmJobTask):
             stream.ccsds_name,
             {f"products.daac.{wm.config['prod_versions']['l0']}.ccsds_daac_submissions": stream.metadata["products"]["daac"][wm.config["prod_versions"]["l0"]]["ccsds_daac_submissions"]})
 
-        total_time = time.time() - start_time
+        total_time = time.time() - pge_start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,

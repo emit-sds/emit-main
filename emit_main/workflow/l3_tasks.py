@@ -50,7 +50,7 @@ class L3ReflectanceFormat(SlurmJobTask):
 
     def work(self):
 
-        start_time = time.time()
+        pge_start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
@@ -108,7 +108,7 @@ class L3ReflectanceFormat(SlurmJobTask):
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l3rfl.{wm.config['prod_versions']['l3rfl']}.rfl_netcdf": product_dict_netcdf})
 
-        total_time = time.time() - start_time
+        total_time = time.time() - pge_start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -175,7 +175,7 @@ class L3ReflectanceDeliver(SlurmJobTask):
 
     def work(self):
 
-        start_time = time.time()
+        pge_start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
@@ -365,7 +365,7 @@ class L3ReflectanceDeliver(SlurmJobTask):
             acq.acquisition_id,
             {f"products.l3rfl.{wm.config['prod_versions']['l3rfl']}.rfl_daac_submissions": acq.metadata["products"]["l3rfl"][wm.config["prod_versions"]["l3rfl"]]["rfl_daac_submissions"]})
 
-        total_time = time.time() - start_time
+        total_time = time.time() - pge_start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
