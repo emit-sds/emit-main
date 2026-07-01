@@ -23,7 +23,7 @@ from emit_main.workflow.output_targets import AcquisitionTarget, OrbitTarget, Da
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_utils import daac_converter
-from emit_utils.file_checks import envi_header, get_gring_boundary_points, get_band_means
+from emit_utils.file_checks import envi_header, get_gring_boundary_points, get_band_stats
 
 logger = logging.getLogger("emit-main")
 
@@ -479,7 +479,7 @@ class L1BGeolocate(SlurmJobTask):
             output_prods["l1b_rdn_png_paths"].append(acq.rdn_png_path)
             
             #Calculate obs bandwise means
-            mean_obs = get_band_means(acq.obs_img_path,circular_bands = [1,3,7])
+            mean_obs = get_band_stats(acq.obs_img_path,stat = 'mean',circular_bands = [1,3,7])
 
             obs_band_means = {
                 "pathlength": mean_obs[0],
