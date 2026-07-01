@@ -129,7 +129,7 @@ class DataCollection:
         # Get list of acquisition ids expected to have CH4 products
         query = {
             "associated_dcid": self.dcid,
-            "mean_solar_zenith": {"$lt": 80},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.obs.band_means.solar_zenith": {"$lt": 80},
             "num_valid_lines": {"$gte": 320},
         }
 
