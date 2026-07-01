@@ -148,6 +148,16 @@ class L2AReflectance(SlurmJobTask):
         pge.run(quality_cmd, tmp_dir=self.tmp_dir, env=env)
         quality_results = np.genfromtxt(tmp_quality_path, dtype=str, delimiter="\n")
 
+        #Calculate state band medians
+        median_state, band_names = get_band_stats(tmp_state_path, stat='median', return_names=True)
+        state_band_medians = {}
+        if 'H2OSTR' in band_names:
+            state_band_medians['h2o'] = median_state[band_names.index('H2OSTR')]
+        if 'AOT550' in band_names:
+            state_band_medians['aot'] = median_state[band_names.index('AOT550')]
+        if 'surface_elevation_km' in band_names:
+            state_band_medians['surface_elevation_km'] = median_state[band_names.index('surface_elevation_km')]    
+            
         wm.copy(tmp_rfl_path, acq.rfl_img_path)
         wm.copy(tmp_rfl_hdr_path, acq.rfl_hdr_path)
         wm.copy(tmp_rfluncert_path, acq.rfluncert_img_path)
@@ -213,6 +223,7 @@ class L2AReflectance(SlurmJobTask):
                 dm.update_acquisition_metadata(
                     acq.acquisition_id, {f"products.l2a.{wm.config['prod_versions']['l2a']}.rfluncert": product_dict})
             elif "_state_" in img_path:
+                product_dic['band_medians'] = state_band_medians
                 dm.update_acquisition_metadata(
                     acq.acquisition_id, {f"products.l2a.{wm.config['prod_versions']['l2a']}.state": product_dict})
 
@@ -699,20 +710,7 @@ class L2AMaskTf(SlurmJobTask):
         hdr["emit acquisition cloud fraction"] = cloud_fraction
         hdr["emit acquisition nodata fraction"] = nodata_fraction
         envi.write_envi_header(acq.maskTf_hdr_path, hdr)
-
-        median_state, band_names = get_band_stats(acq.state_img_path, stat='median', return_names=True)
-
-        state_median = {}
-        
-        if 'H2OSTR' in band_names:
-            state_median['h2o'] = median_state[band_names.index('H2OSTR')]
-        if 'AOT550' in band_names:
-            state_median['aot'] = median_state[band_names.index('AOT550')]
-        if 'surface_elevation_km' in band_names:
-            state_median['surface_elevation_km'] = median_state[band_names.index('surface_elevation_km')]   
-        
-        meta = {"state_mean": state_mean}
-
+    
         # PGE writes metadata to db
         dm = wm.database_manager
         product_dict = {

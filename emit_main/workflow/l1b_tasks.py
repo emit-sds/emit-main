@@ -478,7 +478,7 @@ class L1BGeolocate(SlurmJobTask):
             output_prods["l1b_rdn_kmz_paths"].append(acq.rdn_kmz_path)
             output_prods["l1b_rdn_png_paths"].append(acq.rdn_png_path)
             
-            #Calculate obs bandwise means
+            #Calculate obs band means
             mean_obs = get_band_stats(acq.obs_img_path,stat = 'mean',circular_bands = [1,3,7])
 
             obs_band_means = {
