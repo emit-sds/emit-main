@@ -676,8 +676,8 @@ class L2AMaskTf(SlurmJobTask):
 
         pge.run(make_masks_cmd, tmp_dir=self.tmp_dir, env=env)
         
-        cloudIndex_fraction, cirrus_fraction, cloud_fraction = check_cloudfraction(tmp_maskTf_path, mask_band = [0,1,5])
-        cloudRatio_fraction = check_cloudRatio_fraction(tmp_maskTf_path, cloud_band=0, cirrus_band=1, spectf_band=5)
+        cloudindex_fraction, cirrus_fraction, cloud_fraction = check_cloudfraction(tmp_maskTf_path, mask_band = [0,1,5])
+        cloudratio_fraction = check_cloudRatio_fraction(tmp_maskTf_path, cloud_band=0, cirrus_band=1, spectf_band=5)
         nodata_fraction = check_nodatafraction(tmp_maskTf_path, band = 0, no_data_value = -9999)
 
         tmp_maskTf_png_path = os.path.join(tmp_output_dir, os.path.basename(acq.maskTf_png_path))
@@ -727,7 +727,8 @@ class L2AMaskTf(SlurmJobTask):
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {f"products.mask.{wm.config['prod_versions']['mask']}.maskTf": product_dict})
         dm.update_acquisition_metadata(acq.acquisition_id, {f"products.mask.{wm.config['prod_versions']['mask']}.maskTf.cloud_fraction": cloud_fraction})
-        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.mask.{wm.config['prod_versions']['mask']}.maskTf.cloudRatio_fraction": cloudRatio_fraction})
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.mask.{wm.config['prod_versions']['mask']}.maskTf.cloudindex_fraction": cloudindex_fraction})
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.mask.{wm.config['prod_versions']['mask']}.maskTf.cloudratio_fraction": cloudratio_fraction})
         dm.update_acquisition_metadata(acq.acquisition_id, {f"products.mask.{wm.config['prod_versions']['mask']}.maskTf.cirrus_fraction": cirrus_fraction})
         dm.update_acquisition_metadata(acq.acquisition_id, {f"products.mask.{wm.config['prod_versions']['mask']}.maskTf.nodata_fraction": nodata_fraction})
 
