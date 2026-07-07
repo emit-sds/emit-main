@@ -19,7 +19,7 @@ from emit_main.workflow.output_targets import AcquisitionTarget
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.l1b_tasks import L1BCalibrate, L1BGeolocate
 from emit_main.workflow.slurm import SlurmJobTask
-from emit_utils.file_checks import envi_header, check_cloudfraction, check_cloudRatio_fraction, check_nodatafraction, get_band_stats
+from emit_utils.file_checks import envi_header, check_cloudfraction, check_cloudratio_fraction, check_nodatafraction, get_band_stats
 from emit_utils import daac_converter
 
 logger = logging.getLogger("emit-main")
