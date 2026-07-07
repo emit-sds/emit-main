@@ -482,7 +482,7 @@ class L1BGeolocate(SlurmJobTask):
             mean_obs = get_band_stats(tmp_obs_img_path, stat = 'mean', circular_bands = [1,3,7])
 
             obs_band_means = {
-                "pathlength": mean_obs[0],
+                "path_length": mean_obs[0],
                 "sensor_azimuth": mean_obs[1],
                 "sensor_zenith": mean_obs[2],
                 "solar_azimuth": mean_obs[3],
