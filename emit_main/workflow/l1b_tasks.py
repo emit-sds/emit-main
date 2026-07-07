@@ -483,8 +483,8 @@ class L1BGeolocate(SlurmJobTask):
 
             obs_band_means = {
                 "pathlength": mean_obs[0],
-                "sensor_zenith": mean_obs[1],
-                "sensor_azimuth": mean_obs[2],
+                "sensor_azimuth": mean_obs[1],
+                "sensor_zenith": mean_obs[2],
                 "solar_azimuth": mean_obs[3],
                 "solar_zenith": mean_obs[4],
                 "solar_phase": mean_obs[5],
