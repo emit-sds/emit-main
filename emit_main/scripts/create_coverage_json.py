@@ -196,13 +196,22 @@ def main():
     chunk_count = 0
     cf = None
 
-    cursor = acq_coll.find(query, projection, batch_size=1000)
+    cursor = acq_coll.find(query, projection, batch_size=1000).sort("acquisition_id", 1)
 
+    daac_index = 1
+    fid_index = 1
     with open(out_file, "w") as f:
         f.write('{\n    "type": "FeatureCollection",\n    "features": [\n')
         first = True
         for record in cursor:
             feat = make_feature(record, l1b_v, l2a_v, mask_v)
+
+            feat['properties']['FID_index'] = fid_index
+            feat['properties']['DAAC_index'] = daac_index
+            fid_index +=1
+            if 'L1B Radiance Download' in list(feat['properties'].keys()):
+              daac_index += 1
+
             if args.dataframe:
                 features.append(feat['properties'])
             line = "        " + json.dumps(feat)
@@ -231,6 +240,6 @@ def main():
 
     if args.dataframe:
         pd.DataFrame(features).to_csv(out_file_db, index=False)
-        
+
 if __name__ == '__main__':
     main()
