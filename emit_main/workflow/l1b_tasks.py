@@ -23,7 +23,7 @@ from emit_main.workflow.output_targets import AcquisitionTarget, OrbitTarget, Da
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_utils import daac_converter
-from emit_utils.file_checks import envi_header, get_gring_boundary_points, get_band_mean
+from emit_utils.file_checks import envi_header, get_gring_boundary_points, get_band_stats
 
 logger = logging.getLogger("emit-main")
 
@@ -477,6 +477,24 @@ class L1BGeolocate(SlurmJobTask):
             output_prods["l1b_obs_hdr_paths"].append(acq.loc_hdr_path)
             output_prods["l1b_rdn_kmz_paths"].append(acq.rdn_kmz_path)
             output_prods["l1b_rdn_png_paths"].append(acq.rdn_png_path)
+            
+            #Calculate obs band means
+            mean_obs = get_band_stats(tmp_obs_img_path, stat = 'mean', circular_bands = [1,3,7])
+
+            obs_band_means = {
+                "path_length": mean_obs[0],
+                "sensor_azimuth": mean_obs[1],
+                "sensor_zenith": mean_obs[2],
+                "solar_azimuth": mean_obs[3],
+                "solar_zenith": mean_obs[4],
+                "solar_phase": mean_obs[5],
+                "slope": mean_obs[6],
+                "aspect": mean_obs[7],
+                "cosine_i": mean_obs[8],
+                "utc_time": mean_obs[9],
+                "earth_sun_dist": mean_obs[10],
+            }
+            
             # Keep track of acquisition product map for products
             acq_prod_map[id] = {
                 "glt": {
@@ -494,6 +512,7 @@ class L1BGeolocate(SlurmJobTask):
                 "obs": {
                     "img_path": acq.obs_img_path,
                     "hdr_path": acq.obs_hdr_path,
+                    "band_means": obs_band_means,
                     "created": datetime.datetime.fromtimestamp(os.path.getmtime(acq.obs_img_path),
                                                                tz=datetime.timezone.utc)
                 },
@@ -511,14 +530,10 @@ class L1BGeolocate(SlurmJobTask):
 
             # Get additional attributes and add to DB
             glt_gring = get_gring_boundary_points(acq.glt_hdr_path)
-            mean_solar_azimuth = get_band_mean(acq.obs_img_path, 3)
-            mean_solar_zenith = get_band_mean(acq.obs_img_path, 4)
+            
             meta = {
                 "gring": glt_gring,
-                "mean_solar_azimuth": mean_solar_azimuth,
-                "mean_solar_zenith": mean_solar_zenith,
-                "daynight": "Day" if mean_solar_zenith < 90 else "Night" 
-                
+                "daynight": "Day" if obs_band_means['solar_zenith'] < 90 else "Night",
             }
                         
             # Update acquisition header files and DB

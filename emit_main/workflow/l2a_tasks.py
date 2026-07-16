@@ -19,7 +19,7 @@ from emit_main.workflow.output_targets import AcquisitionTarget
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.l1b_tasks import L1BCalibrate, L1BGeolocate
 from emit_main.workflow.slurm import SlurmJobTask
-from emit_utils.file_checks import envi_header, check_cloudfraction, check_nodatafraction
+from emit_utils.file_checks import envi_header, check_cloudfraction, check_cloudratio_fraction, check_nodatafraction, get_band_stats
 from emit_utils import daac_converter
 
 logger = logging.getLogger("emit-main")
@@ -148,6 +148,16 @@ class L2AReflectance(SlurmJobTask):
         pge.run(quality_cmd, tmp_dir=self.tmp_dir, env=env)
         quality_results = np.genfromtxt(tmp_quality_path, dtype=str, delimiter="\n")
 
+        #Calculate state band medians
+        median_state, band_names = get_band_stats(tmp_state_path, stat='median', return_names=True)
+        state_band_medians = {}
+        if 'H2OSTR' in band_names:
+            state_band_medians['h2o'] = median_state[band_names.index('H2OSTR')]
+        if 'AOT550' in band_names:
+            state_band_medians['aot'] = median_state[band_names.index('AOT550')]
+        if 'surface_elevation_km' in band_names:
+            state_band_medians['surface_elevation_km'] = median_state[band_names.index('surface_elevation_km')]    
+            
         wm.copy(tmp_rfl_path, acq.rfl_img_path)
         wm.copy(tmp_rfl_hdr_path, acq.rfl_hdr_path)
         wm.copy(tmp_rfluncert_path, acq.rfluncert_img_path)
@@ -213,6 +223,7 @@ class L2AReflectance(SlurmJobTask):
                 dm.update_acquisition_metadata(
                     acq.acquisition_id, {f"products.l2a.{wm.config['prod_versions']['l2a']}.rfluncert": product_dict})
             elif "_state_" in img_path:
+                product_dic['band_medians'] = state_band_medians
                 dm.update_acquisition_metadata(
                     acq.acquisition_id, {f"products.l2a.{wm.config['prod_versions']['l2a']}.state": product_dict})
 
@@ -665,7 +676,8 @@ class L2AMaskTf(SlurmJobTask):
 
         pge.run(make_masks_cmd, tmp_dir=self.tmp_dir, env=env)
         
-        cloud_fraction = check_cloudfraction(tmp_maskTf_path, mask_band = 9)
+        cloudindex_fraction, cirrus_fraction, cloud_fraction = check_cloudfraction(tmp_maskTf_path, mask_band = [0,1,5])
+        cloudratio_fraction = check_cloudRatio_fraction(tmp_maskTf_path, cloud_band=0, cirrus_band=1, spectf_band=5)
         nodata_fraction = check_nodatafraction(tmp_maskTf_path, band = 0, no_data_value = -9999)
 
         tmp_maskTf_png_path = os.path.join(tmp_output_dir, os.path.basename(acq.maskTf_png_path))
@@ -699,7 +711,7 @@ class L2AMaskTf(SlurmJobTask):
         hdr["emit acquisition cloud fraction"] = cloud_fraction
         hdr["emit acquisition nodata fraction"] = nodata_fraction
         envi.write_envi_header(acq.maskTf_hdr_path, hdr)
-
+    
         # PGE writes metadata to db
         dm = wm.database_manager
         product_dict = {
@@ -715,7 +727,13 @@ class L2AMaskTf(SlurmJobTask):
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {f"products.mask.{wm.config['prod_versions']['mask']}.maskTf": product_dict})
         dm.update_acquisition_metadata(acq.acquisition_id, {f"products.mask.{wm.config['prod_versions']['mask']}.maskTf.cloud_fraction": cloud_fraction})
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.mask.{wm.config['prod_versions']['mask']}.maskTf.cloudindex_fraction": cloudindex_fraction})
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.mask.{wm.config['prod_versions']['mask']}.maskTf.cloudratio_fraction": cloudratio_fraction})
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.mask.{wm.config['prod_versions']['mask']}.maskTf.cirrus_fraction": cirrus_fraction})
         dm.update_acquisition_metadata(acq.acquisition_id, {f"products.mask.{wm.config['prod_versions']['mask']}.maskTf.nodata_fraction": nodata_fraction})
+
+        dm.update_acquisition_metadata(acq.acquisition_id, meta)
+
 
         total_time = time.time() - start_time
         log_entry = {

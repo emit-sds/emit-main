@@ -91,7 +91,7 @@ class DatabaseManager:
         query = {
             "start_time": {"$gt": q_start, "$lt": q_stop},
             f"products.l1b.{self.config['prod_versions']['l1b']}.ffupdate": {"$exists": 1},
-            "mean_solar_zenith": {"$lt": 60}
+            f"products.l1b.{self.config['prod_versions']['l1b']}.obs.band_means.solar_zenith": {"$lt": 60}
         }
         projection = {
             "acquisition_id": 1,
@@ -154,7 +154,7 @@ class DatabaseManager:
             f"products.l1b.{self.config['prod_versions']['l1b']}.loc.img_path": {"$exists": 1},
             f"products.l1b.{self.config['prod_versions']['l1b']}.obs.img_path": {"$exists": 1},
             f"products.l2a.{self.config['prod_versions']['l2a']}.rfl.img_path": {"$exists": 0},
-            "mean_solar_zenith": {"$lt": 80},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.obs.band_means.solar_zenith": {"$lt": 80},
             date_field: {"$gte": start, "$lte": stop}
         }
         results = list(acquisitions_coll.find(query))
@@ -207,7 +207,7 @@ class DatabaseManager:
             f"products.l1b.{self.config['prod_versions']['l1b']}.obs.img_path": {"$exists": 1},
             f"products.l2a.{self.config['prod_versions']['l2a']}.rfl.img_path": {"$exists": 1},
             f"products.mask.{self.config['prod_versions']['mask']}.maskTf.img_path": {"$exists": 1},
-            "mean_solar_zenith": {"$lt": 80},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.obs.band_means.solar_zenith": {"$lt": 80},
             f"products.ch4.{self.config['prod_versions']['ch4']}.ortch4.tif_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }
@@ -228,7 +228,7 @@ class DatabaseManager:
             f"products.l1b.{self.config['prod_versions']['l1b']}.obs.img_path": {"$exists": 1},
             f"products.l2a.{self.config['prod_versions']['l2a']}.rfl.img_path": {"$exists": 1},
             f"products.mask.{self.config['prod_versions']['mask']}.maskTf.img_path": {"$exists": 1},
-            "mean_solar_zenith": {"$lt": 80},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.obs.band_means.solar_zenith": {"$lt": 80},
             f"products.co2.{self.config['prod_versions']['co2']}.ortco2.tif_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }
@@ -317,7 +317,7 @@ class DatabaseManager:
             f"products.l1b.{self.config['prod_versions']['l1b']}.rdn_png.png_path": {"$exists": 1},
             f"products.mask.{self.config['prod_versions']['mask']}.maskTf.cloud_fraction": {"$exists": 0},
             "submode": "science",
-            "mean_solar_zenith": {"$gte": 80},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.obs.band_means.solar_zenith": {"$gte": 80},
             "daac_scene": {"$exists": 1},
             f"products.l1b.{self.config['prod_versions']['l1b']}.rdn_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}

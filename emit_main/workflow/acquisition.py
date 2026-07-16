@@ -114,6 +114,13 @@ class Acquisition:
             self.metadata["products"]["l1b"] = {}
         if self.config["prod_versions"]["l1b"] not in self.metadata["products"]["l1b"]:
             self.metadata["products"]["l1b"][self.config["prod_versions"]["l1b"]] = {}
+        else:
+            mean_solar_zenith = self.metadata["products"]["l1b"].get(self.config["prod_versions"]["l1b"], {}).get("obs", {}).get("band_means", {}).get("solar_zenith")
+            mean_solar_azimuth= self.metadata["products"]["l1b"].get(self.config["prod_versions"]["l1b"], {}).get("obs", {}).get("band_means", {}).get("solar_azimuth")
+            if mean_solar_zenith:
+                self.mean_solar_zenith = mean_solar_zenith
+            if mean_solar_azimuth:
+                self.mean_solar_azimuth = mean_solar_azimuth
         if "l2a" not in self.metadata["products"]:
             self.metadata["products"]["l2a"] = {}
         if self.config["prod_versions"]["l2a"] not in self.metadata["products"]["l2a"]:
@@ -142,7 +149,7 @@ class Acquisition:
             self.metadata["products"]["l3rfl"] = {}
         if self.config["prod_versions"]["l3rfl"] not in self.metadata["products"]["l3rfl"]:
             self.metadata["products"]["l3rfl"][self.config["prod_versions"]["l3rfl"]] = {}
-
+            
     def _build_acquisition_paths(self):
         product_map = {
             "l1a": {
