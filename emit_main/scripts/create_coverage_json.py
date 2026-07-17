@@ -92,12 +92,12 @@ def make_feature(record, l1b_v, l2a_v, mask_v):
     screened = feature["properties"].get("Screened Onboard Fraction", False)
     cloud_fraction = feature["properties"].get("Cloud Fraction Spectf", False)
 
-    if screened & cloud_fraction:
+    if screened and cloud_fraction:
         feature["properties"]["Cloud Cover"] = screened + cloud_fraction
 
     on_daac = False
 
-    if record.get(f'products.l1b.{l1b_v}.rdn_ummg'):
+    if record.get(f'products.l1b.{l1b_v}.rdn_ummg.ummg_json_path'):
         l1b_base = f'https://data.lpdaac.earthdatacloud.nasa.gov/lp-prod-protected/EMITL1BRAD.0{l1b_v}'
         l1b_rad = f'EMIT_L1B_RAD_0{l1b_v}_{time_string}'
         l1b_obs = f'EMIT_L1B_OBS_0{l1b_v}_{time_string}'
@@ -105,7 +105,7 @@ def make_feature(record, l1b_v, l2a_v, mask_v):
         feature['properties']['L1B Observation Download'] = f'{l1b_base}/{l1b_rad}/{l1b_obs}.nc'
         on_daac = True
 
-    if record.get(f'products.l2a.{l2a_v}.rfl_ummg'):
+    if record.get(f'products.l2a.{l2a_v}.rfl_ummg.ummg_json_path'):
         l2a_base = f'https://data.lpdaac.earthdatacloud.nasa.gov/lp-prod-protected/EMITL2ARFL.0{l2a_v}'
         l2a_rfl = f'EMIT_L2A_RFL_0{l2a_v}_{time_string}'
         l2a_rflunc = f'EMIT_L2A_RFLUNCERT_0{l2a_v}_{time_string}'
@@ -113,7 +113,7 @@ def make_feature(record, l1b_v, l2a_v, mask_v):
         feature['properties']['L2A Reflectance Uncertainty Download'] = f'{l2a_base}/{l2a_rfl}/{l2a_rflunc}.nc'
         on_daac = True
 
-    if record.get(f'products.mask.{mask_v}.maskTf_ummg'):
+    if record.get(f'products.mask.{mask_v}.maskTf_ummg.ummg_json_path'):
         mask_base = f'https://data.lpdaac.earthdatacloud.nasa.gov/lp-prod-protected/EMITL2AMASK.0{mask_v}'
         l2a_mask = f'EMIT_L2A_MASK_0{mask_v}_{time_string}'
         feature['properties']['L2A Mask Download'] = f'{mask_base}/{l2a_mask}/{l2a_mask}.nc'
