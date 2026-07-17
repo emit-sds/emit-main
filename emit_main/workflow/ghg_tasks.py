@@ -65,7 +65,7 @@ class CH4(SlurmJobTask):
 
     def work(self):
 
-        start_time = time.time()
+        pge_start_time = time.time()
         logger.debug(f"{self.task_family} run: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
@@ -165,7 +165,7 @@ class CH4(SlurmJobTask):
 
         doc_version = "EMIT SDS GHG JPL-D 107866, v0.2"
 
-        total_time = time.time() - start_time
+        total_time = time.time() - pge_start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -234,7 +234,7 @@ class CO2(SlurmJobTask):
 
     def work(self):
 
-        start_time = time.time()
+        pge_start_time = time.time()
         logger.debug(f"{self.task_family} run: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
@@ -283,7 +283,6 @@ class CO2(SlurmJobTask):
                "--product_version", 'V002']
 
         # Run CO2
-        start_time = time.time()
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
         co2_of = Filenames(co2_base)
 
@@ -334,7 +333,7 @@ class CO2(SlurmJobTask):
 
         doc_version = "EMIT SDS GHG JPL-D 107866, v0.2"
 
-        total_time = time.time() - start_time
+        total_time = time.time() - pge_start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -408,7 +407,7 @@ class CH4Deliver(SlurmJobTask):
 
     def work(self):
 
-        start_time = time.time()
+        pge_start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
@@ -605,7 +604,7 @@ class CH4Deliver(SlurmJobTask):
             acq.acquisition_id,
             {f"products.ch4.{wm.config['prod_versions']['ch4']}.ch4_daac_submissions": acq.metadata["products"]["ch4"][wm.config["prod_versions"]["ch4"]]["ch4_daac_submissions"]})
 
-        total_time = time.time() - start_time
+        total_time = time.time() - pge_start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -666,7 +665,7 @@ class CO2Deliver(SlurmJobTask):
 
     def work(self):
 
-        start_time = time.time()
+        pge_start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
@@ -863,7 +862,7 @@ class CO2Deliver(SlurmJobTask):
             acq.acquisition_id,
             {f"products.co2.{wm.config['prod_versions']['co2']}.co2_daac_submissions": acq.metadata["products"]["co2"][wm.config["prod_versions"]["co2"]]["co2_daac_submissions"]})
 
-        total_time = time.time() - start_time
+        total_time = time.time() - pge_start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -919,7 +918,7 @@ class CH4Mosaic(SlurmJobTask):
 
     def work(self):
 
-        start_time = time.time()
+        pge_start_time = time.time()
         logger.debug(f"{self.task_family} run: {self.dcid}")
 
         wm = WorkflowManager(config_path=self.config_path, dcid=self.dcid)
@@ -1000,7 +999,7 @@ class CH4Mosaic(SlurmJobTask):
 
         doc_version = "EMIT SDS GHG JPL-D 107866, v0.2"
 
-        total_time = time.time() - start_time
+        total_time = time.time() - pge_start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -1049,7 +1048,7 @@ class CO2Mosaic(SlurmJobTask):
 
     def work(self):
 
-        start_time = time.time()
+        pge_start_time = time.time()
         logger.debug(f"{self.task_family} run: {self.dcid}")
 
         wm = WorkflowManager(config_path=self.config_path, dcid=self.dcid)
@@ -1130,7 +1129,7 @@ class CO2Mosaic(SlurmJobTask):
 
         doc_version = "EMIT SDS GHG JPL-D 107866, v0.2"
 
-        total_time = time.time() - start_time
+        total_time = time.time() - pge_start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,

@@ -60,7 +60,7 @@ class L1BCalibrate(SlurmJobTask):
 
     def work(self):
 
-        start_time = time.time()
+        pge_start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
@@ -300,7 +300,7 @@ class L1BCalibrate(SlurmJobTask):
         if len(flat_field_update_paths) >= 100:
             input_files["flat_field_update_paths"] = flat_field_update_paths
 
-        total_time = time.time() - start_time
+        total_time = time.time() - pge_start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -362,7 +362,7 @@ class L1BGeolocate(SlurmJobTask):
 
     def work(self):
 
-        start_time = time.time()
+        pge_start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, orbit_id=self.orbit_id)
@@ -640,7 +640,7 @@ This product is generated at the orbit level."
         # Add processing log
         doc_version = "EMIT SDS L1B JPL-D 104187, Initial"
         
-        total_time = time.time() - start_time
+        total_time = time.time() - pge_start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -695,7 +695,7 @@ class L1BRdnFormat(SlurmJobTask):
 
     def work(self):
 
-        start_time = time.time()
+        pge_start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
@@ -735,7 +735,7 @@ class L1BRdnFormat(SlurmJobTask):
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l1b.{wm.config['prod_versions']['l1b']}.rdn_netcdf": product_dict_netcdf})
 
-        total_time = time.time() - start_time
+        total_time = time.time() - pge_start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -798,7 +798,7 @@ class L1BRdnDeliver(SlurmJobTask):
 
     def work(self):
 
-        start_time = time.time()
+        pge_start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
@@ -976,7 +976,7 @@ class L1BRdnDeliver(SlurmJobTask):
             acq.acquisition_id,
             {f"products.l1b.{wm.config['prod_versions']['l1b']}.rdn_daac_submissions": acq.metadata["products"]["l1b"][wm.config["prod_versions"]["l1b"]]["rdn_daac_submissions"]})
 
-        total_time = time.time() - start_time
+        total_time = time.time() - pge_start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -1036,7 +1036,7 @@ class L1BAttDeliver(SlurmJobTask):
 
     def work(self):
         
-        start_time = time.time()
+        pge_start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, orbit_id=self.orbit_id)
@@ -1187,7 +1187,7 @@ class L1BAttDeliver(SlurmJobTask):
             orbit.orbit_id,
             {f"products.l1b.{wm.config['prod_versions']['l1b']}.att_daac_submissions": orbit.metadata["products"]["l1b"][wm.config["prod_versions"]["l1b"]]["att_daac_submissions"]})
 
-        total_time = time.time() - start_time
+        total_time = time.time() - pge_start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -1239,7 +1239,7 @@ class L1BMosaic(SlurmJobTask):
 
     def work(self):
 
-        start_time = time.time()
+        pge_start_time = time.time()
         logger.debug(f"{self.task_family} run: {self.dcid}")
 
         wm = WorkflowManager(config_path=self.config_path, dcid=self.dcid)
@@ -1323,7 +1323,7 @@ class L1BMosaic(SlurmJobTask):
 
         doc_version = "EMIT SDS L1B JPL-D 107866, v0.2"
 
-        total_time = time.time() - start_time
+        total_time = time.time() - pge_start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,

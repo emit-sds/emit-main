@@ -56,7 +56,7 @@ class L2BMineral(SlurmJobTask):
 
     def work(self):
 
-        start_time = time.time()
+        pge_start_time = time.time()
         logger.debug(self.task_family + " run")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
@@ -187,7 +187,7 @@ class L2BMineral(SlurmJobTask):
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l2b.{wm.config['prod_versions']['l2b']}.minuncert": product_dict_minuncert})
 
-        total_time = time.time() - start_time
+        total_time = time.time() - pge_start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -239,7 +239,7 @@ class L2BFormat(SlurmJobTask):
 
     def work(self):
         
-        start_time = time.time()
+        pge_start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
@@ -279,7 +279,7 @@ class L2BFormat(SlurmJobTask):
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l2b.{wm.config['prod_versions']['l2b']}.min_netcdf": product_dict_netcdf})
 
-        total_time = time.time() - start_time
+        total_time = time.time() - pge_start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -342,7 +342,7 @@ class L2BDeliver(SlurmJobTask):
 
     def work(self):
         
-        start_time = time.time()
+        pge_start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
@@ -523,7 +523,7 @@ class L2BDeliver(SlurmJobTask):
             acq.acquisition_id,
             {f"products.l2b.{wm.config['prod_versions']['l2b']}.min_daac_submissions": acq.metadata["products"]["l2b"][wm.config["prod_versions"]["l2b"]]["min_daac_submissions"]})
 
-        total_time = time.time() - start_time
+        total_time = time.time() - pge_start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -579,7 +579,7 @@ class L2BFrCov(SlurmJobTask):
 
     def work(self):
 
-        start_time = time.time()
+        pge_start_time = time.time()
         logger.debug(self.task_family + " run")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
@@ -665,7 +665,7 @@ class L2BFrCov(SlurmJobTask):
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {f"products.frcov.{wm.config['prod_versions']['frcov']}.frcovuncert": product_dict_frcov_uncert})
 
-        total_time = time.time() - start_time
+        total_time = time.time() - pge_start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -718,7 +718,7 @@ class L2BFrCovFormat(SlurmJobTask):
 
     def work(self):
 
-        start_time = time.time()
+        pge_start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
@@ -818,7 +818,7 @@ class L2BFrCovFormat(SlurmJobTask):
         
         doc_version = "EMIT SDS GHG JPL-D 107866, v0.2"
         
-        total_time = time.time() - start_time
+        total_time = time.time() - pge_start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -882,7 +882,7 @@ class L2BFrCovDeliver(SlurmJobTask):
 
     def work(self):
 
-        start_time = time.time()
+        pge_start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
@@ -1138,7 +1138,7 @@ class L2BFrCovDeliver(SlurmJobTask):
             acq.acquisition_id,
             {f"products.frcov.{wm.config['prod_versions']['frcov']}.frcov_daac_submissions": acq.metadata["products"]["frcov"][wm.config["prod_versions"]["frcov"]]["frcov_daac_submissions"]})
 
-        total_time = time.time() - start_time
+        total_time = time.time() - pge_start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
