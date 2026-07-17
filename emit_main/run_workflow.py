@@ -24,7 +24,7 @@ from emit_main.monitor.email_monitor import EmailMonitor
 from emit_main.monitor.frames_monitor import FramesMonitor
 from emit_main.monitor.ingest_monitor import IngestMonitor
 from emit_main.monitor.orbit_monitor import OrbitMonitor
-from emit_main.workflow.daac_helper_tasks import AssignDAACSceneNumbers, GetAdditionalMetadata, ReconciliationReport
+from emit_main.workflow.daac_helper_tasks import AssignDAACSceneNumbers, ReconciliationReport
 from emit_main.workflow.l0_tasks import L0StripHOSC, L0ProcessPlanningProduct, L0IngestBAD, L0Deliver
 from emit_main.workflow.l1a_tasks import L1ADepacketizeScienceFrames, L1AReassembleRaw, L1AReformatEDP, \
     L1AFrameReport, L1AReformatBAD, L1ADeliver
@@ -48,7 +48,7 @@ def parse_args():
                        "l2arfl", "l2amaskTf", "l2aformat","l2amaskTfformat", "l2adaac", "l2bmin", "l2bformat",
                        "l2bdaac","l2amaskTfdaac", "l2bch4", "l2bco2","l2bch4daac", "l2bco2daac", "l2bch4mosaic",
                        "l2bco2mosaic", "l2bfrcov", "l2bfrcovformat", "l2bfrcovdaac", "l3rflformat", "l3rfldaac",
-                       "daacscenes", "daacaddl", "recon"]
+                       "daacscenes", "recon"]
     monitor_choices = ["ingest", "frames", "edp", "cal", "bad", "geo", "l2","maskTf", "l2b","ch4", "co2", "frcov", "l3rfl",
                        "email", "daacscenes", "dl0","dl1a", "dl1brdn", "dl1batt", "dl2a", "dmaskTf", "dfrcov",
                        "dl2b", "dch4", "dco2", "dl3rfl", "mch4", "mco2", "ml1b", "reconresp"]
@@ -248,7 +248,6 @@ def get_tasks_from_product_args(args):
         "l3rfldaac": lambda acq_id: L3ReflectanceDeliver(acquisition_id=acq_id, daac_ingest_queue=args.daac_ingest_queue,
                                              override_output=args.override_output, **kwargs),
         "daacscenes": lambda: AssignDAACSceneNumbers(orbit_id=args.orbit_id, override_output=args.override_output, **kwargs),
-        "daacaddl": lambda acq_id: GetAdditionalMetadata(acquisition_id=acq_id, **kwargs),
         "recon": lambda: ReconciliationReport(start_time=args.start_time.strftime("%Y%m%dT%H%M%S"),
                                               stop_time=args.stop_time.strftime("%Y%m%dT%H%M%S"), **kwargs)
     }
@@ -258,7 +257,7 @@ def get_tasks_from_product_args(args):
         if prod in {"l1adaac", "l1bcal", "l1brdnformat", "l1brdndaac",
                     "l2arfl", "l2aformat", "l2adaac", "l2bmin", "l2bformat",
                     "l2bdaac", "l2bch4", "l2bch4daac", "l2bco2", "l2bco2daac",
-                    "l2bfrcov", "daacaddl", "l2amaskTf","l2amaskTfformat",
+                    "l2bfrcov", "l2amaskTf","l2amaskTfformat",
                     "l2amaskTfdaac", "l2bfrcovformat", "l2bfrcovdaac", 
                     "l3rflformat", "l3rfldaac"}:
             for acq_id in acquisition_ids:
@@ -371,7 +370,7 @@ def task_failure(task, e):
     acquisition_tasks = ("emit.L1ADeliver", "emit.L1BCalibrate", "emit.L1BRdnFormat", "emit.L1BRdnDeliver",
                          "emit.L2AReflectance", "emit.L2AMaskTf", "emit.L2AFormat", "emit.L2AMaskTfFormat", 
                          "emit.L2ADeliver", "emit.L2AMaskTfDeliver", "emit.L2BMineral", "emit.L2BFormat", "emit.L2BDeliver", 
-                         "emit.L2BFrCov", "emit.L2BFrCovFormat", "emit.L2BFrCovDeliver" "emit.GetAdditionalMetadata", 
+                         "emit.L2BFrCov", "emit.L2BFrCovFormat", "emit.L2BFrCovDeliver", 
                          "emit.CH4", "emit.CO2", "emit.CH4Deliver", "emit.CO2Deliver", "emit.L3ReflectanceFormat",
                          "emit.L3ReflectanceDeliver")
     orbit_tasks = ("emit.L1AReformatBAD", "emit.L1BGeolocate", "emit.L1BAttDeliver", "emit.AssignDAACSceneNumbers")
