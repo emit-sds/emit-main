@@ -732,9 +732,6 @@ class L2AMaskTf(SlurmJobTask):
         dm.update_acquisition_metadata(acq.acquisition_id, {f"products.mask.{wm.config['prod_versions']['mask']}.maskTf.cirrus_fraction": cirrus_fraction})
         dm.update_acquisition_metadata(acq.acquisition_id, {f"products.mask.{wm.config['prod_versions']['mask']}.maskTf.nodata_fraction": nodata_fraction})
 
-        dm.update_acquisition_metadata(acq.acquisition_id, meta)
-
-
         total_time = time.time() - pge_start_time
         log_entry = {
             "task": self.task_family,
