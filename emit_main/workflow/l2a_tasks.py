@@ -84,7 +84,9 @@ class L2AReflectance(SlurmJobTask):
 
         # Build PGE cmd for apply_oe
         tmp_log_path = os.path.join(self.local_tmp_dir, "isofit.log")
-        model_disc_file = os.path.join(isofit_pge.repo_dir, "data", "emit_model_discrepancy.mat")
+        model_disc_file = os.path.join(isofit_pge.repo_dir, "data", "emit_model_discrepancy_6c.mat")
+        eof_file = os.path.join(isofit_pge.repo_dir, "data", "emit_eofs.txt")
+        rdn_factors_file = os.path.join(isofit_pge.repo_dir, "data", "v02_rfl_correction_factors_445.txt")
 
         emulator_base = wm.config["isofit_emulator_base"]
 
@@ -92,23 +94,33 @@ class L2AReflectance(SlurmJobTask):
             "radiance_file": acq.rdn_img_path,
             "pixel_locations_file": acq.loc_img_path,
             "observation_parameters_file": acq.obs_img_path,
-            "surface_model_config": surface_config_path
+            "surface_model_config": surface_config_path,
+            "prebuilt_lut": wm.config["prebuilt_lut_path"],
+            "eof_file": eof_file,
+            "model_discrepancy_file": model_disc_file,
+            "radiance_factors_file": rdn_factors_file
         }
         cmd = ["isofit", "-i", wm.config["isofit_ini_path"], "apply_oe", 
                acq.rdn_img_path, acq.loc_img_path, acq.obs_img_path, self.local_tmp_dir, "emit",
-               "--presolve",
                "--analytical_line",
-               "--emulator_base=" + emulator_base,
                "--n_cores", str(self.n_cores),
-               "--surface_path", tmp_surface_path,
-               "--ray_temp_dir", "/local/ray",
-               "--log_file", tmp_log_path,
-               "--logging_level", self.level,
                "--num_neighbors=100",
+               "--num_neighbors=200",
                "--num_neighbors=10",
-               "--num_neighbors=10",
+               "--segmentation_size 40",
+               "--retrieve_co2",
+               "--surface_path", tmp_surface_path,
+               "--emulator_base=" + emulator_base,
+               "--prebuilt_lut=" + wm.config["prebuilt_lut_path"],
+               "--eof_path=" + eof_file,
+               "--terrain_style=flat",
                "--model_discrepancy_path", model_disc_file,
-               "--pressure_elevation"]
+               "--logging_level", self.level,
+               "--log_file", tmp_log_path,
+               "--resources",
+               "--ray_temp_dir", "/local/ray",
+               "--presolve",
+               "--rdn_factors_path", rdn_factors_file]
 
         env["SIXS_DIR"] = wm.config["isofit_sixs_dir"]
         env["RAY_worker_register_timeout_seconds"] = "600"
@@ -132,7 +144,6 @@ class L2AReflectance(SlurmJobTask):
         tmp_locsubs_path = os.path.join(
             self.local_tmp_dir, "input", self.acquisition_id + "_subs_loc")
         tmp_quality_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_rfl_quality.txt")
-        # TODO: Change to "_state_interp" or as needed for updated isofit
         tmp_state_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_atm_interp")
 
         # ensure that the tmp_rfl_path has a nodata value set, before we make the quicklook
@@ -152,11 +163,11 @@ class L2AReflectance(SlurmJobTask):
         median_state, band_names = get_band_stats(tmp_state_path, stat='median', return_names=True)
         state_band_medians = {}
         if 'H2OSTR' in band_names:
-            state_band_medians['h2o'] = median_state[band_names.index('H2OSTR')]
+            state_band_medians['h2o'] = float(median_state[band_names.index('H2OSTR')])
         if 'AOT550' in band_names:
-            state_band_medians['aot'] = median_state[band_names.index('AOT550')]
+            state_band_medians['aot'] = float(median_state[band_names.index('AOT550')])
         if 'surface_elevation_km' in band_names:
-            state_band_medians['surface_elevation_km'] = median_state[band_names.index('surface_elevation_km')]    
+            state_band_medians['surface_elevation_km'] = float(median_state[band_names.index('surface_elevation_km')])
             
         wm.copy(tmp_rfl_path, acq.rfl_img_path)
         wm.copy(tmp_rfl_hdr_path, acq.rfl_hdr_path)
@@ -223,7 +234,7 @@ class L2AReflectance(SlurmJobTask):
                 dm.update_acquisition_metadata(
                     acq.acquisition_id, {f"products.l2a.{wm.config['prod_versions']['l2a']}.rfluncert": product_dict})
             elif "_state_" in img_path:
-                product_dic['band_medians'] = state_band_medians
+                product_dict['band_medians'] = state_band_medians
                 dm.update_acquisition_metadata(
                     acq.acquisition_id, {f"products.l2a.{wm.config['prod_versions']['l2a']}.state": product_dict})
 
