@@ -1,5 +1,5 @@
 """
-A script to compile metrics from various places and record them in a file or database table
+A script to generate coverage geojsons from database
 
 """
 
