@@ -77,7 +77,7 @@ class L3ReflectanceFormat(SlurmJobTask):
                acq.rfl_img_path, 
                acq.rfluncert_img_path, 
                acq.state_img_path,
-               acq.maskTF_img_path, 
+               acq.maskTf_img_path, 
                acq.loc_img_path, 
                acq.obs_img_path,
                "V0" + str(wm.config["prod_versions"]["l3rfl"]), 
@@ -85,7 +85,7 @@ class L3ReflectanceFormat(SlurmJobTask):
                "--log_file", tmp_log_path]
 
         # Run this inside the emit-l3rfl conda environment will need to include emit-utils and other requirements
-        main_pge = wm.pges["emit-l3rfl"]
+        main_pge = wm.pges["emit-sds-l3rfl"]
         main_pge.run(cmd, tmp_dir=self.tmp_dir)
 
         # Copy and rename output files back to /store
@@ -132,7 +132,7 @@ class L3ReflectanceFormat(SlurmJobTask):
                 "l3_rfl_netcdf_path": acq.l3rfl_nc_path,
                 "l3_rfl_unc_netcdf_path": acq.l3rfluncert_nc_path,
                 "l3_obs_netcdf_path": acq.l3obs_nc_path,
-                "l3_rflbrowse_png_path": acq.l3rflbroswe_png_path
+                "l3_rfl_png_path": acq.l3rfl_png_path
             }
         }
 

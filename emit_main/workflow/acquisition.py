@@ -237,6 +237,8 @@ class Acquisition:
                 prod_group = "l2a"
             if prod_group in ["co2","ch4", "frcov"]:
                 prod_group = "l2b"
+            if prod_group in ["l3rfl"]:
+                prod_group = "l3"
             for prod, formats in prod_map.items():
                 for format in formats:
                     prod_key = prod + "_" + format + "_path"
@@ -250,9 +252,13 @@ class Acquisition:
                                                 "b0106",
                                                 "v" + product_version])
                     else:
+                        if prod.startswith("l3"):
+                            prod_short = prod.replace("l3", "")
+                        else:
+                            prod_short = prod
                         prod_prefix = "_".join([self.acquisition_id,
                                                 prod_group,
-                                                prod,
+                                                prod_short,
                                                 "v" + product_version])
                     prod_name = prod_prefix + "." + format
                     prod_path = os.path.join(prod_group_data_dir, prod_name)

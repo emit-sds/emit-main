@@ -605,8 +605,17 @@ This product is generated at the orbit level."
         ae_nc.time_coverage_end = orbit.stop_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         ae_nc.software_build_version = wm.config["extended_build_num"]
         ae_nc.product_version = "V0" + wm.config["prod_versions"]["l1b"]
+        # Get list of timestamp and radiance input files
         run_command = "PGE Run Command: {" + " ".join(cmd) + "}"
-        nc_input_files = "PGE Input Files: {" + orbit.uncorr_att_eph_path + "}"
+        rdn_input_files = []
+        timestamp_input_files = []
+        for pair in input_files["timestamp_radiance_pairs"]:
+            timestamp_input_files.append(os.path.basename(pair["timestamps_file"]))
+            rdn_input_files.append(os.path.basename(pair["radiance_file"]))
+        timestamp_input_files_str = ", ".join(timestamp_input_files)
+        rdn_input_files_str = ", ".join(rdn_input_files)
+        nc_input_files = "PGE Input Files: {attitude_ephemeris_file=" + orbit.uncorr_att_eph_path
+        nc_input_files += ", timestamp_files=[" + timestamp_input_files_str + "], radiance_files=[" + rdn_input_files_str + "]}"
         ae_nc.history = run_command + ", " + nc_input_files
 
         ae_nc.sync()
@@ -1179,7 +1188,7 @@ class L1BAttDeliver(SlurmJobTask):
         dm.update_orbit_metadata(orbit.orbit_id, {f"products.l1b.{wm.config['prod_versions']['l1b']}.att_ummg": product_dict_ummg})
 
         if "att_daac_submissions" in orbit.metadata["products"]["l1b"][wm.config["prod_versions"]["l1b"]] and \
-                orbit.metadata["products"]["l1b"]["att_daac_submissions"][wm.config["prod_versions"]["l1b"]] is not None:
+                orbit.metadata["products"]["l1b"][wm.config["prod_versions"]["l1b"]]["att_daac_submissions"] is not None:
             orbit.metadata["products"]["l1b"][wm.config["prod_versions"]["l1b"]]["att_daac_submissions"].append(cnm_submission_path)
         else:
             orbit.metadata["products"]["l1b"][wm.config["prod_versions"]["l1b"]]["att_daac_submissions"] = [cnm_submission_path]
