@@ -95,6 +95,7 @@ class L2AReflectance(SlurmJobTask):
             "pixel_locations_file": acq.loc_img_path,
             "observation_parameters_file": acq.obs_img_path,
             "surface_model_config": surface_config_path,
+            "emulator_base": emulator_base,
             "prebuilt_lut": wm.config["prebuilt_lut_path"],
             "eof_file": eof_file,
             "model_discrepancy_file": model_disc_file,
@@ -715,7 +716,7 @@ class L2AMaskTf(SlurmJobTask):
         creation_time = datetime.datetime.fromtimestamp(
             os.path.getmtime(acq.maskTf_img_path), tz=datetime.timezone.utc)
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
-        hdr["emit data product version"] = '02'
+        hdr["emit data product version"] = wm.config["prod_versions"]["mask"]
         hdr["emit acquisition daynight"] = acq.daynight
         hdr["emit acquisition cloud fraction"] = cloud_fraction
         hdr["emit acquisition nodata fraction"] = nodata_fraction
