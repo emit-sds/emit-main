@@ -309,7 +309,7 @@ class L2AFormat(SlurmJobTask):
         tmp_log_path = os.path.join(self.local_tmp_dir, "output_conversion_pge.log")
 
         cmd = ["python", output_generator_exe, tmp_daac_rfl_nc_path, tmp_daac_rfl_unc_nc_path,
-               acq.rfl_img_path, acq.rfluncert_img_path, acq.loc_img_path, acq.glt_img_path,
+               acq.rfl_img_path, acq.rfluncert_img_path, acq.state_img_path, acq.loc_img_path, acq.glt_img_path,
                "V0" + str(wm.config["prod_versions"]["l2a"]), wm.config["extended_build_num"],
                "--log_file", tmp_log_path]
 
@@ -655,7 +655,6 @@ class L2AMaskTf(SlurmJobTask):
             "observation_parameters_file": acq.obs_img_path,
             "pixel_locations_file": acq.loc_img_path,
             "geolocation_table_file": acq.glt_img_path,
-            "state_file": acq.state_img_path,
             "solar_irradiance_file": solar_irradiance_path
         }
 
@@ -679,7 +678,6 @@ class L2AMaskTf(SlurmJobTask):
                           acq.rdn_img_path,
                           acq.loc_img_path,
                           acq.obs_img_path,
-                          acq.state_img_path,
                           tmp_maskTf_cloud_prob_path,
                           solar_irradiance_path,
                           tmp_maskTf_path,
@@ -688,12 +686,12 @@ class L2AMaskTf(SlurmJobTask):
         pge.run(make_masks_cmd, tmp_dir=self.tmp_dir, env=env)
         
         cloudindex_fraction, cirrus_fraction, cloud_fraction = check_cloudfraction(tmp_maskTf_path, mask_band = [0,1,5])
-        cloudratio_fraction = check_cloudRatio_fraction(tmp_maskTf_path, cloud_band=0, cirrus_band=1, spectf_band=5)
+        cloudratio_fraction = check_cloudratio_fraction(tmp_maskTf_path, cloud_band=0, cirrus_band=1, spectf_band=5)
         nodata_fraction = check_nodatafraction(tmp_maskTf_path, band = 0, no_data_value = -9999)
 
         tmp_maskTf_png_path = os.path.join(tmp_output_dir, os.path.basename(acq.maskTf_png_path))
 
-        browse_cmd = ["gdal_translate", tmp_maskTf_path, tmp_maskTf_png_path, "-b", "10",
+        browse_cmd = ["gdal_translate", tmp_maskTf_path, tmp_maskTf_png_path, "-b", "6",
                "-ot", "Byte", "-scale", "0", "1", "1", "255", "-of", "PNG", "-co", "ZLEVEL=9"]
         pge.run(browse_cmd, tmp_dir=self.tmp_dir, env=env)
 
@@ -810,8 +808,8 @@ class L2AMaskTfFormat(SlurmJobTask):
 
         cmd = ["python", 
                output_generator_exe,
-               tmp_daac_maskTf_nc_path, acq.maskTf_img_path, acq.loc_img_path, acq.glt_img_path,
-               "V002", wm.config["extended_build_num"],
+               tmp_daac_maskTf_nc_path, acq.maskTf_img_path, acq.bandmask_img_path, acq.loc_img_path, acq.glt_img_path,
+               "V0" + str(wm.config["prod_versions"]["mask"]), wm.config["extended_build_num"],
                "--log_file", tmp_log_path]
 
         # Run this inside the emit-main conda environment to include emit-utils and other requirements
@@ -899,7 +897,7 @@ class L2AMaskTfDeliver(SlurmJobTask):
         acq = wm.acquisition
         pge = wm.pges["emit-main"]
         
-        collection_version = '002'
+        collection_version = f"0{wm.config['prod_versions']['mask']}"
 
         # Get local SDS names
         # nc_path = acq.maskTf_img_path.replace(".img", ".nc")

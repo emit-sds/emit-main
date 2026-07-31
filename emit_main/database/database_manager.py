@@ -173,7 +173,6 @@ class DatabaseManager:
             f"products.l1b.{self.config['prod_versions']['l1b']}.obs.img_path": {"$exists": 1},
             f"products.l1b.{self.config['prod_versions']['l1b']}.glt.img_path": {"$exists": 1},
             f"products.l1b.{self.config['prod_versions']['l1b']}.loc.img_path": {"$exists": 1},
-            f"products.l2a.{self.config['prod_versions']['l2a']}.rfl.img_path": {"$exists": 1},
             f"products.mask.{self.config['prod_versions']['mask']}.maskTf.img_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }

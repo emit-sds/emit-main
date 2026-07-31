@@ -79,7 +79,7 @@
         {
             "name": "NGIS_Check_Line_Frame_1.5",
             "url": "git@github.jpl.nasa.gov:emit-ies/NGIS_Check_Line_Frame.git",
-            "tag": "emit-sds-1.1.0",
+            "tag": "emit-sds-1.1.1",
             "conda_env": "emit-check-line-frame-1.5-20250901"
         },
         {
@@ -90,12 +90,12 @@
         {
             "url": "git@github.com:emit-sds/emit-sds-masks.git",
             "tag": "v0.1.1",
-            "conda_env": "emit-spectf-20250909"
+            "conda_env": "emit-spectf"
         },
         {
             "url": "git@github.com:emit-sds/SpecTf.git",
             "tag": "v0.1.2",
-            "conda_env": "emit-spectf-20250909"
+            "conda_env": "emit-spectf"
         },
         {
             "url": "git@github.com:emit-sds/emit-sds-frcov.git",
