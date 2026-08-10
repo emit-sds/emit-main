@@ -82,6 +82,14 @@ class L2AReflectance(SlurmJobTask):
                     f"--output_path={tmp_surface_path}"]
         pge.run(surf_cmd, tmp_dir=self.tmp_dir, env=env)
 
+        # Adjust surface model in-place
+        poly_prior_cmd = ["python", 
+                          os.path.join(pge.repo_dir, "poly_prior.py"),
+                          tmp_surface_path, #input
+                          tmp_surface_path, #over-write in place
+                          ]
+        pge.run(poly_prior_cmd, tmp_dir=self.tmp_dir, env=env)
+
         # Build PGE cmd for apply_oe
         tmp_log_path = os.path.join(self.local_tmp_dir, "isofit.log")
         model_disc_file = os.path.join(isofit_pge.repo_dir, "data", "emit_model_discrepancy.mat")
