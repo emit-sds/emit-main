@@ -1,0 +1,42 @@
+#
+# Config to be used by ``tetrapy run``
+# Reminder: Container paths
+# Options can be overridden via CLI: --output ... --data.rfl ... --tetrun.args ["band", 10, ...]
+# Syntax ${...} will interpolate values from other parts of the config
+# Example: tetrapy run config.yml --data.rfl /data/emit20230728t214153/emit20230728t214153_rfl --data.rfluncert /data/emit20230728t214153/emit20230728t214153_uncert
+#
+output: /output/tetracorder # Directory must not exist unless setup.autoremove is enabled
+data:
+  rfl: /data/rfl # Data, not header
+  rfluncert: /data/rfluncert # Data, not header
+tetracorder:
+  version: 6.00a
+  mode: cube
+#
+# Pipeline
+#
+convolve:
+  enabled: True
+  reflib: /root/tetracorder/sl1/usgs/library06.conv/splib06b
+  reslib: /root/tetracorder/sl1/usgs/library06.conv/sprlb06b
+  output: /conv/
+  integrate: True
+  name: ${setup.sensor}
+setup:
+  enabled: True
+  autoremove: True
+  sensor: tetrapy
+  geology: True
+  args: ["1", "-T", "-20", "80", "C", "-P", ".5", "1.5", "bar"]
+tetrun:
+  enabled: True
+  args: ["band", "20", "gif"]
+aggregate:
+  enabled: True
+  tetracorder: ${output}
+  output: ${output}/l2b/
+  reflib: ${convolve.output}/reflib.envi
+  reslib: ${convolve.output}/reslib.envi
+  output_as: ["nc", "tif"]
+emit_fmt: # TODO
+  enabled: False

@@ -114,6 +114,8 @@ class DatabaseManager:
             f"products.l1b.{self.config['prod_versions']['l1b']}.rdn.img_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }
+        if date_field == "last_modified":
+            query["start_time"] = {"$gte": self.config["v2_cutover_date"]}
         # Get acquistions for calibration - sort by start time to nominally forward process (
         # not technically necessary, but helps destriping stay somewhat ordered)
         results = list(acquisitions_coll.find(query).sort("start_time", 1))
@@ -157,6 +159,8 @@ class DatabaseManager:
             f"products.l1b.{self.config['prod_versions']['l1b']}.obs.band_means.solar_zenith": {"$lt": 80},
             date_field: {"$gte": start, "$lte": stop}
         }
+        if date_field == "last_modified":
+            query["start_time"] = {"$gte": self.config["v2_cutover_date"]}
         results = list(acquisitions_coll.find(query))
 
         if not retry_failed:
@@ -176,6 +180,8 @@ class DatabaseManager:
             f"products.mask.{self.config['prod_versions']['mask']}.maskTf.img_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }
+        if date_field == "last_modified":
+            query["start_time"] = {"$gte": self.config["v2_cutover_date"]}
         results = list(acquisitions_coll.find(query))
         
         if not retry_failed:
@@ -190,6 +196,8 @@ class DatabaseManager:
             f"products.l2b.{self.config['prod_versions']['l2b']}.min.img_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }
+        if date_field == "last_modified":
+            query["start_time"] = {"$gte": self.config["v2_cutover_date"]}
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L2BMineral"])
@@ -210,7 +218,8 @@ class DatabaseManager:
             f"products.ch4.{self.config['prod_versions']['ch4']}.ortch4.tif_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }
-
+        if date_field == "last_modified":
+            query["start_time"] = {"$gte": self.config["v2_cutover_date"]}
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.CH4"])
@@ -231,7 +240,8 @@ class DatabaseManager:
             f"products.co2.{self.config['prod_versions']['co2']}.ortco2.tif_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }
-
+        if date_field == "last_modified":
+            query["start_time"] = {"$gte": self.config["v2_cutover_date"]}
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.CO2"])
@@ -247,6 +257,8 @@ class DatabaseManager:
             f"products.frcov.{self.config['prod_versions']['frcov']}.frcov.img_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }
+        if date_field == "last_modified":
+            query["start_time"] = {"$gte": self.config["v2_cutover_date"]}
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L2BFrCov"])
@@ -270,6 +282,8 @@ class DatabaseManager:
             ],
             date_field: {"$gte": start, "$lte": stop}
         }
+        if date_field == "last_modified":
+            query["start_time"] = {"$gte": self.config["v2_cutover_date"]}
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L3ReflectanceFormat"])
@@ -285,6 +299,8 @@ class DatabaseManager:
             f"products.l1a.{self.config['prod_versions']['l1a']}.raw_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }
+        if date_field == "last_modified":
+            query["start_time"] = {"$gte": self.config["v2_cutover_date"]}
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L1ADeliver"])
@@ -305,7 +321,8 @@ class DatabaseManager:
             f"products.l1b.{self.config['prod_versions']['l1b']}.rdn_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }
-
+        if date_field == "last_modified":
+            query["start_time"] = {"$gte": self.config["v2_cutover_date"]}
         results = list(acquisitions_coll.find(query))
         # Also query for case where nighttime science RDN exists
         query = {
@@ -321,6 +338,8 @@ class DatabaseManager:
             f"products.l1b.{self.config['prod_versions']['l1b']}.rdn_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }
+        if date_field == "last_modified":
+            query["start_time"] = {"$gte": self.config["v2_cutover_date"]}
         results += list(acquisitions_coll.find(query))
 
         if not retry_failed:
@@ -341,6 +360,8 @@ class DatabaseManager:
             f"products.l2a.{self.config['prod_versions']['l2a']}.rfl_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }
+        if date_field == "last_modified":
+            query["start_time"] = {"$gte": self.config["v2_cutover_date"]}
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L2AFormat", "emit.L2ADeliver"])
@@ -358,6 +379,8 @@ class DatabaseManager:
             f"products.mask.{self.config['prod_versions']['mask']}.maskTf_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }
+        if date_field == "last_modified":
+            query["start_time"] = {"$gte": self.config["v2_cutover_date"]}
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L2AMaskTfFormat", "emit.L2AMaskTfDeliver"])
@@ -376,6 +399,8 @@ class DatabaseManager:
             f"products.l2b.{self.config['prod_versions']['l2b']}.min_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }
+        if date_field == "last_modified":
+            query["start_time"] = {"$gte": self.config["v2_cutover_date"]}
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L2BFormat", "emit.L2BDeliver"])
@@ -393,7 +418,8 @@ class DatabaseManager:
             f"products.ch4.{self.config['prod_versions']['ch4']}.ch4_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }
-
+        if date_field == "last_modified":
+            query["start_time"] = {"$gte": self.config["v2_cutover_date"]}
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.CH4Deliver"])
@@ -411,7 +437,8 @@ class DatabaseManager:
             f"products.co2.{self.config['prod_versions']['co2']}.co2_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }
-
+        if date_field == "last_modified":
+            query["start_time"] = {"$gte": self.config["v2_cutover_date"]}
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.CO2Deliver"])
@@ -431,6 +458,8 @@ class DatabaseManager:
             f"products.frcov.{self.config['prod_versions']['frcov']}.frcov_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }
+        if date_field == "last_modified":
+            query["start_time"] = {"$gte": self.config["v2_cutover_date"]}
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L2BFrCovFormat", "emit.L2BFrCovDeliver"])
@@ -446,10 +475,11 @@ class DatabaseManager:
             f"products.l1b.{self.config['prod_versions']['l1b']}.obs.img_path": {"$exists": 1},
             f"products.l1b.{self.config['prod_versions']['l1b']}.loc.img_path": {"$exists": 1},
             f"products.mask.{self.config['prod_versions']['mask']}.maskTf.img_path": {"$exists": 1},
-
             f"products.l3rfl.{self.config['prod_versions']['l3rfl']}.rfl_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }
+        if date_field == "last_modified":
+            query["start_time"] = {"$gte": self.config["v2_cutover_date"]}
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L3ReflectanceFormat", "emit.L3ReflectanceDeliver"])
@@ -464,6 +494,8 @@ class DatabaseManager:
             f"products.ch4.{self.config['prod_versions']['ch4']}.ortuncertch4_mosaic.tif_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop},
         }
+        if date_field == "last_modified":
+            query["start_time"] = {"$gte": self.config["v2_cutover_date"]}
         results =  list(data_collections_coll.find(query).sort("dcid", 1))
         
         if not retry_failed:
@@ -479,6 +511,8 @@ class DatabaseManager:
             f"products.co2.{self.config['prod_versions']['co2']}.ortuncertco2_mosaic.tif_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop},
         }
+        if date_field == "last_modified":
+            query["start_time"] = {"$gte": self.config["v2_cutover_date"]}
         results =  list(data_collections_coll.find(query).sort("dcid", 1))
         
         if not retry_failed:
@@ -492,6 +526,8 @@ class DatabaseManager:
             f"products.l1b.{self.config['prod_versions']['l1b']}.mosaic.tif_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop},
         }
+        if date_field == "last_modified":
+            query["start_time"] = {"$gte": self.config["v2_cutover_date"]}
         results =  list(data_collections_coll.find(query).sort("dcid", 1))
         
         if not retry_failed:
@@ -585,6 +621,8 @@ class DatabaseManager:
             f"products.l0.{self.config['prod_versions']['l0']}.ccsds_path": {"$exists": 1},
             f"products.l1a.{self.config['prod_versions']['l1a']}": {"$exists": 0}
         }
+        if date_field == "last_modified":
+            query["start_time"] = {"$gte": self.config["v2_cutover_date"]}
         results = list(streams_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L1AReformatEDP"])
@@ -599,6 +637,8 @@ class DatabaseManager:
             f"products.l0.{self.config['prod_versions']['l0']}.ccsds_path": {"$exists": 1},
             f"products.daac.{self.config['prod_versions']['l0']}.ccsds_ummg": {"$exists": 0}
         }
+        if date_field == "last_modified":
+            query["start_time"] = {"$gte": self.config["v2_cutover_date"]}
         results = list(streams_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L0Deliver"])
@@ -682,6 +722,8 @@ class DatabaseManager:
             date_field: {"$gte": start, "$lte": stop},
             "associated_acquisitions": {"$exists": 0}
         }
+        if date_field == "last_modified":
+            query["start_time"] = {"$gte": self.config["v2_cutover_date"]}
         results = list(data_collections_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L1AReassembleRaw", "emit.L1AFrameReport"])
@@ -753,6 +795,8 @@ class DatabaseManager:
             date_field: {"$gte": start, "$lte": stop},
             "associated_bad_netcdf": {"$exists": 0}
         }
+        if date_field == "last_modified":
+            query["start_time"] = {"$gte": self.config["v2_cutover_date"]}
         results = list(orbits_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L1AReformatBAD"])
@@ -768,6 +812,8 @@ class DatabaseManager:
             "associated_bad_netcdf": {"$exists": 1},
             f"products.l1b.{self.config['prod_versions']['l1b']}.acquisitions": {"$exists": 0}
         }
+        if date_field == "last_modified":
+            query["start_time"] = {"$gte": self.config["v2_cutover_date"]}
         results = list(orbits_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L1BGeolocate"])
@@ -783,6 +829,8 @@ class DatabaseManager:
             date_field: {"$gte": start, "$lte": stop},
             "num_scenes": {"$exists": 0}
         }
+        if date_field == "last_modified":
+            query["start_time"] = {"$gte": self.config["v2_cutover_date"]}
         results = list(orbits_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.AssignDAACSceneNumbers"])
@@ -796,6 +844,8 @@ class DatabaseManager:
             f"products.l1b.{self.config['prod_versions']['l1b']}.att_ummg.ummg_json_path": {"$exists": 0},
             date_field: {"$gte": start, "$lte": stop}
         }
+        if date_field == "last_modified":
+            query["start_time"] = {"$gte": self.config["v2_cutover_date"]}
         results = list(orbits_coll.find(query))
         if not retry_failed:
             results = self._remove_results_with_failed_tasks(results, ["emit.L1BAttDeliver"])

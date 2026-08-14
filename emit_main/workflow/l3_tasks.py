@@ -12,6 +12,7 @@ import time
 
 import luigi
 import spectral.io.envi as envi
+import h5netcdf.legacyapi as netCDF4
 
 from emit_main.workflow.output_targets import AcquisitionTarget
 from emit_main.workflow.workflow_manager import WorkflowManager
@@ -32,7 +33,8 @@ class L3ReflectanceFormat(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
 
-    memory = 18000
+    n_cores = 16
+    memory = 90000
 
     task_namespace = "emit"
 
@@ -68,6 +70,7 @@ class L3ReflectanceFormat(SlurmJobTask):
 
         tmp_log_path = os.path.join(self.local_tmp_dir, "output_conversion_pge.log")
 
+        # --chunksize 10 256 256 --compress --complevel 1 --max_workers
         cmd = ["python", 
                output_generator_exe, 
                tmp_daac_rfl_nc_path, 
@@ -82,7 +85,11 @@ class L3ReflectanceFormat(SlurmJobTask):
                acq.obs_img_path,
                "V0" + str(wm.config["prod_versions"]["l3rfl"]), 
                wm.config["extended_build_num"],
-               "--log_file", tmp_log_path]
+               "--log_file", tmp_log_path,
+               "--chunksize 10 256 256",
+               "--compress",
+               "--complevel 1",
+               "--max_workers 16"]
 
         # Run this inside the emit-l3rfl conda environment will need to include emit-utils and other requirements
         main_pge = wm.pges["emit-sds-l3rfl"]
@@ -193,19 +200,19 @@ class L3ReflectanceDeliver(SlurmJobTask):
         daac_ummg_name = f"{acq.l3rfl_granule_ur}.cmr.json"
         daac_rfl_nc_path = os.path.join(self.tmp_dir, daac_rfl_nc_name)
         daac_rfluncert_nc_path = os.path.join(self.tmp_dir, daac_rfluncert_nc_name)
-        daac_obs_nc_path = os.path.join(self.tmp_dir, daac_rfluncert_nc_name)
+        daac_obs_nc_path = os.path.join(self.tmp_dir, daac_obs_nc_name)
         daac_rflbrowse_path = os.path.join(self.tmp_dir, daac_rflbrowse_name)
         daac_ummg_path = os.path.join(self.tmp_dir, daac_ummg_name)
 
         # Copy files to tmp dir and rename
         wm.copy(acq.l3rfl_nc_path, daac_rfl_nc_path)
         wm.copy(acq.l3rfluncert_nc_path, daac_rfluncert_nc_path)
-        wm.copy(acq.l3rfluncert_nc_path, daac_rfluncert_nc_path)
+        wm.copy(acq.l3obs_nc_path, daac_obs_nc_path)
         wm.copy(acq.l3rfl_png_path, daac_rflbrowse_path)
 
         # Get the software_build_version (extended build num when product was created)
-        hdr = envi.read_envi_header(acq.l3rfl_hdr_path)
-        software_build_version = hdr["emit software build version"]
+        nc_ds = netCDF4.Dataset(acq.l3rfl_nc_path, 'r+')
+        software_build_version = nc_ds.software_build_version
 
         # Use a cloud fraction that sums the nodata fraction (clouds screened on board) and the cloud fraction value
         # from the maskTf step.  These fractions are rounded separately.  Use min to ensure it doesn't go over 100.
@@ -214,10 +221,11 @@ class L3ReflectanceDeliver(SlurmJobTask):
         cloud_cover = min(cloud_fraction + nodata_fraction, 100)
         
         # Create the UMM-G file
+        collection_version = f"0{wm.config['prod_versions']['l3rfl']}"
         nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.l3rfl_nc_path), tz=datetime.timezone.utc)
         l3rfl_pge = wm.pges["emit-sds-l3rfl"]
         ummg = daac_converter.initialize_ummg(acq.l3rfl_granule_ur, nc_creation_time, "EMITL3RFL",
-                                              acq.collection_version, acq.start_time,
+                                              collection_version, acq.start_time,
                                               acq.stop_time, l3rfl_pge.repo_name, l3rfl_pge.version_tag,
                                               software_build_version=software_build_version,
                                               software_delivery_version=wm.config["extended_build_num"],
@@ -261,13 +269,13 @@ class L3ReflectanceDeliver(SlurmJobTask):
             provider = wm.config["daac_provider_backward"]
             queue_url = wm.config["daac_submission_url_backward"]
         notification = {
-            "collection": "EMITL3ARFL",
+            "collection": "EMITL3RFL",
             "provider": provider,
             "identifier": cnm_submission_id,
             "version": wm.config["cnm_version"],
             "product": {
                 "name": acq.l3rfl_granule_ur,
-                "dataVersion": acq.collection_version,
+                "dataVersion": collection_version,
                 "files": [
                     {
                         "name": daac_rfl_nc_name,
@@ -286,12 +294,12 @@ class L3ReflectanceDeliver(SlurmJobTask):
                         "checksum": daac_converter.calc_checksum(daac_rfluncert_nc_path, "sha512")
                     },
                                         {
-                        "name": daac_rfluncert_nc_name,
-                        "uri": acq.aws_s3_uri_base + daac_rfluncert_nc_name,
+                        "name": daac_obs_nc_name,
+                        "uri": acq.aws_s3_uri_base + daac_obs_nc_name,
                         "type": "data",
-                        "size": os.path.getsize(daac_rfluncert_nc_name),
+                        "size": os.path.getsize(daac_obs_nc_name),
                         "checksumType": "sha512",
-                        "checksum": daac_converter.calc_checksum(daac_rfluncert_nc_path, "sha512")
+                        "checksum": daac_converter.calc_checksum(daac_obs_nc_path, "sha512")
                     },
                     {
                         "name": daac_rflbrowse_name,
