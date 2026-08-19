@@ -82,9 +82,19 @@ class L2AReflectance(SlurmJobTask):
                     f"--output_path={tmp_surface_path}"]
         pge.run(surf_cmd, tmp_dir=self.tmp_dir, env=env)
 
+       # Adjust surface model in-place
+        poly_prior_cmd = ["python", 
+                          os.path.join(pge.repo_dir, "poly_prior.py"),
+                          tmp_surface_path, #input
+                          tmp_surface_path, #over-write in place
+                          ]
+        pge.run(poly_prior_cmd, tmp_dir=self.tmp_dir, env=env)
+
         # Build PGE cmd for apply_oe
         tmp_log_path = os.path.join(self.local_tmp_dir, "isofit.log")
-        model_disc_file = os.path.join(isofit_pge.repo_dir, "data", "emit_model_discrepancy.mat")
+        model_disc_file = os.path.join(pge.repo_dir, "data", "emit_model_discrepancy_6c.mat")
+        eof_file = os.path.join(pge.repo_dir, "data", "emit_v02_eofs.txt")
+        rdn_factors_file = os.path.join(pge.repo_dir, "data", "emit_v02_rfl_correction_factors_445.txt")
 
         emulator_base = wm.config["isofit_emulator_base"]
 
@@ -92,23 +102,34 @@ class L2AReflectance(SlurmJobTask):
             "radiance_file": acq.rdn_img_path,
             "pixel_locations_file": acq.loc_img_path,
             "observation_parameters_file": acq.obs_img_path,
-            "surface_model_config": surface_config_path
+            "surface_model_config": surface_config_path,
+            "emulator_base": emulator_base,
+            "prebuilt_lut": wm.config["prebuilt_lut_path"],
+            "eof_file": eof_file,
+            "model_discrepancy_file": model_disc_file,
+            "radiance_factors_file": rdn_factors_file
         }
         cmd = ["isofit", "-i", wm.config["isofit_ini_path"], "apply_oe", 
                acq.rdn_img_path, acq.loc_img_path, acq.obs_img_path, self.local_tmp_dir, "emit",
-               "--presolve",
                "--analytical_line",
-               "--emulator_base=" + emulator_base,
                "--n_cores", str(self.n_cores),
-               "--surface_path", tmp_surface_path,
-               "--ray_temp_dir", "/local/ray",
-               "--log_file", tmp_log_path,
-               "--logging_level", self.level,
                "--num_neighbors=100",
+               "--num_neighbors=200",
                "--num_neighbors=10",
-               "--num_neighbors=10",
+               "--segmentation_size 40",
+               "--retrieve_co2",
+               "--surface_path", tmp_surface_path,
+               "--emulator_base=" + emulator_base,
+               "--prebuilt_lut=" + wm.config["prebuilt_lut_path"],
+               "--eof_path=" + eof_file,
+               "--terrain_style=flat",
                "--model_discrepancy_path", model_disc_file,
-               "--pressure_elevation"]
+               "--logging_level", self.level,
+               "--log_file", tmp_log_path,
+               "--resources",
+               "--ray_temp_dir", "/local/ray",
+               "--presolve",
+               "--rdn_factors_path", rdn_factors_file]
 
         env["SIXS_DIR"] = wm.config["isofit_sixs_dir"]
         env["RAY_worker_register_timeout_seconds"] = "600"
@@ -132,7 +153,6 @@ class L2AReflectance(SlurmJobTask):
         tmp_locsubs_path = os.path.join(
             self.local_tmp_dir, "input", self.acquisition_id + "_subs_loc")
         tmp_quality_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_rfl_quality.txt")
-        # TODO: Change to "_state_interp" or as needed for updated isofit
         tmp_state_path = os.path.join(self.local_tmp_dir, "output", self.acquisition_id + "_atm_interp")
 
         # ensure that the tmp_rfl_path has a nodata value set, before we make the quicklook
@@ -152,11 +172,13 @@ class L2AReflectance(SlurmJobTask):
         median_state, band_names = get_band_stats(tmp_state_path, stat='median', return_names=True)
         state_band_medians = {}
         if 'H2OSTR' in band_names:
-            state_band_medians['h2o'] = median_state[band_names.index('H2OSTR')]
+            state_band_medians['h2o'] = float(median_state[band_names.index('H2OSTR')])
         if 'AOT550' in band_names:
-            state_band_medians['aot'] = median_state[band_names.index('AOT550')]
+            state_band_medians['aot'] = float(median_state[band_names.index('AOT550')])
         if 'surface_elevation_km' in band_names:
-            state_band_medians['surface_elevation_km'] = median_state[band_names.index('surface_elevation_km')]    
+            state_band_medians['surface_elevation_km'] = float(median_state[band_names.index('surface_elevation_km')])
+        if 'CO2' in band_names:
+            state_band_medians['co2'] = float(median_state[band_names.index('CO2')])
             
         wm.copy(tmp_rfl_path, acq.rfl_img_path)
         wm.copy(tmp_rfl_hdr_path, acq.rfl_hdr_path)
@@ -223,7 +245,7 @@ class L2AReflectance(SlurmJobTask):
                 dm.update_acquisition_metadata(
                     acq.acquisition_id, {f"products.l2a.{wm.config['prod_versions']['l2a']}.rfluncert": product_dict})
             elif "_state_" in img_path:
-                product_dic['band_medians'] = state_band_medians
+                product_dict['band_medians'] = state_band_medians
                 dm.update_acquisition_metadata(
                     acq.acquisition_id, {f"products.l2a.{wm.config['prod_versions']['l2a']}.state": product_dict})
 
@@ -298,7 +320,7 @@ class L2AFormat(SlurmJobTask):
         tmp_log_path = os.path.join(self.local_tmp_dir, "output_conversion_pge.log")
 
         cmd = ["python", output_generator_exe, tmp_daac_rfl_nc_path, tmp_daac_rfl_unc_nc_path,
-               acq.rfl_img_path, acq.rfluncert_img_path, acq.loc_img_path, acq.glt_img_path,
+               acq.rfl_img_path, acq.rfluncert_img_path, acq.state_img_path, acq.loc_img_path, acq.glt_img_path,
                "V0" + str(wm.config["prod_versions"]["l2a"]), wm.config["extended_build_num"],
                "--log_file", tmp_log_path]
 
@@ -644,7 +666,6 @@ class L2AMaskTf(SlurmJobTask):
             "observation_parameters_file": acq.obs_img_path,
             "pixel_locations_file": acq.loc_img_path,
             "geolocation_table_file": acq.glt_img_path,
-            "state_file": acq.state_img_path,
             "solar_irradiance_file": solar_irradiance_path
         }
 
@@ -668,7 +689,6 @@ class L2AMaskTf(SlurmJobTask):
                           acq.rdn_img_path,
                           acq.loc_img_path,
                           acq.obs_img_path,
-                          acq.state_img_path,
                           tmp_maskTf_cloud_prob_path,
                           solar_irradiance_path,
                           tmp_maskTf_path,
@@ -677,12 +697,12 @@ class L2AMaskTf(SlurmJobTask):
         pge.run(make_masks_cmd, tmp_dir=self.tmp_dir, env=env)
         
         cloudindex_fraction, cirrus_fraction, cloud_fraction = check_cloudfraction(tmp_maskTf_path, mask_band = [0,1,5])
-        cloudratio_fraction = check_cloudRatio_fraction(tmp_maskTf_path, cloud_band=0, cirrus_band=1, spectf_band=5)
+        cloudratio_fraction = check_cloudratio_fraction(tmp_maskTf_path, cloud_band=0, cirrus_band=1, spectf_band=5)
         nodata_fraction = check_nodatafraction(tmp_maskTf_path, band = 0, no_data_value = -9999)
 
         tmp_maskTf_png_path = os.path.join(tmp_output_dir, os.path.basename(acq.maskTf_png_path))
 
-        browse_cmd = ["gdal_translate", tmp_maskTf_path, tmp_maskTf_png_path, "-b", "10",
+        browse_cmd = ["gdal_translate", tmp_maskTf_path, tmp_maskTf_png_path, "-b", "6",
                "-ot", "Byte", "-scale", "0", "1", "1", "255", "-of", "PNG", "-co", "ZLEVEL=9"]
         pge.run(browse_cmd, tmp_dir=self.tmp_dir, env=env)
 
@@ -706,7 +726,7 @@ class L2AMaskTf(SlurmJobTask):
         creation_time = datetime.datetime.fromtimestamp(
             os.path.getmtime(acq.maskTf_img_path), tz=datetime.timezone.utc)
         hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
-        hdr["emit data product version"] = '02'
+        hdr["emit data product version"] = wm.config["prod_versions"]["mask"]
         hdr["emit acquisition daynight"] = acq.daynight
         hdr["emit acquisition cloud fraction"] = cloud_fraction
         hdr["emit acquisition nodata fraction"] = nodata_fraction
@@ -799,8 +819,8 @@ class L2AMaskTfFormat(SlurmJobTask):
 
         cmd = ["python", 
                output_generator_exe,
-               tmp_daac_maskTf_nc_path, acq.maskTf_img_path, acq.loc_img_path, acq.glt_img_path,
-               "V002", wm.config["extended_build_num"],
+               tmp_daac_maskTf_nc_path, acq.maskTf_img_path, acq.bandmask_img_path, acq.loc_img_path, acq.glt_img_path,
+               "V0" + str(wm.config["prod_versions"]["mask"]), wm.config["extended_build_num"],
                "--log_file", tmp_log_path]
 
         # Run this inside the emit-main conda environment to include emit-utils and other requirements
@@ -888,7 +908,7 @@ class L2AMaskTfDeliver(SlurmJobTask):
         acq = wm.acquisition
         pge = wm.pges["emit-main"]
         
-        collection_version = '002'
+        collection_version = f"0{wm.config['prod_versions']['mask']}"
 
         # Get local SDS names
         # nc_path = acq.maskTf_img_path.replace(".img", ".nc")

@@ -33,7 +33,7 @@
         {
             "url": "git@github.com:emit-sds/emit-sds-l2a.git",
             "tag": "v1.4.1",
-            "conda_env": "emit-isofit-20251201"
+            "conda_env": "emit-isofit-20260717"
         },
         {
             "url": "git@github.com:emit-sds/emit-sds-l2b.git",
@@ -41,19 +41,24 @@
             "conda_env": "emit-main-20251031"
         },
         {
-            "url": "git@github.com:emit-sds/emit-sds-l3.git",
-            "tag": "v1.1.0",
+            "url": "git@github.com:jammont/tetracorder-lite.git",
+            "tag": "cli/rich",
+            "conda_env": "emit-main-20251031"
+        },
+        {
+            "url": "git@github.com:emit-sds/emit-sds-l3rfl.git",
+            "tag": "develop",
             "conda_env": "emit-main-20251031"
         },
         {
             "url": "git@github.com:emit-sds/SpectralUnmixing.git",
-            "tag": "v0.3.0",
+            "tag": "v0.3.1",
             "conda_env": "emit-main-20251031"
         },
         {
             "url": "https://github.com/isofit/isofit.git",
-            "tag": "v3.6.1",
-            "conda_env": "emit-isofit-20251201"
+            "tag": "v4.1.2",
+            "conda_env": "emit-isofit-20260717"
         },
         {
             "url": "git@github.jpl.nasa.gov:emit/emit-ios.git",
@@ -79,7 +84,7 @@
         {
             "name": "NGIS_Check_Line_Frame_1.5",
             "url": "git@github.jpl.nasa.gov:emit-ies/NGIS_Check_Line_Frame.git",
-            "tag": "emit-sds-1.1.0",
+            "tag": "emit-sds-1.1.1",
             "conda_env": "emit-check-line-frame-1.5-20250901"
         },
         {
@@ -90,12 +95,12 @@
         {
             "url": "git@github.com:emit-sds/emit-sds-masks.git",
             "tag": "v0.1.1",
-            "conda_env": "emit-spectf-20250909"
+            "conda_env": "emit-spectf"
         },
         {
             "url": "git@github.com:emit-sds/SpecTf.git",
             "tag": "v0.1.2",
-            "conda_env": "emit-spectf-20250909"
+            "conda_env": "emit-spectf"
         },
         {
             "url": "git@github.com:emit-sds/emit-sds-frcov.git",

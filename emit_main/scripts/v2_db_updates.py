@@ -313,6 +313,15 @@ def main():
                         products_new[p][prod_versions_v1[p]]["maskTf"]["cloud_fraction"] = cloud_fraction_02_old
                         products_new[p][prod_versions_v1[p]]["maskTf"]["nodata_fraction"] = nodata_fraction_old
 
+                    # Copy the mean_solar_azimuth and mean_solar_zenith values to the new products dictionary
+                    mean_solar_azimuth_old = d.get("mean_solar_azimuth")
+                    mean_solar_zenith_old = d.get("mean_solar_zenith")
+                    if p == "l1b" and mean_solar_azimuth_old and mean_solar_zenith_old:
+                        products_new[p][prod_versions_v1[p]]["obs"]["band_means"] = {
+                            "solar_azimuth": mean_solar_azimuth_old,
+                            "solar_zenith": mean_solar_zenith_old
+                            }
+
                 # Append to updates for bulk write
                 updated_fields["products"] = products_new
                 updated_fields["products_bak"] = products_old
