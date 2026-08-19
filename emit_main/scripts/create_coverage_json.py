@@ -29,11 +29,12 @@ OBS_VARS = {
 STATE_VARS = {
                 "aot": "Retrieved AOT Median",
                 "surface_elevation_km": "Retrieved Ele. Median",
-                "h2o":  "Retrieved WV Median"
+                "h2o":  "Retrieved WV Median",
+                "co2":  "Retrieved CO2 Median"
             }
 
 MASK_VARS = {
-                "cloudratio_fraction" : "Cloud Cover with ratio",
+                "cloudratio_fraction" : "Cloud Ratio and SpecTF Union + Onboard Clouds",
                 "cloud_fraction" : "Cloud Fraction Spectf",
                 "nodata_fraction" : "Screened Onboard Fraction",
             }
