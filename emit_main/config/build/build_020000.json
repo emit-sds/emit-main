@@ -57,7 +57,7 @@
         },
         {
             "url": "https://github.com/isofit/isofit.git",
-            "tag": "v4.1.1",
+            "tag": "v4.1.2",
             "conda_env": "emit-isofit-20260717"
         },
         {
