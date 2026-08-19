@@ -25,6 +25,8 @@ from emit_main.workflow.slurm import SlurmJobTask
 from emit_utils.file_checks import envi_header
 from emit_utils import daac_converter
 
+from netCDF4 import Dataset
+
 logger = logging.getLogger("emit-main")
 
 
@@ -72,6 +74,15 @@ class L2BMineral(SlurmJobTask):
         tmp_output_dir = os.path.join(self.local_tmp_dir, 'output')
         wm.makedirs(tmp_data_dir)
         wm.makedirs(tmp_output_dir)
+
+        tmp_output_tetra_path = os.path.join(tmp_output_dir, "tetracorder")
+        tmp_output_tetra_tar_path = tmp_output_tetra_path + '.tar'
+        tmp_output_aggregate_dir = os.path.join(tmp_output_dir, "aggregate")
+        tmp_min_path = os.path.join(tmp_output_aggregate_dir, "agg.nc")
+        tmp_min_unc_path = os.path.join(tmp_output_aggregate_dir, "agg-uncert.nc")
+        tmp_quicklook_path = os.path.join(tmp_output_dir, os.path.splitext(os.path.basename(acq.min_nc_path))[0] + '_quicklook.png')
+        tmp_tetrapy_log_path = os.path.join(tmp_output_aggregate_dir, "tetrapy.log")
+
         # Copy rfl to data dir
         tmp_rfl_basename = os.path.basename(acq.rfl_img_path).replace(".img", "")
         tmp_rfluncert_basename = os.path.basename(acq.rfluncert_img_path).replace(".img", "")
@@ -79,15 +90,28 @@ class L2BMineral(SlurmJobTask):
         wm.copy(acq.rfl_hdr_path, os.path.join(tmp_data_dir, os.path.basename(acq.rfl_hdr_path)))
         wm.copy(acq.rfluncert_img_path, os.path.join(tmp_data_dir, tmp_rfluncert_basename))
         wm.copy(acq.rfluncert_hdr_path, os.path.join(tmp_data_dir, os.path.basename(acq.rfluncert_hdr_path)))
+        wm.copy(acq.loc_img_path, os.path.join(tmp_data_dir, os.path.basename(acq.loc_img_path)))
+        wm.copy(acq.loc_hdr_path, os.path.join(tmp_data_dir, os.path.basename(acq.loc_hdr_path)))
+        wm.copy(acq.glt_img_path, os.path.join(tmp_data_dir, os.path.basename(acq.glt_img_path)))
+        wm.copy(acq.glt_hdr_path, os.path.join(tmp_data_dir, os.path.basename(acq.glt_hdr_path)))
         # Create config file
-        config_template = os.path.join(wm.pges["emit-main"].repo_dir, "emit_main", "config", "l2bmin", "tetrapy_config.yml")
+        config_template = os.path.join(wm.pges["tetracorder-lite"].repo_dir, "config.yml")
         tmp_config_path = os.path.join(tmp_data_dir, "config.yml")
         with open(config_template, "r") as f:
             config = yaml.safe_load(f)
         config["data"]["rfl"] = f"/data/{tmp_rfl_basename}"
         config["data"]["rfluncert"] = f"/data/{tmp_rfluncert_basename}"
+        config["data"]["loc"] = f"/data/{os.path.basename(acq.loc_img_path)}"
+        config["data"]["glt"] = f"/data/{os.path.basename(acq.glt_img_path)}"
+        config["output"]["base"] = "/output"
         with open(tmp_config_path, "w") as f:
             yaml.safe_dump(config, f, sort_keys=False)
+
+        input_files = {
+            "reflectance_file": acq.rfl_img_path,
+            "reflectance_uncertainty_file": acq.rfluncert_img_path,
+            "config_file": tmp_config_path,
+        }
 
         # podman run --rm -v /local/input:/data -v /local/output:/output tetracorder-lite:dev tetrapy run /data/config.yml
         current_node = socket.gethostname()
@@ -104,130 +128,104 @@ class L2BMineral(SlurmJobTask):
 
         pge.run(cmd, tmp_dir=self.tmp_dir, use_conda_run=False)
 
-        # tetrapy tetrun --file /data/[input rfl]
-        # tetrun_cmd = ["podman", "run", 
-        #               "-v", f"{tmp_data_dir}:/data",
-        #               "-v", f"{tmp_output_dir}:/output",
-        #               f"{image_name}:{image_tag}",
-        #               "tetrapy",
-        #               "tetrun",
-        #               "--file", f"/data/{os.path.basename(acq.rfl_img_path)}"]
-        # pge.run(tetrun_cmd, tmp_dir=self.tmp_dir, use_conda_run=False)
+        ql_cmd = ['python', os.path.join(pge.repo_dir, 'quicklook.py'), tmp_min_path, tmp_quicklook_path, '--unc_file', tmp_min_unc_path]
+        pge.run(ql_cmd, cwd=pge.repo_dir, tmp_dir=self.tmp_dir)
 
-        # # tetrapy gagg -r /data/[input rfl] -u /data/[input rfl uncertainty]
-        # gagg_cmd = ["podman", "run",
-        #             "--rm",
-        #             "-v", f"{tmp_data_dir}:/data",
-        #             "-v", f"{tmp_output_dir}:/output",
-        #             f"{image_name}:{image_tag}",
-        #             "tetrapy",
-        #             "gagg",
-        #             "-r", f"/data/{os.path.basename(acq.rfl_img_path)}",
-        #             "-u", f"/data/{os.path.basename(acq.rfluncert_img_path)}"]
-        # pge.run(gagg_cmd, tmp_dir=self.tmp_dir, use_conda_run=False)
+        # tar l2b
+        tar_cmd = ['tar', '-C', tmp_output_dir, '-cf', tmp_output_tetra_tar_path, os.path.basename(tmp_output_tetra_path)]
+        pge.run(tar_cmd, cwd=pge.repo_dir, tmp_dir=self.tmp_dir)
 
-        # input_files = {
-        #     "reflectance_file": acq.rfl_img_path,
-        #     "reflectance_uncertainty_file": acq.rfluncert_img_path,
-        #     "tetracorder_library_basename": wm.config["tetracorder_library_basename"],
-        #     "mineral_group_mat_file": min_group_mat_file,
-        #     "tetracorder_config_filename": tetracorder_config_file
-        # }
+        # Reformat for DAAC
+        reformat_pge = wm.pges["emit-sds-l2b"]
+        output_generator_exe = os.path.join(reformat_pge.repo_dir, "group_output_conversion.py")
+        tmp_daac_nc_min_path = os.path.join(tmp_output_dir, os.path.basename(acq.min_nc_path))
+        tmp_daac_nc_minuncert_path = os.path.join(tmp_output_dir, os.path.basename(acq.minuncert_nc_path))
+        tmp_reformatting_log_path = os.path.join(tmp_output_dir, "output_conversion_pge.log")
+        
+        env = os.environ.copy()
+        emit_utils_pge = wm.pges["emit-utils"]
+        env["PYTHONPATH"] = f"$PYTHONPATH:{emit_utils_pge.repo_dir}"
+        run_command = "PGE Run Command: {" + " ".join(cmd) + "}"
+        input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
+        pge_input_files = "PGE Input Files: {" + ", ".join(input_files_arr) + "}"
+        history = run_command + ", " + pge_input_files
+        tmp_history_path = os.path.join(tmp_output_dir, "history.txt")
+        with open(tmp_history_path, "w") as f:
+            f.write(history)
+        tetracorder_lite_pge = wm.pges["tetracorder-lite"]
+        mineral_grouping_path = os.path.join(tetracorder_lite_pge.repo_dir, "tetrapy", "data", "v6.00a5-part.csv")
 
-        # env = os.environ.copy()
-        # emit_utils_pge = wm.pges["emit-utils"]
-        # env["PYTHONPATH"] = f"$PYTHONPATH:{emit_utils_pge.repo_dir}"
-        # agg_cmd = ["python", aggregator_exe, tmp_tetra_output_path, min_group_mat_file, tmp_min_path, tmp_min_unc_path,
-        #            "--calculate_uncertainty",
-        #            "--reflectance_file", acq.rfl_img_path,
-        #            "--reflectance_uncertainty_file", acq.rfluncert_img_path,
-        #            "--reference_library", standard_library,
-        #            "--research_library", research_library,
-        #            "--expert_system_file", tetracorder_config_file,
-        #            ]
-        # pge.run(agg_cmd, cwd=pge.repo_dir, tmp_dir=self.tmp_dir, env=env)
+        reformat_cmd = ["python", output_generator_exe, tmp_daac_nc_min_path, tmp_daac_nc_minuncert_path,
+                            tmp_min_path, tmp_min_unc_path, acq.loc_img_path, acq.glt_img_path, mineral_grouping_path,
+                            acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z"), acq.stop_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z"),
+                            "V0" + str(wm.config["prod_versions"]["l2b"]), wm.config["extended_build_num"],
+                            tmp_history_path, acq.daynight,
+                            "--log_file", tmp_reformatting_log_path]
+        reformat_pge.run(reformat_cmd, tmp_dir=self.tmp_dir, env=env)
+        
+        # Copy and rename output files back to /store
+        log_path = acq.min_nc_path.replace(".nc", "_pge.log")
+        wm.copy(tmp_daac_nc_min_path, acq.min_nc_path)
+        wm.copy(tmp_daac_nc_minuncert_path, acq.minuncert_nc_path)
+        wm.copy(tmp_quicklook_path, acq.min_png_path)
+        wm.copy(tmp_tetrapy_log_path, log_path)
+        wm.copy(tmp_config_path, acq.min_nc_path.replace(".nc", "_runconfig.yml"))
 
-        # ql_cmd = ['python', os.path.join(pge.repo_dir, 'quicklook.py'), tmp_min_path, tmp_quicklook_path, '--unc_file', tmp_min_unc_path]
-        # pge.run(ql_cmd, cwd=pge.repo_dir, tmp_dir=self.tmp_dir, env=env)
-
-        # # tar l2b
-        # tar_cmd = ['tar', '-C', self.local_tmp_dir, '-cf', tmp_tetra_output_path_tar, os.path.basename(tmp_tetra_output_path)]
-        # pge.run(tar_cmd, cwd=pge.repo_dir, tmp_dir=self.tmp_dir, env=env)
-
-        # # Copy mask files to l2a dir
-        # wm.copy(tmp_tetra_output_path_tar, acq.tetra_dir_path)
-        # wm.copy(tmp_min_path, acq.min_img_path)
-        # wm.copy(envi_header(tmp_min_path), acq.min_hdr_path)
-        # wm.copy(tmp_min_unc_path, acq.minuncert_img_path)
-        # wm.copy(envi_header(tmp_min_unc_path), acq.minuncert_hdr_path)
-        # wm.copy(tmp_quicklook_path, acq.min_png_path)
-
-        # # Update hdr files
+        # # Update NetCDF metadata
         # input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
         # doc_version = "EMIT SDS L2B JPL-D 104237, Rev A"
-        # for img_path, hdr_path in [(acq.min_img_path, acq.min_hdr_path),
-        #                            (acq.minuncert_img_path, acq.minuncert_hdr_path)]:
-        #     hdr = envi.read_envi_header(hdr_path)
-        #     hdr["emit acquisition start time"] = acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
-        #     hdr["emit acquisition stop time"] = acq.stop_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
-        #     hdr["emit pge name"] = pge.repo_url
-        #     hdr["emit pge version"] = pge.version_tag
-        #     hdr["emit pge input files"] = input_files_arr
-        #     hdr["emit pge run command"] = " ".join(cmd_tetra_setup) + ", " + " ".join(agg_cmd)
-        #     hdr["emit software build version"] = wm.config["extended_build_num"]
-        #     hdr["emit documentation version"] = doc_version
-        #     creation_time = datetime.datetime.fromtimestamp(
-        #         os.path.getmtime(img_path), tz=datetime.timezone.utc)
-        #     hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
-        #     hdr["emit data product version"] = wm.config["prod_versions"]["l2b"]
-        #     hdr["emit acquisition daynight"] = acq.daynight
-        #     envi.write_envi_header(hdr_path, hdr)
+        # for nc_path in [acq.min_nc_path, acq.minuncert_nc_path]:
+        #     nc_ds = Dataset(nc_path, "r+")
+        #     nc_ds.flight_line = acq.acquisition_id
+        #     nc_ds.time_coverage_start = acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
+        #     nc_ds.time_coverage_end = acq.stop_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
+        #     nc_ds.software_build_version = wm.config["extended_build_num"]
+        #     nc_ds.product_version = "V0" + wm.config["prod_versions"]["l2b"]
+        #     run_command = "PGE Run Command: {" + " ".join(cmd) + ", " + " ".join(agg_cmd) + "}"
+        #     input_files = "PGE Input Files: {" + ", ".join(input_files_arr) + "}"
+        #     nc_ds.history = run_command + ", " + input_files
+        #     nc_ds.day_night_flag = acq.daynight
+            
+        creation_time = datetime.datetime.fromtimestamp(
+            os.path.getmtime(acq.min_nc_path), tz=datetime.timezone.utc)
 
-        # # PGE writes metadata to db
-        # dm = wm.database_manager
-        # product_dict = {
-        #     "img_path": acq.min_img_path,
-        #     "hdr_path": acq.min_hdr_path,
-        #     "png_path": acq.min_png_path,
-        #     "created": creation_time,
-        #     "dimensions": {
-        #         "lines": hdr["lines"],
-        #         "samples": hdr["samples"],
-        #         "bands": hdr["bands"]
-        #     }
-        # }
-        # dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l2b.{wm.config['prod_versions']['l2b']}.min": product_dict})
+        # PGE writes metadata to db
+        dm = wm.database_manager
+        product_dict = {
+            "netcdf_path": acq.min_nc_path,
+            "png_path": acq.min_png_path,
+            "created": creation_time,
+        }
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l2b.{wm.config['prod_versions']['l2b']}.min": product_dict})
 
-        # product_dict_minuncert = {
-        #     "img_path": acq.minuncert_img_path,
-        #     "hdr_path": acq.minuncert_hdr_path,
-        #     "created": creation_time,
-        # }
-        # dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l2b.{wm.config['prod_versions']['l2b']}.minuncert": product_dict_minuncert})
+        product_dict_minuncert = {
+            "netcdf_path": acq.minuncert_nc_path,
+            "created": creation_time,
+        }
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l2b.{wm.config['prod_versions']['l2b']}.minuncert": product_dict_minuncert})
 
-        # total_time = time.time() - pge_start_time
-        # log_entry = {
-        #     "task": self.task_family,
-        #     "pge_name": pge.repo_url,
-        #     "pge_version": pge.version_tag,
-        #     "pge_input_files": input_files,
-        #     "pge_run_command": " ".join(cmd_tetra_setup) + ", " + " ".join(agg_cmd),
-        #     "documentation_version": doc_version,
-        #     "product_creation_time": creation_time,
-        #     "pge_runtime_seconds": total_time,
-        #     "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
-        #     "completion_status": "SUCCESS",
-        #     "product_version": wm.config["prod_versions"]["l2b"],
-        #     "output": {
-        #         "l2b_min_img_path": acq.min_img_path,
-        #         "l2b_min_hdr_path:": acq.min_hdr_path,
-        #         "l2b_min_png_path:": acq.min_png_path,
-        #         "l2b_minuncert_img_path": acq.minuncert_img_path,
-        #         "l2b_minuncert_hdr_path:": acq.minuncert_hdr_path
-        #     }
-        # }
+        total_time = time.time() - pge_start_time
+        doc_version = "EMIT SDS L2B JPL-D 104237, Rev A"
+        log_entry = {
+            "task": self.task_family,
+            "pge_name": pge.repo_url,
+            "pge_version": pge.version_tag,
+            "pge_input_files": input_files,
+            "pge_run_command": " ".join(cmd),
+            "documentation_version": doc_version,
+            "product_creation_time": creation_time,
+            "pge_runtime_seconds": total_time,
+            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
+            "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l2b"],
+            "output": {
+                "l2b_min_nc_path": acq.min_nc_path,
+                "l2b_min_png_path:": acq.min_png_path,
+                "l2b_minuncert_nc_path": acq.minuncert_nc_path
+            }
+        }
 
-        # dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
+        dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
 
 
 class L2BFormat(SlurmJobTask):

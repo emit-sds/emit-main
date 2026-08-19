@@ -177,6 +177,8 @@ class L2AReflectance(SlurmJobTask):
             state_band_medians['aot'] = float(median_state[band_names.index('AOT550')])
         if 'surface_elevation_km' in band_names:
             state_band_medians['surface_elevation_km'] = float(median_state[band_names.index('surface_elevation_km')])
+        if 'CO2' in band_names:
+            state_band_medians['co2'] = float(median_state[band_names.index('CO2')])
             
         wm.copy(tmp_rfl_path, acq.rfl_img_path)
         wm.copy(tmp_rfl_hdr_path, acq.rfl_hdr_path)

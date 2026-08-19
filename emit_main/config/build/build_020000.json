@@ -41,6 +41,11 @@
             "conda_env": "emit-main-20251031"
         },
         {
+            "url": "git@github.com:jammont/tetracorder-lite.git",
+            "tag": "cli/rich",
+            "conda_env": "emit-main-20251031"
+        },
+        {
             "url": "git@github.com:emit-sds/emit-sds-l3rfl.git",
             "tag": "develop",
             "conda_env": "emit-main-20251031"

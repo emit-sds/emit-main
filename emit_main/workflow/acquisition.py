@@ -186,9 +186,9 @@ class Acquisition:
                 "maskTf": ["img", "hdr", "nc", "png"],  
             },
             "l2b": {
-                "tetra": ["dir"],
-                "min": ["img", "hdr", "nc", "png"],
-                "minuncert": ["img", "hdr", "nc"]
+                "tetra": ["tar"],
+                "min": ["nc", "png"],
+                "minuncert": ["nc"]
             },
             "ch4": {
                 "targetch4": ["txt"],

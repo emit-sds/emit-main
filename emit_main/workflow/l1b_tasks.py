@@ -838,6 +838,7 @@ class L1BRdnDeliver(SlurmJobTask):
 
         # Use a cloud fraction that sums the nodata fraction (clouds screened on board) and the cloud fraction value
         # from the maskTf step.  These fractions are rounded separately.  Use min to ensure it doesn't go over 100.
+        # TODO: Check if cloud fraction exists first (nighttime scenes)
         cloud_fraction = acq.metadata["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["cloud_fraction"]
         nodata_fraction = acq.metadata["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["nodata_fraction"]
         cloud_cover = min(cloud_fraction + nodata_fraction, 100)
@@ -1061,8 +1062,8 @@ class L1BAttDeliver(SlurmJobTask):
         software_build_version = nc_ds.software_build_version
         if 'software_delivery_version' in nc_ds.ncattrs() and nc_ds.software_delivery_version == wm.config["extended_build_num"]:
             logging.info('Skipping software_delivery_version assignment, because it already exists and matches')
-        # else:
-        #     nc_ds.software_delivery_version = wm.config["extended_build_num"]
+        else:
+            nc_ds.software_delivery_version = wm.config["extended_build_num"]
         nc_ds.sync()
         nc_ds.close()
 
