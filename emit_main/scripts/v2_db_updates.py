@@ -322,6 +322,12 @@ def main():
                             "solar_zenith": mean_solar_zenith_old
                             }
 
+                    # Copy the gring values to the new products dictionary
+                    # Leave the old ones in place (instead of renaming to _bak).  I will delete them after
+                    gring_old = d.get("gring")
+                    if p == "l1b" and gring_old:
+                        products_new[p][prod_versions_v1[p]]["glt"]["gring"] = gring_old
+
                 # Append to updates for bulk write
                 updated_fields["products"] = products_new
                 updated_fields["products_bak"] = products_old

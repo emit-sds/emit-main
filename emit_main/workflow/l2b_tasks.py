@@ -90,10 +90,10 @@ class L2BMineral(SlurmJobTask):
         wm.copy(acq.rfl_hdr_path, os.path.join(tmp_data_dir, os.path.basename(acq.rfl_hdr_path)))
         wm.copy(acq.rfluncert_img_path, os.path.join(tmp_data_dir, tmp_rfluncert_basename))
         wm.copy(acq.rfluncert_hdr_path, os.path.join(tmp_data_dir, os.path.basename(acq.rfluncert_hdr_path)))
-        wm.copy(acq.loc_img_path, os.path.join(tmp_data_dir, os.path.basename(acq.loc_img_path)))
-        wm.copy(acq.loc_hdr_path, os.path.join(tmp_data_dir, os.path.basename(acq.loc_hdr_path)))
-        wm.copy(acq.glt_img_path, os.path.join(tmp_data_dir, os.path.basename(acq.glt_img_path)))
-        wm.copy(acq.glt_hdr_path, os.path.join(tmp_data_dir, os.path.basename(acq.glt_hdr_path)))
+        # wm.copy(acq.loc_img_path, os.path.join(tmp_data_dir, os.path.basename(acq.loc_img_path)))
+        # wm.copy(acq.loc_hdr_path, os.path.join(tmp_data_dir, os.path.basename(acq.loc_hdr_path)))
+        # wm.copy(acq.glt_img_path, os.path.join(tmp_data_dir, os.path.basename(acq.glt_img_path)))
+        # wm.copy(acq.glt_hdr_path, os.path.join(tmp_data_dir, os.path.basename(acq.glt_hdr_path)))
         # Create config file
         config_template = os.path.join(wm.pges["tetracorder-lite"].repo_dir, "config.yml")
         tmp_config_path = os.path.join(tmp_data_dir, "config.yml")
@@ -101,8 +101,8 @@ class L2BMineral(SlurmJobTask):
             config = yaml.safe_load(f)
         config["data"]["rfl"] = f"/data/{tmp_rfl_basename}"
         config["data"]["rfluncert"] = f"/data/{tmp_rfluncert_basename}"
-        config["data"]["loc"] = f"/data/{os.path.basename(acq.loc_img_path)}"
-        config["data"]["glt"] = f"/data/{os.path.basename(acq.glt_img_path)}"
+        # config["data"]["loc"] = f"/data/{os.path.basename(acq.loc_img_path)}"
+        # config["data"]["glt"] = f"/data/{os.path.basename(acq.glt_img_path)}"
         config["output"]["base"] = "/output"
         with open(tmp_config_path, "w") as f:
             yaml.safe_dump(config, f, sort_keys=False)
@@ -157,9 +157,12 @@ class L2BMineral(SlurmJobTask):
 
         reformat_cmd = ["python", output_generator_exe, tmp_daac_nc_min_path, tmp_daac_nc_minuncert_path,
                             tmp_min_path, tmp_min_unc_path, acq.loc_img_path, acq.glt_img_path, mineral_grouping_path,
-                            acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z"), acq.stop_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z"),
-                            "V0" + str(wm.config["prod_versions"]["l2b"]), wm.config["extended_build_num"],
-                            tmp_history_path, acq.daynight,
+                            "--start_time", acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z"), 
+                            "--stop_time", acq.stop_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z"),
+                            "--version", "V0" + str(wm.config["prod_versions"]["l2b"]), 
+                            "--software_build_version", wm.config["extended_build_num"],
+                            "--history_file", tmp_history_path, 
+                            "--daynight", acq.daynight,
                             "--log_file", tmp_reformatting_log_path]
         reformat_pge.run(reformat_cmd, tmp_dir=self.tmp_dir, env=env)
         
