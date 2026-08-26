@@ -122,6 +122,8 @@ class CH4(SlurmJobTask):
         wm.copy(ch4_of.mf_file, acq.ch4_img_path)
         wm.copy(envi_header(ch4_of.mf_file), acq.ch4_hdr_path)
         wm.copy(ch4_of.mf_ort_cog, acq.ortch4_tif_path)
+        wm.copy(ch4_of.mf_ort_cog_d1, acq.ortch4d1_tif_path)
+        wm.copy(ch4_of.mf_ort_cog_d2, acq.ortch4d2_tif_path)
         wm.copy(ch4_of.mf_ort_ql, acq.ortch4_png_path)
 
         # Sensitivity - CH4
@@ -149,6 +151,12 @@ class CH4(SlurmJobTask):
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
         dm.update_acquisition_metadata(acq.acquisition_id, {f"products.ch4.{wm.config['prod_versions']['ch4']}.ortch4": {
                 "tif_path" : acq.ortch4_tif_path,
+                "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.ch4.{wm.config['prod_versions']['ch4']}.ortch4d1": {
+                "tif_path" : acq.ortch4d1_tif_path,
+                "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.ch4.{wm.config['prod_versions']['ch4']}.ortch4d2": {
+                "tif_path" : acq.ortch4d2_tif_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
         dm.update_acquisition_metadata(acq.acquisition_id, {f"products.ch4.{wm.config['prod_versions']['ch4']}.ortch4ql": {
                 "png_path" : acq.ortch4_png_path,
@@ -186,6 +194,8 @@ class CH4(SlurmJobTask):
                 "uncertch4_img_path": acq.uncertch4_img_path,
                 "uncertch4_hdr_path": acq.uncertch4_hdr_path,
                 "ortch4_tif_path": acq.ortch4_tif_path,
+                "ortch4d1_tif_path": acq.ortch4d1_tif_path,
+                "ortch4d2_tif_path": acq.ortch4d2_tif_path,
                 "ortch4_png_path": acq.ortch4_png_path,
                 "ortsensch4_tif_path": acq.ortsensch4_tif_path,
                 "ortuncertch4_tif_path": acq.ortuncertch4_tif_path,
@@ -290,6 +300,8 @@ class CO2(SlurmJobTask):
         wm.copy(co2_of.mf_file, acq.co2_img_path)
         wm.copy(envi_header(co2_of.mf_file), acq.co2_hdr_path)
         wm.copy(co2_of.mf_ort_cog, acq.ortco2_tif_path)
+        wm.copy(co2_of.mf_ort_cog_d1, acq.ortco2d1_tif_path)
+        wm.copy(co2_of.mf_ort_cog_d2, acq.ortco2d2_tif_path)
         wm.copy(co2_of.mf_ort_ql, acq.ortco2_png_path)
 
         # Sensitivity - CO2
@@ -317,6 +329,12 @@ class CO2(SlurmJobTask):
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
         dm.update_acquisition_metadata(acq.acquisition_id, {f"products.co2.{wm.config['prod_versions']['co2']}.ortco2": {
                 "tif_path" : acq.ortco2_tif_path,
+                "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.co2.{wm.config['prod_versions']['co2']}.ortco2d1": {
+                "tif_path" : acq.ortco2d1_tif_path,
+                "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.co2.{wm.config['prod_versions']['co2']}.ortco2d2": {
+                "tif_path" : acq.ortco2d2_tif_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
         dm.update_acquisition_metadata(acq.acquisition_id, {f"products.co2.{wm.config['prod_versions']['co2']}.ortco2ql": {
                 "png_path" : acq.ortco2_png_path,
@@ -353,6 +371,8 @@ class CO2(SlurmJobTask):
                 "sensco2_hdr_path": acq.sensco2_hdr_path,
                 "uncertco2_img_path": acq.uncertco2_img_path,
                 "uncertco2_hdr_path": acq.uncertco2_hdr_path,
+                "ortco2d1_tif_path": acq.ortco2d1_tif_path,
+                "ortco2d2_tif_path": acq.ortco2d2_tif_path,
                 "ortco2_tif_path": acq.ortco2_tif_path,
                 "ortco2_png_path": acq.ortco2_png_path,
                 "ortsensco2_tif_path": acq.ortsensco2_tif_path,
@@ -420,12 +440,16 @@ class CH4Deliver(SlurmJobTask):
 
         # Create local/tmp daac names and paths
         daac_ortch4_tif_name = f"{acq.ch4_granule_ur}.tif"
+        daac_ortch4d1_tif_name = f"{acq.ch4d1_granule_ur}.tif"
+        daac_ortch4d2_tif_name = f"{acq.ch4d2_granule_ur}.tif"
         daac_ortsensch4_tif_name = f"{acq.ch4sens_granule_ur}.tif"
         daac_ortuncertch4_tif_name = f"{acq.ch4uncert_granule_ur}.tif"
 
         daac_ummg_name = f"{acq.ch4_granule_ur}.cmr.json"
         daac_browse_name = f"{acq.ch4_granule_ur}.png"
         daac_ortch4_tif_path = os.path.join(self.tmp_dir, daac_ortch4_tif_name)
+        daac_ortch4d1_tif_path = os.path.join(self.tmp_dir, daac_ortch4d1_tif_name)
+        daac_ortch4d2_tif_path = os.path.join(self.tmp_dir, daac_ortch4d2_tif_name)
         daac_ortsensch4_tif_path = os.path.join(self.tmp_dir, daac_ortsensch4_tif_name)
         daac_ortuncertch4_tif_path = os.path.join(self.tmp_dir, daac_ortuncertch4_tif_name)
 
@@ -434,6 +458,8 @@ class CH4Deliver(SlurmJobTask):
 
         # Copy files to tmp dir and rename
         wm.copy(acq.ortch4_tif_path, daac_ortch4_tif_path)
+        wm.copy(acq.ortch4d1_tif_path, daac_ortch4d1_tif_path)
+        wm.copy(acq.ortch4d2_tif_path, daac_ortch4d2_tif_path)
         wm.copy(acq.ortsensch4_tif_path, daac_ortsensch4_tif_path)
         wm.copy(acq.ortuncertch4_tif_path, daac_ortuncertch4_tif_path)
         wm.copy(acq.ortch4_png_path, daac_browse_path)
@@ -466,9 +492,9 @@ class CH4Deliver(SlurmJobTask):
                                               cloud_cover=cloud_cover)
         ummg = daac_converter.add_data_files_ummg(
             ummg,
-            [daac_ortch4_tif_path, daac_ortsensch4_tif_path, daac_ortuncertch4_tif_path, daac_browse_path],
+            [daac_ortch4_tif_path, daac_ortch4d1_tif_path, daac_ortch4d2_tif_path, daac_ortsensch4_tif_path, daac_ortuncertch4_tif_path, daac_browse_path],
             acq.daynight,
-            ["GeoTIFF", "GeoTIFF", "GeoTIFF", "PNG"])
+            ["GeoTIFF", "GeoTIFF", "GeoTIFF", "GeoTIFF", "GeoTIFF", "PNG"])
         # ummg = daac_converter.add_related_url(ummg, ghg_pge.repo_url, "DOWNLOAD SOFTWARE")
         ummg = daac_converter.add_boundary_ummg(ummg, acq.gring)
         daac_converter.dump_json(ummg, ummg_path)
@@ -478,7 +504,7 @@ class CH4Deliver(SlurmJobTask):
         wm.copy(ummg_path, daac_ummg_path)
 
         # Copy files to S3 for staging
-        for path in (daac_ortch4_tif_path, daac_ortsensch4_tif_path, daac_ortuncertch4_tif_path, daac_browse_path, daac_ummg_path):
+        for path in (daac_ortch4_tif_path, daac_ortch4d1_tif_path, daac_ortch4d2_tif_path, daac_ortsensch4_tif_path, daac_ortuncertch4_tif_path, daac_browse_path, daac_ummg_path):
             cmd_aws_s3 = ["ssh", "ngishpc1", "'" + wm.config["aws_cli_exe"], "s3", "cp", path, acq.aws_s3_uri_base,
                           "--profile", wm.config["aws_profile"] + "'"]
             pge.run(cmd_aws_s3, tmp_dir=self.tmp_dir)
@@ -489,6 +515,8 @@ class CH4Deliver(SlurmJobTask):
         cnm_submission_path = os.path.join(acq.ch4_data_dir, cnm_submission_id + "_cnm.json")
         target_src_map = {
             daac_ortch4_tif_name: os.path.basename(acq.ortch4_tif_path),
+            daac_ortch4d1_tif_name: os.path.basename(acq.ortch4d1_tif_path),
+            daac_ortch4d2_tif_name: os.path.basename(acq.ortch4d2_tif_path),
             daac_ortsensch4_tif_name: os.path.basename(acq.ortsensch4_tif_path),
             daac_ortuncertch4_tif_name: os.path.basename(acq.ortuncertch4_tif_path),
             daac_browse_name: os.path.basename(acq.ortch4_png_path),
@@ -515,6 +543,22 @@ class CH4Deliver(SlurmJobTask):
                         "size": os.path.getsize(daac_ortch4_tif_name),
                         "checksumType": "sha512",
                         "checksum": daac_converter.calc_checksum(daac_ortch4_tif_path, "sha512")
+                    },
+                    {
+                        "name": daac_ortch4d1_tif_name,
+                        "uri": acq.aws_s3_uri_base + daac_ortch4d1_tif_name,
+                        "type": "data",
+                        "size": os.path.getsize(daac_ortch4d1_tif_name),
+                        "checksumType": "sha512",
+                        "checksum": daac_converter.calc_checksum(daac_ortch4d1_tif_path, "sha512")
+                    },
+                    {
+                        "name": daac_ortch4d2_tif_name,
+                        "uri": acq.aws_s3_uri_base + daac_ortch4d2_tif_name,
+                        "type": "data",
+                        "size": os.path.getsize(daac_ortch4d2_tif_name),
+                        "checksumType": "sha512",
+                        "checksum": daac_converter.calc_checksum(daac_ortch4d2_tif_path, "sha512")
                     },
                     {
                         "name": daac_ortsensch4_tif_name,
@@ -678,6 +722,8 @@ class CO2Deliver(SlurmJobTask):
 
         # Create local/tmp daac names and paths
         daac_ortco2_tif_name = f"{acq.co2_granule_ur}.tif"
+        daac_ortco2d1_tif_name = f"{acq.co2d1_granule_ur}.tif"
+        daac_ortco2d2_tif_name = f"{acq.co2d2_granule_ur}.tif"
         daac_ortsensco2_tif_name = f"{acq.co2sens_granule_ur}.tif"
         daac_ortuncertco2_tif_name = f"{acq.co2uncert_granule_ur}.tif"
 
@@ -686,6 +732,8 @@ class CO2Deliver(SlurmJobTask):
         daac_ortco2_tif_path = os.path.join(self.tmp_dir, daac_ortco2_tif_name)
         daac_ortsensco2_tif_path = os.path.join(self.tmp_dir, daac_ortsensco2_tif_name)
         daac_ortuncertco2_tif_path = os.path.join(self.tmp_dir, daac_ortuncertco2_tif_name)
+        daac_ortco2d1_tif_path = os.path.join(self.tmp_dir, daac_ortco2d1_tif_name)
+        daac_ortco2d2_tif_path = os.path.join(self.tmp_dir, daac_ortco2d2_tif_name)
 
         daac_browse_path = os.path.join(self.tmp_dir, daac_browse_name)
         daac_ummg_path = os.path.join(self.tmp_dir, daac_ummg_name)
@@ -695,6 +743,8 @@ class CO2Deliver(SlurmJobTask):
         wm.copy(acq.ortsensco2_tif_path, daac_ortsensco2_tif_path)
         wm.copy(acq.ortuncertco2_tif_path, daac_ortuncertco2_tif_path)
         wm.copy(acq.ortco2_png_path, daac_browse_path)
+        wm.copy(acq.ortco2d1_tif_path, daac_ortco2d1_tif_path)
+        wm.copy(acq.ortco2d2_tif_path, daac_ortco2d2_tif_path)
 
         # Get the software_build_version (extended build num when product was created)
         software_build_version = read_gdal_metadata(acq.ortco2_tif_path, 'software_build_version')
@@ -724,9 +774,9 @@ class CO2Deliver(SlurmJobTask):
                                               cloud_cover=cloud_cover)
         ummg = daac_converter.add_data_files_ummg(
             ummg,
-            [daac_ortco2_tif_path, daac_ortsensco2_tif_path, daac_ortuncertco2_tif_path, daac_browse_path],
+            [daac_ortco2_tif_path, daac_ortco2d1_tif_path, daac_ortco2d2_tif_path, daac_ortsensco2_tif_path, daac_ortuncertco2_tif_path, daac_browse_path],
             acq.daynight,
-            ["GeoTIFF", "GeoTIFF", "GeoTIFF", "PNG"])
+            ["GeoTIFF", "GeoTIFF", "GeoTIFF", "GeoTIFF", "GeoTIFF", "PNG"])
         # ummg = daac_converter.add_related_url(ummg, ghg_pge.repo_url, "DOWNLOAD SOFTWARE")
         ummg = daac_converter.add_boundary_ummg(ummg, acq.gring)
         daac_converter.dump_json(ummg, ummg_path)
@@ -736,7 +786,7 @@ class CO2Deliver(SlurmJobTask):
         wm.copy(ummg_path, daac_ummg_path)
 
         # Copy files to S3 for staging
-        for path in (daac_ortco2_tif_path, daac_ortsensco2_tif_path, daac_ortuncertco2_tif_path, daac_browse_path, daac_ummg_path):
+        for path in (daac_ortco2_tif_path, daac_ortco2d1_tif_path, daac_ortco2d2_tif_path, daac_ortsensco2_tif_path, daac_ortuncertco2_tif_path, daac_browse_path, daac_ummg_path):
             cmd_aws_s3 = ["ssh", "ngishpc1", "'" + wm.config["aws_cli_exe"], "s3", "cp", path, acq.aws_s3_uri_base,
                           "--profile", wm.config["aws_profile"] + "'"]
             pge.run(cmd_aws_s3, tmp_dir=self.tmp_dir)
@@ -747,6 +797,8 @@ class CO2Deliver(SlurmJobTask):
         cnm_submission_path = os.path.join(acq.co2_data_dir, cnm_submission_id + "_cnm.json")
         target_src_map = {
             daac_ortco2_tif_name: os.path.basename(acq.ortco2_tif_path),
+            daac_ortco2d1_tif_name: os.path.basename(acq.ortco2d1_tif_path),
+            daac_ortco2d2_tif_name: os.path.basename(acq.ortco2d2_tif_path),
             daac_ortsensco2_tif_name: os.path.basename(acq.ortsensco2_tif_path),
             daac_ortuncertco2_tif_name: os.path.basename(acq.ortuncertco2_tif_path),
             daac_browse_name: os.path.basename(acq.ortco2_png_path),
@@ -773,6 +825,22 @@ class CO2Deliver(SlurmJobTask):
                         "size": os.path.getsize(daac_ortco2_tif_name),
                         "checksumType": "sha512",
                         "checksum": daac_converter.calc_checksum(daac_ortco2_tif_path, "sha512")
+                    },
+                    {
+                        "name": daac_ortco2d1_tif_name,
+                        "uri": acq.aws_s3_uri_base + daac_ortco2d1_tif_name,
+                        "type": "data",
+                        "size": os.path.getsize(daac_ortco2d1_tif_name),
+                        "checksumType": "sha512",
+                        "checksum": daac_converter.calc_checksum(daac_ortco2d1_tif_path, "sha512")
+                    },
+                    {
+                        "name": daac_ortco2d2_tif_name,
+                        "uri": acq.aws_s3_uri_base + daac_ortco2d2_tif_name,
+                        "type": "data",
+                        "size": os.path.getsize(daac_ortco2d2_tif_name),
+                        "checksumType": "sha512",
+                        "checksum": daac_converter.calc_checksum(daac_ortco2d2_tif_path, "sha512")
                     },
                     {
                         "name": daac_ortsensco2_tif_name,
@@ -963,7 +1031,7 @@ class CH4Mosaic(SlurmJobTask):
         cmd_mkdir = ["ssh", "ngishpc1", "'" + "ssh", wm.config["daac_server_internal"], "mkdir", "-p", target_dir + "'"]
         pge.run(cmd_mkdir, tmp_dir=self.tmp_dir)
         
-        for product in ["ortch4", "ortsensch4", "ortuncertch4"]:
+        for product in ["ortch4", "ortch4d1", "ortch4d2", "ortsensch4", "ortuncertch4"]:
             input_files[product] = [ac["products"]["ch4"][wm.config["prod_versions"]["ch4"]][product]["tif_path"] for ac in acquisitions]
 
             output_paths = [os.path.join(self.tmp_dir, f'{mosaic_basename}_{product}_{version}.tif'), 
@@ -1093,7 +1161,7 @@ class CO2Mosaic(SlurmJobTask):
         cmd_mkdir = ["ssh", "ngishpc1", "'" + "ssh", wm.config["daac_server_internal"], "mkdir", "-p", target_dir + "'"]
         pge.run(cmd_mkdir, tmp_dir=self.tmp_dir)
         
-        for product in ["ortco2", "ortsensco2", "ortuncertco2"]:
+        for product in ["ortco2", "ortco2d1", "ortco2d2", "ortsensco2", "ortuncertco2"]:
             input_files[product] = [ac["products"]["co2"][wm.config["prod_versions"]["co2"]][product]["tif_path"] for ac in acquisitions]
 
             output_paths = [os.path.join(self.tmp_dir, f'{mosaic_basename}_{product}_{version}.tif'), 

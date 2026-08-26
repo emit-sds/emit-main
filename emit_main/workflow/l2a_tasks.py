@@ -123,6 +123,7 @@ class L2AReflectance(SlurmJobTask):
                "--prebuilt_lut=" + wm.config["prebuilt_lut_path"],
                "--eof_path=" + eof_file,
                "--terrain_style=flat",
+               "--no_min_lut_spacing",
                "--model_discrepancy_path", model_disc_file,
                "--logging_level", self.level,
                "--log_file", tmp_log_path,

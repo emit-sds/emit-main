@@ -77,9 +77,13 @@ class Acquisition:
             self.min_granule_ur = f"EMIT_L2B_MIN_0{self.config['prod_versions']['l2b']}_{daac_start_time_str}"
             self.minuncert_granule_ur = f"EMIT_L2B_MINUNCERT_0{self.config['prod_versions']['l2b']}_{daac_start_time_str}"
             self.ch4_granule_ur = f"EMIT_L2B_CH4ENH_0{self.config['prod_versions']['ch4']}_{daac_start_time_str}"
+            self.ch4d1_granule_ur = f"EMIT_L2B_CH4ENHD1_0{self.config['prod_versions']['ch4']}_{daac_start_time_str}"
+            self.ch4d2_granule_ur = f"EMIT_L2B_CH4ENHD2_0{self.config['prod_versions']['ch4']}_{daac_start_time_str}"
             self.ch4uncert_granule_ur = f"EMIT_L2B_CH4UNCERT_0{self.config['prod_versions']['ch4']}_{daac_start_time_str}"
             self.ch4sens_granule_ur = f"EMIT_L2B_CH4SENS_0{self.config['prod_versions']['ch4']}_{daac_start_time_str}"
             self.co2_granule_ur = f"EMIT_L2B_CO2ENH_0{self.config['prod_versions']['co2']}_{daac_start_time_str}"
+            self.co2d1_granule_ur = f"EMIT_L2B_CO2ENHD1_0{self.config['prod_versions']['co2']}_{daac_start_time_str}"
+            self.co2d2_granule_ur = f"EMIT_L2B_CO2ENHD2_0{self.config['prod_versions']['co2']}_{daac_start_time_str}"
             self.co2uncert_granule_ur = f"EMIT_L2B_CO2UNCERT_0{self.config['prod_versions']['co2']}_{daac_start_time_str}"
             self.co2sens_granule_ur = f"EMIT_L2B_CO2SENS_0{self.config['prod_versions']['co2']}_{daac_start_time_str}"
             self.frcov_granule_ur = f"EMIT_L2B_FRCOV_0{self.config['prod_versions']['frcov']}_{daac_start_time_str}"
@@ -194,6 +198,8 @@ class Acquisition:
                 "targetch4": ["txt"],
                 "ch4": ["img","hdr"],
                 "ortch4": ["tif","png"],
+                "ortch4d1": ["tif"],
+                "ortch4d2": ["tif"],
                 "sensch4": ["img","hdr"],
                 "ortsensch4": ["tif",],
                 "uncertch4": ["img","hdr"],
@@ -203,6 +209,8 @@ class Acquisition:
                 "targetco2": ["txt"],
                 "co2": ["img","hdr"],
                 "ortco2": ["tif","png"],
+                "ortco2d1": ["tif"],
+                "ortco2d2": ["tif"],
                 "sensco2": ["img","hdr"],
                 "ortsensco2": ["tif"],
                 "uncertco2": ["img","hdr"],
