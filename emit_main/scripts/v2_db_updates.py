@@ -334,6 +334,7 @@ def main():
                 
             if len(updated_fields) > 0:
                 # if updated_fields["products_bak"].get("frcov") and updated_fields["products_bak"].get("l3"):
+                # if updated_fields["products"].get("l1b", {}).get("01", {}).get("glt", {}).get("gring", None) is not None:
                 #     pdb.set_trace()
                 updates.append(
                     UpdateOne(

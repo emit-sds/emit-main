@@ -838,10 +838,12 @@ class L1BRdnDeliver(SlurmJobTask):
 
         # Use a cloud fraction that sums the nodata fraction (clouds screened on board) and the cloud fraction value
         # from the maskTf step.  These fractions are rounded separately.  Use min to ensure it doesn't go over 100.
-        # TODO: Check if cloud fraction exists first (nighttime scenes)
-        cloud_fraction = acq.metadata["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["cloud_fraction"]
-        nodata_fraction = acq.metadata["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["nodata_fraction"]
-        cloud_cover = min(cloud_fraction + nodata_fraction, 100)
+        # Default cloud_cover to 0 in case maskTf product doesn't exist
+        cloud_cover = 0
+        if "maskTf" in acq.metadata["products"]["mask"][wm.config["prod_versions"]["mask"]]:
+            cloud_fraction = acq.metadata["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["cloud_fraction"]
+            nodata_fraction = acq.metadata["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["nodata_fraction"]
+            cloud_cover = min(cloud_fraction + nodata_fraction, 100)
 
         # Create the UMM-G file
         collection_version = f"0{wm.config['prod_versions']['l1b']}"

@@ -42,7 +42,7 @@
         },
         {
             "url": "git@github.com:jammont/tetracorder-lite.git",
-            "tag": "cli/rich",
+            "tag": "v1.0.0",
             "conda_env": "emit-main-20251031"
         },
         {
@@ -90,7 +90,7 @@
         {
             "url": "git@github.com:emit-sds/emit-ghg.git",
             "tag": "v0.3.8",
-            "conda_env": "emit-ghg-20250705"
+            "conda_env": "emit-ghg-20260901"
         },
         {
             "url": "git@github.com:emit-sds/emit-sds-masks.git",

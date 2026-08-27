@@ -46,7 +46,6 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
     def requires(self):
 
         logger.debug(f"{self.task_family} requires: {self.stream_path}")
-        # TODO: Add dependency on previous stream file (if one is found in DB)
         return L0StripHOSC(config_path=self.config_path, stream_path=self.stream_path, level=self.level,
                            partition=self.partition, miss_pkt_thresh=self.miss_pkt_thresh, priority=self.priority)
 
@@ -84,7 +83,6 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
                "--log_path", tmp_log_path]
 
         # Get previous stream path if exists
-        # TODO: What should the search window be here for finding previous stream files?
         prev_streams = dm.find_streams_touching_date_range("1675", "stop_time",
                                                            stream.start_time - datetime.timedelta(seconds=1),
                                                            stream.start_time + datetime.timedelta(minutes=1),

@@ -115,7 +115,6 @@ class IngestMonitor:
         :param start_time: Start time in format YYMMDDhhmmss
         :param stop_time: Stop time in format YYMMDDhhmmss
         """
-        # TODO: Update this function when we know more about BAD and Planning Prod naming
         return self.ingest_files()
 
     def _ingest_file_list(self, paths):
@@ -138,20 +137,6 @@ class IngestMonitor:
                                              level=self.level,
                                              partition=self.partition,
                                              miss_pkt_thresh=self.miss_pkt_thresh))
-
-                # TODO: APID 1675 is currently ingested by another script to preserve order, but if you want to
-                # TODO: ingest it here, then uncomment these lines and also the singleton_flag in slurm.py
-                # if apid == "1675":
-                #     logger.info(f"Creating L1ADepacketizeScienceFrames task for path {p} with priority {priority}")
-                #     tasks.append(L1ADepacketizeScienceFrames(config_path=self.config_path,
-                #                                              stream_path=p,
-                #                                              level=self.level,
-                #                                              partition=self.partition,
-                #                                              pkt_format=self.pkt_format,
-                #                                              miss_pkt_thresh=self.miss_pkt_thresh,
-                #                                              test_mode=self.test_mode,
-                #                                              priority=priority))
-                #     priority -= 1
 
             # Process Planning Product files
             if p.endswith(".json"):

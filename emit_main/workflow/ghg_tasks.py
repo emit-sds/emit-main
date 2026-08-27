@@ -75,23 +75,21 @@ class CH4(SlurmJobTask):
         dm = wm.database_manager
 
         # PGE writes to tmp folder
-        tmp_output_dir = os.path.join(self.local_tmp_dir, "ch4")
-        wm.makedirs(tmp_output_dir)
         env = os.environ.copy()
         env["PYTHONPATH"] = f"$PYTHONPATH:{pge.repo_dir}:{emit_utils_pge.repo_dir}"
-        sys.path.append(pge.repo_dir)
+        sys.path.append(f"{pge.repo_dir}/emit_ghg")
 
         from files import Filenames # This might now work without path mod
 
         # Definte exe's
-        process_exe = os.path.join(pge.repo_dir, "ghg_process.py")
+        process_exe = os.path.join(pge.repo_dir, "deploy", "ghg_process.py")
 
         # Define local output files
-        ch4_log_file = os.path.join(tmp_output_dir, "ch4_log.txt")
+        ch4_log_file = os.path.join(self.local_tmp_dir, "ch4_log.txt")
 
-        ch4_base = os.path.join(self.tmp_dir, acq.acquisition_id + '_ch4')
+        ch4_base = os.path.join(self.local_tmp_dir, acq.acquisition_id + '_ch4')
 
-        noise_file = os.path.join(pge.repo_dir, "instrument_noise_parameters","emit_noise.txt")
+        noise_file = os.path.join(pge.repo_dir, "emit_ghg", "data", "instrument_noise_parameters", "emit_noise.txt")
 
         input_files = {
             "radiance_file": acq.rdn_img_path,
@@ -112,7 +110,7 @@ class CH4(SlurmJobTask):
                wm.config["ch4_lut_file"],
                "--logfile", ch4_log_file,
                "--software_version", wm.config["extended_build_num"],
-               "--product_version", 'V002']
+               "--product_version", 'V0' + wm.config['prod_versions']['ch4']]
 
         # Run CH4
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
@@ -254,23 +252,21 @@ class CO2(SlurmJobTask):
         dm = wm.database_manager
 
         # PGE writes to tmp folder
-        tmp_output_dir = os.path.join(self.local_tmp_dir, "co2")
-        wm.makedirs(tmp_output_dir)
         env = os.environ.copy()
         env["PYTHONPATH"] = f"$PYTHONPATH:{pge.repo_dir}:{emit_utils_pge.repo_dir}"
-        sys.path.append(pge.repo_dir)
+        sys.path.append(f"{pge.repo_dir}/emit_ghg")
 
         from files import Filenames # This might now work without path mod
 
         # Definte exe's
-        process_exe = os.path.join(pge.repo_dir, "ghg_process.py")
+        process_exe = os.path.join(pge.repo_dir, "deploy", "ghg_process.py")
 
         # Define local output files
-        co2_log_file = os.path.join(tmp_output_dir, "co2_log.txt")
+        co2_log_file = os.path.join(self.local_tmp_dir, "co2_log.txt")
 
-        co2_base = os.path.join(self.tmp_dir, acq.acquisition_id + '_co2')
+        co2_base = os.path.join(self.local_tmp_dir, acq.acquisition_id + '_co2')
 
-        noise_file = os.path.join(pge.repo_dir, "instrument_noise_parameters","emit_noise.txt")
+        noise_file = os.path.join(pge.repo_dir, "emit_ghg", "data", "instrument_noise_parameters", "emit_noise.txt")
 
         input_files = {
             "radiance_file": acq.rdn_img_path,
@@ -290,7 +286,7 @@ class CO2(SlurmJobTask):
                "--noise_file",noise_file, '--lut_file', wm.config["co2_lut_file"],
                "--logfile", co2_log_file, "--co2",
                "--software_version", wm.config["extended_build_num"],
-               "--product_version", 'V002']
+               "--product_version", 'V0' + wm.config['prod_versions']['ch4']]
 
         # Run CO2
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)

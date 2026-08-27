@@ -68,8 +68,6 @@ class L2BMineral(SlurmJobTask):
         pge = wm.pges["emit-sds-l2b"]
 
         # Build PGE commands to run the tetracorder container
-        image_name = "tetracorder-lite"
-        image_tag = "dev"
         tmp_data_dir = os.path.join(self.local_tmp_dir, 'data')
         tmp_output_dir = os.path.join(self.local_tmp_dir, 'output')
         wm.makedirs(tmp_data_dir)
@@ -121,7 +119,7 @@ class L2BMineral(SlurmJobTask):
                "--name", self.task_instance_id,
                "-v", f"{tmp_data_dir}:/data",
                "-v", f"{tmp_output_dir}:/output",
-               f"{image_name}:{image_tag}",
+               f"{wm.config['tetracorder_image_name']}:{wm.config['tetracorder_image_tag_name']}",
                "tetrapy",
                "run",
                "/data/config.yml"]
@@ -153,10 +151,9 @@ class L2BMineral(SlurmJobTask):
         with open(tmp_history_path, "w") as f:
             f.write(history)
         tetracorder_lite_pge = wm.pges["tetracorder-lite"]
-        mineral_grouping_path = os.path.join(tetracorder_lite_pge.repo_dir, "tetrapy", "data", "v6.00a5-part.csv")
 
         reformat_cmd = ["python", output_generator_exe, tmp_daac_nc_min_path, tmp_daac_nc_minuncert_path,
-                            tmp_min_path, tmp_min_unc_path, acq.loc_img_path, acq.glt_img_path, mineral_grouping_path,
+                            tmp_min_path, tmp_min_unc_path, acq.loc_img_path, acq.glt_img_path, wm.config["tetracorder_mineral_grouping_path"],
                             "--start_time", acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z"), 
                             "--stop_time", acq.stop_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z"),
                             "--version", "V0" + str(wm.config["prod_versions"]["l2b"]), 
