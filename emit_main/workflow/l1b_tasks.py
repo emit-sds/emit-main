@@ -23,7 +23,7 @@ from emit_main.workflow.output_targets import AcquisitionTarget, OrbitTarget, Da
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_utils import daac_converter
-from emit_utils.file_checks import envi_header, get_gring_boundary_points, get_band_stats
+from emit_utils.file_checks import envi_header, get_gring_from_loc, get_band_stats
 
 logger = logging.getLogger("emit-main")
 
@@ -529,10 +529,10 @@ class L1BGeolocate(SlurmJobTask):
             }
 
             # Get additional attributes and add to DB
-            glt_gring = get_gring_boundary_points(acq.glt_hdr_path)
+            loc_gring = get_gring_from_loc(acq.loc_hdr_path)
             
             meta = {
-                "gring": glt_gring,
+                "gring": loc_gring,
                 "daynight": "Day" if obs_band_means['solar_zenith'] < 90 else "Night",
             }
                         
