@@ -178,6 +178,7 @@ class DatabaseManager:
             f"products.l1b.{self.config['prod_versions']['l1b']}.glt.img_path": {"$exists": 1},
             f"products.l1b.{self.config['prod_versions']['l1b']}.loc.img_path": {"$exists": 1},
             f"products.mask.{self.config['prod_versions']['mask']}.maskTf.img_path": {"$exists": 0},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.obs.band_means.solar_zenith": {"$lt": 80},
             date_field: {"$gte": start, "$lte": stop}
         }
         if date_field == "last_modified":
@@ -194,6 +195,7 @@ class DatabaseManager:
         query = {
             f"products.l2a.{self.config['prod_versions']['l2a']}.rfl.img_path": {"$exists": 1},
             f"products.l2b.{self.config['prod_versions']['l2b']}.min.img_path": {"$exists": 0},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.obs.band_means.solar_zenith": {"$lt": 80},
             date_field: {"$gte": start, "$lte": stop}
         }
         if date_field == "last_modified":
@@ -255,6 +257,7 @@ class DatabaseManager:
             f"products.l2a.{self.config['prod_versions']['l2a']}.rfl.img_path": {"$exists": 1},
             f"products.mask.{self.config['prod_versions']['mask']}.maskTf.img_path": {"$exists": 1},
             f"products.frcov.{self.config['prod_versions']['frcov']}.frcov.img_path": {"$exists": 0},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.obs.band_means.solar_zenith": {"$lt": 80},
             date_field: {"$gte": start, "$lte": stop}
         }
         if date_field == "last_modified":
@@ -280,6 +283,7 @@ class DatabaseManager:
                 {f"products.l3rfl.{self.config['prod_versions']['l3rfl']}.obs.nc_path": {"$exists": 0}},
                 {f"products.l3rfl.{self.config['prod_versions']['l3rfl']}.rfl.png_path": {"$exists": 0}},
             ],
+            f"products.l1b.{self.config['prod_versions']['l1b']}.obs.band_means.solar_zenith": {"$lt": 80},
             date_field: {"$gte": start, "$lte": stop}
         }
         if date_field == "last_modified":
@@ -316,6 +320,7 @@ class DatabaseManager:
             f"products.l1b.{self.config['prod_versions']['l1b']}.loc.img_path": {"$exists": 1},
             f"products.l1b.{self.config['prod_versions']['l1b']}.obs.img_path": {"$exists": 1},
             f"products.l1b.{self.config['prod_versions']['l1b']}.rdn_png.png_path": {"$exists": 1},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.obs.band_means.solar_zenith": {"$lt": 80},
             f"products.mask.{self.config['prod_versions']['mask']}.maskTf.cloud_fraction": {"$exists": 1},
             "daac_scene": {"$exists": 1},
             f"products.l1b.{self.config['prod_versions']['l1b']}.rdn_ummg.ummg_json_path": {"$exists": 0},
@@ -324,15 +329,13 @@ class DatabaseManager:
         if date_field == "last_modified":
             query["start_time"] = {"$gte": self.config["v2_cutover_date"]}
         results = list(acquisitions_coll.find(query))
-        # Also query for case where nighttime science RDN exists
+        # Also query for case where SZA >= 80 which means there will be no maskTf product and no cloud_fraction
         query = {
             f"products.l1b.{self.config['prod_versions']['l1b']}.rdn.img_path": {"$exists": 1},
             f"products.l1b.{self.config['prod_versions']['l1b']}.glt.img_path": {"$exists": 1},
             f"products.l1b.{self.config['prod_versions']['l1b']}.loc.img_path": {"$exists": 1},
             f"products.l1b.{self.config['prod_versions']['l1b']}.obs.img_path": {"$exists": 1},
             f"products.l1b.{self.config['prod_versions']['l1b']}.rdn_png.png_path": {"$exists": 1},
-            f"products.mask.{self.config['prod_versions']['mask']}.maskTf.cloud_fraction": {"$exists": 0},
-            "submode": "science",
             f"products.l1b.{self.config['prod_versions']['l1b']}.obs.band_means.solar_zenith": {"$gte": 80},
             "daac_scene": {"$exists": 1},
             f"products.l1b.{self.config['prod_versions']['l1b']}.rdn_ummg.ummg_json_path": {"$exists": 0},
