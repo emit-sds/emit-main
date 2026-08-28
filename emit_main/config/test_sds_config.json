@@ -84,7 +84,7 @@
         "specpr_path": "/store/shared/spectroscopy-tetracorder/specpr",
         "tetracorder_image_name": "tetracorder-lite",
         "tetracorder_image_tag_name": "v1.0.0",
-        "tetracorder_mineral_grouping_path": "/store/emit/test/repos/tetracorder-lite/tetrapy/data/v6.00a6.csv",
+        "tetracorder_mineral_grouping_path": "/store/emit/test/repos/emit-sds-l2b/data/mineral_id_matrix_v6.00a6.csv",
         "ch4_lut_file": "/store/shared/ghg/dataset_ch4_full.hdf5",
         "co2_lut_file": "/store/shared/ghg/dataset_co2_full.hdf5",
         "unmixing_library": "/store/shared/unmixing_libraries/convex_hull__n_dims_4_unmix_library.csv",
