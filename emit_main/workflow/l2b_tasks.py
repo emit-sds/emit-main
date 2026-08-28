@@ -160,6 +160,7 @@ class L2BMineral(SlurmJobTask):
                             "--software_build_version", wm.config["extended_build_num"],
                             "--history_file", tmp_history_path, 
                             "--daynight", acq.daynight,
+                            "--rfl_file", acq.rfl_img_path,
                             "--log_file", tmp_reformatting_log_path]
         reformat_pge.run(reformat_cmd, tmp_dir=self.tmp_dir, env=env)
         
