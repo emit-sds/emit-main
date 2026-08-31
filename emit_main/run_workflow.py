@@ -30,7 +30,7 @@ from emit_main.workflow.l1a_tasks import L1ADepacketizeScienceFrames, L1AReassem
     L1AFrameReport, L1AReformatBAD, L1ADeliver
 from emit_main.workflow.l1b_tasks import L1BGeolocate, L1BCalibrate, L1BRdnFormat, L1BRdnDeliver, L1BAttDeliver, L1BMosaic
 from emit_main.workflow.l2a_tasks import L2AReflectance, L2AFormat, L2ADeliver, L2AMaskTf, L2AMaskTfFormat, L2AMaskTfDeliver
-from emit_main.workflow.l2b_tasks import L2BMineral, L2BFormat, L2BDeliver, L2BFrCov, L2BFrCovFormat, L2BFrCovDeliver
+from emit_main.workflow.l2b_tasks import L2BMineral, L2BDeliver, L2BFrCov, L2BFrCovFormat, L2BFrCovDeliver
 from emit_main.workflow.ghg_tasks import CH4, CO2, CH4Deliver, CO2Deliver, CH4Mosaic, CO2Mosaic
 from emit_main.workflow.l3_tasks import L3ReflectanceFormat, L3ReflectanceDeliver
 from emit_main.workflow.slurm import SlurmJobTask
@@ -45,7 +45,7 @@ logger = logging.getLogger("emit-main")
 def parse_args():
     product_choices = ["l0hosc", "l0daac", "l0plan", "l0bad", "l1aeng", "l1aframe", "l1araw", "l1aframereport",
                        "l1adaac", "l1abad", "l1bcal", "l1bgeo", "l1brdnformat", "l1brdndaac", "l1battdaac", "l1bmosaic",
-                       "l2arfl", "l2amaskTf", "l2aformat","l2amaskTfformat", "l2adaac", "l2bmin", "l2bformat",
+                       "l2arfl", "l2amaskTf", "l2aformat","l2amaskTfformat", "l2adaac", "l2bmin",
                        "l2bdaac","l2amaskTfdaac", "l2bch4", "l2bco2","l2bch4daac", "l2bco2daac", "l2bch4mosaic",
                        "l2bco2mosaic", "l2bfrcov", "l2bfrcovformat", "l2bfrcovdaac", "l3rflformat", "l3rfldaac",
                        "daacscenes", "recon"]
@@ -229,7 +229,6 @@ def get_tasks_from_product_args(args):
         "l2adaac": lambda acq_id: L2ADeliver(acquisition_id=acq_id, daac_ingest_queue=args.daac_ingest_queue,
                                           override_output=args.override_output, **kwargs),
         "l2bmin": lambda acq_id: L2BMineral(acquisition_id=acq_id, **kwargs),
-        "l2bformat": lambda acq_id: L2BFormat(acquisition_id=acq_id, **kwargs),
         "l2bdaac": lambda acq_id: L2BDeliver(acquisition_id=acq_id, daac_ingest_queue=args.daac_ingest_queue,
                                           override_output=args.override_output, **kwargs),
         "l2bch4": lambda acq_id: CH4(acquisition_id=acq_id, **kwargs),
@@ -255,7 +254,7 @@ def get_tasks_from_product_args(args):
     tasks = []
     for prod in products:
         if prod in {"l1adaac", "l1bcal", "l1brdnformat", "l1brdndaac",
-                    "l2arfl", "l2aformat", "l2adaac", "l2bmin", "l2bformat",
+                    "l2arfl", "l2aformat", "l2adaac", "l2bmin",
                     "l2bdaac", "l2bch4", "l2bch4daac", "l2bco2", "l2bco2daac",
                     "l2bfrcov", "l2amaskTf","l2amaskTfformat",
                     "l2amaskTfdaac", "l2bfrcovformat", "l2bfrcovdaac", 
@@ -369,7 +368,7 @@ def task_failure(task, e):
     data_collection_tasks = ("emit.L1AReassembleRaw", "emit.L1AFrameReport", "emit.CH4Mosaic", "emit.CO2Mosaic", "emit.L1BMosaic")
     acquisition_tasks = ("emit.L1ADeliver", "emit.L1BCalibrate", "emit.L1BRdnFormat", "emit.L1BRdnDeliver",
                          "emit.L2AReflectance", "emit.L2AMaskTf", "emit.L2AFormat", "emit.L2AMaskTfFormat", 
-                         "emit.L2ADeliver", "emit.L2AMaskTfDeliver", "emit.L2BMineral", "emit.L2BFormat", "emit.L2BDeliver", 
+                         "emit.L2ADeliver", "emit.L2AMaskTfDeliver", "emit.L2BMineral", "emit.L2BDeliver", 
                          "emit.L2BFrCov", "emit.L2BFrCovFormat", "emit.L2BFrCovDeliver", 
                          "emit.CH4", "emit.CO2", "emit.CH4Deliver", "emit.CO2Deliver", "emit.L3ReflectanceFormat",
                          "emit.L3ReflectanceDeliver")

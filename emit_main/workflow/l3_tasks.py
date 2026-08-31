@@ -67,6 +67,7 @@ class L3ReflectanceFormat(SlurmJobTask):
         tmp_daac_rfl_unc_nc_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l3_rfl_unc.nc")
         tmp_daac_obs_nc_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l3_obs.nc")
         tmp_daac_browse_png_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l3_rfl.png")
+        tmp_daac_rfl_sidecar_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l3_rfl.json")
 
         tmp_log_path = os.path.join(self.local_tmp_dir, "output_conversion_pge.log")
 
@@ -89,7 +90,8 @@ class L3ReflectanceFormat(SlurmJobTask):
                "--chunksize 10 256 256",
                "--compress",
                "--complevel 1",
-               "--max_workers 16"]
+               "--max_workers 16",
+               "--sidecar"]
 
         # Run this inside the emit-l3rfl conda environment will need to include emit-utils and other requirements
         main_pge = wm.pges["emit-sds-l3rfl"]
@@ -97,10 +99,12 @@ class L3ReflectanceFormat(SlurmJobTask):
 
         # Copy and rename output files back to /store
         log_path = acq.l3rfl_nc_path.replace(".nc", "_nc_pge.log")
+        rfl_sidecar_path = acq.l3rfl_nc_path.replace(".nc", ".sidecar.json")
         wm.copy(tmp_daac_rfl_nc_path, acq.l3rfl_nc_path)
         wm.copy(tmp_daac_rfl_unc_nc_path, acq.l3rfluncert_nc_path)
         wm.copy(tmp_daac_obs_nc_path, acq.l3obs_nc_path)
         wm.copy(tmp_daac_browse_png_path, acq.l3rfl_png_path)
+        wm.copy(tmp_daac_rfl_sidecar_path, rfl_sidecar_path)
 
         wm.copy(tmp_log_path, log_path)
 
@@ -111,6 +115,7 @@ class L3ReflectanceFormat(SlurmJobTask):
             "netcdf_l3rfl_path": acq.l3rfl_nc_path,
             "netcdf_l3rfl_unc_path": acq.l3rfluncert_nc_path,
             "netcdf_l3obs_path": acq.l3obs_nc_path,
+            "json_l3rflsidecar_path": rfl_sidecar_path,
             "created": nc_creation_time
         }
         dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l3rfl.{wm.config['prod_versions']['l3rfl']}.rfl_netcdf": product_dict_netcdf})
@@ -139,7 +144,8 @@ class L3ReflectanceFormat(SlurmJobTask):
                 "l3_rfl_netcdf_path": acq.l3rfl_nc_path,
                 "l3_rfl_unc_netcdf_path": acq.l3rfluncert_nc_path,
                 "l3_obs_netcdf_path": acq.l3obs_nc_path,
-                "l3_rfl_png_path": acq.l3rfl_png_path
+                "l3_rfl_png_path": acq.l3rfl_png_path,
+                "l3_rfl_sidecar_path": rfl_sidecar_path
             }
         }
 
@@ -196,18 +202,22 @@ class L3ReflectanceDeliver(SlurmJobTask):
         daac_rfl_nc_name = f"{acq.l3rfl_granule_ur}.nc"
         daac_rfluncert_nc_name = f"{acq.l3rfluncert_granule_ur}.nc"
         daac_obs_nc_name = f"{acq.l3obs_granule_ur}.nc"
+        daac_rflsidecar_name = f"{acq.l3rfl_granule_ur}.sidecar.json"
         daac_rflbrowse_name = f"{acq.l3rfl_granule_ur}.png"
         daac_ummg_name = f"{acq.l3rfl_granule_ur}.cmr.json"
         daac_rfl_nc_path = os.path.join(self.tmp_dir, daac_rfl_nc_name)
         daac_rfluncert_nc_path = os.path.join(self.tmp_dir, daac_rfluncert_nc_name)
         daac_obs_nc_path = os.path.join(self.tmp_dir, daac_obs_nc_name)
+        daac_rflsidecar_path = os.path.join(self.tmp_dir, daac_rflsidecar_name)
         daac_rflbrowse_path = os.path.join(self.tmp_dir, daac_rflbrowse_name)
         daac_ummg_path = os.path.join(self.tmp_dir, daac_ummg_name)
 
         # Copy files to tmp dir and rename
+        rfl_sidecar_path = acq.l3rfl_nc_path.replace(".nc", ".sidecar.json")
         wm.copy(acq.l3rfl_nc_path, daac_rfl_nc_path)
         wm.copy(acq.l3rfluncert_nc_path, daac_rfluncert_nc_path)
         wm.copy(acq.l3obs_nc_path, daac_obs_nc_path)
+        wm.copy(rfl_sidecar_path, daac_rflsidecar_path)
         wm.copy(acq.l3rfl_png_path, daac_rflbrowse_path)
 
         # Get the software_build_version (extended build num when product was created)
@@ -236,9 +246,9 @@ class L3ReflectanceDeliver(SlurmJobTask):
                                               cloud_cover=cloud_cover)
         ummg = daac_converter.add_data_files_ummg(
             ummg,
-            [daac_rfl_nc_path, daac_rfluncert_nc_path, daac_obs_nc_path, daac_rflbrowse_path],
+            [daac_rfl_nc_path, daac_rfluncert_nc_path, daac_obs_nc_path, daac_rflsidecar_path, daac_rflbrowse_path],
             acq.daynight,
-            ["NETCDF-4", "NETCDF-4", "NETCDF-4", "PNG"])
+            ["NETCDF-4", "NETCDF-4", "NETCDF-4", "JSON", "PNG"])
         ummg = daac_converter.add_boundary_ummg(ummg, acq.gring)
         daac_converter.dump_json(ummg, ummg_path)
         wm.change_group_ownership(ummg_path)
@@ -247,7 +257,7 @@ class L3ReflectanceDeliver(SlurmJobTask):
         wm.copy(ummg_path, daac_ummg_path)
 
         # Copy files to S3 for staging
-        for path in (daac_rfl_nc_path, daac_rfluncert_nc_path, daac_obs_nc_path, daac_rflbrowse_path, daac_ummg_path):
+        for path in (daac_rfl_nc_path, daac_rfluncert_nc_path, daac_obs_nc_path, daac_rflsidecar_path, daac_rflbrowse_path, daac_ummg_path):
             cmd_aws_s3 = ["ssh", "ngishpc1", "'" + wm.config["aws_cli_exe"], "s3", "cp", path, acq.aws_s3_uri_base,
                           "--profile", wm.config["aws_profile"] + "'"]
             pge.run(cmd_aws_s3, tmp_dir=self.tmp_dir)
@@ -260,6 +270,7 @@ class L3ReflectanceDeliver(SlurmJobTask):
             daac_rfl_nc_name: os.path.basename(acq.l3rfl_nc_path),
             daac_rfluncert_nc_name: os.path.basename(acq.l3rfluncert_nc_path),
             daac_obs_nc_name: os.path.basename(acq.l3obs_nc_path),
+            daac_rflsidecar_name: os.path.basename(rfl_sidecar_path),
             daac_rflbrowse_name: os.path.basename(acq.l3rfl_png_path),
             daac_ummg_name: os.path.basename(ummg_path)
         }
@@ -300,6 +311,14 @@ class L3ReflectanceDeliver(SlurmJobTask):
                         "size": os.path.getsize(daac_obs_nc_name),
                         "checksumType": "sha512",
                         "checksum": daac_converter.calc_checksum(daac_obs_nc_path, "sha512")
+                    },
+                    {
+                        "name": daac_rflsidecar_name,
+                        "uri": acq.aws_s3_uri_base + daac_rflsidecar_name,
+                        "type": "data",
+                        "size": os.path.getsize(daac_rflsidecar_path),
+                        "checksumType": "sha512",
+                        "checksum": daac_converter.calc_checksum(daac_rflsidecar_path, "sha512")
                     },
                     {
                         "name": daac_rflbrowse_name,
@@ -382,6 +401,7 @@ class L3ReflectanceDeliver(SlurmJobTask):
                 "l3rfl_netcdf_path": acq.l3rfl_nc_path,
                 "l3rfluncert_netcdf_path": acq.l3rfluncert_nc_path,
                 "l3obs_netcdf_path": acq.l3obs_nc_path,
+                "l3rfl_sidecar_path": rfl_sidecar_path,
                 "l3rfl_png_path": acq.l3rfl_png_path
             },
             "pge_run_command": " ".join(cmd_aws),

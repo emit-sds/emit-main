@@ -406,7 +406,7 @@ class DatabaseManager:
             query["start_time"] = {"$gte": self.config["v2_cutover_date"]}
         results = list(acquisitions_coll.find(query))
         if not retry_failed:
-            results = self._remove_results_with_failed_tasks(results, ["emit.L2BFormat", "emit.L2BDeliver"])
+            results = self._remove_results_with_failed_tasks(results, ["emit.L2BDeliver"])
         return results
 
     def find_acquisitions_for_ch4_delivery(self, start, stop, date_field="last_modified", retry_failed=False):

@@ -150,7 +150,6 @@ class L2BMineral(SlurmJobTask):
         tmp_history_path = os.path.join(tmp_output_dir, "history.txt")
         with open(tmp_history_path, "w") as f:
             f.write(history)
-        tetracorder_lite_pge = wm.pges["tetracorder-lite"]
 
         reformat_cmd = ["python", output_generator_exe, tmp_daac_nc_min_path, tmp_daac_nc_minuncert_path,
                             tmp_min_path, tmp_min_unc_path, acq.loc_img_path, acq.glt_img_path, wm.config["tetracorder_mineral_grouping_path"],
@@ -171,21 +170,6 @@ class L2BMineral(SlurmJobTask):
         wm.copy(tmp_quicklook_path, acq.min_png_path)
         wm.copy(tmp_tetrapy_log_path, log_path)
         wm.copy(tmp_config_path, acq.min_nc_path.replace(".nc", "_runconfig.yml"))
-
-        # # Update NetCDF metadata
-        # input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
-        # doc_version = "EMIT SDS L2B JPL-D 104237, Rev A"
-        # for nc_path in [acq.min_nc_path, acq.minuncert_nc_path]:
-        #     nc_ds = Dataset(nc_path, "r+")
-        #     nc_ds.flight_line = acq.acquisition_id
-        #     nc_ds.time_coverage_start = acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
-        #     nc_ds.time_coverage_end = acq.stop_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
-        #     nc_ds.software_build_version = wm.config["extended_build_num"]
-        #     nc_ds.product_version = "V0" + wm.config["prod_versions"]["l2b"]
-        #     run_command = "PGE Run Command: {" + " ".join(cmd) + ", " + " ".join(agg_cmd) + "}"
-        #     input_files = "PGE Input Files: {" + ", ".join(input_files_arr) + "}"
-        #     nc_ds.history = run_command + ", " + input_files
-        #     nc_ds.day_night_flag = acq.daynight
             
         creation_time = datetime.datetime.fromtimestamp(
             os.path.getmtime(acq.min_nc_path), tz=datetime.timezone.utc)
@@ -229,100 +213,6 @@ class L2BMineral(SlurmJobTask):
         dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
 
 
-class L2BFormat(SlurmJobTask):
-    """
-    Converts L2B (mineral identification, band depth, and uncertainty) to netcdf files
-    :returns: L2B netcdf output for delivery
-    """
-
-    config_path = luigi.Parameter()
-    acquisition_id = luigi.Parameter()
-    level = luigi.Parameter()
-    partition = luigi.Parameter()
-
-    memory = 18000
-
-    task_namespace = "emit"
-
-    def requires(self):
-        logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
-        return None
-
-    def output(self):
-        logger.debug(f"{self.task_family} output: {self.acquisition_id}")
-        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family,
-                                 product_version=wm.config["prod_versions"]["l2b"])
-
-    def work(self):
-        
-        pge_start_time = time.time()
-        logger.debug(f"{self.task_family} work: {self.acquisition_id}")
-
-        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        acq = wm.acquisition
-
-        pge = wm.pges["emit-sds-l2b"]
-
-        output_generator_exe = os.path.join(pge.repo_dir, "group_output_conversion.py")
-        tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
-        wm.makedirs(tmp_output_dir)
-        tmp_daac_nc_min_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l2b_min.nc")
-        tmp_daac_nc_minuncert_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l2b_minuncert.nc")
-        tmp_log_path = os.path.join(self.local_tmp_dir, "output_conversion_pge.log")
-
-        env = os.environ.copy()
-        emit_utils_pge = wm.pges["emit-utils"]
-        env["PYTHONPATH"] = f"$PYTHONPATH:{emit_utils_pge.repo_dir}"
-        cmd = ["python", output_generator_exe, tmp_daac_nc_min_path, tmp_daac_nc_minuncert_path,
-               acq.min_img_path, acq.minuncert_img_path, acq.loc_img_path, acq.glt_img_path,
-               "V0" + str(wm.config["prod_versions"]["l2b"]), wm.config["extended_build_num"],
-               "--log_file", tmp_log_path]
-        pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
-
-        # Copy and rename output files back to /store
-        log_path = acq.min_nc_path.replace(".nc", "_nc_pge.log")
-        wm.copy(tmp_daac_nc_min_path, acq.min_nc_path)
-        wm.copy(tmp_daac_nc_minuncert_path, acq.minuncert_nc_path)
-        wm.copy(tmp_log_path, log_path)
-
-        # PGE writes metadata to db
-        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.min_nc_path), tz=datetime.timezone.utc)
-        dm = wm.database_manager
-        product_dict_netcdf = {
-            "netcdf_min_path": acq.min_nc_path,
-            "netcdf_minuncert_path": acq.minuncert_nc_path,
-            "created": nc_creation_time
-        }
-        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l2b.{wm.config['prod_versions']['l2b']}.min_netcdf": product_dict_netcdf})
-
-        total_time = time.time() - pge_start_time
-        log_entry = {
-            "task": self.task_family,
-            "pge_name": pge.repo_url,
-            "pge_version": pge.version_tag,
-            "pge_input_files": {
-                "min_img_path": acq.min_img_path,
-                "minuncert_img_path": acq.minuncert_img_path,
-                "loc_img_path": acq.loc_img_path,
-                "glt_img_path": acq.glt_img_path
-            },
-            "pge_run_command": " ".join(cmd),
-            "documentation_version": "TBD",
-            "product_creation_time": nc_creation_time,
-            "pge_runtime_seconds": total_time,
-            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
-            "completion_status": "SUCCESS",
-            "product_version": wm.config["prod_versions"]["l2b"],
-            "output": {
-                "l2b_min_netcdf_path": acq.min_nc_path,
-                "l2b_minuncert_netcdf_path": acq.minuncert_nc_path
-            }
-        }
-
-        dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
-
-
 class L2BDeliver(SlurmJobTask):
     """
     Stages NetCDF and UMM-G files and submits notification to DAAC interface
@@ -343,8 +233,7 @@ class L2BDeliver(SlurmJobTask):
     def requires(self):
 
         logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
-        return L2BFormat(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
-                         partition=self.partition)
+        return None
 
     def output(self):
 
@@ -380,14 +269,18 @@ class L2BDeliver(SlurmJobTask):
         daac_browse_path = os.path.join(self.tmp_dir, daac_browse_name)
         daac_ummg_path = os.path.join(self.tmp_dir, daac_ummg_name)
 
+        # Update NetCDF with software_delivery_version and get software_build_version
+        for nc_path in (acq.min_nc_path, acq.minuncert_nc_path):
+            nc_ds = Dataset(nc_path, 'r+')
+            software_build_version = nc_ds.software_build_version
+            nc_ds.software_delivery_version = wm.config["extended_build_num"]
+            nc_ds.sync()
+            nc_ds.close()
+
         # Copy files to tmp dir and rename
         wm.copy(acq.min_nc_path, daac_min_nc_path)
         wm.copy(acq.minuncert_nc_path, daac_minuncert_nc_path)
         wm.copy(acq.min_png_path, daac_browse_path)
-
-        # Get the software_build_version (extended build num when product was created)
-        hdr = envi.read_envi_header(acq.min_hdr_path)
-        software_build_version = hdr["emit software build version"]
 
         # Use a cloud fraction that sums the nodata fraction (clouds screened on board) and the cloud fraction value
         # from the maskTf step.  These fractions are rounded separately.  Use min to ensure it doesn't go over 100.
