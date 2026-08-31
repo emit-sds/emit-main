@@ -105,10 +105,9 @@ class WorkflowManager:
         for d in dirs:
             self.makedirs(d)
 
-        # Build paths for DAAC delivery on staging server
-        self.daac_recon_staging_dir = os.path.join(self.config["daac_base_dir"], self.config['environment'], "reconciliation")
-        self.daac_recon_uri_base = f"https://{self.config['daac_server_external']}/emit/lpdaac/{self.config['environment']}/reconciliation/"
-        self.daac_partial_dir = os.path.join(self.config["daac_base_dir"], self.config['environment'], "partial_transfers")
+        # Build paths for DAAC reconciliation on S3
+        self.s3_recon_staging_dir = os.path.join(self.config["aws_s3_base_dir"], self.config['environment'], "reconciliation")
+        self.s3_recon_uri_base = f"s3://{self.config['aws_s3_bucket']}{self.s3_recon_staging_dir}/"
 
         # Create repository paths and PGEs based on build config
         self.pges = {}
