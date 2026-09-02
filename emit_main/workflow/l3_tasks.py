@@ -64,7 +64,7 @@ class L3ReflectanceFormat(SlurmJobTask):
         tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
         wm.makedirs(tmp_output_dir)
         tmp_daac_rfl_nc_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l3_rfl.nc")
-        tmp_daac_rfl_unc_nc_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l3_rflunc.nc")
+        tmp_daac_rfl_unc_nc_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l3_rfluncert.nc")
         tmp_daac_obs_nc_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l3_obs.nc")
         tmp_daac_browse_png_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l3_rfl.png")
         tmp_daac_rfl_sidecar_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l3_rfl.json")
