@@ -96,7 +96,6 @@ def main():
                 # Append to updates for bulk write
                 updated_fields = {
                     "products": products_new,
-                    "products_bak": products_old
                 }
                 # pdb.set_trace()
                 updates.append(
@@ -108,8 +107,21 @@ def main():
         
         # Bulk write
         if updates and args.update_db:
-            result = streams_coll.bulk_write(updates)
-            print(f"Updated streams collection:\n{result}")
+            chunk_size = 5000
+            total_modified = 0
+            total_matched = 0
+            total_upserted = 0
+
+            for i in range(0, len(updates), chunk_size):
+                chunk = updates[i : i + chunk_size]
+                result = streams_coll.bulk_write(chunk, ordered=False)
+                
+                total_modified += result.modified_count
+                total_matched += result.matched_count
+                total_upserted += result.upserted_count
+
+            print(f"Updated streams collection:")
+            print(f"Matched: {total_matched}, Modified: {total_modified}, Upserted: {total_upserted}")
 
     # Update data_collections collection
     if "dc" in args.collections:
@@ -152,7 +164,6 @@ def main():
 
                 # Append to updates for bulk write
                 updated_fields["products"] = products_new
-                updated_fields["products_bak"] = products_old
 
             # Add product versions to frames_status, ch4_status, co2_status, and ready_for_l1b_mosaic
             status_versions = {
@@ -168,7 +179,6 @@ def main():
                         status_versions[status]: status_old
                     }
                     updated_fields[status] = status_new
-                    updated_fields[f"{status}_bak"] = status_old
                 
             if len(updated_fields) > 0:
                 # pdb.set_trace()
@@ -181,8 +191,21 @@ def main():
         
         # Bulk write
         if updates and args.update_db:
-            result = dc_coll.bulk_write(updates)
-            print(f"Updated data_collections collection:\n{result}")
+            chunk_size = 3000
+            total_modified = 0
+            total_matched = 0
+            total_upserted = 0
+
+            for i in range(0, len(updates), chunk_size):
+                chunk = updates[i : i + chunk_size]
+                result = dc_coll.bulk_write(chunk, ordered=False)
+                
+                total_modified += result.modified_count
+                total_matched += result.matched_count
+                total_upserted += result.upserted_count
+
+            print(f"Updated data_collections collection:")
+            print(f"Matched: {total_matched}, Modified: {total_modified}, Upserted: {total_upserted}")
 
     # Update orbits collection
     if "o" in args.collections:
@@ -215,7 +238,6 @@ def main():
 
                 # Append to updates for bulk write
                 updated_fields["products"] = products_new
-                updated_fields["products_bak"] = products_old
 
             # Add product versions to bad_status, raw_status, and radiance_status
             status_versions = {
@@ -230,7 +252,6 @@ def main():
                         status_versions[status]: status_old
                     }
                     updated_fields[status] = status_new
-                    updated_fields[f"{status}_bak"] = status_old
                 
             if len(updated_fields) > 0:
                 # pdb.set_trace()
@@ -243,8 +264,21 @@ def main():
         
         # Bulk write
         if updates and args.update_db:
-            result = orbits_coll.bulk_write(updates)
-            print(f"Updated orbits collection:\n{result}")
+            chunk_size = 5000
+            total_modified = 0
+            total_matched = 0
+            total_upserted = 0
+
+            for i in range(0, len(updates), chunk_size):
+                chunk = updates[i : i + chunk_size]
+                result = orbits_coll.bulk_write(chunk, ordered=False)
+                
+                total_modified += result.modified_count
+                total_matched += result.matched_count
+                total_upserted += result.upserted_count
+
+            print(f"Updated orbits collection:")
+            print(f"Matched: {total_matched}, Modified: {total_modified}, Upserted: {total_upserted}")
 
     # Update acquisitions collection
     if "a" in args.collections:
@@ -330,7 +364,6 @@ def main():
 
                 # Append to updates for bulk write
                 updated_fields["products"] = products_new
-                updated_fields["products_bak"] = products_old
                 
             if len(updated_fields) > 0:
                 # if updated_fields["products_bak"].get("frcov") and updated_fields["products_bak"].get("l3"):
@@ -345,38 +378,24 @@ def main():
         
         # Bulk write
         if updates and args.update_db:
-            result = acqs_coll.bulk_write(updates)
-            print(f"Updated acquisitions collection:\n{result}")
+            chunk_size = 3000
+            total_modified = 0
+            total_matched = 0
+            total_upserted = 0
+
+            for i in range(0, len(updates), chunk_size):
+                chunk = updates[i : i + chunk_size]
+                result = acqs_coll.bulk_write(chunk, ordered=False)
+                
+                total_modified += result.modified_count
+                total_matched += result.matched_count
+                total_upserted += result.upserted_count
+
+            print(f"Updated acquisitions collection:")
+            print(f"Matched: {total_matched}, Modified: {total_modified}, Upserted: {total_upserted}")
+
     
     print("Finished executing script")
-
-    # Fix a bad update:
-
-    # db.streams.updateMany({products_bak: {$exists: 1}}, {$unset: {"products": 1}})
-    # db.streams.updateMany({products_bak: {$exists: 1}}, {$rename: {"products_bak": "products"}})
-
-    # db.data_collections.updateMany({products_bak: {$exists: 1}}, {$unset: {"products": 1}})
-    # db.data_collections.updateMany({products_bak: {$exists: 1}}, {$rename: {"products_bak": "products"}})
-    # db.data_collections.updateMany({frames_status_bak: {$exists: 1}}, {$unset: {"frames_status": 1}})
-    # db.data_collections.updateMany({frames_status_bak: {$exists: 1}}, {$rename: {"frames_status_bak": "frames_status"}})
-    # db.data_collections.updateMany({ch4_status_bak: {$exists: 1}}, {$unset: {"ch4_status": 1}})
-    # db.data_collections.updateMany({ch4_status_bak: {$exists: 1}}, {$rename: {"ch4_status_bak": "ch4_status"}})
-    # db.data_collections.updateMany({co2_status_bak: {$exists: 1}}, {$unset: {"co2_status": 1}})
-    # db.data_collections.updateMany({co2_status_bak: {$exists: 1}}, {$rename: {"co2_status_bak": "co2_status"}})
-    # db.data_collections.updateMany({ready_for_l1b_mosaic_bak: {$exists: 1}}, {$unset: {"ready_for_l1b_mosaic": 1}})
-    # db.data_collections.updateMany({ready_for_l1b_mosaic_bak: {$exists: 1}}, {$rename: {"ready_for_l1b_mosaic_bak": "ready_for_l1b_mosaic"}})
-
-    # db.orbits.updateMany({products_bak: {$exists: 1}}, {$unset: {"products": 1}})
-    # db.orbits.updateMany({products_bak: {$exists: 1}}, {$rename: {"products_bak": "products"}})
-    # db.orbits.updateMany({bad_status_bak: {$exists: 1}}, {$unset: {"bad_status": 1}})
-    # db.orbits.updateMany({bad_status_bak: {$exists: 1}}, {$rename: {"bad_status_bak": "bad_status"}})
-    # db.orbits.updateMany({raw_status_bak: {$exists: 1}}, {$unset: {"raw_status": 1}})
-    # db.orbits.updateMany({raw_status_bak: {$exists: 1}}, {$rename: {"raw_status_bak": "raw_status"}})
-    # db.orbits.updateMany({radiance_status_bak: {$exists: 1}}, {$unset: {"radiance_status": 1}})
-    # db.orbits.updateMany({radiance_status_bak: {$exists: 1}}, {$rename: {"radiance_status_bak": "radiance_status"}})
-
-    # db.acquisitions.updateMany({products_bak: {$exists: 1}}, {$unset: {"products": 1}})
-    # db.acquisitions.updateMany({products_bak: {$exists: 1}}, {$rename: {"products_bak": "products"}})
 
 
 if __name__ == '__main__':

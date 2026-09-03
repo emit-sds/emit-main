@@ -72,59 +72,70 @@
             "frcov": "02",
             "l3rfl": "02"
         },
-        "v2_cutover_date_str": "2026-04-01T00:00:00",
+        "v2_cutover_date_str": "2026-09-03T00:00:00",
         "decompression_constants_path": "/store/emit/dev/repos/emit-sds-l1a/decompression/constants.txt",
         "decompression_init_data_path": "/store/emit/dev/repos/emit-sds-l1a/decompression/FPGA_Data_Initialization_File_CREATE_COMPRESSION_INIT_DATA_328_e0.bin",
-        "l1b_geo_install_dir": "/store/emit/ops/repos/emit_l1b_geo_installs/1.6.29",
-        "l1b_geo_osp_dir": "/store/emit/ops/repos/emit_l1b_osp_installs/1.6.29",
-        "isofit_surface_config": "/store/emit/dev/repos/emit-sds-l2a/surface/surface_20240103.json",
-        "isofit_emulator_base": "/store/shared/sRTMnet/sRTMnet_v120.h5",
-        "isofit_sixs_dir": "/store/shared/sixs",
+        "l1b_geo_install_dir": "/store/emit/ops/repos/emit_l1b_geo_installs/2.0.0",
+        "l1b_geo_osp_dir": "/store/emit/ops/repos/emit_l1b_osp_installs/2.0.0",
+        "isofit_surface_config": "/store/emit/dev/repos/emit-sds-l2a/surface/surface_20260113.json",
+        "isofit_emulator_base": "/store/shared/sRTMnet/20251206_6c_5layer_-1.6c",
+        "isofit_sixs_dir": "/store/shared/6sv_multipart_transm/Sixs/",
         "isofit_ini_path": "/store/emit/dev/resources/.isofit/isofit.ini",
         "specpr_path": "/store/shared/spectroscopy-tetracorder/specpr",
-        "tetracorder_path": "/store/shared/spectroscopy-tetracorder/tetracorder5.27",
-        "tetracorder_cmds_path": "/store/shared/tetracorder5.27c.cmds",
-        "tetracorder_library_dir": "/store/shared/tetracorder_libraries",
-        "mineral_matrix_name": "mineral_grouping_matrix_20230503.csv",
-        "tetracorder_config_filename": "cmd.lib.setup.t5.27d1",
+        "tetracorder_image_name": "tetracorder-lite",
+        "tetracorder_image_tag_name": "pr-26",
+        "tetracorder_mineral_grouping_path": "/store/emit/dev/repos/emit-sds-l2b/data/mineral_id_matrix_v6.00a6.csv",
         "ch4_lut_file": "/store/shared/ghg/dataset_ch4_full.hdf5",
         "co2_lut_file": "/store/shared/ghg/dataset_co2_full.hdf5",
         "unmixing_library": "/store/shared/unmixing_libraries/convex_hull__n_dims_4_unmix_library.csv",
         "mirror_data_dir": "/data/emit/dev/data",
         "date_ranges": {
-            "2022-08-10T00:00:00_to_2024-02-20T00:00:00": {
+            "2022-08-10T00:00:00_to_2022-12-01T00:00:00": {
+                "frame_hdr_format": "1.0",
+                "l1b_config_path": "/store/emit/dev/repos/emit-sds-l1b/config/EMIT_20260105a.json",
+                "prebuilt_lut_path": "/store/shared/sRTMnet/prebuilt_emit_wl/EMIT_Wavelengths_20260616_20220813-20221201.zarr",
                 "tetracorder_library_basename": "em2208a",
                 "tetracorder_library_cmdname": "em2208a",
-                "l1b_config_path": "/store/emit/dev/repos/emit-sds-l1b/config/EMIT_20230119.json",
-                "frame_hdr_format": "1.0",
-                "config_comments": "Post-IOC calibration solution to be applied to all scenes going back to the start of the mission."
+                "config_comments": "Post-FPA position adjustments, with channel clipping. There was an FPA tilt update on 13 August 2022. Radiometry for this time range updated Jan 2026, wavelengths updated June 2026."
             },
-            "2024-02-20T00:00:00_to_2024-08-18T00:00:00": {
+            "2022-12-01T00:00:00_to_2023-05-01T00:00:00": {
+                "frame_hdr_format": "1.0",
+                "l1b_config_path": "/store/emit/dev/repos/emit-sds-l1b/config/EMIT_20260105b.json",
+                "prebuilt_lut_path": "/store/shared/sRTMnet/prebuilt_emit_wl/EMIT_Wavelengths_20260616_20221201-20230501.zarr",
                 "tetracorder_library_basename": "em2402a",
                 "tetracorder_library_cmdname": "em2402a",
-                "l1b_config_path": "/store/emit/dev/repos/emit-sds-l1b/config/EMIT_20240227.json",
-                "frame_hdr_format": "1.0",
-                "config_comments": "Calibration change in response to FSW reboot on 2024-02-19T12:38:13Z."
+                "config_comments": "Wavelength solution after extended down period, based on June 2026 wavelength solve.  Radiometry for this time range updated Jan 2026."
             },
-            "2024-08-18T00:00:00_to_2025-07-13T16:25:00": {
+            "2023-05-01T00:00:00_to_2024-02-18T00:00:00": {
+                "frame_hdr_format": "1.0",
+                "l1b_config_path": "/store/emit/dev/repos/emit-sds-l1b/config/EMIT_20260105c.json",
+                "prebuilt_lut_path": "/store/shared/sRTMnet/prebuilt_emit_wl/EMIT_Wavelengths_20260616_20230501-20240218.zarr",
                 "tetracorder_library_basename": "em2410a",
                 "tetracorder_library_cmdname": "em2410a",
-                "l1b_config_path": "/store/emit/dev/repos/emit-sds-l1b/config/EMIT_20241025.json",
-                "frame_hdr_format": "1.0",
-                "config_comments": "Calibration change in response to FUBAR anomaly on 2024-08-17T19:30:45Z."
+                "config_comments": "Wavelength solution from longterm trend, based on June 2026 wavelength solve.  Radiometry for this time range updated Jan 2026."
             },
-            "2025-07-13T16:25:00_to_2025-10-07T18:10:00": {
+            "2024-02-18T00:00:00_to_2024-08-18T00:00:00": {
+                "frame_hdr_format": "1.0",
+                "l1b_config_path": "/store/emit/dev/repos/emit-sds-l1b/config/EMIT_20260105d.json",
+                "prebuilt_lut_path": "/store/shared/sRTMnet/prebuilt_emit_wl/EMIT_Wavelengths_20260616_20240218-20260503.zarr",
                 "tetracorder_library_basename": "em2507a",
                 "tetracorder_library_cmdname": "em2507a",
-                "l1b_config_path": "/store/emit/dev/repos/emit-sds-l1b/config/EMIT_20250721.json",
+                "config_comments": "Wavelength solution from longterm trend, based on June 2026 wavelength solve.  Radiometry for this time range updated Jan 2026."
+            },
+            "2024-08-18T00:00:00_to_2025-10-07T18:10:00": {
                 "frame_hdr_format": "1.0",
-                "config_comments": "Calibration change in response to anomaly on 2025-07-13T16:25:00Z."
+                "l1b_config_path": "/store/emit/dev/repos/emit-sds-l1b/config/EMIT_20260105e.json",
+                "prebuilt_lut_path": "/store/shared/sRTMnet/prebuilt_emit_wl/EMIT_Wavelengths_20260616_20240218-20260503.zarr",
+                "tetracorder_library_basename": "em2507a",
+                "tetracorder_library_cmdname": "em2507a",
+                "config_comments": "New wavelength solution after thermal cycle.  New flat field update to calibrate out localized [contamination?].  Radiometry updated in Jan 2026."
             },
             "2025-10-07T18:10:00_to_2030-01-01T00:00:00": {
+                "frame_hdr_format": "1.5",
+                "l1b_config_path": "/store/emit/dev/repos/emit-sds-l1b/config/EMIT_20260105e.json",
+                "prebuilt_lut_path": "/store/shared/sRTMnet/prebuilt_emit_wl/EMIT_Wavelengths_20260616_20240218-20260503.zarr",
                 "tetracorder_library_basename": "em2507a",
                 "tetracorder_library_cmdname": "em2507a",
-                "l1b_config_path": "/store/emit/dev/repos/emit-sds-l1b/config/EMIT_20250721.json",
-                "frame_hdr_format": "1.5",
                 "config_comments": "Update frame header to version 1.5 to match FSW v1.5.0 uplink."
             }
         }
