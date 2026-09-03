@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v2.0.0](https://github.com/emit-sds/emit-main/compare/v1.6.35...v2.0.0)
+
+> 3 September 2026
+
+* L3 Reflectance and run time logging by @adamchlus in https://github.com/emit-sds/emit-main/pull/105
+* V2 reprocessing by @winstonolson in https://github.com/emit-sds/emit-main/pull/106
+* Set ray and GDAL temporary directory paths by @adamchlus in https://github.com/emit-sds/emit-main/pull/104
+* Tracking json updates by @adamchlus in https://github.com/emit-sds/emit-main/pull/107
+* Update test config with new calibration epochs and variable names by @winstonolson in https://github.com/emit-sds/emit-main/pull/108
+* V2 L2A, L2B, and L3 Updates by @winstonolson in https://github.com/emit-sds/emit-main/pull/111
+* V2 pge updates by @pgbrodrick in https://github.com/emit-sds/emit-main/pull/112
+* Replace get_gring_boundary_points with get_gring_from_loc by @adamchlus in https://github.com/emit-sds/emit-main/pull/113
+* updates for masking and naming in l2b by @pgbrodrick in https://github.com/emit-sds/emit-main/pull/114
+* change rfl_unc to rflunc by @pgbrodrick in https://github.com/emit-sds/emit-main/pull/115
+* name patch by @pgbrodrick in https://github.com/emit-sds/emit-main/pull/116
+
 #### [v1.6.35](https://github.com/emit-sds/emit-main/compare/v1.6.34...v1.6.35)
 
 > 19 March 2026
