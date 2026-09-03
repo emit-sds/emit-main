@@ -42,6 +42,7 @@ class L2BMineral(SlurmJobTask):
     partition = luigi.Parameter()
 
     memory = 30000
+    n_cores = 6
 
     task_namespace = "emit"
 
@@ -88,10 +89,7 @@ class L2BMineral(SlurmJobTask):
         wm.copy(acq.rfl_hdr_path, os.path.join(tmp_data_dir, os.path.basename(acq.rfl_hdr_path)))
         wm.copy(acq.rfluncert_img_path, os.path.join(tmp_data_dir, tmp_rfluncert_basename))
         wm.copy(acq.rfluncert_hdr_path, os.path.join(tmp_data_dir, os.path.basename(acq.rfluncert_hdr_path)))
-        # wm.copy(acq.loc_img_path, os.path.join(tmp_data_dir, os.path.basename(acq.loc_img_path)))
-        # wm.copy(acq.loc_hdr_path, os.path.join(tmp_data_dir, os.path.basename(acq.loc_hdr_path)))
-        # wm.copy(acq.glt_img_path, os.path.join(tmp_data_dir, os.path.basename(acq.glt_img_path)))
-        # wm.copy(acq.glt_hdr_path, os.path.join(tmp_data_dir, os.path.basename(acq.glt_hdr_path)))
+
         # Create config file
         config_template = os.path.join(wm.pges["tetracorder-lite"].repo_dir, "config.yml")
         tmp_config_path = os.path.join(tmp_data_dir, "config.yml")
@@ -99,8 +97,6 @@ class L2BMineral(SlurmJobTask):
             config = yaml.safe_load(f)
         config["data"]["rfl"] = f"/data/{tmp_rfl_basename}"
         config["data"]["rfluncert"] = f"/data/{tmp_rfluncert_basename}"
-        # config["data"]["loc"] = f"/data/{os.path.basename(acq.loc_img_path)}"
-        # config["data"]["glt"] = f"/data/{os.path.basename(acq.glt_img_path)}"
         config["output"]["base"] = "/output"
         with open(tmp_config_path, "w") as f:
             yaml.safe_dump(config, f, sort_keys=False)
@@ -117,12 +113,15 @@ class L2BMineral(SlurmJobTask):
                "podman", "run",
                "--rm",
                "--name", self.task_instance_id,
+               "-e", f"OMP_NUM_THREADS={self.n_cores}",
+               "-e", f"OPENBLAS_NUM_THREADS={self.n_cores}",
+               "-e", f"MKL_NUM_THREADS={self.n_cores}",
+               "-e", f"NUMEXPR_NUM_THREADS={self.n_cores}",
                "-v", f"{tmp_data_dir}:/data",
                "-v", f"{tmp_output_dir}:/output",
                f"{wm.config['tetracorder_image_name']}:{wm.config['tetracorder_image_tag_name']}",
-               "tetrapy",
-               "run",
-               "/data/config.yml"]
+               "tetrapy", "run", "/data/config.yml",
+               "--setup.cores", f"{self.n_cores}"]
 
         pge.run(cmd, tmp_dir=self.tmp_dir, use_conda_run=False)
 

@@ -194,7 +194,7 @@ class DatabaseManager:
         # Query for acquisitions with complete l2a outputs but no l2b min outputs in time range
         query = {
             f"products.l2a.{self.config['prod_versions']['l2a']}.rfl.img_path": {"$exists": 1},
-            f"products.l2b.{self.config['prod_versions']['l2b']}.min.img_path": {"$exists": 0},
+            f"products.l2b.{self.config['prod_versions']['l2b']}.min.netcdf_path": {"$exists": 0},
             f"products.l1b.{self.config['prod_versions']['l1b']}.obs.band_means.solar_zenith": {"$lt": 80},
             date_field: {"$gte": start, "$lte": stop}
         }
@@ -393,8 +393,8 @@ class DatabaseManager:
         acquisitions_coll = self.db.acquisitions
         # Query for acquisitions with daac scene numbers but no daac ummg products.
         query = {
-            f"products.l2b.{self.config['prod_versions']['l2b']}.min.img_path": {"$exists": 1},
-            f"products.l2b.{self.config['prod_versions']['l2b']}.minuncert.img_path": {"$exists": 1},
+            f"products.l2b.{self.config['prod_versions']['l2b']}.min.netcdf_path": {"$exists": 1},
+            f"products.l2b.{self.config['prod_versions']['l2b']}.minuncert.netcdf_path": {"$exists": 1},
             f"products.l1b.{self.config['prod_versions']['l1b']}.glt.img_path": {"$exists": 1},
             f"products.l1b.{self.config['prod_versions']['l1b']}.loc.img_path": {"$exists": 1},
             f"products.mask.{self.config['prod_versions']['mask']}.maskTf.cloud_fraction": {"$exists": 1},
