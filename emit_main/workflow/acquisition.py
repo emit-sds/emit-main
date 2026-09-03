@@ -24,14 +24,12 @@ class Acquisition:
         self.config_path = config_path
         self.acquisition_id = acquisition_id
 
-        # Read metadata from db
+        # Read metadata from db and get config properties
         dm = DatabaseManager(config_path)
         self.metadata = dm.find_acquisition_by_id(self.acquisition_id)
+        self.config = Config(config_path, self.metadata["start_time"]).get_dictionary()
         self._initialize_metadata()
         self.__dict__.update(self.metadata)
-
-        # Get config properties
-        self.config = Config(config_path, self.start_time).get_dictionary()
 
         # Create start/stop time date objects with UTC tzinfo property for printing
         self.start_time_with_tz = pytz.utc.localize(self.start_time)
@@ -67,49 +65,40 @@ class Acquisition:
             wm.makedirs(d)
 
         # Build granule ur and paths for DAAC delivery on staging server
-        self.collection_version = f"0{self.config['processing_version']}"
         daac_start_time_str = self.start_time.strftime("%Y%m%dT%H%M%S")
 
         if "daac_scene" in self.metadata:
-            self.raw_granule_ur = f"EMIT_L1A_RAW_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.rdn_granule_ur = f"EMIT_L1B_RAD_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.obs_granule_ur = f"EMIT_L1B_OBS_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            
-            self.rfl_granule_ur = f"EMIT_L2A_RFL_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.rfluncert_granule_ur = f"EMIT_L2A_RFLUNCERT_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            
-            self.mask_granule_ur = f"EMIT_L2A_MASK_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            
-            self.maskTf_granule_ur = f"EMIT_L2A_MASK_002_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            
-            self.abun_granule_ur = f"EMIT_L2B_MIN_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.abununcert_granule_ur = f"EMIT_L2B_MINUNCERT_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            
-            self.ch4_granule_ur = f"EMIT_L2B_CH4ENH_002_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.ch4uncert_granule_ur = f"EMIT_L2B_CH4UNCERT_002_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.ch4sens_granule_ur = f"EMIT_L2B_CH4SENS_002_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-           
-            self.co2_granule_ur = f"EMIT_L2B_CO2ENH_002_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.co2uncert_granule_ur = f"EMIT_L2B_CO2UNCERT_002_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.co2sens_granule_ur = f"EMIT_L2B_CO2SENS_002_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            
-            self.frcov_granule_ur = f"EMIT_L2B_FRCOV_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.frcovqc_granule_ur = f"EMIT_L2B_FRCOVQC_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.frcovpv_granule_ur = f"EMIT_L2B_FRCOVPV_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.frcovpvunc_granule_ur = f"EMIT_L2B_FRCOVPVUNC_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.frcovnpv_granule_ur = f"EMIT_L2B_FRCOVNPV_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.frcovnpvunc_granule_ur = f"EMIT_L2B_FRCOVNPVUNC_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.frcovbare_granule_ur = f"EMIT_L2B_FRCOVBARE_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            self.frcovbareunc_granule_ur = f"EMIT_L2B_FRCOVBAREUNC_{self.collection_version}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
-            
-        self.daac_staging_dir = os.path.join(self.config["daac_base_dir"], wm.config['environment'], "products",
-                                             self.start_time.strftime("%Y%m%d"))
-        self.daac_uri_base = f"https://{self.config['daac_server_external']}/emit/lpdaac/{wm.config['environment']}/" \
-            f"products/{self.start_time.strftime('%Y%m%d')}/"
-        self.daac_partial_dir = os.path.join(self.config["daac_base_dir"], wm.config['environment'],
-                                             "partial_transfers")
-        self.aws_staging_dir = os.path.join(self.config["aws_s3_base_dir"], wm.config['environment'], "products",
-                                            self.start_time.strftime("%Y%m%d"))
+            self.raw_granule_ur = f"EMIT_L1A_RAW_0{self.config['prod_versions']['l1a']}_{daac_start_time_str}_{self.orbit}_{self.daac_scene}"
+            self.rdn_granule_ur = f"EMIT_L1B_RAD_0{self.config['prod_versions']['l1b']}_{daac_start_time_str}"
+            self.obs_granule_ur = f"EMIT_L1B_OBS_0{self.config['prod_versions']['l1b']}_{daac_start_time_str}"
+            self.rfl_granule_ur = f"EMIT_L2A_RFL_0{self.config['prod_versions']['l2a']}_{daac_start_time_str}"
+            self.rfluncert_granule_ur = f"EMIT_L2A_RFLUNCERT_0{self.config['prod_versions']['l2a']}_{daac_start_time_str}"
+            self.maskTf_granule_ur = f"EMIT_L2A_MASK_0{self.config['prod_versions']['mask']}_{daac_start_time_str}"
+            self.min_granule_ur = f"EMIT_L2B_MIN_0{self.config['prod_versions']['l2b']}_{daac_start_time_str}"
+            self.minuncert_granule_ur = f"EMIT_L2B_MINUNCERT_0{self.config['prod_versions']['l2b']}_{daac_start_time_str}"
+            self.ch4_granule_ur = f"EMIT_L2B_CH4ENH_0{self.config['prod_versions']['ch4']}_{daac_start_time_str}"
+            self.ch4d1_granule_ur = f"EMIT_L2B_CH4ENHD1_0{self.config['prod_versions']['ch4']}_{daac_start_time_str}"
+            self.ch4d2_granule_ur = f"EMIT_L2B_CH4ENHD2_0{self.config['prod_versions']['ch4']}_{daac_start_time_str}"
+            self.ch4uncert_granule_ur = f"EMIT_L2B_CH4UNCERT_0{self.config['prod_versions']['ch4']}_{daac_start_time_str}"
+            self.ch4sens_granule_ur = f"EMIT_L2B_CH4SENS_0{self.config['prod_versions']['ch4']}_{daac_start_time_str}"
+            self.co2_granule_ur = f"EMIT_L2B_CO2ENH_0{self.config['prod_versions']['co2']}_{daac_start_time_str}"
+            self.co2d1_granule_ur = f"EMIT_L2B_CO2ENHD1_0{self.config['prod_versions']['co2']}_{daac_start_time_str}"
+            self.co2d2_granule_ur = f"EMIT_L2B_CO2ENHD2_0{self.config['prod_versions']['co2']}_{daac_start_time_str}"
+            self.co2uncert_granule_ur = f"EMIT_L2B_CO2UNCERT_0{self.config['prod_versions']['co2']}_{daac_start_time_str}"
+            self.co2sens_granule_ur = f"EMIT_L2B_CO2SENS_0{self.config['prod_versions']['co2']}_{daac_start_time_str}"
+            self.frcov_granule_ur = f"EMIT_L2B_FRCOV_0{self.config['prod_versions']['frcov']}_{daac_start_time_str}"
+            self.frcovqc_granule_ur = f"EMIT_L2B_FRCOVQC_0{self.config['prod_versions']['frcov']}_{daac_start_time_str}"
+            self.frcovpv_granule_ur = f"EMIT_L2B_FRCOVPV_0{self.config['prod_versions']['frcov']}_{daac_start_time_str}"
+            self.frcovpvunc_granule_ur = f"EMIT_L2B_FRCOVPVUNC_0{self.config['prod_versions']['frcov']}_{daac_start_time_str}"
+            self.frcovnpv_granule_ur = f"EMIT_L2B_FRCOVNPV_0{self.config['prod_versions']['frcov']}_{daac_start_time_str}"
+            self.frcovnpvunc_granule_ur = f"EMIT_L2B_FRCOVNPVUNC_0{self.config['prod_versions']['frcov']}_{daac_start_time_str}"
+            self.frcovbare_granule_ur = f"EMIT_L2B_FRCOVBARE_0{self.config['prod_versions']['frcov']}_{daac_start_time_str}"
+            self.frcovbareunc_granule_ur = f"EMIT_L2B_FRCOVBAREUNC_0{self.config['prod_versions']['frcov']}_{daac_start_time_str}"
+            self.l3rfl_granule_ur = f"EMIT_L3_RFL_0{self.config['prod_versions']['l3rfl']}_{daac_start_time_str}"
+            self.l3rfluncert_granule_ur = f"EMIT_L3_RFLUNCERT_0{self.config['prod_versions']['l3rfl']}_{daac_start_time_str}"
+            self.l3obs_granule_ur = f"EMIT_L3_OBS_0{self.config['prod_versions']['l3rfl']}_{daac_start_time_str}"
+
+        self.aws_staging_dir = os.path.join(self.config["aws_s3_base_dir"], wm.config['environment'], "products", self.start_time.strftime("%Y%m%d"))
         self.aws_s3_uri_base = f"s3://{self.config['aws_s3_bucket']}{self.aws_staging_dir}/"
 
     def _initialize_metadata(self):
@@ -120,23 +109,48 @@ class Acquisition:
             self.metadata["products"] = {}
         if "l1a" not in self.metadata["products"]:
             self.metadata["products"]["l1a"] = {}
+        if self.config["prod_versions"]["l1a"] not in self.metadata["products"]["l1a"]:
+            self.metadata["products"]["l1a"][self.config["prod_versions"]["l1a"]] = {}
         if "l1b" not in self.metadata["products"]:
             self.metadata["products"]["l1b"] = {}
+        if self.config["prod_versions"]["l1b"] not in self.metadata["products"]["l1b"]:
+            self.metadata["products"]["l1b"][self.config["prod_versions"]["l1b"]] = {}
+        else:
+            mean_solar_zenith = self.metadata["products"]["l1b"].get(self.config["prod_versions"]["l1b"], {}).get("obs", {}).get("band_means", {}).get("solar_zenith")
+            mean_solar_azimuth= self.metadata["products"]["l1b"].get(self.config["prod_versions"]["l1b"], {}).get("obs", {}).get("band_means", {}).get("solar_azimuth")
+            if mean_solar_zenith:
+                self.mean_solar_zenith = mean_solar_zenith
+            if mean_solar_azimuth:
+                self.mean_solar_azimuth = mean_solar_azimuth
         if "l2a" not in self.metadata["products"]:
             self.metadata["products"]["l2a"] = {}
+        if self.config["prod_versions"]["l2a"] not in self.metadata["products"]["l2a"]:
+            self.metadata["products"]["l2a"][self.config["prod_versions"]["l2a"]] = {}
         if "l2b" not in self.metadata["products"]:
             self.metadata["products"]["l2b"] = {}
-        if "l3" not in self.metadata["products"]:
-            self.metadata["products"]["l3"] = {}
-        if "ghg" not in self.metadata["products"]:
-            self.metadata["products"]["ghg"] = {}
+        if self.config["prod_versions"]["l2b"] not in self.metadata["products"]["l2b"]:
+            self.metadata["products"]["l2b"][self.config["prod_versions"]["l2b"]] = {}
+        if "ch4" not in self.metadata["products"]:
+            self.metadata["products"]["ch4"] = {}
+        if self.config["prod_versions"]["ch4"] not in self.metadata["products"]["ch4"]:
+            self.metadata["products"]["ch4"][self.config["prod_versions"]["ch4"]] = {}
+        if "co2" not in self.metadata["products"]:
+            self.metadata["products"]["co2"] = {}
+        if self.config["prod_versions"]["co2"] not in self.metadata["products"]["co2"]:
+            self.metadata["products"]["co2"][self.config["prod_versions"]["co2"]] = {}
+        if "mask" not in self.metadata["products"]:
+            self.metadata["products"]["mask"] = {}
+        if self.config["prod_versions"]["mask"] not in self.metadata["products"]["mask"]:
+            self.metadata["products"]["mask"][self.config["prod_versions"]["mask"]] = {}
         if "frcov" not in self.metadata["products"]:
             self.metadata["products"]["frcov"] = {}
-        if "ch4" not in self.metadata["products"]["ghg"]:
-            self.metadata["products"]["ghg"]["ch4"] = {}
-        if "co2" not in self.metadata["products"]["ghg"]:
-            self.metadata["products"]["ghg"]["co2"] = {}
-
+        if self.config["prod_versions"]["frcov"] not in self.metadata["products"]["frcov"]:
+            self.metadata["products"]["frcov"][self.config["prod_versions"]["frcov"]] = {}
+        if "l3rfl" not in self.metadata["products"]:
+            self.metadata["products"]["l3rfl"] = {}
+        if self.config["prod_versions"]["l3rfl"] not in self.metadata["products"]["l3rfl"]:
+            self.metadata["products"]["l3rfl"][self.config["prod_versions"]["l3rfl"]] = {}
+            
     def _build_acquisition_paths(self):
         product_map = {
             "l1a": {
@@ -166,26 +180,23 @@ class Acquisition:
                 "radsubs": ["img", "hdr"],
                 "obssubs": ["img", "hdr"],
                 "locsubs": ["img", "hdr"],
-                "atm": ["img", "hdr"],
-                "mask": ["img", "hdr", "nc"],
+                "state": ["img", "hdr"],
                 "quality": ["txt"],
             },
             "mask": {
                 "maskTf": ["img", "hdr", "nc", "png"],  
             },
             "l2b": {
-                "tetra": ["dir"],
-                "abun": ["img", "hdr", "nc", "png"],
-                "abununcert": ["img", "hdr", "nc"]
-            },
-            "l3": {
-                "cover": ["img", "hdr"],
-                "coveruncert": ["img", "hdr"]
+                "tetra": ["tar"],
+                "min": ["nc", "png"],
+                "minuncert": ["nc"]
             },
             "ch4": {
                 "targetch4": ["txt"],
                 "ch4": ["img","hdr"],
                 "ortch4": ["tif","png"],
+                "ortch4d1": ["tif"],
+                "ortch4d2": ["tif"],
                 "sensch4": ["img","hdr"],
                 "ortsensch4": ["tif",],
                 "uncertch4": ["img","hdr"],
@@ -195,53 +206,66 @@ class Acquisition:
                 "targetco2": ["txt"],
                 "co2": ["img","hdr"],
                 "ortco2": ["tif","png"],
+                "ortco2d1": ["tif"],
+                "ortco2d2": ["tif"],
                 "sensco2": ["img","hdr"],
                 "ortsensco2": ["tif"],
                 "uncertco2": ["img","hdr"],
                 "ortuncertco2": ["tif"],
             },
             "frcov": {
+                "frcov": ["img", "hdr", "png"],
+                "frcovuncert": ["img", "hdr"],
                 "frcovqc": ["tif"],
                 "frcovbare": ["tif"],
                 "frcovbareunc": ["tif"],
                 "frcovpv": ["tif"],
                 "frcovpvunc": ["tif"],
                 "frcovnpv": ["tif"],
-                "frcovnpvunc": ["tif"],
-                "frcov": ["png"],            
-                }
+                "frcovnpvunc": ["tif"],      
+            },
+            "l3rfl": {
+                "l3rfl": ["nc", "png"],
+                "l3rfluncert": ["nc"],
+                "l3obs": ["nc"],
+
+            },
         }
         paths = {}
-        for level, prod_map in product_map.items():
-            if level in ['co2','ch4']: # Nest GHG products
-                level_data_dir = os.path.join(self.acquisition_id_dir, f'ghg/{level}')
-                self.__dict__.update({f"{level}_data_dir": level_data_dir})
-                level = 'ghg'
-                processing_verion = '02'
-            else:
-                level_data_dir = os.path.join(self.acquisition_id_dir, level)
-                self.__dict__.update({level + "_data_dir": level_data_dir})
-                processing_verion = self.config["processing_version"]
-                if level == 'mask':
-                    level ='l2a'
-                    processing_verion = '02'
-                elif level == 'frcov':
-                    level ='l2b'
-                    
-                
-            self.dirs.append(level_data_dir)
+        for prod_group, prod_map in product_map.items():
+            # Set the data directory for the prod group (l1a, l1b, ch4, frcov, etc.)
+            prod_group_data_dir = os.path.join(self.acquisition_id_dir, prod_group)
+            self.__dict__.update({prod_group + "_data_dir": prod_group_data_dir})
+            self.dirs.append(prod_group_data_dir)
+            product_version = self.config["prod_versions"][prod_group]
+            if prod_group in ["mask"]:
+                prod_group = "l2a"
+            if prod_group in ["co2","ch4", "frcov"]:
+                prod_group = "l2b"
+            if prod_group in ["l3rfl"]:
+                prod_group = "l3"
             for prod, formats in prod_map.items():
                 for format in formats:
                     prod_key = prod + "_" + format + "_path"
-                    prod_prefix = "_".join([self.acquisition_id,
-                                            "o" + self.short_orb,
-                                            "s" + self.scene,
-                                            level,
-                                            prod,
-                                            "b" + self.config["build_num"],
-                                            "v" + processing_verion])
-                    prod_prefix = prod_prefix.replace('maskTf','mask')
+                    # L1A products before the v2 cutover date have the old file naming schema 
+                    if prod_group == "l1a" and self.start_time < self.config["v2_cutover_date"]:
+                        prod_prefix = "_".join([self.acquisition_id,
+                                                "o" + self.short_orb,
+                                                "s" + self.scene,
+                                                prod_group,
+                                                prod,
+                                                "b0106",
+                                                "v" + product_version])
+                    else:
+                        if prod.startswith("l3"):
+                            prod_short = prod.replace("l3", "")
+                        else:
+                            prod_short = prod
+                        prod_prefix = "_".join([self.acquisition_id,
+                                                prod_group,
+                                                prod_short,
+                                                "v" + product_version])
                     prod_name = prod_prefix + "." + format
-                    prod_path = os.path.join(level_data_dir, prod_name)
+                    prod_path = os.path.join(prod_group_data_dir, prod_name)
                     paths[prod_key] = prod_path
         return paths

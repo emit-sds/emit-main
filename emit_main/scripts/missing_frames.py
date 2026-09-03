@@ -14,11 +14,10 @@ def lookup_depack_log(frame_path, dc, s_coll, wm):
     for path in dc["associated_ccsds"]:
         ccsds_name = os.path.basename(path)
         query = {
-            "build_num": wm.config["build_num"],
             "ccsds_name": ccsds_name
         }
         stream = s_coll.find_one(query)
-        s_frame_paths = stream["products"]["l1a"]["data_collections"][dc["dcid"]]["dcid_frame_paths"]
+        s_frame_paths = stream["products"]["l1a"][wm.config["prod_versions"]["l1a"]]["data_collections"][dc["dcid"]]["dcid_frame_paths"]
         if frame_path in s_frame_paths:
             # Get l1a name
             l1a_log = path.replace("/l0/", "/l1a/").replace("l0_ccsds", "l1a_frames").replace(".bin", "_pge.log")
@@ -44,12 +43,11 @@ def main():
 
     # Check for DCIDs with missing frames
     query = {
-        "build_num": wm.config["build_num"],
         "dcid": args.dcid,
     }
     dc = dc_coll.find_one(query)
 
-    frames = dc["products"]["l1a"]["frames"]
+    frames = dc["products"]["l1a"][wm.config["prod_versions"]["l1a"]]["frames"]
     frames.sort(key=lambda x: os.path.basename(x).split("_")[2])
     frame_nums = [int(os.path.basename(f).split("_")[2]) for f in frames]
     flookup = {}

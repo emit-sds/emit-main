@@ -8,8 +8,10 @@ import datetime
 import json
 import logging
 import os
+import socket
 import sys
 import time
+import yaml
 
 import luigi
 import spectral.io.envi as envi
@@ -18,18 +20,20 @@ from emit_main.workflow.acquisition import Acquisition
 from emit_main.workflow.output_targets import AcquisitionTarget
 from emit_main.workflow.workflow_manager import WorkflowManager
 from emit_main.workflow.ghg_tasks import read_gdal_metadata
-from emit_main.workflow.l2a_tasks import L2AMask, L2AReflectance
+from emit_main.workflow.l2a_tasks import L2AReflectance
 from emit_main.workflow.slurm import SlurmJobTask
 from emit_utils.file_checks import envi_header
 from emit_utils import daac_converter
 
+from netCDF4 import Dataset
+
 logger = logging.getLogger("emit-main")
 
 
-class L2BAbundance(SlurmJobTask):
+class L2BMineral(SlurmJobTask):
     """
-    Creates L2B mineral spectral abundance estimate file
-    :returns: Mineral abundance file and uncertainties
+    Creates L2B mineral identification and band depth and uncertainties
+    :returns: Mineral identification file and uncertainties
     """
 
     config_path = luigi.Parameter()
@@ -38,6 +42,7 @@ class L2BAbundance(SlurmJobTask):
     partition = luigi.Parameter()
 
     memory = 30000
+    n_cores = 6
 
     task_namespace = "emit"
 
@@ -45,255 +50,162 @@ class L2BAbundance(SlurmJobTask):
 
         logger.debug(self.task_family + " requires")
         return (L2AReflectance(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
-                               partition=self.partition),
-                L2AMask(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
-                        partition=self.partition))
+                               partition=self.partition))
 
     def output(self):
 
         logger.debug(self.task_family + " output")
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family)
+        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family,
+                                 product_version=wm.config["prod_versions"]["l2b"])
 
     def work(self):
 
-        start_time = time.time()
+        pge_start_time = time.time()
         logger.debug(self.task_family + " run")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
         pge = wm.pges["emit-sds-l2b"]
 
-        # Build PGE commands for run_tetracorder_pge.sh
-        run_tetra_exe = os.path.join(pge.repo_dir, "run_tetracorder_pge.sh")
-        env = os.environ.copy()
-        env["SP_LOCAL"] = wm.config["specpr_path"]
-        env["SP_BIN"] = "${SP_LOCAL}/bin"
-        env["TETRA"] = wm.config["tetracorder_path"]
-        env["TETRA_CMDS"] = wm.config["tetracorder_cmds_path"]
-        env["PATH"] = "${PATH}:${SP_LOCAL}/bin:${TETRA}/bin:/usr/bin"
-
-        # This has to be a bit truncated because of character limitations
-        tmp_rfl_path = os.path.join(self.local_tmp_dir, 'r')
-        tmp_rfl_path_hdr = envi_header(tmp_rfl_path)
-
-        wm.symlink(acq.rfl_img_path, tmp_rfl_path)
-        wm.symlink(acq.rfl_hdr_path, tmp_rfl_path_hdr)
-
-        # This has to be a bit truncated because of character limitations
-        tmp_tetra_output_path = os.path.join(self.local_tmp_dir, os.path.basename(acq.abun_img_path).split('_')[0] + '_tetra')
-        tmp_tetra_output_path_tar = tmp_tetra_output_path + '.tar'
-
-        cmd_tetra_setup = [os.path.join(wm.config["tetracorder_cmds_path"], 'cmd-setup-tetrun'), tmp_tetra_output_path,
-                           wm.config["tetracorder_library_cmdname"], "cube", tmp_rfl_path, "1", "-T", "-20", "80", "C",
-                           "-P", ".5", "1.5", "bar"]
-        pge.run(cmd_tetra_setup, tmp_dir=self.tmp_dir, env=env)
-
-        current_pwd = os.getcwd()
-        os.chdir(tmp_tetra_output_path)
-        cmd_tetra = [os.path.join(tmp_tetra_output_path, "cmd.runtet"), "cube", tmp_rfl_path, 'band', '20', 'gif']
-        pge.run(cmd_tetra, tmp_dir=self.tmp_dir, env=env)
-        os.chdir(current_pwd)
-
-        # Build aggregator cmd
-        aggregator_exe = os.path.join(pge.repo_dir, "group_aggregator.py")
-        tmp_output_dir = os.path.join(self.local_tmp_dir, "l2b_aggregation_output")
+        # Build PGE commands to run the tetracorder container
+        tmp_data_dir = os.path.join(self.local_tmp_dir, 'data')
+        tmp_output_dir = os.path.join(self.local_tmp_dir, 'output')
+        wm.makedirs(tmp_data_dir)
         wm.makedirs(tmp_output_dir)
-        tmp_abun_path = os.path.join(tmp_output_dir, os.path.basename(acq.abun_img_path))
-        tmp_abun_unc_path = os.path.join(tmp_output_dir, os.path.basename(acq.abununcert_img_path))
-        tmp_quicklook_path = os.path.join(tmp_output_dir, os.path.splitext(os.path.basename(acq.abun_img_path))[0] + '_quicklook.png')
-        standard_library = os.path.join(
-            wm.config['tetracorder_library_dir'], f's{wm.config["tetracorder_library_basename"]}_envi')
-        research_library = os.path.join(
-            wm.config['tetracorder_library_dir'], f'r{wm.config["tetracorder_library_basename"]}_envi')
-        tetracorder_config_file = os.path.join(wm.config['tetracorder_cmds_path'], wm.config["tetracorder_config_filename"])
-        min_group_mat_file = os.path.join(pge.repo_dir, 'data', wm.config["mineral_matrix_name"])
+
+        tmp_output_tetra_path = os.path.join(tmp_output_dir, "tetracorder")
+        tmp_output_tetra_tar_path = tmp_output_tetra_path + '.tar'
+        tmp_output_aggregate_dir = os.path.join(tmp_output_dir, "aggregate")
+        tmp_min_path = os.path.join(tmp_output_aggregate_dir, "agg.nc")
+        tmp_min_unc_path = os.path.join(tmp_output_aggregate_dir, "agg-uncert.nc")
+        tmp_quicklook_path = os.path.join(tmp_output_dir, os.path.splitext(os.path.basename(acq.min_nc_path))[0] + '_quicklook.png')
+        tmp_tetrapy_log_path = os.path.join(tmp_output_aggregate_dir, "tetrapy.log")
+
+        # Copy rfl to data dir
+        tmp_rfl_basename = os.path.basename(acq.rfl_img_path).replace(".img", "")
+        tmp_rfluncert_basename = os.path.basename(acq.rfluncert_img_path).replace(".img", "")
+        wm.copy(acq.rfl_img_path, os.path.join(tmp_data_dir, tmp_rfl_basename))
+        wm.copy(acq.rfl_hdr_path, os.path.join(tmp_data_dir, os.path.basename(acq.rfl_hdr_path)))
+        wm.copy(acq.rfluncert_img_path, os.path.join(tmp_data_dir, tmp_rfluncert_basename))
+        wm.copy(acq.rfluncert_hdr_path, os.path.join(tmp_data_dir, os.path.basename(acq.rfluncert_hdr_path)))
+
+        # Create config file
+        config_template = os.path.join(wm.pges["tetracorder-lite"].repo_dir, "config.yml")
+        tmp_config_path = os.path.join(tmp_data_dir, "config.yml")
+        with open(config_template, "r") as f:
+            config = yaml.safe_load(f)
+        config["data"]["rfl"] = f"/data/{tmp_rfl_basename}"
+        config["data"]["rfluncert"] = f"/data/{tmp_rfluncert_basename}"
+        config["output"]["base"] = "/output"
+        with open(tmp_config_path, "w") as f:
+            yaml.safe_dump(config, f, sort_keys=False)
 
         input_files = {
             "reflectance_file": acq.rfl_img_path,
             "reflectance_uncertainty_file": acq.rfluncert_img_path,
-            "tetracorder_library_basename": wm.config["tetracorder_library_basename"],
-            "mineral_group_mat_file": min_group_mat_file,
-            "tetracorder_config_filename": tetracorder_config_file
+            "config_file": tmp_config_path,
         }
 
+        # podman run --rm -v /local/input:/data -v /local/output:/output tetracorder-lite:dev tetrapy run /data/config.yml
+        current_node = socket.gethostname()
+        cmd = ["ssh", current_node, 
+               "podman", "run",
+               "--rm",
+               "--name", self.task_instance_id,
+               "-e", f"OMP_NUM_THREADS={self.n_cores}",
+               "-e", f"OPENBLAS_NUM_THREADS={self.n_cores}",
+               "-e", f"MKL_NUM_THREADS={self.n_cores}",
+               "-e", f"NUMEXPR_NUM_THREADS={self.n_cores}",
+               "-v", f"{tmp_data_dir}:/data",
+               "-v", f"{tmp_output_dir}:/output",
+               f"{wm.config['tetracorder_image_name']}:{wm.config['tetracorder_image_tag_name']}",
+               "tetrapy", "run", "/data/config.yml",
+               "--setup.cores", f"{self.n_cores}"]
+
+        pge.run(cmd, tmp_dir=self.tmp_dir, use_conda_run=False)
+
+        ql_cmd = ['python', os.path.join(pge.repo_dir, 'quicklook.py'), tmp_min_path, tmp_quicklook_path, '--unc_file', tmp_min_unc_path]
+        pge.run(ql_cmd, cwd=pge.repo_dir, tmp_dir=self.tmp_dir)
+
+        # tar l2b
+        tar_cmd = ['tar', '-C', tmp_output_dir, '-cf', tmp_output_tetra_tar_path, os.path.basename(tmp_output_tetra_path)]
+        pge.run(tar_cmd, cwd=pge.repo_dir, tmp_dir=self.tmp_dir)
+
+        # Reformat for DAAC
+        reformat_pge = wm.pges["emit-sds-l2b"]
+        output_generator_exe = os.path.join(reformat_pge.repo_dir, "group_output_conversion.py")
+        tmp_daac_nc_min_path = os.path.join(tmp_output_dir, os.path.basename(acq.min_nc_path))
+        tmp_daac_nc_minuncert_path = os.path.join(tmp_output_dir, os.path.basename(acq.minuncert_nc_path))
+        tmp_reformatting_log_path = os.path.join(tmp_output_dir, "output_conversion_pge.log")
+        
         env = os.environ.copy()
         emit_utils_pge = wm.pges["emit-utils"]
         env["PYTHONPATH"] = f"$PYTHONPATH:{emit_utils_pge.repo_dir}"
-        agg_cmd = ["python", aggregator_exe, tmp_tetra_output_path, min_group_mat_file, tmp_abun_path, tmp_abun_unc_path,
-                   "--calculate_uncertainty",
-                   "--reflectance_file", acq.rfl_img_path,
-                   "--reflectance_uncertainty_file", acq.rfluncert_img_path,
-                   "--reference_library", standard_library,
-                   "--research_library", research_library,
-                   "--expert_system_file", tetracorder_config_file,
-                   ]
-        pge.run(agg_cmd, cwd=pge.repo_dir, tmp_dir=self.tmp_dir, env=env)
-
-        ql_cmd = ['python', os.path.join(pge.repo_dir, 'quicklook.py'), tmp_abun_path, tmp_quicklook_path, '--unc_file', tmp_abun_unc_path]
-        pge.run(ql_cmd, cwd=pge.repo_dir, tmp_dir=self.tmp_dir, env=env)
-
-        # tar l2b
-        tar_cmd = ['tar', '-C', self.local_tmp_dir, '-cf', tmp_tetra_output_path_tar, os.path.basename(tmp_tetra_output_path)]
-        pge.run(tar_cmd, cwd=pge.repo_dir, tmp_dir=self.tmp_dir, env=env)
-
-        # Copy mask files to l2a dir
-        wm.copy(tmp_tetra_output_path_tar, acq.tetra_dir_path)
-        wm.copy(tmp_abun_path, acq.abun_img_path)
-        wm.copy(envi_header(tmp_abun_path), acq.abun_hdr_path)
-        wm.copy(tmp_abun_unc_path, acq.abununcert_img_path)
-        wm.copy(envi_header(tmp_abun_unc_path), acq.abununcert_hdr_path)
-        wm.copy(tmp_quicklook_path, acq.abun_png_path)
-
-        # Update hdr files
+        run_command = "PGE Run Command: {" + " ".join(cmd) + "}"
         input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
-        doc_version = "EMIT SDS L2B JPL-D 104237, Rev A"
-        for img_path, hdr_path in [(acq.abun_img_path, acq.abun_hdr_path),
-                                   (acq.abununcert_img_path, acq.abununcert_hdr_path)]:
-            hdr = envi.read_envi_header(hdr_path)
-            hdr["emit acquisition start time"] = acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
-            hdr["emit acquisition stop time"] = acq.stop_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
-            hdr["emit pge name"] = pge.repo_url
-            hdr["emit pge version"] = pge.version_tag
-            hdr["emit pge input files"] = input_files_arr
-            hdr["emit pge run command"] = " ".join(cmd_tetra_setup) + ", " + " ".join(agg_cmd)
-            hdr["emit software build version"] = wm.config["extended_build_num"]
-            hdr["emit documentation version"] = doc_version
-            creation_time = datetime.datetime.fromtimestamp(
-                os.path.getmtime(img_path), tz=datetime.timezone.utc)
-            hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
-            hdr["emit data product version"] = wm.config["processing_version"]
-            hdr["emit acquisition daynight"] = acq.daynight
-            envi.write_envi_header(hdr_path, hdr)
+        pge_input_files = "PGE Input Files: {" + ", ".join(input_files_arr) + "}"
+        history = run_command + ", " + pge_input_files
+        tmp_history_path = os.path.join(tmp_output_dir, "history.txt")
+        with open(tmp_history_path, "w") as f:
+            f.write(history)
+
+        reformat_cmd = ["python", output_generator_exe, tmp_daac_nc_min_path, tmp_daac_nc_minuncert_path,
+                            tmp_min_path, tmp_min_unc_path, acq.loc_img_path, acq.glt_img_path, wm.config["tetracorder_mineral_grouping_path"],
+                            "--start_time", acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z"), 
+                            "--stop_time", acq.stop_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z"),
+                            "--version", "V0" + str(wm.config["prod_versions"]["l2b"]), 
+                            "--software_build_version", wm.config["extended_build_num"],
+                            "--history_file", tmp_history_path, 
+                            "--daynight", acq.daynight,
+                            "--rfl_file", acq.rfl_img_path,
+                            "--log_file", tmp_reformatting_log_path]
+        reformat_pge.run(reformat_cmd, tmp_dir=self.tmp_dir, env=env)
+        
+        # Copy and rename output files back to /store
+        log_path = acq.min_nc_path.replace(".nc", "_pge.log")
+        wm.copy(tmp_daac_nc_min_path, acq.min_nc_path)
+        wm.copy(tmp_daac_nc_minuncert_path, acq.minuncert_nc_path)
+        wm.copy(tmp_quicklook_path, acq.min_png_path)
+        wm.copy(tmp_tetrapy_log_path, log_path)
+        wm.copy(tmp_config_path, acq.min_nc_path.replace(".nc", "_runconfig.yml"))
+            
+        creation_time = datetime.datetime.fromtimestamp(
+            os.path.getmtime(acq.min_nc_path), tz=datetime.timezone.utc)
 
         # PGE writes metadata to db
         dm = wm.database_manager
         product_dict = {
-            "img_path": acq.abun_img_path,
-            "hdr_path": acq.abun_hdr_path,
-            "png_path": acq.abun_png_path,
-            "created": creation_time,
-            "dimensions": {
-                "lines": hdr["lines"],
-                "samples": hdr["samples"],
-                "bands": hdr["bands"]
-            }
-        }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2b.abun": product_dict})
-
-        product_dict_abununcert = {
-            "img_path": acq.abununcert_img_path,
-            "hdr_path": acq.abununcert_hdr_path,
+            "netcdf_path": acq.min_nc_path,
+            "png_path": acq.min_png_path,
             "created": creation_time,
         }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2b.abununcert": product_dict_abununcert})
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l2b.{wm.config['prod_versions']['l2b']}.min": product_dict})
 
-        total_time = time.time() - start_time
+        product_dict_minuncert = {
+            "netcdf_path": acq.minuncert_nc_path,
+            "created": creation_time,
+        }
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l2b.{wm.config['prod_versions']['l2b']}.minuncert": product_dict_minuncert})
+
+        total_time = time.time() - pge_start_time
+        doc_version = "EMIT SDS L2B JPL-D 104237, Rev A"
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
             "pge_version": pge.version_tag,
             "pge_input_files": input_files,
-            "pge_run_command": " ".join(cmd_tetra_setup) + ", " + " ".join(agg_cmd),
+            "pge_run_command": " ".join(cmd),
             "documentation_version": doc_version,
             "product_creation_time": creation_time,
             "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l2b"],
             "output": {
-                "l2b_abun_img_path": acq.abun_img_path,
-                "l2b_abun_hdr_path:": acq.abun_hdr_path,
-                "l2b_abun_png_path:": acq.abun_png_path,
-                "l2b_abununcert_img_path": acq.abununcert_img_path,
-                "l2b_abununcert_hdr_path:": acq.abununcert_hdr_path
-            }
-        }
-
-        dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
-
-
-class L2BFormat(SlurmJobTask):
-    """
-    Converts L2B (spectral abundance and uncertainty) to netcdf files
-    :returns: L2B netcdf output for delivery
-    """
-
-    config_path = luigi.Parameter()
-    acquisition_id = luigi.Parameter()
-    level = luigi.Parameter()
-    partition = luigi.Parameter()
-
-    memory = 18000
-
-    task_namespace = "emit"
-
-    def requires(self):
-        logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
-        return None
-
-    def output(self):
-        logger.debug(f"{self.task_family} output: {self.acquisition_id}")
-        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return AcquisitionTarget(acquisition=acq, task_family=self.task_family)
-
-    def work(self):
-        logger.debug(f"{self.task_family} work: {self.acquisition_id}")
-
-        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        acq = wm.acquisition
-
-        pge = wm.pges["emit-sds-l2b"]
-
-        output_generator_exe = os.path.join(pge.repo_dir, "group_output_conversion.py")
-        tmp_output_dir = os.path.join(self.local_tmp_dir, "output")
-        wm.makedirs(tmp_output_dir)
-        tmp_daac_nc_abun_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l2b_abun.nc")
-        tmp_daac_nc_abununcert_path = os.path.join(tmp_output_dir, f"{self.acquisition_id}_l2b_abununcert.nc")
-        tmp_log_path = os.path.join(self.local_tmp_dir, "output_conversion_pge.log")
-
-        env = os.environ.copy()
-        emit_utils_pge = wm.pges["emit-utils"]
-        env["PYTHONPATH"] = f"$PYTHONPATH:{emit_utils_pge.repo_dir}"
-        cmd = ["python", output_generator_exe, tmp_daac_nc_abun_path, tmp_daac_nc_abununcert_path,
-               acq.abun_img_path, acq.abununcert_img_path, acq.loc_img_path, acq.glt_img_path,
-               "V0" + str(wm.config["processing_version"]), wm.config["extended_build_num"],
-               "--log_file", tmp_log_path]
-        pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
-
-        # Copy and rename output files back to /store
-        log_path = acq.abun_nc_path.replace(".nc", "_nc_pge.log")
-        wm.copy(tmp_daac_nc_abun_path, acq.abun_nc_path)
-        wm.copy(tmp_daac_nc_abununcert_path, acq.abununcert_nc_path)
-        wm.copy(tmp_log_path, log_path)
-
-        # PGE writes metadata to db
-        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.abun_nc_path), tz=datetime.timezone.utc)
-        dm = wm.database_manager
-        product_dict_netcdf = {
-            "netcdf_abun_path": acq.abun_nc_path,
-            "netcdf_abununcert_path": acq.abununcert_nc_path,
-            "created": nc_creation_time
-        }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2b.abun_netcdf": product_dict_netcdf})
-
-        log_entry = {
-            "task": self.task_family,
-            "pge_name": pge.repo_url,
-            "pge_version": pge.version_tag,
-            "pge_input_files": {
-                "abun_img_path": acq.abun_img_path,
-                "abununert_img_path": acq.abununcert_img_path,
-                "loc_img_path": acq.loc_img_path,
-                "glt_img_path": acq.glt_img_path
-            },
-            "pge_run_command": " ".join(cmd),
-            "documentation_version": "TBD",
-            "product_creation_time": nc_creation_time,
-            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
-            "completion_status": "SUCCESS",
-            "output": {
-                "l2b_abun_netcdf_path": acq.abun_nc_path,
-                "l2b_abununcert_netcdf_path": acq.abununcert_nc_path
+                "l2b_min_nc_path": acq.min_nc_path,
+                "l2b_min_png_path:": acq.min_png_path,
+                "l2b_minuncert_nc_path": acq.minuncert_nc_path
             }
         }
 
@@ -320,8 +232,7 @@ class L2BDeliver(SlurmJobTask):
     def requires(self):
 
         logger.debug(f"{self.task_family} requires: {self.acquisition_id}")
-        return L2BFormat(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
-                         partition=self.partition)
+        return None
 
     def output(self):
 
@@ -330,11 +241,13 @@ class L2BDeliver(SlurmJobTask):
         if self.override_output:
             return None
 
-        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return AcquisitionTarget(acquisition=acq, task_family=self.task_family)
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family,
+                                 product_version=wm.config["prod_versions"]["l2b"])
 
     def work(self):
-
+        
+        pge_start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
@@ -342,33 +255,44 @@ class L2BDeliver(SlurmJobTask):
         pge = wm.pges["emit-main"]
 
         # Get local SDS names
-        # nc_path = acq.abun_img_path.replace(".img", ".nc")
-        ummg_path = acq.abun_nc_path.replace(".nc", ".cmr.json")
+        # nc_path = acq.min_img_path.replace(".img", ".nc")
+        ummg_path = acq.min_nc_path.replace(".nc", ".cmr.json")
 
         # Create local/tmp daac names and paths
-        daac_abun_nc_name = f"{acq.abun_granule_ur}.nc"
-        daac_abununcert_nc_name = f"{acq.abununcert_granule_ur}.nc"
-        daac_ummg_name = f"{acq.abun_granule_ur}.cmr.json"
-        daac_browse_name = f"{acq.abun_granule_ur}.png"
-        daac_abun_nc_path = os.path.join(self.tmp_dir, daac_abun_nc_name)
-        daac_abununcert_nc_path = os.path.join(self.tmp_dir, daac_abununcert_nc_name)
+        daac_min_nc_name = f"{acq.min_granule_ur}.nc"
+        daac_minuncert_nc_name = f"{acq.minuncert_granule_ur}.nc"
+        daac_ummg_name = f"{acq.min_granule_ur}.cmr.json"
+        daac_browse_name = f"{acq.min_granule_ur}.png"
+        daac_min_nc_path = os.path.join(self.tmp_dir, daac_min_nc_name)
+        daac_minuncert_nc_path = os.path.join(self.tmp_dir, daac_minuncert_nc_name)
         daac_browse_path = os.path.join(self.tmp_dir, daac_browse_name)
         daac_ummg_path = os.path.join(self.tmp_dir, daac_ummg_name)
 
-        # Copy files to tmp dir and rename
-        wm.copy(acq.abun_nc_path, daac_abun_nc_path)
-        wm.copy(acq.abununcert_nc_path, daac_abununcert_nc_path)
-        wm.copy(acq.abun_png_path, daac_browse_path)
+        # Update NetCDF with software_delivery_version and get software_build_version
+        for nc_path in (acq.min_nc_path, acq.minuncert_nc_path):
+            nc_ds = Dataset(nc_path, 'r+')
+            software_build_version = nc_ds.software_build_version
+            nc_ds.software_delivery_version = wm.config["extended_build_num"]
+            nc_ds.sync()
+            nc_ds.close()
 
-        # Get the software_build_version (extended build num when product was created)
-        hdr = envi.read_envi_header(acq.abun_hdr_path)
-        software_build_version = hdr["emit software build version"]
+        # Copy files to tmp dir and rename
+        wm.copy(acq.min_nc_path, daac_min_nc_path)
+        wm.copy(acq.minuncert_nc_path, daac_minuncert_nc_path)
+        wm.copy(acq.min_png_path, daac_browse_path)
+
+        # Use a cloud fraction that sums the nodata fraction (clouds screened on board) and the cloud fraction value
+        # from the maskTf step.  These fractions are rounded separately.  Use min to ensure it doesn't go over 100.
+        cloud_fraction = acq.metadata["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["cloud_fraction"]
+        nodata_fraction = acq.metadata["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["nodata_fraction"]
+        cloud_cover = min(cloud_fraction + nodata_fraction, 100)
 
         # Create the UMM-G file
-        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.abun_nc_path), tz=datetime.timezone.utc)
+        collection_version = f"0{wm.config['prod_versions']['l2b']}"
+        nc_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.min_nc_path), tz=datetime.timezone.utc)
         l2b_pge = wm.pges["emit-sds-l2b"]
-        ummg = daac_converter.initialize_ummg(acq.abun_granule_ur, nc_creation_time, "EMITL2BMIN",
-                                              acq.collection_version, acq.start_time,
+        ummg = daac_converter.initialize_ummg(acq.min_granule_ur, nc_creation_time, "EMITL2BMIN",
+                                              collection_version, acq.start_time,
                                               acq.stop_time, l2b_pge.repo_name, l2b_pge.version_tag,
                                               software_build_version=software_build_version,
                                               software_delivery_version=wm.config["extended_build_num"],
@@ -376,10 +300,10 @@ class L2BDeliver(SlurmJobTask):
                                               orbit_segment=int(acq.scene), scene=int(acq.daac_scene),
                                               solar_zenith=acq.mean_solar_zenith,
                                               solar_azimuth=acq.mean_solar_azimuth,
-                                              cloud_fraction=acq.cloud_fraction)
+                                              cloud_cover=cloud_cover)
         ummg = daac_converter.add_data_files_ummg(
             ummg,
-            [daac_abun_nc_path, daac_abununcert_nc_path, daac_browse_path],
+            [daac_min_nc_path, daac_minuncert_nc_path, daac_browse_path],
             acq.daynight,
             ["NETCDF-4", "NETCDF-4", "PNG"])
         # ummg = daac_converter.add_related_url(ummg, l2b_pge.repo_url, "DOWNLOAD SOFTWARE")
@@ -391,19 +315,19 @@ class L2BDeliver(SlurmJobTask):
         wm.copy(ummg_path, daac_ummg_path)
 
         # Copy files to S3 for staging
-        for path in (daac_abun_nc_path, daac_abununcert_nc_path, daac_browse_path, daac_ummg_path):
+        for path in (daac_min_nc_path, daac_minuncert_nc_path, daac_browse_path, daac_ummg_path):
             cmd_aws_s3 = ["ssh", "ngishpc1", "'" + wm.config["aws_cli_exe"], "s3", "cp", path, acq.aws_s3_uri_base,
                           "--profile", wm.config["aws_profile"] + "'"]
             pge.run(cmd_aws_s3, tmp_dir=self.tmp_dir)
 
         # Build notification dictionary
         utc_now = datetime.datetime.now(tz=datetime.timezone.utc)
-        cnm_submission_id = f"{acq.abun_granule_ur}_{utc_now.strftime('%Y%m%dt%H%M%S')}"
+        cnm_submission_id = f"{acq.min_granule_ur}_{utc_now.strftime('%Y%m%dt%H%M%S')}"
         cnm_submission_path = os.path.join(acq.l2b_data_dir, cnm_submission_id + "_cnm.json")
         target_src_map = {
-            daac_abun_nc_name: os.path.basename(acq.abun_nc_path),
-            daac_abununcert_nc_name: os.path.basename(acq.abununcert_nc_path),
-            daac_browse_name: os.path.basename(acq.abun_png_path),
+            daac_min_nc_name: os.path.basename(acq.min_nc_path),
+            daac_minuncert_nc_name: os.path.basename(acq.minuncert_nc_path),
+            daac_browse_name: os.path.basename(acq.min_png_path),
             daac_ummg_name: os.path.basename(ummg_path)
         }
         provider = wm.config["daac_provider_forward"]
@@ -417,24 +341,24 @@ class L2BDeliver(SlurmJobTask):
             "identifier": cnm_submission_id,
             "version": wm.config["cnm_version"],
             "product": {
-                "name": acq.abun_granule_ur,
-                "dataVersion": acq.collection_version,
+                "name": acq.min_granule_ur,
+                "dataVersion": collection_version,
                 "files": [
                     {
-                        "name": daac_abun_nc_name,
-                        "uri": acq.aws_s3_uri_base + daac_abun_nc_name,
+                        "name": daac_min_nc_name,
+                        "uri": acq.aws_s3_uri_base + daac_min_nc_name,
                         "type": "data",
-                        "size": os.path.getsize(daac_abun_nc_name),
+                        "size": os.path.getsize(daac_min_nc_name),
                         "checksumType": "sha512",
-                        "checksum": daac_converter.calc_checksum(daac_abun_nc_path, "sha512")
+                        "checksum": daac_converter.calc_checksum(daac_min_nc_path, "sha512")
                     },
                     {
-                        "name": daac_abununcert_nc_name,
-                        "uri": acq.aws_s3_uri_base + daac_abununcert_nc_name,
+                        "name": daac_minuncert_nc_name,
+                        "uri": acq.aws_s3_uri_base + daac_minuncert_nc_name,
                         "type": "data",
-                        "size": os.path.getsize(daac_abununcert_nc_name),
+                        "size": os.path.getsize(daac_minuncert_nc_name),
                         "checksumType": "sha512",
-                        "checksum": daac_converter.calc_checksum(daac_abununcert_nc_path, "sha512")
+                        "checksum": daac_converter.calc_checksum(daac_minuncert_nc_path, "sha512")
                     },
                     {
                         "name": daac_browse_name,
@@ -463,8 +387,8 @@ class L2BDeliver(SlurmJobTask):
 
         # Submit notification via AWS SQS
         cnm_submission_output = cnm_submission_path.replace(".json", ".out")
-        cmd_aws = [wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", queue_url, "--message-body",
-                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"], ">", cnm_submission_output]
+        cmd_aws = ["ssh", "ngishpc1", "'" + wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", queue_url, "--message-body",
+                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"], ">", cnm_submission_output + "'"]
         pge.run(cmd_aws, tmp_dir=self.tmp_dir)
         wm.change_group_ownership(cnm_submission_output)
         cnm_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(cnm_submission_path),
@@ -478,7 +402,7 @@ class L2BDeliver(SlurmJobTask):
                 "extended_build_num": wm.config["extended_build_num"],
                 "collection": notification["collection"],
                 "collection_version": notification["product"]["dataVersion"],
-                "granule_ur": acq.abun_granule_ur,
+                "granule_ur": acq.min_granule_ur,
                 "sds_filename": target_src_map[file["name"]],
                 "daac_filename": file["name"],
                 "uri": file["uri"],
@@ -497,37 +421,182 @@ class L2BDeliver(SlurmJobTask):
             "ummg_json_path": ummg_path,
             "created": datetime.datetime.fromtimestamp(os.path.getmtime(ummg_path), tz=datetime.timezone.utc)
         }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l2b.abun_ummg": product_dict_ummg})
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l2b.{wm.config['prod_versions']['l2b']}.min_ummg": product_dict_ummg})
 
-        if "abun_daac_submissions" in acq.metadata["products"]["l2b"] and \
-                acq.metadata["products"]["l2b"]["abun_daac_submissions"] is not None:
-            acq.metadata["products"]["l2b"]["abun_daac_submissions"].append(cnm_submission_path)
+        if "min_daac_submissions" in acq.metadata["products"]["l2b"][wm.config["prod_versions"]["l2b"]] and \
+                acq.metadata["products"]["l2b"][wm.config["prod_versions"]["l2b"]]["min_daac_submissions"] is not None:
+            acq.metadata["products"]["l2b"][wm.config["prod_versions"]["l2b"]]["min_daac_submissions"].append(cnm_submission_path)
         else:
-            acq.metadata["products"]["l2b"]["abun_daac_submissions"] = [cnm_submission_path]
+            acq.metadata["products"]["l2b"][wm.config["prod_versions"]["l2b"]]["min_daac_submissions"] = [cnm_submission_path]
         dm.update_acquisition_metadata(
             acq.acquisition_id,
-            {"products.l2b.abun_daac_submissions": acq.metadata["products"]["l2b"]["abun_daac_submissions"]})
+            {f"products.l2b.{wm.config['prod_versions']['l2b']}.min_daac_submissions": acq.metadata["products"]["l2b"][wm.config["prod_versions"]["l2b"]]["min_daac_submissions"]})
 
+        total_time = time.time() - pge_start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
             "pge_version": pge.version_tag,
             "pge_input_files": {
-                "abun_netcdf_path": acq.abun_nc_path,
-                "abununcert_netcdf_path": acq.abununcert_nc_path,
-                "abun_png_path": acq.abun_png_path
+                "min_netcdf_path": acq.min_nc_path,
+                "minuncert_netcdf_path": acq.minuncert_nc_path,
+                "min_png_path": acq.min_png_path
             },
             "pge_run_command": " ".join(cmd_aws),
             "documentation_version": "TBD",
             "product_creation_time": cnm_creation_time,
+            "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l2b"],
             "output": {
-                "l2b_abun_ummg_path:": ummg_path,
-                "l2b_abun_cnm_submission_path": cnm_submission_path
+                "l2b_min_ummg_path:": ummg_path,
+                "l2b_min_cnm_submission_path": cnm_submission_path
             }
         }
         dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
+
+
+class L2BFrCov(SlurmJobTask):
+    """
+    Creates L2B fractional cover estimates
+    :returns: Fractional cover file and uncertainties
+    """
+
+    config_path = luigi.Parameter()
+    acquisition_id = luigi.Parameter()
+    level = luigi.Parameter()
+    partition = luigi.Parameter()
+
+    n_cores = 64
+    memory = 360000
+
+    task_namespace = "emit"
+
+    def requires(self):
+
+        logger.debug(self.task_family + " requires")
+        return (L2AReflectance(config_path=self.config_path, acquisition_id=self.acquisition_id, level=self.level,
+                               partition=self.partition))
+
+    def output(self):
+
+        logger.debug(self.task_family + " output")
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family,
+                                 product_version=wm.config["prod_versions"]["frcov"])
+
+    def work(self):
+
+        pge_start_time = time.time()
+        logger.debug(self.task_family + " run")
+
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        acq = wm.acquisition
+        pge = wm.pges["SpectralUnmixing"]
+
+        # Build PGE commands for run_tetracorder_pge.sh
+        unmix_exe = os.path.join(pge.repo_dir, "unmix.jl")
+        endmember_key = "level_1"
+        tmp_log_path = os.path.join(self.local_tmp_dir,
+                                    os.path.basename(acq.frcov_img_path).replace(".img", "_pge.log"))
+        output_base = os.path.join(self.local_tmp_dir, "unmixing_output")
+
+        # Set up environment variables
+        env = os.environ.copy()
+        env["PATH"] = "/store/shared/julia-1.12.4/bin:${PATH}"
+        env["JULIA_DEPOT_PATH"] = "/store/shared/.julia_1124"
+        env["JULIA_PROJECT"] = pge.repo_dir
+
+        # Build command
+        cmd_unmix = ['julia', '-p', str(self.n_cores), unmix_exe, acq.rfl_img_path, wm.config["unmixing_library"],
+                     endmember_key, output_base, "--normalization", "brightness", "--mode", "sma-best",
+                     "--n_mc", "20", "--reflectance_uncertainty_file", acq.rfluncert_img_path,
+                     "--spectral_starting_column", "8", "--num_endmembers", "30", "--log_file", tmp_log_path]
+
+        pge.run(cmd_unmix, tmp_dir=self.tmp_dir, env=env, use_conda_run=False)
+
+        wm.copy(f'{output_base}_fractional_cover', acq.frcov_img_path)
+        wm.copy(f'{output_base}_fractional_cover.hdr', acq.frcov_hdr_path)
+        wm.copy(f'{output_base}_fractional_cover_uncertainty', acq.frcovuncert_img_path)
+        wm.copy(f'{output_base}_fractional_cover_uncertainty.hdr', acq.frcovuncert_hdr_path)
+        wm.copy(tmp_log_path, acq.frcov_img_path.replace(".img", "_pge.log"))
+
+        input_files = {
+            "reflectance_file": acq.rfl_img_path,
+            "reflectance_uncertainty_file": acq.rfluncert_img_path,
+            "endmember_path": wm.config["unmixing_library"],
+        }
+
+        # Update hdr files
+        for header_to_update in [acq.frcov_hdr_path, acq.frcovuncert_hdr_path]:
+            input_files_arr = ["{}={}".format(key, value) for key, value in input_files.items()]
+            doc_version = "EMIT SDS L3 JPL-D 104238, Rev A"  # \todo check
+            hdr = envi.read_envi_header(header_to_update)
+            hdr["emit acquisition start time"] = acq.start_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
+            hdr["emit acquisition stop time"] = acq.stop_time_with_tz.strftime("%Y-%m-%dT%H:%M:%S%z")
+            hdr["emit pge name"] = pge.repo_url
+            hdr["emit pge version"] = pge.version_tag
+            hdr["emit pge input files"] = input_files_arr
+            hdr["emit pge run command"] = " ".join(cmd_unmix)
+            hdr["emit software build version"] = wm.config["extended_build_num"]
+            hdr["emit documentation version"] = doc_version
+            creation_time = datetime.datetime.fromtimestamp(
+                os.path.getmtime(acq.frcov_img_path), tz=datetime.timezone.utc)
+            hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
+            hdr["emit data product version"] = wm.config["prod_versions"]["frcov"]
+            hdr["emit acquisition daynight"] = acq.daynight
+            envi.write_envi_header(header_to_update, hdr)
+
+        # PGE writes metadata to db
+        dm = wm.database_manager
+        product_dict_frcov = {
+            "img_path": acq.frcov_img_path,
+            "hdr_path": acq.frcov_hdr_path,
+            "created": creation_time,
+            "dimensions": {
+                "lines": hdr["lines"],
+                "samples": hdr["samples"],
+                "bands": hdr["bands"]
+            }
+        }
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.frcov.{wm.config['prod_versions']['frcov']}.frcov": product_dict_frcov})
+
+        product_dict_frcov_uncert = {
+            "img_path": acq.frcovuncert_img_path,
+            "hdr_path": acq.frcovuncert_hdr_path,
+            "created": creation_time,
+            "dimensions": {
+                "lines": hdr["lines"],
+                "samples": hdr["samples"],
+                "bands": hdr["bands"]
+            }
+        }
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.frcov.{wm.config['prod_versions']['frcov']}.frcovuncert": product_dict_frcov_uncert})
+
+        total_time = time.time() - pge_start_time
+        log_entry = {
+            "task": self.task_family,
+            "pge_name": pge.repo_url,
+            "pge_version": pge.version_tag,
+            "pge_input_files": input_files,
+            "pge_run_command": " ".join(cmd_unmix),
+            "documentation_version": doc_version,
+            "product_creation_time": creation_time,
+            "pge_runtime_seconds": total_time,
+            "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
+            "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["frcov"],
+            "output": {
+                "l2b_frcov_img_path": acq.frcov_img_path,
+                "l2b_frcov_hdr_path:": acq.frcov_hdr_path,
+                "l2b_frcovuncert_img_path": acq.frcovuncert_img_path,
+                "l2b_frcovuncert_hdr_path:": acq.frcovuncert_hdr_path
+            }
+        }
+
+        dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
+
 
 class L2BFrCovFormat(SlurmJobTask):
     """
@@ -552,12 +621,13 @@ class L2BFrCovFormat(SlurmJobTask):
     def output(self):
 
         logger.debug(f"{self.task_family} output: {self.acquisition_id}")
-        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return AcquisitionTarget(acquisition=acq, task_family=self.task_family)
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family,
+                                 product_version=wm.config["prod_versions"]["frcov"])
 
     def work(self):
 
-        start_time = time.time()
+        pge_start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
@@ -575,9 +645,12 @@ class L2BFrCovFormat(SlurmJobTask):
             "rfl_file": acq.rfl_img_path,
             "maskTf_file": acq.maskTf_img_path,
             "glt_file": acq.glt_img_path,
-            "cover_file": acq.cover_img_path,
-            "coverunc_file": acq.coveruncert_img_path,
+            "frcov_file": acq.frcov_img_path,
+            "frcovuncert_file": acq.frcovuncert_img_path,
         }
+
+        env = os.environ.copy()
+        env["CPL_TMPDIR"] = "/local"
 
         cmd = ["python",
                mask_generator_exe,
@@ -591,20 +664,21 @@ class L2BFrCovFormat(SlurmJobTask):
                
         # Run this inside the emit-main conda environment to include emit-utils and other requirements
         main_pge = wm.pges["emit-sds-frcov"]
-        main_pge.run(cmd, tmp_dir=self.tmp_dir)
+        main_pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
         format_exe = os.path.join(pge.repo_dir, "format_outputs.py")
 
         tmp_frcov_base = os.path.join(tmp_output_dir, self.acquisition_id)
 
+        collection_version = f"0{wm.config['prod_versions']['frcov']}"
         format_cmd = ["python",
                format_exe,
-               acq.cover_img_path, 
-               acq.coveruncert_img_path, 
+               acq.frcov_img_path, 
+               acq.frcovuncert_img_path, 
                tmp_frcovqc_tif_path,
                acq.glt_img_path,
                "--software_version", wm.config["extended_build_num"],
-               "--product_version", acq.collection_version,
+               "--product_version", collection_version,
                tmp_frcov_base]
 
         main_pge.run(format_cmd, tmp_dir=self.tmp_dir)
@@ -623,28 +697,28 @@ class L2BFrCovFormat(SlurmJobTask):
         wm.copy(tmp_frcov_base + '_frcov.png', acq.frcov_png_path)
 
         # Update db
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.frcov.qc": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.frcov.{wm.config['prod_versions']['frcov']}.qc": {
                 "tif_path" : acq.frcovqc_tif_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.frcov.pv": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.frcov.{wm.config['prod_versions']['frcov']}.pv": {
                 "tif_path" : acq.frcovpv_tif_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.frcov.pvunc": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.frcov.{wm.config['prod_versions']['frcov']}.pvunc": {
                 "tif_path" : acq.frcovpvunc_tif_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.frcov.npv": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.frcov.{wm.config['prod_versions']['frcov']}.npv": {
                 "tif_path" : acq.frcovnpv_tif_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.frcov.npvunc": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.frcov.{wm.config['prod_versions']['frcov']}.npvunc": {
                 "tif_path" : acq.frcovnpvunc_tif_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.frcov.bare": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.frcov.{wm.config['prod_versions']['frcov']}.bare": {
+                "tif_path" : acq.frcovbare_tif_path,
+                "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.frcov.{wm.config['prod_versions']['frcov']}.bareunc": {
                 "tif_path" : acq.frcovbareunc_tif_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.frcov.bareunc": {
-                "tif_path" : acq.frcovbareunc_tif_path,
-                "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.frcov.browse": {
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.frcov.{wm.config['prod_versions']['frcov']}.browse": {
                 "png_path" : acq.frcov_png_path,
                 "created" : datetime.datetime.now(tz=datetime.timezone.utc)}})
 
@@ -653,7 +727,7 @@ class L2BFrCovFormat(SlurmJobTask):
         
         doc_version = "EMIT SDS GHG JPL-D 107866, v0.2"
         
-        total_time = time.time() - start_time
+        total_time = time.time() - pge_start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -665,6 +739,7 @@ class L2BFrCovFormat(SlurmJobTask):
             "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["frcov"],
             "output": {
                 "frcovqc_tif_path": acq.frcovqc_tif_path,
                 "frcovpv_tif_path:": acq.frcovpv_tif_path,
@@ -678,6 +753,7 @@ class L2BFrCovFormat(SlurmJobTask):
         }
 
         dm.insert_acquisition_log_entry(self.acquisition_id, log_entry)
+
 
 class L2BFrCovDeliver(SlurmJobTask):
     """
@@ -709,11 +785,13 @@ class L2BFrCovDeliver(SlurmJobTask):
         if self.override_output:
             return None
 
-        acq = Acquisition(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return AcquisitionTarget(acquisition=acq, task_family=self.task_family)
+        wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
+        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family,
+                                 product_version=wm.config["prod_versions"]["frcov"])
 
     def work(self):
 
+        pge_start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
@@ -770,15 +848,18 @@ class L2BFrCovDeliver(SlurmJobTask):
                       daac_npv_tif_path, daac_npvunc_tif_path, daac_bare_tif_path, 
                       daac_bareunc_tif_path, daac_browse_path]
 
-        # Use a cloud fraction that sums the nodata fraction (clouds screened on board) and the cloud fraction 02 value
+        # Use a cloud fraction that sums the nodata fraction (clouds screened on board) and the cloud fraction value
         # from the maskTf step.  These fractions are rounded separately.  Use min to ensure it doesn't go over 100.
-        cloud_fraction = min(acq.cloud_fraction_02 + acq.nodata_fraction, 100)
+        cloud_fraction = acq.metadata["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["cloud_fraction"]
+        nodata_fraction = acq.metadata["products"]["mask"][wm.config["prod_versions"]["mask"]]["maskTf"]["nodata_fraction"]
+        cloud_cover = min(cloud_fraction + nodata_fraction, 100)
         
         # Create the UMM-G file
+        collection_version = f"0{wm.config['prod_versions']['frcov']}"
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.frcovqc_tif_path), tz=datetime.timezone.utc)
         frcov_pge = wm.pges["emit-sds-frcov"]
         ummg = daac_converter.initialize_ummg(acq.frcov_granule_ur, creation_time, "EMITL2BFRCOV",
-                                              acq.collection_version, acq.start_time,
+                                              collection_version, acq.start_time,
                                               acq.stop_time, frcov_pge.repo_name, frcov_pge.version_tag,
                                               software_build_version=software_build_version,
                                               software_delivery_version=wm.config["extended_build_num"],
@@ -786,7 +867,7 @@ class L2BFrCovDeliver(SlurmJobTask):
                                               orbit_segment=int(acq.scene), scene=int(acq.daac_scene),
                                               solar_zenith=acq.mean_solar_zenith,
                                               solar_azimuth=acq.mean_solar_azimuth,
-                                              cloud_fraction=cloud_fraction)
+                                              cloud_cover=cloud_cover)
         ummg = daac_converter.add_data_files_ummg(
             ummg, daac_paths,
             acq.daynight,
@@ -836,7 +917,7 @@ class L2BFrCovDeliver(SlurmJobTask):
             "version": wm.config["cnm_version"],
             "product": {
                 "name": acq.frcov_granule_ur,
-                "dataVersion": acq.collection_version,
+                "dataVersion": collection_version,
                 "files": [
                     {
                         "name": daac_frcovqc_tif_name,
@@ -921,8 +1002,8 @@ class L2BFrCovDeliver(SlurmJobTask):
 
         # Submit notification via AWS SQS
         cnm_submission_output = cnm_submission_path.replace(".json", ".out")
-        cmd_aws = [wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", queue_url, "--message-body",
-                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"], ">", cnm_submission_output]
+        cmd_aws = ["ssh", "ngishpc1", "'" + wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", queue_url, "--message-body",
+                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"], ">", cnm_submission_output + "'"]
         pge.run(cmd_aws, tmp_dir=self.tmp_dir)
         wm.change_group_ownership(cnm_submission_output)
         cnm_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(cnm_submission_path),
@@ -955,17 +1036,18 @@ class L2BFrCovDeliver(SlurmJobTask):
             "ummg_json_path": ummg_path,
             "created": datetime.datetime.fromtimestamp(os.path.getmtime(ummg_path), tz=datetime.timezone.utc)
         }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.frcov.frcov_ummg": product_dict_ummg})
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.frcov.{wm.config['prod_versions']['frcov']}.frcov_ummg": product_dict_ummg})
 
-        if "frcov_daac_submissions" in acq.metadata["products"]["frcov"] and \
-                acq.metadata["products"]["frcov"]["frcov_daac_submissions"] is not None:
-            acq.metadata["products"]["frcov"]["frcov_daac_submissions"].append(cnm_submission_path)
+        if "frcov_daac_submissions" in acq.metadata["products"]["frcov"][wm.config["prod_versions"]["frcov"]] and \
+                acq.metadata["products"]["frcov"][wm.config["prod_versions"]["frcov"]]["frcov_daac_submissions"] is not None:
+            acq.metadata["products"]["frcov"][wm.config["prod_versions"]["frcov"]]["frcov_daac_submissions"].append(cnm_submission_path)
         else:
-            acq.metadata["products"]["frcov"]["frcov_daac_submissions"] = [cnm_submission_path]
+            acq.metadata["products"]["frcov"][wm.config["prod_versions"]["frcov"]]["frcov_daac_submissions"] = [cnm_submission_path]
         dm.update_acquisition_metadata(
             acq.acquisition_id,
-            {"products.frcov.frcov_daac_submissions": acq.metadata["products"]["frcov"]["frcov_daac_submissions"]})
+            {f"products.frcov.{wm.config['prod_versions']['frcov']}.frcov_daac_submissions": acq.metadata["products"]["frcov"][wm.config["prod_versions"]["frcov"]]["frcov_daac_submissions"]})
 
+        total_time = time.time() - pge_start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -983,8 +1065,10 @@ class L2BFrCovDeliver(SlurmJobTask):
             "pge_run_command": " ".join(cmd_aws),
             "documentation_version": "TBD",
             "product_creation_time": cnm_creation_time,
+            "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["frcov"],
             "output": {
                 "l2b_frcov_ummg_path:": ummg_path,
                 "l2b_frcov_cnm_submission_path": cnm_submission_path

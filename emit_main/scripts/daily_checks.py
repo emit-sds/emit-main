@@ -45,7 +45,6 @@ def main():
 
     # Check for DCIDs with missing frames
     query = {
-        "build_num": wm.config["build_num"],
         "frames_status": "incomplete",
         "associated_acquisitions": {"$exists": 0},
         "comments": {"$exists": 0}
@@ -68,7 +67,6 @@ def main():
 
     # Check for orbits with missing BAD sto data
     query = {
-        "build_num": wm.config["build_num"],
         "bad_status": "incomplete",
         "associated_bad_netcdf": {"$exists": 0},
         "comments": {"$exists": 0}
@@ -89,7 +87,6 @@ def main():
 
     # Check for orbits with missing raw
     query = {
-        "build_num": wm.config["build_num"],
         "raw_status": "incomplete",
         "num_scenes": {"$exists": 0},
         "comments": {"$exists": 0}
@@ -111,7 +108,6 @@ def main():
 
     # Check for orbits with missing radiance
     query = {
-        "build_num": wm.config["build_num"],
         "radiance_status": "incomplete",
         "products.l1b": {"$exists": 0},
         "comments": {"$exists": 0}
@@ -134,7 +130,6 @@ def main():
 
     # Check for orbits that failed to geocorrect
     query = {
-        "build_num": wm.config["build_num"],
         "radiance_status": "complete",
         "products.l1b": {"$exists": 0},
         "comments": {"$exists": 0}
@@ -156,7 +151,6 @@ def main():
 
     # Check for raw scenes with no radiance
     query = {
-        "build_num": wm.config["build_num"],
         "submode": "science",
         "num_valid_lines": {"$gte": 320},
         "products.l1a.raw.img_path": {"$exists": 1},

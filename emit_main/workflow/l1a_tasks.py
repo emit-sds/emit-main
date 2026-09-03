@@ -9,6 +9,7 @@ import glob
 import json
 import logging
 import os
+import time
 
 import luigi
 import spectral.io.envi as envi
@@ -45,7 +46,6 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
     def requires(self):
 
         logger.debug(f"{self.task_family} requires: {self.stream_path}")
-        # TODO: Add dependency on previous stream file (if one is found in DB)
         return L0StripHOSC(config_path=self.config_path, stream_path=self.stream_path, level=self.level,
                            partition=self.partition, miss_pkt_thresh=self.miss_pkt_thresh, priority=self.priority)
 
@@ -57,10 +57,12 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
             return None
 
         wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
-        return StreamTarget(stream=wm.stream, task_family=self.task_family)
+        return StreamTarget(stream=wm.stream, task_family=self.task_family, 
+                            product_version=wm.config["prod_versions"]["l1a"])
 
     def work(self):
 
+        pge_start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.stream_path}")
         wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
         dm = wm.database_manager
@@ -81,7 +83,6 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
                "--log_path", tmp_log_path]
 
         # Get previous stream path if exists
-        # TODO: What should the search window be here for finding previous stream files?
         prev_streams = dm.find_streams_touching_date_range("1675", "stop_time",
                                                            stream.start_time - datetime.timedelta(seconds=1),
                                                            stream.start_time + datetime.timedelta(minutes=1),
@@ -99,7 +100,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
             # If we found one, then try to get the previous stream path
             if index is not None:
                 try:
-                    prev_stream_path = prev_streams[index]["products"]["l0"]["ccsds_path"]
+                    prev_stream_path = prev_streams[index]["products"]["l0"][wm.config["prod_versions"]["l0"]]["ccsds_path"]
                 except KeyError:
                     wm.print(__name__, f"Could not find a previous stream path for {stream.ccsds_path} in DB.")
                     pass
@@ -154,11 +155,8 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
                 # Insert DCID in database if it doesn't exist
                 dc_meta = {
                     "dcid": dcid,
-                    "build_num": wm.config["build_num"],
-                    "processing_version": wm.config["processing_version"],
                     "start_time": start_time,
                     "stop_time": stop_time,
-                    "frames_status": ""
                 }
                 dm.insert_data_collection(dc_meta)
                 logger.debug(f"Inserted data collection in DB with {dc_meta}")
@@ -201,13 +199,13 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
             wm.symlink(dc.dcid_dir, date_to_dcid_symlink)
 
             # Add frame paths to data collection metadata
-            if "frames" in dc.metadata["products"]["l1a"] and dc.metadata["products"]["l1a"]["frames"] is not None:
+            if "frames" in dc.metadata["products"]["l1a"][wm.config["prod_versions"]["l1a"]] and dc.metadata["products"]["l1a"][wm.config["prod_versions"]["l1a"]]["frames"] is not None:
                 for path in dcid_frame_paths:
-                    if path not in dc.metadata["products"]["l1a"]["frames"]:
-                        dc.metadata["products"]["l1a"]["frames"] += [path]
+                    if path not in dc.metadata["products"]["l1a"][wm.config["prod_versions"]["l1a"]]["frames"]:
+                        dc.metadata["products"]["l1a"][wm.config["prod_versions"]["l1a"]]["frames"] += [path]
             else:
-                dc.metadata["products"]["l1a"]["frames"] = dcid_frame_paths
-            dc.metadata["products"]["l1a"]["frames"].sort()
+                dc.metadata["products"]["l1a"][wm.config["prod_versions"]["l1a"]]["frames"] = dcid_frame_paths
+            dc.metadata["products"]["l1a"][wm.config["prod_versions"]["l1a"]]["frames"].sort()
 
             dm.update_data_collection_metadata(
                 dcid,
@@ -215,14 +213,14 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
                     "start_time": start_time,
                     "stop_time": stop_time,
                     "frames_last_modified": datetime.datetime.now(tz=datetime.timezone.utc),
-                    "products.l1a.frames": dc.metadata["products"]["l1a"]["frames"]
+                    f"products.l1a.{wm.config['prod_versions']['l1a']}.frames": dc.metadata["products"]["l1a"][wm.config["prod_versions"]["l1a"]]["frames"]
                 })
 
             # Check if data collection has complete set of frames
             if dc.has_complete_set_of_frames():
-                dm.update_data_collection_metadata(dcid, {"frames_status": "complete"})
+                dm.update_data_collection_metadata(dcid, {f"frames_status.{wm.config['prod_versions']['l1a']}": "complete"})
             else:
-                dm.update_data_collection_metadata(dcid, {"frames_status": "incomplete"})
+                dm.update_data_collection_metadata(dcid, {f"frames_status.{wm.config['prod_versions']['l1a']}": "incomplete"})
 
             # Add stream file to data collection metadata in DB so there is a link back to CCSDS packet stream for each
             # acquisition. There may be multiple stream files that contribute frames to a given acquisition
@@ -247,7 +245,7 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
             # Keep track of all output paths for log entry
             output_frame_paths += dcid_frame_paths
 
-        dm.update_stream_metadata(stream.ccsds_name, {"products.l1a.data_collections": dcid_frames_map})
+        dm.update_stream_metadata(stream.ccsds_name, {f"products.l1a.{wm.config['prod_versions']['l1a']}.data_collections": dcid_frames_map})
 
         # Copy log file and report file into the stream's l1a directory
         sdp_log_name = stream.ccsds_name.replace("l0_ccsds", "l1a_frames").replace(".bin", "_pge.log")
@@ -257,15 +255,18 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
         wm.copy(tmp_report_path, sdp_report_path)
 
         doc_version = "EMIT IOS SDS ICD JPL-D 104239, Initial"
+        total_time = time.time() - pge_start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
             "pge_version": pge.version_tag,
             "pge_input_files": input_files,
             "pge_run_command": " ".join(cmd),
+            "pge_runtime_seconds": total_time,
             "documentation_version": doc_version,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l1a"],
             "output": {
                 "l1a_frame_paths": output_frame_paths
             }
@@ -301,10 +302,12 @@ class L1AReassembleRaw(SlurmJobTask):
 
         logger.debug(f"{self.task_family} output: {self.dcid}")
         wm = WorkflowManager(config_path=self.config_path, dcid=self.dcid)
-        return DataCollectionTarget(data_collection=wm.data_collection, task_family=self.task_family)
+        return DataCollectionTarget(data_collection=wm.data_collection, task_family=self.task_family,
+                                    product_version=wm.config["prod_versions"]["l1a"])
 
     def work(self):
 
+        pge_start_time = time.time()
         logger.debug(f"{self.task_family} run: {self.dcid}")
 
         wm = WorkflowManager(config_path=self.config_path, dcid=self.dcid)
@@ -375,8 +378,8 @@ class L1AReassembleRaw(SlurmJobTask):
         with open(tmp_no_header_list, "w") as f:
             f.write("\n".join(tmp_decomp_no_header_paths))
         tmp_line_stats_path = os.path.join(self.local_tmp_dir, "line_stats.txt")
-        cmd = ["python", compute_line_stats_exe, tmp_no_header_list, ">", tmp_line_stats_path]
-        pge_line_stats.run(cmd, tmp_dir=self.tmp_dir)
+        cmd_line_stats = ["python", compute_line_stats_exe, tmp_no_header_list, ">", tmp_line_stats_path]
+        pge_line_stats.run(cmd_line_stats, tmp_dir=self.tmp_dir)
 
         # Copy dcid reassembly report and log to decomp folder
         dc_report_name = f"{dc.dcid}_reassembly_report.txt"
@@ -468,9 +471,10 @@ class L1AReassembleRaw(SlurmJobTask):
                     if "Instrument mode:" in line:
                         instrument_mode = line.rstrip("\n").split(": ")[1]
 
-            # TODO: Check valid date?
             if start_time is None or stop_time is None:
                 raise RuntimeError("Could not find start or stop time for acquisition!")
+            if start_time < datetime.datetime(2022, 1, 1) and not self.test_mode:
+                raise RuntimeError("Start time is before 2022!  If this is on purpose, use the --test_mode flag to bypass this error.")
 
             # Get list of paths to frames for this acquisition
             acq_frame_nums = [str(i).zfill(5) for i in list(range(start_index, stop_index + 1))]
@@ -488,8 +492,6 @@ class L1AReassembleRaw(SlurmJobTask):
             
             acq_meta = {
                 "acquisition_id": acq_id,
-                "build_num": wm.config["build_num"],
-                "processing_version": wm.config["processing_version"],
                 "start_time": start_time,
                 "stop_time": stop_time,
                 "orbit": orbit,
@@ -582,14 +584,15 @@ class L1AReassembleRaw(SlurmJobTask):
             creation_time = datetime.datetime.fromtimestamp(
                 os.path.getmtime(acq.raw_img_path), tz=datetime.timezone.utc)
             hdr["emit data product creation time"] = creation_time.strftime("%Y-%m-%dT%H:%M:%S%z")
-            hdr["emit data product version"] = wm.config["processing_version"]
+            hdr["emit data product version"] = wm.config["prod_versions"]["l1a"]
             hdr["emit acquisition planned daynight"] = acq.daynight_planned
             envi.write_envi_header(acq.raw_hdr_path, hdr)
 
             # Update products with frames and decompressed frames:
-            dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1a.frames": acq_frame_paths})
+            dm.update_acquisition_metadata(acq.acquisition_id, 
+                                           {f"products.l1a.{wm.config['prod_versions']['l1a']}.frames": acq_frame_paths})
             dm.update_acquisition_metadata(acq.acquisition_id,
-                                           {"products.l1a.decompressed_frames": acq_decomp_frame_paths})
+                                           {f"products.l1a.{wm.config['prod_versions']['l1a']}.decompressed_frames": acq_decomp_frame_paths})
 
             # Update raw product dictionary
             product_dict_raw = {
@@ -602,7 +605,7 @@ class L1AReassembleRaw(SlurmJobTask):
                     "bands": hdr["bands"]
                 }
             }
-            dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1a.raw": product_dict_raw})
+            dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l1a.{wm.config['prod_versions']['l1a']}.raw": product_dict_raw})
 
             # Update line timestamps product dictionary
             product_dict_line_timestamps = {
@@ -611,7 +614,7 @@ class L1AReassembleRaw(SlurmJobTask):
                                                            tz=datetime.timezone.utc)
             }
             dm.update_acquisition_metadata(acq.acquisition_id,
-                                           {"products.l1a.raw_line_timestamps": product_dict_line_timestamps})
+                                           {f"products.l1a.{wm.config['prod_versions']['l1a']}.raw_line_timestamps": product_dict_line_timestamps})
 
             # Update rawqa product dictionary
             product_dict_rawqa = {
@@ -619,7 +622,7 @@ class L1AReassembleRaw(SlurmJobTask):
                 "created": datetime.datetime.fromtimestamp(os.path.getmtime(acq.rawqa_txt_path),
                                                            tz=datetime.timezone.utc)
             }
-            dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1a.rawqa": product_dict_rawqa})
+            dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l1a.{wm.config['prod_versions']['l1a']}.rawqa": product_dict_rawqa})
 
             # Keep track of output paths and acquisition product map for dc update
             output_paths["l1a_raw_img_paths"].append(acq.raw_img_path)
@@ -643,18 +646,19 @@ class L1AReassembleRaw(SlurmJobTask):
             "created": datetime.datetime.fromtimestamp(os.path.getmtime(line_stats_path),
                                                        tz=datetime.timezone.utc)
         }
-        dm.update_data_collection_metadata(self.dcid, {"products.l1a.line_stats": product_dict_line_stats})
-        dm.update_data_collection_metadata(self.dcid, {"products.l1a.acquisitions": acq_product_map})
+        dm.update_data_collection_metadata(self.dcid, {f"products.l1a.{wm.config['prod_versions']['l1a']}.line_stats": product_dict_line_stats})
+        dm.update_data_collection_metadata(self.dcid, {f"products.l1a.{wm.config['prod_versions']['l1a']}.acquisitions": acq_product_map})
 
         # Check if orbit now has complete set of raw files and update orbit metadata
         wm_orbit = WorkflowManager(config_path=self.config_path, orbit_id=orbit)
         orbit = wm_orbit.orbit
         if orbit.has_complete_raw():
-            dm.update_orbit_metadata(orbit.orbit_id, {"raw_status": "complete"})
+            dm.update_orbit_metadata(orbit.orbit_id, {f"raw_status.{wm.config['prod_versions']['l1a']}": "complete"})
         else:
-            dm.update_orbit_metadata(orbit.orbit_id, {"raw_status": "incomplete"})
+            dm.update_orbit_metadata(orbit.orbit_id, {f"raw_status.{wm.config['prod_versions']['l1a']}": "incomplete"})
 
         # Add log entry to DB
+        total_time = time.time() - pge_start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge_reassemble.repo_url,
@@ -663,8 +667,10 @@ class L1AReassembleRaw(SlurmJobTask):
             "pge_run_command": " ".join(cmd),
             "documentation_version": doc_version,
             "product_creation_time": creation_time,
+            "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l1a"],
             "output": output_paths
         }
 
@@ -700,10 +706,12 @@ class L1AFrameReport(SlurmJobTask):
 
         logger.debug(f"{self.task_family} output: {self.dcid}")
         wm = WorkflowManager(config_path=self.config_path, dcid=self.dcid)
-        return DataCollectionTarget(data_collection=wm.data_collection, task_family=self.task_family)
+        return DataCollectionTarget(data_collection=wm.data_collection, task_family=self.task_family,
+                                    product_version=wm.config["prod_versions"]["l1a"])
 
     def work(self):
 
+        pge_start_time = time.time()
         logger.debug(f"{self.task_family} run: {self.dcid}")
 
         wm = WorkflowManager(config_path=self.config_path, dcid=self.dcid)
@@ -765,15 +773,16 @@ class L1AFrameReport(SlurmJobTask):
             "txt_path": all_frames_report,
             "created": afr_creation_time
         }
-        dm.update_data_collection_metadata(dc.dcid, {"products.l1a.frames_report": afr_product_dict})
+        dm.update_data_collection_metadata(dc.dcid, {f"products.l1a.{wm.config['prod_versions']['l1a']}.frames_report": afr_product_dict})
 
         # Update line header check report product dictionary
         lhc_product_dict = {
             "txt_path": line_header_check_log,
             "created": lhc_creation_time
         }
-        dm.update_data_collection_metadata(dc.dcid, {"products.l1a.line_header_check_log": lhc_product_dict})
+        dm.update_data_collection_metadata(dc.dcid, {f"products.l1a.{wm.config['prod_versions']['l1a']}.line_header_check_log": lhc_product_dict})
 
+        total_time = time.time() - pge_start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -782,8 +791,10 @@ class L1AFrameReport(SlurmJobTask):
             "pge_run_command": " ".join(cmd_check_list),
             "documentation_version": "N/A",
             "product_creation_time": afr_creation_time,
+            "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l1a"],
             "output": {
                 "l1a_all_frames_report_path": all_frames_report,
                 "l1a_line_header_check_log_path": line_header_check_log
@@ -824,10 +835,12 @@ class L1ADeliver(SlurmJobTask):
             return None
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
-        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family)
+        return AcquisitionTarget(acquisition=wm.acquisition, task_family=self.task_family,
+                                 product_version=wm.config["prod_versions"]["l1a"])
 
     def work(self):
 
+        pge_start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
@@ -843,7 +856,6 @@ class L1ADeliver(SlurmJobTask):
         # Create local/tmp daac names and paths
         daac_raw_name = f"{acq.raw_granule_ur}.img"
         daac_raw_hdr_name = f"{acq.raw_granule_ur}.hdr"
-        daac_browse_name = f"{acq.raw_granule_ur}.png"
         daac_ummg_name = f"{acq.raw_granule_ur}.cmr.json"
         daac_raw_path = os.path.join(self.tmp_dir, daac_raw_name)
         daac_raw_hdr_path = os.path.join(self.tmp_dir, daac_raw_hdr_name)
@@ -858,11 +870,12 @@ class L1ADeliver(SlurmJobTask):
         software_build_version = hdr["emit software build version"]
 
         # First create the UMM-G file
+        collection_version = f"0{wm.config['prod_versions']['l1a']}"
         creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(acq.raw_img_path), tz=datetime.timezone.utc)
         l1a_pge = wm.pges["emit-sds-l1a"]
         if is_science:
             ummg = daac_converter.initialize_ummg(acq.raw_granule_ur, creation_time, "EMITL1ARAW",
-                                                  acq.collection_version, acq.start_time,
+                                                  collection_version, acq.start_time,
                                                   acq.stop_time, l1a_pge.repo_name, l1a_pge.version_tag,
                                                   software_build_version=software_build_version,
                                                   software_delivery_version=wm.config["extended_build_num"],
@@ -875,7 +888,7 @@ class L1ADeliver(SlurmJobTask):
             # ummg = daac_converter.add_boundary_ummg(ummg, acq.gring)
         else:
             ummg = daac_converter.initialize_ummg(acq.raw_granule_ur, creation_time, "EMITL1ARAW",
-                                                  acq.collection_version, acq.start_time,
+                                                  collection_version, acq.start_time,
                                                   acq.stop_time, l1a_pge.repo_name, l1a_pge.version_tag,
                                                   software_build_version=software_build_version,
                                                   software_delivery_version=wm.config["extended_build_num"],
@@ -919,7 +932,7 @@ class L1ADeliver(SlurmJobTask):
             "version": wm.config["cnm_version"],
             "product": {
                 "name": acq.raw_granule_ur,
-                "dataVersion": acq.collection_version,
+                "dataVersion": collection_version,
                 "files": [
                     {
                         "name": daac_raw_name,
@@ -956,8 +969,8 @@ class L1ADeliver(SlurmJobTask):
 
         # Submit notification via AWS SQS
         cnm_submission_output = cnm_submission_path.replace(".json", ".out")
-        cmd_aws = [wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", queue_url, "--message-body",
-                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"], ">", cnm_submission_output]
+        cmd_aws = ["ssh", "ngishpc1", "'" + wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", queue_url, "--message-body",
+                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"], ">", cnm_submission_output + "'"]
         pge.run(cmd_aws, tmp_dir=self.tmp_dir)
         wm.change_group_ownership(cnm_submission_output)
         cnm_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(cnm_submission_path),
@@ -990,17 +1003,18 @@ class L1ADeliver(SlurmJobTask):
             "ummg_json_path": ummg_path,
             "created": datetime.datetime.fromtimestamp(os.path.getmtime(ummg_path), tz=datetime.timezone.utc)
         }
-        dm.update_acquisition_metadata(acq.acquisition_id, {"products.l1a.raw_ummg": product_dict_ummg})
+        dm.update_acquisition_metadata(acq.acquisition_id, {f"products.l1a.{wm.config['prod_versions']['l1a']}.raw_ummg": product_dict_ummg})
 
-        if "raw_daac_submissions" in acq.metadata["products"]["l1a"] and \
-                acq.metadata["products"]["l1a"]["raw_daac_submissions"] is not None:
-            acq.metadata["products"]["l1a"]["raw_daac_submissions"].append(cnm_submission_path)
+        if "raw_daac_submissions" in acq.metadata["products"]["l1a"][wm.config["prod_versions"]["l1a"]] and \
+                acq.metadata["products"]["l1a"][wm.config["prod_versions"]["l1a"]]["raw_daac_submissions"] is not None:
+            acq.metadata["products"]["l1a"][wm.config["prod_versions"]["l1a"]]["raw_daac_submissions"].append(cnm_submission_path)
         else:
-            acq.metadata["products"]["l1a"]["raw_daac_submissions"] = [cnm_submission_path]
+            acq.metadata["products"]["l1a"][wm.config["prod_versions"]["l1a"]]["raw_daac_submissions"] = [cnm_submission_path]
         dm.update_acquisition_metadata(
             acq.acquisition_id,
-            {"products.l1a.raw_daac_submissions": acq.metadata["products"]["l1a"]["raw_daac_submissions"]})
+            {f"products.l1a.{wm.config['prod_versions']['l1a']}.raw_daac_submissions": acq.metadata["products"]["l1a"][wm.config["prod_versions"]["l1a"]]["raw_daac_submissions"]})
 
+        total_time = time.time() - pge_start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -1012,8 +1026,10 @@ class L1ADeliver(SlurmJobTask):
             "pge_run_command": " ".join(cmd_aws),
             "documentation_version": "TBD",
             "product_creation_time": cnm_creation_time,
+            "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l1a"],
             "output": {
                 "l1a_raw_ummg_path": ummg_path,
                 "l1a_raw_cnm_submission_path": cnm_submission_path
@@ -1050,10 +1066,12 @@ class L1AReformatEDP(SlurmJobTask):
 
         logger.debug(f"{self.task_family} output: {self.stream_path}")
         wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
-        return StreamTarget(stream=wm.stream, task_family=self.task_family)
+        return StreamTarget(stream=wm.stream, task_family=self.task_family, 
+                            product_version=wm.config["prod_versions"]["l1a"])
 
     def work(self):
 
+        pge_start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.stream_path}")
         wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
         stream = wm.stream
@@ -1061,7 +1079,6 @@ class L1AReformatEDP(SlurmJobTask):
 
         # Find corresponding 1676 stream file
         dm = wm.database_manager
-        # TODO: What should this query time be?  Up to 2 hours?
         anc_streams = dm.find_streams_touching_date_range("1676", "start_time",
                                                           stream.start_time - datetime.timedelta(seconds=1),
                                                           stream.start_time + datetime.timedelta(minutes=4)
@@ -1069,7 +1086,7 @@ class L1AReformatEDP(SlurmJobTask):
         anc_stream_path = None
         if anc_streams is not None and len(anc_streams) > 0:
             try:
-                anc_stream_path = anc_streams[0]["products"]["l0"]["ccsds_path"]
+                anc_stream_path = anc_streams[0]["products"]["l0"][wm.config["prod_versions"]["l0"]]["ccsds_path"]
             except KeyError:
                 wm.print(__name__, f"Could not find a ancillary 1676 stream path for {stream.ccsds_path} in DB.")
                 raise RuntimeError(f"Could not find a ancillary 1676 stream path for {stream.ccsds_path} in DB.")
@@ -1129,9 +1146,10 @@ class L1AReformatEDP(SlurmJobTask):
         l1a_pge_log_path = base_edp_path.replace(".ext", "_pge.log")
         wm.copy(glob.glob(os.path.join(tmp_log_dir, "*"))[0], l1a_pge_log_path)
         # Update DB with product dictionary
-        dm.update_stream_metadata(stream.hosc_name, {"products.l1a": product_dict})
+        dm.update_stream_metadata(stream.hosc_name, {f"products.l1a.{wm.config['prod_versions']['l1a']}": product_dict})
 
         doc_version = "EMIT IOS SDS ICD JPL-D 104239, Initial"
+        total_time = time.time() - pge_start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -1140,8 +1158,10 @@ class L1AReformatEDP(SlurmJobTask):
             "pge_run_command": " ".join(cmd),
             "documentation_version": doc_version,
             "product_creation_time": product_dict["0x15"]["created"],
+            "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l1a"],
             "output": outputs
         }
         dm.insert_stream_log_entry(stream.hosc_name, log_entry)
@@ -1172,10 +1192,12 @@ class L1AReformatBAD(SlurmJobTask):
 
         logger.debug(f"{self.task_family} output: {self.orbit_id}")
         wm = WorkflowManager(config_path=self.config_path, orbit_id=self.orbit_id)
-        return OrbitTarget(orbit=wm.orbit, task_family=self.task_family)
+        return OrbitTarget(orbit=wm.orbit, task_family=self.task_family, 
+                           product_version=wm.config["prod_versions"]["l1a"])
 
     def work(self):
 
+        pge_start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.orbit_id}")
         wm = WorkflowManager(config_path=self.config_path, orbit_id=self.orbit_id)
         dm = wm.database_manager
@@ -1226,7 +1248,7 @@ class L1AReformatBAD(SlurmJobTask):
                                                         tz=datetime.timezone.utc)
         metadata = {
             "associated_bad_netcdf": orbit.uncorr_att_eph_path,
-            "products.l1a": {
+            f"products.l1a.{wm.config['prod_versions']['l1a']}": {
                 "uncorr_att_eph_path": orbit.uncorr_att_eph_path,
                 "created": creation_time
             },
@@ -1234,6 +1256,7 @@ class L1AReformatBAD(SlurmJobTask):
         dm.update_orbit_metadata(orbit.orbit_id, metadata)
 
         doc_version = "N/A"
+        total_time = time.time() - pge_start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -1244,8 +1267,10 @@ class L1AReformatBAD(SlurmJobTask):
             "pge_run_command": " ".join(cmd),
             "documentation_version": doc_version,
             "product_creation_time": creation_time,
+            "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l1a"],
             "output": {
                 "l1a_uncorr_att_eph_path": orbit.uncorr_att_eph_path
             }

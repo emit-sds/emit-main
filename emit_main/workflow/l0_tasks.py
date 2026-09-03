@@ -10,6 +10,7 @@ import json
 import logging
 import luigi
 import os
+import time
 
 from emit_main.workflow.output_targets import StreamTarget
 from emit_main.workflow.slurm import SlurmJobTask
@@ -43,9 +44,12 @@ class L0StripHOSC(SlurmJobTask):
     def output(self):
         logger.debug(f"{self.task_family} output: {self.stream_path}")
         wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
-        return StreamTarget(stream=wm.stream, task_family=self.task_family)
+        return StreamTarget(stream=wm.stream, task_family=self.task_family, 
+                            product_version=wm.config["prod_versions"]["l0"])
 
     def work(self):
+        
+        pge_start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.stream_path}")
 
         wm = WorkflowManager(config_path=self.config_path)
@@ -112,8 +116,6 @@ class L0StripHOSC(SlurmJobTask):
             "apid": apid,
             "start_time": datetime.datetime.strptime(timing["start_time"], "%Y-%m-%dT%H:%M:%S"),
             "stop_time": datetime.datetime.strptime(timing["stop_time"], "%Y-%m-%dT%H:%M:%S"),
-            "build_num": wm.config["build_num"],
-            "processing_version": wm.config["processing_version"],
             "hosc_name": hosc_name,
             "processing_log": []
         }
@@ -124,15 +126,26 @@ class L0StripHOSC(SlurmJobTask):
         stream = wm.stream
 
         # Build the CCSDS file name and report name using the UTC start time derived from the data
-        ccsds_name = "_".join([
-            wm.config["instrument"],
-            stream.apid,
-            stream.start_time.strftime("%Y%m%dt%H%M%S"),
-            "l0",
-            "ccsds",
-            "b" + wm.config["build_num"],
-            "v" + wm.config["processing_version"]
-        ]) + ".bin"
+        # Stream files from before the v2 cutover date are assumed to have the old file naming schema
+        if stream.start_time < wm.config["v2_cutover_date"]:
+            ccsds_name = "_".join([
+                wm.config["instrument"],
+                stream.apid,
+                stream.start_time.strftime("%Y%m%dt%H%M%S"),
+                "l0",
+                "ccsds",
+                "b0106",
+                "v" + wm.config["prod_versions"]["l0"]
+            ]) + ".bin"
+        else:
+            ccsds_name = "_".join([
+                wm.config["instrument"],
+                stream.apid,
+                stream.start_time.strftime("%Y%m%dt%H%M%S"),
+                "l0",
+                "ccsds",
+                "v" + wm.config["prod_versions"]["l0"]
+            ]) + ".bin"                
         ccsds_path = os.path.join(stream.l0_dir, ccsds_name)
         report_path = ccsds_path.replace(".bin", "_report.txt")
 
@@ -163,13 +176,17 @@ class L0StripHOSC(SlurmJobTask):
             "ccsds_name": ccsds_name,
             "products": {
                 "raw": {
-                    "hosc_path": stream.hosc_path,
-                    "created": datetime.datetime.fromtimestamp(
-                        os.path.getmtime(stream.hosc_path), tz=datetime.timezone.utc)
+                    wm.config["prod_versions"]["l0"]: {
+                        "hosc_path": stream.hosc_path,
+                        "created": datetime.datetime.fromtimestamp(
+                            os.path.getmtime(stream.hosc_path), tz=datetime.timezone.utc)
+                    }
                 },
                 "l0": {
-                    "ccsds_path": ccsds_path,
-                    "created": datetime.datetime.fromtimestamp(os.path.getmtime(ccsds_path), tz=datetime.timezone.utc)
+                    wm.config["prod_versions"]["l0"]: {
+                        "ccsds_path": ccsds_path,
+                        "created": datetime.datetime.fromtimestamp(os.path.getmtime(ccsds_path), tz=datetime.timezone.utc)
+                    }
                 }
             }
         }
@@ -177,6 +194,7 @@ class L0StripHOSC(SlurmJobTask):
 
         doc_version = "Space Packet Protocol, CCSDS 133.0-B-1 (with Issue 1, Cor. 1, Sept. 2010 and Issue 1, Cor. 2, " \
                       "Sept. 2012 addendums)"
+        total_time = time.time() - pge_start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -185,11 +203,13 @@ class L0StripHOSC(SlurmJobTask):
                 "ingested_hosc_path": self.stream_path,
             },
             "pge_run_command": " ".join(cmd),
+            "pge_runtime_seconds": total_time,
             "documentation_version": doc_version,
             "product_creation_time": datetime.datetime.fromtimestamp(
                 os.path.getmtime(ccsds_path), tz=datetime.timezone.utc),
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l0"],
             "output": {
                 "raw_hosc_path": stream.hosc_path,
                 "l0_ccsds_path": ccsds_path,
@@ -207,6 +227,7 @@ class L0IngestBAD(SlurmJobTask):
     stream_path = luigi.Parameter()
     level = luigi.Parameter()
     partition = luigi.Parameter()
+    override_output = luigi.BoolParameter(default=False)
 
     memory = 18000
 
@@ -219,10 +240,17 @@ class L0IngestBAD(SlurmJobTask):
 
     def output(self):
         logger.debug(f"{self.task_family} output: {self.stream_path}")
+
+        if self.override_output:
+            return None
+
         wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
-        return StreamTarget(stream=wm.stream, task_family=self.task_family)
+        return StreamTarget(stream=wm.stream, task_family=self.task_family, 
+                            product_version=wm.config["prod_versions"]["l0"])
 
     def work(self):
+        
+        pge_start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.stream_path}")
 
         # Get workflow manager
@@ -267,8 +295,6 @@ class L0IngestBAD(SlurmJobTask):
             "apid": "bad",
             "start_time": start_time,
             "stop_time": stop_time,
-            "build_num": wm.config["build_num"],
-            "processing_version": wm.config["processing_version"],
             "bad_name": bad_name,
             "extended_bad_name": extended_bad_name,
             "processing_log": []
@@ -316,9 +342,9 @@ class L0IngestBAD(SlurmJobTask):
 
                 # Check if orbit has complete bad data
                 if orbit.has_complete_bad_data():
-                    dm.update_orbit_metadata(orbit_id, {"bad_status": "complete"})
+                    dm.update_orbit_metadata(orbit_id, {f"bad_status.{wm.config['prod_versions']['l0']}": "complete"})
                 else:
-                    dm.update_orbit_metadata(orbit_id, {"bad_status": "incomplete"})
+                    dm.update_orbit_metadata(orbit_id, {f"bad_status.{wm.config['prod_versions']['l0']}": "incomplete"})
 
                 # Save symlink paths to use after moving the file
                 orbit_symlink_paths.append(os.path.join(orbit.raw_dir, stream.extended_bad_name))
@@ -336,17 +362,8 @@ class L0IngestBAD(SlurmJobTask):
             wm.symlink(stream.bad_path, symlink)
 
         # Copy CSV file to l0 dir
-        # l0_bad_csv_name = "_".join(["emit", start_time.strftime("%Y%m%dt%H%M%S"), "l0", "bad",
-        #                             "b" + wm.config["build_num"], "v" + wm.config["processing_version"]]) + ".csv"
         l0_bad_csv_path = os.path.join(stream.l0_dir, extended_bad_name.replace(".sto", ".csv"))
         wm.copy(tmp_csv_path, l0_bad_csv_path)
-
-        # Symlink from the BAD l1a folder to the orbits l1a folders
-        # for dir in q:
-        #     orbit_id = os.path.basename(os.path.basename((dir)))
-        #     dir_symlink = os.path.join(stream.l1a_dir, f"orbit_{orbit_id}_l1a_b{stream.config['build_num']}_"
-        #     f"v{stream.config['processing_version']}")
-        #     wm.symlink(dir, dir_symlink)
 
         # Update DB
         creation_time_raw = datetime.datetime.fromtimestamp(os.path.getmtime(stream.bad_path), tz=datetime.timezone.utc)
@@ -354,18 +371,23 @@ class L0IngestBAD(SlurmJobTask):
         metadata = {
             "products": {
                 "raw": {
-                    "bad_path": stream.bad_path,
-                    "created": creation_time_raw
+                    wm.config["prod_versions"]["l0"]: {
+                        "bad_path": stream.bad_path,
+                        "created": creation_time_raw
+                    }
                 },
                 "l0": {
-                    "bad_csv_path": l0_bad_csv_path,
-                    "created": creation_time_csv
+                    wm.config["prod_versions"]["l0"]: {
+                        "bad_csv_path": l0_bad_csv_path,
+                        "created": creation_time_csv
+                    }
                 }
             }
         }
         dm = wm.database_manager
         dm.update_stream_metadata(stream.bad_name, metadata)
 
+        total_time = time.time() - pge_start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -376,8 +398,10 @@ class L0IngestBAD(SlurmJobTask):
             "pge_run_command": " ".join(cmd),
             "documentation_version": "N/A",
             "product_creation_time": creation_time_raw,
+            "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l0"],
             "output": {
                 "raw_bad_path": stream.bad_path,
                 "l0_bad_csv_path": l0_bad_csv_path
@@ -413,6 +437,7 @@ class L0ProcessPlanningProduct(SlurmJobTask):
 
     def work(self):
 
+        pge_start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.plan_prod_path}")
         wm = WorkflowManager(config_path=self.config_path)
         dm = wm.database_manager
@@ -502,8 +527,6 @@ class L0ProcessPlanningProduct(SlurmJobTask):
 
                 orbit_meta = {
                     "orbit_id": orbit_id,
-                    "build_num": wm.config["build_num"],
-                    "processing_version": wm.config["processing_version"],
                     "start_time": start_time
                 }
 
@@ -551,8 +574,6 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                 year = e["datetime"].strftime("%y")
                 dc_meta = {
                     "dcid": dcid,
-                    "build_num": wm.config["build_num"],
-                    "processing_version": wm.config["processing_version"],
                     "orbit": year + str(e["orbit number"]).zfill(5),
                     "scene": str(e["scene number"]).zfill(3),
                     "submode": submode,
@@ -564,7 +585,6 @@ class L0ProcessPlanningProduct(SlurmJobTask):
                     dm.update_data_collection_metadata(dcid, dc_meta)
                     wm.print(__name__, f"Updated data collection in DB with {dc_meta}")
                 else:
-                    dc_meta["frames_status"] = ""
                     dm.insert_data_collection(dc_meta)
                     wm.print(__name__, f"Inserted data collection in DB with {dc_meta}")
 
@@ -597,15 +617,18 @@ class L0ProcessPlanningProduct(SlurmJobTask):
         wm.move(self.plan_prod_path, target_pp_path)
 
         # Add processing log entry for orbits and data collections
+        total_time = time.time() - pge_start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
             "pge_version": pge.version_tag,
             "pge_input_files": self.plan_prod_path,
             "pge_run_command": "N/A - database updates only",
+            "pge_runtime_seconds": total_time,
             "documentation_version": "N/A",
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l0"],
             "output": {
                 "raw_planning_product_path": target_pp_path
             }
@@ -644,9 +667,12 @@ class L0Deliver(SlurmJobTask):
             return None
 
         wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
-        return StreamTarget(stream=wm.stream, task_family=self.task_family)
+        return StreamTarget(stream=wm.stream, task_family=self.task_family, 
+                            product_version=wm.config["prod_versions"]["l0"])
 
     def work(self):
+        
+        pge_start_time = time.time()
         logger.debug(f"{self.task_family} work: {self.acquisition_id}")
 
         wm = WorkflowManager(config_path=self.config_path, stream_path=self.stream_path)
@@ -655,7 +681,7 @@ class L0Deliver(SlurmJobTask):
 
         # Create GranuleUR and DAAC paths
         # Delivery file format: EMIT_L0_<VVV>_<APID>_<YYYYMMDDTHHMMSS>.bin
-        collection_version = f"0{wm.config['processing_version']}"
+        collection_version = f"0{wm.config['prod_versions']['l0']}"
         start_time_str = stream.start_time.strftime("%Y%m%dT%H%M%S")
         granule_ur = f"EMIT_L0_{collection_version}_{stream.apid}_{start_time_str}"
         daac_ccsds_name = f"{granule_ur}.bin"
@@ -744,8 +770,8 @@ class L0Deliver(SlurmJobTask):
 
         # Submit notification via AWS SQS
         cnm_submission_output = cnm_submission_path.replace(".json", ".out")
-        cmd_aws = [wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", queue_url, "--message-body",
-                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"], ">", cnm_submission_output]
+        cmd_aws = ["ssh", "ngishpc1", "'" + wm.config["aws_cli_exe"], "sqs", "send-message", "--queue-url", queue_url, "--message-body",
+                   f"file://{cnm_submission_path}", "--profile", wm.config["aws_profile"], ">", cnm_submission_output + "'"]
         pge.run(cmd_aws, tmp_dir=self.tmp_dir)
         wm.change_group_ownership(cnm_submission_output)
         cnm_creation_time = datetime.datetime.fromtimestamp(os.path.getmtime(cnm_submission_path),
@@ -778,17 +804,18 @@ class L0Deliver(SlurmJobTask):
             "ummg_json_path": ummg_path,
             "created": datetime.datetime.fromtimestamp(os.path.getmtime(ummg_path), tz=datetime.timezone.utc)
         }
-        dm.update_stream_metadata(stream.ccsds_name, {"products.daac.ccsds_ummg": product_dict_ummg})
+        dm.update_stream_metadata(stream.ccsds_name, {f"products.daac.{wm.config['prod_versions']['l0']}.ccsds_ummg": product_dict_ummg})
 
-        if "ccsds_daac_submissions" in stream.metadata["products"]["daac"] and \
-                stream.metadata["products"]["daac"]["ccsds_daac_submissions"] is not None:
-            stream.metadata["products"]["daac"]["ccsds_daac_submissions"].append(cnm_submission_path)
+        if "ccsds_daac_submissions" in stream.metadata["products"]["daac"][wm.config["prod_versions"]["l0"]] and \
+                stream.metadata["products"]["daac"][wm.config["prod_versions"]["l0"]]["ccsds_daac_submissions"] is not None:
+            stream.metadata["products"]["daac"][wm.config["prod_versions"]["l0"]]["ccsds_daac_submissions"].append(cnm_submission_path)
         else:
-            stream.metadata["products"]["daac"]["ccsds_daac_submissions"] = [cnm_submission_path]
+            stream.metadata["products"]["daac"][wm.config["prod_versions"]["l0"]]["ccsds_daac_submissions"] = [cnm_submission_path]
         dm.update_stream_metadata(
             stream.ccsds_name,
-            {"products.daac.ccsds_daac_submissions": stream.metadata["products"]["daac"]["ccsds_daac_submissions"]})
+            {f"products.daac.{wm.config['prod_versions']['l0']}.ccsds_daac_submissions": stream.metadata["products"]["daac"][wm.config["prod_versions"]["l0"]]["ccsds_daac_submissions"]})
 
+        total_time = time.time() - pge_start_time
         log_entry = {
             "task": self.task_family,
             "pge_name": pge.repo_url,
@@ -799,8 +826,10 @@ class L0Deliver(SlurmJobTask):
             "pge_run_command": " ".join(cmd_aws),
             "documentation_version": "TBD",
             "product_creation_time": cnm_creation_time,
+            "pge_runtime_seconds": total_time,
             "log_timestamp": datetime.datetime.now(tz=datetime.timezone.utc),
             "completion_status": "SUCCESS",
+            "product_version": wm.config["prod_versions"]["l0"],
             "output": {
                 "l0_ccsds_ummg_path": ummg_path,
                 "l0_ccsds_cnm_submission_path": cnm_submission_path
