@@ -6,6 +6,7 @@ dependencies:
   - cryptography=46.0.3
   - gdal=3.11.4
   - h5netcdf=1.7.3
+  - kerchunk=0.2.10
   - luigi=3.6.0
   - matplotlib=3.10.7
   - netcdf4=1.7.3
