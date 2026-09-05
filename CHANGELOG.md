@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v2.0.1](https://github.com/emit-sds/emit-main/compare/v2.0.0...v2.0.1)
+
+> 5 September 2026
+
+* Fix tetracorder-lite version number and add kerchunk to environment.yml
+
 #### [v2.0.0](https://github.com/emit-sds/emit-main/compare/v1.6.35...v2.0.0)
 
 > 3 September 2026
