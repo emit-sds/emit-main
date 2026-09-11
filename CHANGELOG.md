@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v2.0.2](https://github.com/emit-sds/emit-main/compare/v2.0.1...v2.0.2)
+
+> 11 September 2026
+
+* explicitly set the deleted channels by @pgbrodrick in https://github.com/emit-sds/emit-main/pull/119
+* Preserve tetracorder work directory
+
 #### [v2.0.1](https://github.com/emit-sds/emit-main/compare/v2.0.0...v2.0.1)
 
 > 5 September 2026

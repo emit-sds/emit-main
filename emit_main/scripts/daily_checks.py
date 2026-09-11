@@ -45,7 +45,7 @@ def main():
 
     # Check for DCIDs with missing frames
     query = {
-        "frames_status": "incomplete",
+        f"frames_status.{wm.config['prod_versions']['l1a']}": "incomplete",
         "associated_acquisitions": {"$exists": 0},
         "comments": {"$exists": 0}
     }
@@ -54,7 +54,7 @@ def main():
     results = list(dc_coll.find(query).sort("start_time", 1))
     print("---------------------")
     print(f"Description: Data collections with incomplete frames")
-    print(f"Resolution: Investigate missing frames (python cron/missing_frames.py DCID). If they can't be recovered, "
+    print(f"Resolution: Investigate missing frames (python scripts/missing_frames.py DCID). If they can't be recovered, "
           f"then run the command below.")
     print(f"Command: python run_workflow.py -c config/ops_sds_config.json -d DCID -p l1aframereport --ignore_missing_"
           f"frames")
@@ -67,7 +67,7 @@ def main():
 
     # Check for orbits with missing BAD sto data
     query = {
-        "bad_status": "incomplete",
+        f"bad_status.{wm.config['prod_versions']['l1a']}": "incomplete",
         "associated_bad_netcdf": {"$exists": 0},
         "comments": {"$exists": 0}
     }
@@ -87,7 +87,7 @@ def main():
 
     # Check for orbits with missing raw
     query = {
-        "raw_status": "incomplete",
+        f"raw_status.{wm.config['prod_versions']['l1a']}": "incomplete",
         "num_scenes": {"$exists": 0},
         "comments": {"$exists": 0}
     }
@@ -108,8 +108,8 @@ def main():
 
     # Check for orbits with missing radiance
     query = {
-        "radiance_status": "incomplete",
-        "products.l1b": {"$exists": 0},
+        f"radiance_status.{wm.config['prod_versions']['l1b']}": "incomplete",
+        f"products.l1b.{wm.config['prod_versions']['l1b']}": {"$exists": 0},
         "comments": {"$exists": 0}
     }
     if start is not None:
@@ -130,8 +130,8 @@ def main():
 
     # Check for orbits that failed to geocorrect
     query = {
-        "radiance_status": "complete",
-        "products.l1b": {"$exists": 0},
+        f"radiance_status.{wm.config['prod_versions']['l1b']}": "complete",
+        f"products.l1b.{wm.config['prod_versions']['l1b']}": {"$exists": 0},
         "comments": {"$exists": 0}
     }
     if start is not None:
@@ -153,8 +153,8 @@ def main():
     query = {
         "submode": "science",
         "num_valid_lines": {"$gte": 320},
-        "products.l1a.raw.img_path": {"$exists": 1},
-        "products.l1b.rdn.img_path": {"$exists": 0}
+        f"products.l1a.{wm.config['prod_versions']['l1a']}.raw.img_path": {"$exists": 1},
+        f"products.l1b.{wm.config['prod_versions']['l1b']}.rdn.img_path": {"$exists": 0}
     }
     if start is not None:
         query["start_time"] = {"$gte": start, "$lt": stop}

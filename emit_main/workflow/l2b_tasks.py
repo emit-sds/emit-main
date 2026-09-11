@@ -67,6 +67,7 @@ class L2BMineral(SlurmJobTask):
         wm = WorkflowManager(config_path=self.config_path, acquisition_id=self.acquisition_id)
         acq = wm.acquisition
         pge = wm.pges["emit-sds-l2b"]
+        tetra_pge = wm.pges["tetracorder-lite"]
 
         # Build PGE commands to run the tetracorder container
         tmp_data_dir = os.path.join(self.local_tmp_dir, 'data')
@@ -75,7 +76,7 @@ class L2BMineral(SlurmJobTask):
         wm.makedirs(tmp_output_dir)
 
         tmp_output_tetra_path = os.path.join(tmp_output_dir, "tetracorder")
-        tmp_output_tetra_tar_path = tmp_output_tetra_path + '.tar'
+        tmp_output_tetra_tar_path = tmp_output_tetra_path + '.tar.gz'
         tmp_output_aggregate_dir = os.path.join(tmp_output_dir, "aggregate")
         tmp_min_path = os.path.join(tmp_output_aggregate_dir, "agg.nc")
         tmp_min_unc_path = os.path.join(tmp_output_aggregate_dir, "agg-uncert.nc")
@@ -98,6 +99,7 @@ class L2BMineral(SlurmJobTask):
         config["data"]["rfl"] = f"/data/{tmp_rfl_basename}"
         config["data"]["rfluncert"] = f"/data/{tmp_rfluncert_basename}"
         config["output"]["base"] = "/output"
+        config["sensor"]["deleted_channels"] = "1t4 75t79 99t106 128t148 192t214 218 219t221 226 280t285c"
         with open(tmp_config_path, "w") as f:
             yaml.safe_dump(config, f, sort_keys=False)
 
@@ -119,7 +121,7 @@ class L2BMineral(SlurmJobTask):
                "-e", f"NUMEXPR_NUM_THREADS={self.n_cores}",
                "-v", f"{tmp_data_dir}:/data",
                "-v", f"{tmp_output_dir}:/output",
-               f"{wm.config['tetracorder_image_name']}:{wm.config['tetracorder_image_tag_name']}",
+               f"{tetra_pge.repo_name}:{tetra_pge.version_tag}",
                "tetrapy", "run", "/data/config.yml",
                "--setup.cores", f"{self.n_cores}"]
 
@@ -128,8 +130,12 @@ class L2BMineral(SlurmJobTask):
         ql_cmd = ['python', os.path.join(pge.repo_dir, 'quicklook.py'), tmp_min_path, tmp_quicklook_path, '--unc_file', tmp_min_unc_path]
         pge.run(ql_cmd, cwd=pge.repo_dir, tmp_dir=self.tmp_dir)
 
-        # tar l2b
-        tar_cmd = ['tar', '-C', tmp_output_dir, '-cf', tmp_output_tetra_tar_path, os.path.basename(tmp_output_tetra_path)]
+        # tar l2b, but first remove some folders to reduce size
+        for p in ("results.group*", "results.dual*", "results.case*", "color.results+labels", "color.results-envi"):
+            rm_cmd = ["rm", "-rf", f"{tmp_output_tetra_path}/{p}"]
+            pge.run(rm_cmd, tmp_dir=self.tmp_dir, use_conda_run=False)
+
+        tar_cmd = ['tar', '-C', tmp_output_dir, '-czf', tmp_output_tetra_tar_path, os.path.basename(tmp_output_tetra_path)]
         pge.run(tar_cmd, cwd=pge.repo_dir, tmp_dir=self.tmp_dir)
 
         # Reformat for DAAC
@@ -164,11 +170,13 @@ class L2BMineral(SlurmJobTask):
         
         # Copy and rename output files back to /store
         log_path = acq.min_nc_path.replace(".nc", "_pge.log")
+        tar_gz_path = acq.min_nc_path.replace("_min_", "_tetra_").replace(".nc", ".tar.gz")
         wm.copy(tmp_daac_nc_min_path, acq.min_nc_path)
         wm.copy(tmp_daac_nc_minuncert_path, acq.minuncert_nc_path)
         wm.copy(tmp_quicklook_path, acq.min_png_path)
         wm.copy(tmp_tetrapy_log_path, log_path)
         wm.copy(tmp_config_path, acq.min_nc_path.replace(".nc", "_runconfig.yml"))
+        wm.copy(tmp_output_tetra_tar_path, tar_gz_path)
             
         creation_time = datetime.datetime.fromtimestamp(
             os.path.getmtime(acq.min_nc_path), tz=datetime.timezone.utc)
