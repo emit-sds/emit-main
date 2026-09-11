@@ -99,6 +99,7 @@ class L2BMineral(SlurmJobTask):
         config["data"]["rfl"] = f"/data/{tmp_rfl_basename}"
         config["data"]["rfluncert"] = f"/data/{tmp_rfluncert_basename}"
         config["output"]["base"] = "/output"
+        config["sensor"]["deleted_channels"] = "1t4 75t79 99t106 128t148 192t214 218 219t221 226 280t285c"
         with open(tmp_config_path, "w") as f:
             yaml.safe_dump(config, f, sort_keys=False)
 
