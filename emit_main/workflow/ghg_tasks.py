@@ -1012,7 +1012,7 @@ class CH4Mosaic(SlurmJobTask):
         mosaic_basename = f"emit{self.dcid}_{start_timestamp.strftime(fmt)}-to-{end_timestamp.strftime(fmt)}"
         
         # Define exe's
-        process_exe = os.path.join(pge.repo_dir, "mosaic.py")
+        process_exe = os.path.join(pge.repo_dir, "deploy", "mosaic.py")
         
         log_file_arg = f"--log-file={os.path.join(self.tmp_dir, 'rsync.log')}"
 
