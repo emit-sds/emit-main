@@ -676,7 +676,7 @@ def main():
         am_dl3rfl_tasks = am.get_l3rfl_delivery_tasks(start_time=args.start_time, stop_time=args.stop_time,
                                                   date_field=args.date_field, retry_failed=args.retry_failed)
         am_dl3rfl_tasks_str = "\n".join([str(t) for t in am_dl3rfl_tasks])
-        logger.info(f"Acquisition monitor deliver l3 reflectance tasks to run:\n{am_dl2b_tasks_str}")
+        logger.info(f"Acquisition monitor deliver l3 reflectance tasks to run:\n{am_dl3rfl_tasks_str}")
         tasks += am_dl3rfl_tasks    
         
     # Get tasks from mch4 (mosaic ch4) monitor
