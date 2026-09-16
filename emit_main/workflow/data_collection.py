@@ -129,8 +129,7 @@ class DataCollection:
         # Get list of acquisition ids expected to have CH4 products
         query = {
             "associated_dcid": self.dcid,
-            f"products.l1b.{self.config['prod_versions']['l1b']}.obs.band_means.solar_zenith": {"$lt": 80},
-            "num_valid_lines": {"$gte": 320},
+            f"products.l1b.{self.config['prod_versions']['l1b']}.obs.band_means.solar_zenith": {"$lt": 75}
         }
 
         expected = list(acquisitions_coll.find(query))
@@ -158,7 +157,7 @@ class DataCollection:
         #Get list of acquisition ids expected to have CO2 products
         query = {
             "associated_dcid": self.dcid,
-            f"products.l1b.{self.config['prod_versions']['l1b']}.obs.band_means.solar_zenith": {"$lt": 80}
+            f"products.l1b.{self.config['prod_versions']['l1b']}.obs.band_means.solar_zenith": {"$lt": 75}
         }
 
         expected = list(acquisitions_coll.find(query))
