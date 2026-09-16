@@ -8,7 +8,6 @@ import datetime as dt
 import json
 
 import pandas as pd
-from dateutil.relativedelta import relativedelta
 
 from emit_main.database.database_manager import DatabaseManager
 
@@ -78,22 +77,21 @@ def make_feature(record, l1b_v, l2a_v, mask_v):
 
     for key, name in OBS_VARS.items():
         obs_val = record.get(f'products.l1b.{l1b_v}.obs.band_means.{key}')
-        if obs_val:
+        if obs_val is not None:
             feature["properties"][name] = round(obs_val, 2)
     for key, name in STATE_VARS.items():
         state_val = record.get(f'products.l2a.{l2a_v}.state.band_medians.{key}')
-        if state_val:
+        if state_val is not None:
             feature["properties"][name] = round(state_val, 2)
-
     for key, name in MASK_VARS.items():
         mask_val = record.get(f'products.mask.{mask_v}.maskTf.{key}')
-        if mask_val:
+        if mask_val is not None:
             feature["properties"][name] = mask_val
 
-    screened = feature["properties"].get("Screened Onboard Fraction", False)
-    cloud_fraction = feature["properties"].get("Cloud Fraction Spectf", False)
+    screened = feature["properties"].get("Screened Onboard Fraction")
+    cloud_fraction = feature["properties"].get("Cloud Fraction Spectf")
 
-    if screened and cloud_fraction:
+    if (screened is not None) and (cloud_fraction is not None):
         feature["properties"]["Cloud Cover"] = screened + cloud_fraction
 
     on_daac = False
@@ -120,7 +118,7 @@ def make_feature(record, l1b_v, l2a_v, mask_v):
         feature['properties']['L2A Mask Download'] = f'{mask_base}/{l2a_mask}/{l2a_mask}.nc'
         on_daac = True
 
-    if on_daac == False:
+    if on_daac is False:
         feature['properties']['style'] = {"weight":1,"opacity":1,"fillColor": "#f6c409", "color": "#f6c409"}
 
     return feature
@@ -170,10 +168,9 @@ def main():
 
         query["start_time"] = {"$gte": start_date, "$lt": stop_date}
 
-    # TODO: add dm.
-    l1b_v = config["product_config"]["prod_versions"]["l1b"]
-    l2a_v = config["product_config"]["prod_versions"]["l2a"]
-    mask_v = config["product_config"]["prod_versions"]["mask"]
+    l1b_v = dm.config["prod_versions"]["l1b"]
+    l2a_v = dm.config["prod_versions"]["l2a"]
+    mask_v = dm.config["prod_versions"]["mask"]
 
     projection = {
         "gring": 1,
@@ -211,7 +208,7 @@ def main():
             feat['properties']['DAAC_index'] = daac_index
             fid_index +=1
             if 'L1B Radiance Download' in list(feat['properties'].keys()):
-              daac_index += 1
+                daac_index += 1
 
             if args.dataframe:
                 features.append(feat['properties'])
@@ -229,7 +226,7 @@ def main():
                 cf.write(line)
                 chunk_first = False
                 chunk_count += 1
-                if chunk_count >= args.chunk_size:
+                if chunk_count >= args.chunksize:
                     close_chunk(cf)
                     cf = None
                     chunk_n += 1
