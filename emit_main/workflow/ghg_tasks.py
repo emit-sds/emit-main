@@ -222,8 +222,8 @@ class CO2(SlurmJobTask):
     level = luigi.Parameter()
     partition = luigi.Parameter()
 
-    n_cores = 64
-    memory = 360000
+    n_cores = 1
+    memory = 10000
 
     task_namespace = "emit"
 
@@ -1012,16 +1012,16 @@ class CH4Mosaic(SlurmJobTask):
         mosaic_basename = f"emit{self.dcid}_{start_timestamp.strftime(fmt)}-to-{end_timestamp.strftime(fmt)}"
         
         # Define exe's
-        process_exe = os.path.join(pge.repo_dir, "mosaic.py")
+        process_exe = os.path.join(pge.repo_dir, "deploy", "mosaic.py")
         
         log_file_arg = f"--log-file={os.path.join(self.tmp_dir, 'rsync.log')}"
 
-        version = "v" + wm.config['prod_versions']['ghg']
+        version = "v" + wm.config['prod_versions']['ch4']
         input_files = {}
         output_files = {}
         pge_commands = []
         
-        target_dir = f'{wm.config["mirror_data_dir"]}/data_collections/by_dcid/{self.dcid[:5]}/{self.dcid}/ghg/ch4'
+        target_dir = f'{wm.config["mirror_data_dir"]}/data_collections/by_dcid/{self.dcid[:5]}/{self.dcid}/ch4'
         target = f'{wm.config["daac_server_internal"]}:{target_dir}'
 
         cmd_mkdir = ["ssh", "ngishpc1", "'" + "ssh", wm.config["daac_server_internal"], "mkdir", "-p", target_dir + "'"]
@@ -1142,16 +1142,16 @@ class CO2Mosaic(SlurmJobTask):
         mosaic_basename = f"emit{self.dcid}_{start_timestamp.strftime(fmt)}-to-{end_timestamp.strftime(fmt)}"
         
         # Define exe's
-        process_exe = os.path.join(pge.repo_dir, "mosaic.py")
+        process_exe = os.path.join(pge.repo_dir, "deploy", "mosaic.py")
         
         log_file_arg = f"--log-file={os.path.join(self.tmp_dir, 'rsync.log')}"
 
-        version = "v" + wm.config['prod_versions']['ghg']
+        version = "v" + wm.config['prod_versions']['co2']
         input_files = {}
         output_files = {}
         pge_commands = []
         
-        target_dir = f'{wm.config["mirror_data_dir"]}/data_collections/by_dcid/{self.dcid[:5]}/{self.dcid}/ghg/co2'
+        target_dir = f'{wm.config["mirror_data_dir"]}/data_collections/by_dcid/{self.dcid[:5]}/{self.dcid}/co2'
         target = f'{wm.config["daac_server_internal"]}:{target_dir}'
 
         cmd_mkdir = ["ssh", "ngishpc1", "'" + "ssh", wm.config["daac_server_internal"], "mkdir", "-p", target_dir + "'"]

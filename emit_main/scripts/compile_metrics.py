@@ -255,24 +255,28 @@ def main():
                 rfl_nc_files = glob.glob(f"{dir}/{acq}/l2a/{acq}*_rfl_*nc")
                 rflunc_img_files = glob.glob(f"{dir}/{acq}/l2a/{acq}*_rfluncert_*img")
                 rflunc_nc_files = glob.glob(f"{dir}/{acq}/l2a/{acq}*_rfluncert_*nc")
-                mask_img_files = glob.glob(f"{dir}/{acq}/l2a/{acq}*_mask_*img")
-                mask_nc_files = glob.glob(f"{dir}/{acq}/l2a/{acq}*_mask_*nc")
-                min_img_files = glob.glob(f"{dir}/{acq}/l2b/{acq}*_abun_*img")
-                min_nc_files = glob.glob(f"{dir}/{acq}/l2b/{acq}*_abun_*nc")
-                minunc_img_files = glob.glob(f"{dir}/{acq}/l2b/{acq}*_abununcert_*img")
-                minunc_nc_files = glob.glob(f"{dir}/{acq}/l2b/{acq}*_abununcert_*nc")
-                ch4_img_files = glob.glob(f"{dir}/{acq}/ghg/ch4/{acq}*_ch4_*img")
-                ch4_tif_files = glob.glob(f"{dir}/{acq}/ghg/ch4/{acq}*_ortch4_*tif")
-                sensch4_img_files = glob.glob(f"{dir}/{acq}/ghg/ch4/{acq}*_sensch4_*img")
-                sensch4_tif_files = glob.glob(f"{dir}/{acq}/ghg/ch4/{acq}*_ortsensch4_*tif")
-                uncertch4_img_files = glob.glob(f"{dir}/{acq}/ghg/ch4/{acq}*_uncertch4_*img")
-                uncertch4_tif_files = glob.glob(f"{dir}/{acq}/ghg/ch4/{acq}*_ortuncertch4_*tif")
-                co2_img_files = glob.glob(f"{dir}/{acq}/ghg/co2/{acq}*_co2_*img")
-                co2_tif_files = glob.glob(f"{dir}/{acq}/ghg/co2/{acq}*_ortco2_*tif")
-                sensco2_img_files = glob.glob(f"{dir}/{acq}/ghg/co2/{acq}*_sensco2_*img")
-                sensco2_tif_files = glob.glob(f"{dir}/{acq}/ghg/co2/{acq}*_ortsensco2_*tif")
-                uncertco2_img_files = glob.glob(f"{dir}/{acq}/ghg/co2/{acq}*_uncertco2_*img")
-                uncertco2_tif_files = glob.glob(f"{dir}/{acq}/ghg/co2/{acq}*_ortuncertco2_*tif")
+                # mask_img_files = glob.glob(f"{dir}/{acq}/l2a/{acq}*_mask_*img")
+                # mask_nc_files = glob.glob(f"{dir}/{acq}/l2a/{acq}*_mask_*nc")
+                # min_img_files = glob.glob(f"{dir}/{acq}/l2b/{acq}*_abun_*img")
+                min_nc_files = glob.glob(f"{dir}/{acq}/l2b/{acq}*_min_*nc")
+                # minunc_img_files = glob.glob(f"{dir}/{acq}/l2b/{acq}*_abununcert_*img")
+                minunc_nc_files = glob.glob(f"{dir}/{acq}/l2b/{acq}*_minuncert_*nc")
+                ch4_img_files = glob.glob(f"{dir}/{acq}/ch4/{acq}*_ch4_*img")
+                ch4_tif_files = glob.glob(f"{dir}/{acq}/ch4/{acq}*_ortch4_*tif")
+                sensch4_img_files = glob.glob(f"{dir}/{acq}/ch4/{acq}*_sensch4_*img")
+                sensch4_tif_files = glob.glob(f"{dir}/{acq}/ch4/{acq}*_ortsensch4_*tif")
+                uncertch4_img_files = glob.glob(f"{dir}/{acq}/ch4/{acq}*_uncertch4_*img")
+                uncertch4_tif_files = glob.glob(f"{dir}/{acq}/ch4/{acq}*_ortuncertch4_*tif")
+                ch4d1_tif_files = glob.glob(f"{dir}/{acq}/ch4/{acq}*_ortch4d1_*tif")
+                ch4d2_tif_files = glob.glob(f"{dir}/{acq}/ch4/{acq}*_ortch4d2_*tif")
+                co2_img_files = glob.glob(f"{dir}/{acq}/co2/{acq}*_co2_*img")
+                co2_tif_files = glob.glob(f"{dir}/{acq}/co2/{acq}*_ortco2_*tif")
+                sensco2_img_files = glob.glob(f"{dir}/{acq}/co2/{acq}*_sensco2_*img")
+                sensco2_tif_files = glob.glob(f"{dir}/{acq}/co2/{acq}*_ortsensco2_*tif")
+                uncertco2_img_files = glob.glob(f"{dir}/{acq}/co2/{acq}*_uncertco2_*img")
+                uncertco2_tif_files = glob.glob(f"{dir}/{acq}/co2/{acq}*_ortuncertco2_*tif")
+                co2d1_tif_files = glob.glob(f"{dir}/{acq}/co2/{acq}*_ortco2d1_*tif")
+                co2d2_tif_files = glob.glob(f"{dir}/{acq}/co2/{acq}*_ortco2d2_*tif")
                 frcovqc_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_frcovqc_*tif")
                 pv_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_frcovpv_*tif")
                 pvunc_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_frcovpvunc_*tif")
@@ -305,16 +309,16 @@ def main():
                     df["rflunc_img_size_bytes"] = os.path.getsize(rflunc_img_files[0])
                 if len(rflunc_nc_files) > 0:
                     df["rflunc_nc_size_bytes"] = os.path.getsize(rflunc_nc_files[0])
-                if len(mask_img_files) > 0:
-                    df["mask_img_size_bytes"] = os.path.getsize(mask_img_files[0])
-                if len(mask_nc_files) > 0:
-                    df["mask_nc_size_bytes"] = os.path.getsize(mask_nc_files[0])
-                if len(min_img_files) > 0:
-                    df["min_img_size_bytes"] = os.path.getsize(min_img_files[0])
+                # if len(mask_img_files) > 0:
+                #     df["mask_img_size_bytes"] = os.path.getsize(mask_img_files[0])
+                # if len(mask_nc_files) > 0:
+                #     df["mask_nc_size_bytes"] = os.path.getsize(mask_nc_files[0])
+                # if len(min_img_files) > 0:
+                #     df["min_img_size_bytes"] = os.path.getsize(min_img_files[0])
                 if len(min_nc_files) > 0:
                     df["min_nc_size_bytes"] = os.path.getsize(min_nc_files[0])
-                if len(minunc_img_files) > 0:
-                    df["minunc_img_size_bytes"] = os.path.getsize(minunc_img_files[0])
+                # if len(minunc_img_files) > 0:
+                #     df["minunc_img_size_bytes"] = os.path.getsize(minunc_img_files[0])
                 if len(minunc_nc_files) > 0:
                     df["minunc_nc_size_bytes"] = os.path.getsize(minunc_nc_files[0])
                 if len(ch4_img_files) > 0:
@@ -329,6 +333,10 @@ def main():
                     df["uncertch4_img_size_bytes"] = os.path.getsize(uncertch4_img_files[0])
                 if len(uncertch4_tif_files) > 0:
                     df["uncertch4_tif_size_bytes"] = os.path.getsize(uncertch4_tif_files[0])
+                if len(ch4d1_tif_files) > 0:
+                    df["ch4d1_tif_size_bytes"] = os.path.getsize(ch4d1_tif_files[0])
+                if len(ch4d2_tif_files) > 0:
+                    df["ch4d2_tif_size_bytes"] = os.path.getsize(ch4d2_tif_files[0])
                 if len(co2_img_files) > 0:
                     df["co2_img_size_bytes"] = os.path.getsize(co2_img_files[0])
                 if len(co2_tif_files) > 0:
@@ -341,6 +349,10 @@ def main():
                     df["uncertco2_img_size_bytes"] = os.path.getsize(uncertco2_img_files[0])
                 if len(uncertco2_tif_files) > 0:
                     df["uncertco2_tif_size_bytes"] = os.path.getsize(uncertco2_tif_files[0])
+                if len(co2d1_tif_files) > 0:
+                    df["co2d1_tif_size_bytes"] = os.path.getsize(co2d1_tif_files[0])
+                if len(co2d2_tif_files) > 0:
+                    df["co2d2_tif_size_bytes"] = os.path.getsize(co2d2_tif_files[0])
                 if len(frcovqc_tif_files) > 0:
                     df["frcovqc_tif_size_bytes"] = os.path.getsize(frcovqc_tif_files[0])
                 if len(pv_tif_files) > 0:
@@ -406,41 +418,32 @@ def main():
                         df["masked_pixel_noise"] = float(hdr["masked pixel noise"])
                 
                 # Get HOSC creation time
-                acq_doc = acq_coll.find_one({"acquisition_id": acq, "build_num": build_num}, {"associated_dcid": 1, "orbit": 1, "build_num": 1, "products": 1, "cloud_fraction_02": 1, "_id": 0})
+                acq_doc = acq_coll.find_one({"acquisition_id": acq}, {"associated_dcid": 1, "orbit": 1, "build_num": 1, "products": 1, "_id": 0})
                 dcid = acq_doc["associated_dcid"]
                 orbit = acq_doc["orbit"]
-                dcid_doc = dcid_coll.find_one({"dcid": dcid, "build_num": build_num}, {"associated_ccsds": 1, "_id": 0})
+                dcid_doc = dcid_coll.find_one({"dcid": dcid}, {"associated_ccsds": 1, "_id": 0})
                 dcid_doc['associated_ccsds'].sort()
                 ccsds = os.path.basename(dcid_doc['associated_ccsds'][0])
-                stream_doc = stream_coll.find_one({"ccsds_name": ccsds, "build_num": build_num}, {"products.raw.created": 1, "_id": 0})
+                stream_doc = stream_coll.find_one({"ccsds_name": ccsds}, {f"products.raw.{wm.config['prod_versions']['l0']}.created": 1, "_id": 0})
                 
                 hosc_date = stream_doc['products']['raw']['created']
 
                 orbit_doc = orbit_coll.find_one(
                     {
                         "orbit_id": orbit, 
-                        "build_num": build_num,
-                        "products.l1b.corr_att_eph.nc_path": {"$exists": 1}
+                        f"products.l1b.{wm.config['prod_versions']['l0']}.corr_att_eph.nc_path": {"$exists": 1}
                     },
                     {
-                        "products.l1b.corr_att_eph.nc_path": 1,
+                        f"products.l1b.{wm.config['prod_versions']['l0']}.corr_att_eph.nc_path": 1,
                         "_id": 0
                     }
                 )
                 
-                cloud_fraction_02 = acq_doc.get("cloud_fraction_02")
-                if cloud_fraction_02:
-                    df["cloud_fraction_02"] = cloud_fraction_02
-                
                 if orbit_doc:
-                    eph_path =  orbit_doc["products"]["l1b"]["corr_att_eph"]["nc_path"]
-
+                    eph_path =  orbit_doc["products"]["l1b"][wm.config['prod_versions']['l1b']]["corr_att_eph"]["nc_path"]
                     eph_dir, eph_base = os.path.split(eph_path)
-
                     geo_qc_base = eph_base.replace('att', 'geoqa')
-                    # TODO: Check for v2_start_date and construct path as needed
-                    geo_qc_subdir = f'o{orbit}_l1b_geo_b{build_num}_v01_work'
-
+                    geo_qc_subdir = f"o{orbit}_l1b_geo_v{wm.config['prod_versions']['l1b']}_work"
                     geo_qc_nc = os.path.join(eph_dir,geo_qc_subdir, geo_qc_base)
 
                     if os.path.isfile(geo_qc_nc):
@@ -461,14 +464,15 @@ def main():
                     else:
                         print(f'{geo_qc_nc} not found')
                 
-                l1a_delivery_date = acq_doc.get('products',{}).get('l1a',{}).get('raw_ummg',{}).get('created',{})
-                l1b_delivery_date = acq_doc.get('products',{}).get('l1b',{}).get('rdn_ummg',{}).get('created',{})
-                l2a_delivery_date = acq_doc.get('products',{}).get('l2a',{}).get('rfl_ummg',{}).get('created',{})
-                co2_delivery_date = acq_doc.get('products',{}).get('ghg',{}).get('co2',{}).get('co2_ummg',{}).get('created',{})
-                ch4_delivery_date = acq_doc.get('products',{}).get('ghg',{}).get('ch4',{}).get('ch4_ummg',{}).get('created',{})
-                l2b_delivery_date = acq_doc.get('products',{}).get('l2b',{}).get('abun_ummg',{}).get('created',{})
-                maskTf_delivery_date = acq_doc.get('products',{}).get('mask',{}).get('maskTf_ummg',{}).get('created',{})
-                frcov_delivery_date = acq_doc.get('products',{}).get('frcov',{}).get('frcov_ummg',{}).get('created',{})
+                l1a_delivery_date = acq_doc.get('products',{}).get('l1a',{}).get(wm.config['prod_versions']['l1a'],{}).get('raw_ummg',{}).get('created',{})
+                l1b_delivery_date = acq_doc.get('products',{}).get('l1b',{}).get(wm.config['prod_versions']['l1b'],{}).get('rdn_ummg',{}).get('created',{})
+                l2a_delivery_date = acq_doc.get('products',{}).get('l2a',{}).get(wm.config['prod_versions']['l2a'],{}).get('rfl_ummg',{}).get('created',{})
+                co2_delivery_date = acq_doc.get('products',{}).get('co2',{}).get(wm.config['prod_versions']['co2'],{}).get('co2_ummg',{}).get('created',{})
+                ch4_delivery_date = acq_doc.get('products',{}).get('ch4',{}).get(wm.config['prod_versions']['ch4'],{}).get('ch4_ummg',{}).get('created',{})
+                l2b_delivery_date = acq_doc.get('products',{}).get('l2b',{}).get(wm.config['prod_versions']['l2b'],{}).get('abun_ummg',{}).get('created',{})
+                maskTf_delivery_date = acq_doc.get('products',{}).get('mask',{}).get(wm.config['prod_versions']['mask'],{}).get('maskTf_ummg',{}).get('created',{})
+                frcov_delivery_date = acq_doc.get('products',{}).get('frcov',{}).get(wm.config['prod_versions']['frcov'],{}).get('frcov_ummg',{}).get('created',{})
+                l3rfl_delivery_date = acq_doc.get('products',{}).get('l3rfl',{}).get(wm.config['prod_versions']['l3rfl'],{}).get('rfl_ummg',{}).get('created',{})
        
                 if l1a_delivery_date:
                     df["raw_to_l1a_deliver_seconds"] = (l1a_delivery_date - hosc_date).total_seconds()
@@ -501,69 +505,62 @@ def main():
                 if maskTf_delivery_date:
                     df["raw_to_maskTf_deliver_seconds"] = (maskTf_delivery_date - hosc_date).total_seconds()
                     df["maskTf_delivery_date"] = maskTf_delivery_date
-                                
+
+                if l3rfl_delivery_date:
+                    df["raw_to_l3rfl_deliver_seconds"] = (l3rfl_delivery_date - hosc_date).total_seconds()
+                    df["l3rfl_delivery_date"] = l3rfl_delivery_date
+
+                # Get obs and mask metrics from db products dict
+                obs_band_means = None
+                try:
+                    obs_band_means = acq_doc["products"]["l1b"][wm.config['prod_versions']['l1b']]["obs"]["band_means"]
+                except KeyError:
+                    pass # ignore the error
+
+                if obs_band_means:
+                    df["aspect"] = obs_band_means["aspect"]
+                    df["cosine_i"] = obs_band_means["cosine_i"]
+                    df["earth_sun_distance"] = obs_band_means["earth_sun_dist"]
+                    df["path_length"] = obs_band_means["path_length"]
+                    df["slope"] = obs_band_means["slope"]
+                    df["solar_phase"] = obs_band_means["solar_phase"]
+                    df["to_sensor_azimuth"] = obs_band_means["sensor_azimuth"]
+                    df["to_sensor_zenith"] = obs_band_means["sensor_zenith"]
+                    df["to_sun_azimuth"] = obs_band_means["solar_azimuth"]
+                    df["to_sun_zenith"] = obs_band_means["solar_zenith"]
+                    df["utc_time_decimal_hours"] = obs_band_means["utc_time"]
+
+                maskTf_doc = None
+                try:
+                    maskTf_doc = acq_doc["products"]["mask"][wm.config['prod_versions']['mask']]["maskTf"]
+                except KeyError:
+                    pass # ignore the error
+
+                if maskTf_doc:
+                    df["cloud_fraction"] = maskTf_doc["cloud_fraction"]
+                    df["cloudindex_fraction"] = maskTf_doc["cloudindex_fraction"]
+                    df["cloudratio_fraction"] = maskTf_doc["cloudratio_fraction"]
+                    df["cirrus_fraction"] = maskTf_doc["cirrus_fraction"]
+                    df["nodata_fraction"] = maskTf_doc["nodata_fraction"]
+
                 # Update the DB
                 trending_acqs_coll = dm.db.trending_acquisitions
                 query = {"timestamp": timestamp}
                 update_collection(trending_acqs_coll, query, df)
-
-        # Get metrics from tracking json
-        print(f"Checking tracking json file at {args.tracking_json}")
-        with open(args.tracking_json, "r") as f:
-            scenes = json.load(f)["features"]
-            for s in scenes:
-                p = s["properties"]
-                timestamp_str = os.path.basename(p["fid"]).split("_")[0][4:]
-                timestamp = dt.datetime.strptime(timestamp_str, "%Y%m%dt%H%M%S")
-                # Only process scenes in the argument time range
-                if start_date < timestamp < stop_date:
-                    df = {
-                        "timestamp": timestamp,
-                        "aspect": p["Aspect (local surface aspect 0 to 360 degrees clockwise from N)"],
-                        "cosine_i": p["Cosine(i) (apparent local illumination factor based on DEM slope and aspect and to sun vector)"],
-                        "earth_sun_distance": p["Earth-sun distance (AU)"],
-                        "path_length": p["Path length (sensor-to-ground in meters)"],
-                        "slope": p["Slope (local surface slope as derived from DEM in degrees)"],
-                        "solar_phase": p["Solar phase (degrees between to-sensor and to-sun vectors in principal plane)"],
-                        "to_sensor_azimuth": p["To-sensor azimuth (0 to 360 degrees CW from N)"],
-                        "to_sensor_zenith": p["To-sensor zenith (0 to 90 degrees from zenith)"],
-                        "to_sun_azimuth": p["To-sun azimuth (0 to 360 degrees CW from N)"],
-                        "to_sun_zenith": p["To-sun zenith (0 to 90 degrees from zenith)"],
-                        "utc_time_decimal_hours": p["UTC Time (decimal hours for mid-line pixels)"]
-                    }
-                    if "Cloud + Cirrus Fraction" in p:
-                        df["cloud_plus_cirrus_fraction"] = p["Cloud + Cirrus Fraction"]
-                    if "Cloud Fraction" in p:
-                        df["cloud_fraction"] = p["Cloud Fraction"]
-                    if "Clouds & Buffer Fraction" in p:
-                        df["clouds_and_buffer_fraction"] = p["Clouds & Buffer Fraction"]
-                    if "Screened Onboard Fraction" in p:
-                        df["screened_onboard_fraction"] = p["Screened Onboard Fraction"]
-                    if "Total Cloud Fraction" in p:
-                        df["total_cloud_fraction"] = p["Total Cloud Fraction"]
-                    if "Retrieved AOT Median" in p:
-                        df["retrieved_aot_median"] = p["Retrieved AOT Median"]
-                    if "Retrieved Ele. Median" in p:
-                        df["retrieved_ele_median"] = p["Retrieved Ele. Median"]
-                    if "Retrieved WV Median" in p:
-                        df["retrieved_water_vapor_median"] = p["Retrieved WV Median"]
-
-                    trending_acqs_coll = dm.db.trending_acquisitions
-                    query = {"timestamp": timestamp}
-                    update_collection(trending_acqs_coll, query, df)
 
     if "cmr" in metrics_flags:
         CMR_OPS = 'https://cmr.earthdata.nasa.gov/search'  # CMR API Endpoint
         url = f'{CMR_OPS}/granules.umm_json'
         collections = {
             # "l1a": "C2407975601-LPCLOUD",
-            "l1b": "C2408009906-LPCLOUD",
-            "l2a": "C2408750690-LPCLOUD",
-            "l2b": "C2408034484-LPCLOUD",
-            "ch4": "C3242680113-LPCLOUD",
-            "co2": "C3243477145-LPCLOUD",
-            "frcov": "C3911089796-LPCLOUD",
-            "maskTf": "C3882545269-LPCLOUD",
+            "l1b": "C4079829720-LPCLOUD",
+            "l2a": "C4079844428-LPCLOUD",
+            "l2b": "C4079846859-LPCLOUD",
+            "ch4": "C4303752968-LPCLOUD",
+            "co2": "C4303752974-LPCLOUD",
+            "frcov": "C4303752957-LPCLOUD",
+            "maskTf": "C4279547358-LPCLOUD",
+            "l3rfl": "C4284742737-LPCLOUD"
         }
 
         trending_acqs_coll = dm.db.trending_acquisitions
