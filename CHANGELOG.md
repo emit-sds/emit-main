@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v2.0.3](https://github.com/emit-sds/emit-main/compare/v2.0.2...v2.0.3)
+
+> 17 September 2026
+
+* Coverage utility by @adamchlus in https://github.com/emit-sds/emit-main/pull/122
+
 #### [v2.0.2](https://github.com/emit-sds/emit-main/compare/v2.0.1...v2.0.2)
 
 > 11 September 2026
