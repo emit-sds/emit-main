@@ -1286,7 +1286,7 @@ class L1BMosaic(SlurmJobTask):
         
         log_file_arg = f"--log-file={os.path.join(self.tmp_dir, 'rsync.log')}"
 
-        version = wm.config['prod_versions']['l1b']
+        version = f"v{wm.config['prod_versions']['l1b']}"
         input_files = {}
         output_files = {}
         pge_commands = []
