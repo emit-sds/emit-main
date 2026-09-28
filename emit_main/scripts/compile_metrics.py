@@ -13,6 +13,9 @@ import os
 import requests
 import sys
 
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning, message=".*utcnow.*")
+
 from netCDF4 import Dataset
 import numpy as np
 import pandas as pd
@@ -95,14 +98,10 @@ def main():
     parser.add_argument("--date", help="A single date - YYYYMMDD")
     parser.add_argument("--month", help="Start date of month - YYYYMMDD")
     parser.add_argument("--metrics", default="streams,scenes,cmr", help="Which metrics to collect (streams,scenes,cmr)")
-    parser.add_argument("--build_num", default="0106", help="Build number (only first 4 digits)")
-    parser.add_argument("--tracking_json", default="/store/brodrick/emit/emit-visuals/track_coverage_pub.json",
-                        help="JSON containing scene metrics")
-    parser.add_argument("--export_to_dir", default=None)
+    parser.add_argument("--export_to_dir", "--export-to-dir", default=None, dest="export_to_dir")
     args = parser.parse_args()
 
     env = args.env
-    build_num = args.build_num
 
     if args.dates is None and args.date is None and args.month is None:
         print("You must specify either --date or --dates")
@@ -230,7 +229,6 @@ def main():
         stream_coll = dm.db.streams
         orbit_coll = dm.db.orbits
         
-        geo_qa_cache = {}
         for dir in date_dirs:
             acqs = [os.path.basename(a) for a in glob.glob(f"{dir}/*")]
             # print(f"Found acqs: {acqs}")
@@ -255,11 +253,7 @@ def main():
                 rfl_nc_files = glob.glob(f"{dir}/{acq}/l2a/{acq}*_rfl_*nc")
                 rflunc_img_files = glob.glob(f"{dir}/{acq}/l2a/{acq}*_rfluncert_*img")
                 rflunc_nc_files = glob.glob(f"{dir}/{acq}/l2a/{acq}*_rfluncert_*nc")
-                # mask_img_files = glob.glob(f"{dir}/{acq}/l2a/{acq}*_mask_*img")
-                # mask_nc_files = glob.glob(f"{dir}/{acq}/l2a/{acq}*_mask_*nc")
-                # min_img_files = glob.glob(f"{dir}/{acq}/l2b/{acq}*_abun_*img")
                 min_nc_files = glob.glob(f"{dir}/{acq}/l2b/{acq}*_min_*nc")
-                # minunc_img_files = glob.glob(f"{dir}/{acq}/l2b/{acq}*_abununcert_*img")
                 minunc_nc_files = glob.glob(f"{dir}/{acq}/l2b/{acq}*_minuncert_*nc")
                 ch4_img_files = glob.glob(f"{dir}/{acq}/ch4/{acq}*_ch4_*img")
                 ch4_tif_files = glob.glob(f"{dir}/{acq}/ch4/{acq}*_ortch4_*tif")
@@ -284,8 +278,12 @@ def main():
                 npvunc_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_frcovnpvunc_*tif")
                 bare_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_frcovbare_*tif")
                 bareunc_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_frcovbareunc_*tif")
-                maskTf_img_files = glob.glob(f"{dir}/{acq}/mask/{acq}*_mask_*img")
-                maskTf_nc_files = glob.glob(f"{dir}/{acq}/mask/{acq}*_mask_*nc")
+                maskTf_img_files = glob.glob(f"{dir}/{acq}/mask/{acq}*_maskTf_*img")
+                maskTf_nc_files = glob.glob(f"{dir}/{acq}/mask/{acq}*_maskTf_*nc")
+                l3rfl_nc_files = glob.glob(f"{dir}/{acq}/l3rfl/{acq}*_rfl_*nc")
+                l3rflunc_nc_files = glob.glob(f"{dir}/{acq}/l3rfl/{acq}*_rfluncert_*nc")
+                l3obs_nc_files = glob.glob(f"{dir}/{acq}/l3rfl/{acq}*_obs_*nc")
+
                 
                 if len(raw_img_files) > 0:
                     df["raw_img_size_bytes"] = os.path.getsize(raw_img_files[0])
@@ -309,16 +307,8 @@ def main():
                     df["rflunc_img_size_bytes"] = os.path.getsize(rflunc_img_files[0])
                 if len(rflunc_nc_files) > 0:
                     df["rflunc_nc_size_bytes"] = os.path.getsize(rflunc_nc_files[0])
-                # if len(mask_img_files) > 0:
-                #     df["mask_img_size_bytes"] = os.path.getsize(mask_img_files[0])
-                # if len(mask_nc_files) > 0:
-                #     df["mask_nc_size_bytes"] = os.path.getsize(mask_nc_files[0])
-                # if len(min_img_files) > 0:
-                #     df["min_img_size_bytes"] = os.path.getsize(min_img_files[0])
                 if len(min_nc_files) > 0:
                     df["min_nc_size_bytes"] = os.path.getsize(min_nc_files[0])
-                # if len(minunc_img_files) > 0:
-                #     df["minunc_img_size_bytes"] = os.path.getsize(minunc_img_files[0])
                 if len(minunc_nc_files) > 0:
                     df["minunc_nc_size_bytes"] = os.path.getsize(minunc_nc_files[0])
                 if len(ch4_img_files) > 0:
@@ -371,7 +361,13 @@ def main():
                     df["maskTf_img_size_bytes"] = os.path.getsize(maskTf_img_files[0])
                 if len(maskTf_nc_files) > 0:
                     df["maskTf_nc_size_bytes"] = os.path.getsize(maskTf_nc_files[0])
-                    
+                if len(l3rfl_nc_files) > 0:
+                    df["l3rfl_nc_size_bytes"] = os.path.getsize(l3rfl_nc_files[0])
+                if len(l3rflunc_nc_files) > 0:
+                    df["l3rflunc_nc_size_bytes"] = os.path.getsize(l3rflunc_nc_files[0])
+                if len(l3obs_nc_files) > 0:
+                    df["l3obs_nc_size_bytes"] = os.path.getsize(l3obs_nc_files[0])
+
                 # Get reassembly report info
                 if len(reassembly_reports) > 0:
                     num_lines, corrupt_lines, cloudy_frames = 0, 0, 0
@@ -418,7 +414,7 @@ def main():
                         df["masked_pixel_noise"] = float(hdr["masked pixel noise"])
                 
                 # Get HOSC creation time
-                acq_doc = acq_coll.find_one({"acquisition_id": acq}, {"associated_dcid": 1, "orbit": 1, "build_num": 1, "products": 1, "_id": 0})
+                acq_doc = acq_coll.find_one({"acquisition_id": acq}, {"associated_dcid": 1, "orbit": 1, "products": 1, "_id": 0})
                 dcid = acq_doc["associated_dcid"]
                 orbit = acq_doc["orbit"]
                 dcid_doc = dcid_coll.find_one({"dcid": dcid}, {"associated_ccsds": 1, "_id": 0})
@@ -426,15 +422,15 @@ def main():
                 ccsds = os.path.basename(dcid_doc['associated_ccsds'][0])
                 stream_doc = stream_coll.find_one({"ccsds_name": ccsds}, {f"products.raw.{wm.config['prod_versions']['l0']}.created": 1, "_id": 0})
                 
-                hosc_date = stream_doc['products']['raw']['created']
+                hosc_date = stream_doc['products']['raw'][wm.config['prod_versions']['l0']]['created']
 
                 orbit_doc = orbit_coll.find_one(
                     {
                         "orbit_id": orbit, 
-                        f"products.l1b.{wm.config['prod_versions']['l0']}.corr_att_eph.nc_path": {"$exists": 1}
+                        f"products.l1b.{wm.config['prod_versions']['l1b']}.corr_att_eph.nc_path": {"$exists": 1}
                     },
                     {
-                        f"products.l1b.{wm.config['prod_versions']['l0']}.corr_att_eph.nc_path": 1,
+                        f"products.l1b.{wm.config['prod_versions']['l1b']}.corr_att_eph.nc_path": 1,
                         "_id": 0
                     }
                 )
@@ -510,7 +506,7 @@ def main():
                     df["raw_to_l3rfl_deliver_seconds"] = (l3rfl_delivery_date - hosc_date).total_seconds()
                     df["l3rfl_delivery_date"] = l3rfl_delivery_date
 
-                # Get obs and mask metrics from db products dict
+                # Get obs, state, and mask metrics from db products dict
                 obs_band_means = None
                 try:
                     obs_band_means = acq_doc["products"]["l1b"][wm.config['prod_versions']['l1b']]["obs"]["band_means"]
@@ -530,6 +526,17 @@ def main():
                     df["to_sun_zenith"] = obs_band_means["solar_zenith"]
                     df["utc_time_decimal_hours"] = obs_band_means["utc_time"]
 
+                state_band_medians = None
+                try:
+                    state_band_medians = acq_doc["products"]["l2a"][wm.config['prod_versions']['l2a']]["state"]["band_medians"]
+                except KeyError:
+                    pass # ignore the error
+
+                if state_band_medians:
+                    df["retrieved_aot_median"] = state_band_medians["aot"]
+                    df["retrieved_water_vapor_median"] = state_band_medians["h2o"]
+                    df["retrieved_co2_median"] = state_band_medians["co2"]
+                
                 maskTf_doc = None
                 try:
                     maskTf_doc = acq_doc["products"]["mask"][wm.config['prod_versions']['mask']]["maskTf"]

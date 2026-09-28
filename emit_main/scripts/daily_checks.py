@@ -158,21 +158,21 @@ def main():
     }
     if start is not None:
         query["start_time"] = {"$gte": start, "$lt": stop}
-    results = list(acq_coll.find(query).sort("start_time", 1))
+    # results = list(acq_coll.find(query).sort("start_time", 1))
     print("---------------------")
     print(f"Description: Valid scenes with no radiance products")
     print(f"Resolution: Check to see if calibration failed and what the error is. You can re-run using the command "
           f"below.")
     print(f"Command: python run_workflow.py -c config/ops_sds_config.json -a ACQUISITION_ID -p l1bcal")
     print(f"Query: {query}")
-    print(f"Results: {len(results)}\n")
-    if len(results) > 0:
-        for r in results:
-            print(f"acquisition_id: {r['acquisition_id']}, start_time: {r['start_time']}, stop_time: {r['stop_time']}, "
-                  f"orbit: {r['orbit']}, last_modified: {r['last_modified']}")
-        print("")
+    # print(f"Results: {len(results)}\n")
+    # if len(results) > 0:
+    #     for r in results:
+    #         print(f"acquisition_id: {r['acquisition_id']}, start_time: {r['start_time']}, stop_time: {r['stop_time']}, "
+    #               f"orbit: {r['orbit']}, last_modified: {r['last_modified']}")
+    #     print("")
 
-    print("---------------------")
+    # print("---------------------")
 
 
 if __name__ == '__main__':

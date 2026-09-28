@@ -113,7 +113,8 @@ class EmailMonitor:
     def retrieve_inbox_messages(self):
         headers = {
             "Authorization": f"Bearer {self.access_token}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "Prefer": 'outlook.body-content-type="text"'
         }
 
         url = self.base_url + "/mailFolders/inbox/messages?$top=1000"
@@ -197,7 +198,18 @@ class EmailMonitor:
 
             # Now get JSON response
             logger.info(f"Processing message with subject \"{m['subject']}\" dated {m['time_received']}.")
-            response = json.loads(m["body_text"].split("--")[0])
+
+            # The mail transport occasionally injects a stray "!" plus whitespace at ~4KB boundaries
+            # while relaying/storing this message, corrupting the JSON. Strip it out before parsing.
+            body_json_text = re.sub(r"!\s+", "", m["body_text"].split("--")[0])
+            try:
+                response = json.loads(body_json_text)
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse JSON from message with subject \"{m['subject']}\" dated "
+                             f"{m['time_received']}: {e}")
+                logger.error(f"Raw body_text: {repr(m['body_text'])}")
+                continue
+
             # Get identifier
             try:
                 identifier = response["identifier"]
