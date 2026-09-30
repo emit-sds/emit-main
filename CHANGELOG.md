@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v2.0.4](https://github.com/emit-sds/emit-main/compare/v2.0.3...v2.0.4)
+
+> 30 September 2026
+
+* Apply operational hotfixes from ops environment
+
 #### [v2.0.3](https://github.com/emit-sds/emit-main/compare/v2.0.2...v2.0.3)
 
 > 17 September 2026
