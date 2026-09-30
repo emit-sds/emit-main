@@ -29,7 +29,7 @@
         "graph_api_base_url": "https://graph.microsoft.com/v1.0/users/"
     },
     "build_config": {
-        "extended_build_num": "020003",
+        "extended_build_num": "020004",
         "conda_base_dir": "/store/local/miniforge3/"
     },
     "daac_config": {
@@ -140,11 +140,7 @@
     },
     "well_known_errors": {
         "emit.L1BGeolocate": [
-            "RuntimeError: Opening GDAL file",
             "reference_surface_intersect_approximate failed to find a solution"
-        ],
-        "emit.L2AReflectance": [
-            "IndexError: index 2 is out of bounds for axis 1 with size 2"
         ]
     }
 }

@@ -492,7 +492,8 @@ def main():
     if args.monitor and args.monitor == "cal":
         am = AcquisitionMonitor(config_path=args.config_path, level=args.level, partition=args.partition)
         am_cal_tasks = am.get_calibration_tasks(start_time=args.start_time, stop_time=args.stop_time,
-                                                date_field=args.date_field, retry_failed=args.retry_failed)
+                                                date_field=args.date_field, retry_failed=args.retry_failed, 
+                                                use_future_flat=args.use_future_flat)
         am_cal_tasks_str = "\n".join([str(t) for t in am_cal_tasks])
         logger.info(f"Acquisition monitor calibration tasks to run:\n{am_cal_tasks_str}")
         tasks += am_cal_tasks

@@ -31,7 +31,7 @@ def main():
     date = args.date
 
     if args.output is None:
-        report_path = f"/store/emit/{env}/reports/daily_{date}.yml"
+        report_path = f"/store/emit/{env}/reports/daily/daily_{date}.yml"
     else:
         report_path = args.output
 

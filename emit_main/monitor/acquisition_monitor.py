@@ -35,7 +35,7 @@ class AcquisitionMonitor:
         # Get workflow manager
         self.wm = WorkflowManager(config_path=config_path)
 
-    def get_calibration_tasks(self, start_time, stop_time, date_field="last_modified", retry_failed=False):
+    def get_calibration_tasks(self, start_time, stop_time, date_field="last_modified", retry_failed=False, use_future_flat=False):
         tasks = []
         # Find acquisitions within time range
         dm = self.wm.database_manager
@@ -53,7 +53,8 @@ class AcquisitionMonitor:
             tasks.append(L1BCalibrate(config_path=self.config_path,
                                       acquisition_id=acq["acquisition_id"],
                                       level=self.level,
-                                      partition=self.partition))
+                                      partition=self.partition,
+                                      use_future_flat=use_future_flat))
 
         return tasks
 

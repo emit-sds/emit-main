@@ -668,12 +668,14 @@ This product is generated at the orbit level."
         
         data_collections = dm.find_data_collections_by_orbit_id(orbit.orbit_id, submode="science")
 
-        for data_collect in data_collections:                           
-            wm = WorkflowManager(config_path=self.config_path, dcid=data_collect['dcid'])
-            dc = wm.data_collection
-            
-            if dc.has_radiance_for_l1b_mosaic():
-                dm.update_data_collection_metadata(data_collect['dcid'], {f"ready_for_l1b_mosaic.{wm.config['prod_versions']['l1b']}": True})
+        for data_collect in data_collections:
+            if "start_time" in data_collect:
+                wm = WorkflowManager(config_path=self.config_path, dcid=data_collect['dcid'])
+                dc = wm.data_collection
+                
+                if dc.has_radiance_for_l1b_mosaic():
+                    dm.update_data_collection_metadata(data_collect['dcid'], {f"ready_for_l1b_mosaic.{wm.config['prod_versions']['l1b']}": True})
+
 
 class L1BRdnFormat(SlurmJobTask):
     """
@@ -1286,7 +1288,7 @@ class L1BMosaic(SlurmJobTask):
         
         log_file_arg = f"--log-file={os.path.join(self.tmp_dir, 'rsync.log')}"
 
-        version = wm.config['prod_versions']['l1b']
+        version = f"v{wm.config['prod_versions']['l1b']}"
         input_files = {}
         output_files = {}
         pge_commands = []
