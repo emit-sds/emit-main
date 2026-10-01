@@ -1,7 +1,7 @@
 """
-sbatch -p standard -J date_volume -o /dev/null -c 64 --mem=320G -t 04:00:00 \
---wrap="/store/local/miniforge3/envs/emit-main-20250705-dev/bin/python /store/emit/dev/repos/emit-main/emit_main/scripts/data_volume_report.py \
--e ops -o /tmp/data_volume.csv"
+sbatch -p standard -J data_volume -o /dev/null -c 16 --mem=32G -t 04:00:00 \
+--wrap="/store/local/miniforge3/envs/emit-main-20260901-ops/bin/python /store/emit/dev/repos/emit-main/emit_main/scripts/data_volume_report.py \
+-e ops -o /store/emit/ops/tmp/data_volume_16.csv -w 16"
 """
 import argparse
 import csv
@@ -12,8 +12,9 @@ from concurrent.futures import ThreadPoolExecutor
 from emit_main.database.database_manager import DatabaseManager
 
 DATA_ROOT = None
-MAX_WORKERS = 64
+WORKERS = 16
 
+SKIP_PRODS = {'acq_ghg', 'dcid_acquisitions', 'orbit_raw'}
 
 def get_dcid_dates(dcid_coll):
 
@@ -27,6 +28,8 @@ def get_dcid_dates(dcid_coll):
 def valid_date(date):
     return len(date) == 8 and date.isdigit()
 
+def skip_prod(prod):
+    return prod in SKIP_PRODS or len(prod.split('_')) > 2
 
 def dir_size(path):
     if os.path.islink(path.rstrip('/')):
@@ -114,7 +117,7 @@ def add_dcids(dates, jobs, dcid_dates):
 def compute_volumes(dates, jobs):
     date_volume = {date: {} for date in dates}
 
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
+    with ThreadPoolExecutor(WORKERS=WORKERS) as ex:
         sizes = list(ex.map(lambda j: dir_size(j[2]), jobs))
 
     for (date, prod, _), size in zip(jobs, sizes):
@@ -134,6 +137,8 @@ def collect(dcid_coll):
     add_orbits(dates, jobs)
     add_dcids(dates, jobs, dcid_dates)
 
+    jobs = [j for j in jobs if not skip_prod(j[1])]
+
     return compute_volumes(dates, jobs)
 
 
@@ -149,18 +154,18 @@ def save(data, path):
 def parse_args():
     parser = argparse.ArgumentParser(description='Compute EMIT data volume (MB) per date and product.')
     parser.add_argument("-e", "--env", default="ops", help="Where to run the report")
-    parser.add_argument('-r', '--data-root', default=None, help='default: /store/emit/{env}/data')
-    parser.add_argument('-w', '--max-workers', type=int, default=MAX_WORKERS, help=f'default: {MAX_WORKERS}')
+    parser.add_argument('-r', '--data_root', default=None, help='default: /store/emit/{env}/data')
+    parser.add_argument('-w', '--workers', type=int, default=WORKERS, help=f'default: {WORKERS}')
     parser.add_argument('-o', '--output', default='date_volume.csv', help='default: date_volume.csv')
     return parser.parse_args()
 
 
 def main():
-    global DATA_ROOT, MAX_WORKERS
+    global DATA_ROOT, WORKERS
 
     args = parse_args()
     DATA_ROOT = args.data_root or f'/store/emit/{args.env}/data'
-    MAX_WORKERS = args.max_workers
+    WORKERS = args.WORKERS
 
     config_path = f"/store/emit/{args.env}/repos/emit-main/emit_main/config/{args.env}_sds_config.json"
     print(f"Using config_path {config_path}")
@@ -168,10 +173,8 @@ def main():
     dm = DatabaseManager(config_path)
     dcid_coll = dm.db.data_collections
 
-
     date_volume = collect(dcid_coll)
     save(date_volume, args.output)
-
 
 if __name__ == '__main__':
     main()
