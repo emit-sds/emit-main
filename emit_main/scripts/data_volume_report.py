@@ -1,7 +1,7 @@
 """
 sbatch -p standard -J data_volume -o /dev/null -c 16 --mem=32G -t 04:00:00 \
 --wrap="/store/local/miniforge3/envs/emit-main-20260901-ops/bin/python /store/emit/dev/repos/emit-main/emit_main/scripts/data_volume_report.py \
--e ops -o /store/emit/ops/tmp/data_volume_16.csv -w 16"
+-e ops -o /store/emit/ops/reports/grafana/ -w 16"
 """
 import argparse
 import csv
@@ -117,11 +117,11 @@ def add_dcids(dates, jobs, dcid_dates):
 def compute_volumes(dates, jobs):
     date_volume = {date: {} for date in dates}
 
-    with ThreadPoolExecutor(WORKERS=WORKERS) as ex:
+    with ThreadPoolExecutor(max_workers=WORKERS) as ex:
         sizes = list(ex.map(lambda j: dir_size(j[2]), jobs))
 
     for (date, prod, _), size in zip(jobs, sizes):
-        date_volume[date][prod] = date_volume[date].get(prod, 0) + size / 1E6
+        date_volume[date][prod] = date_volume[date].get(prod, 0) + size / 1E9
 
     return date_volume
 
@@ -146,17 +146,17 @@ def save(data, path):
     prods = sorted({prod for v in data.values() for prod in v})
     with open(path, 'w', newline='') as f:
         w = csv.writer(f)
-        w.writerow(['date'] + prods)
+        w.writerow(['timestamp'] + prods)
         for date in sorted(data):
             w.writerow([date] + [data[date].get(prod, 0) for prod in prods])
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Compute EMIT data volume (MB) per date and product.')
+    parser = argparse.ArgumentParser(description='Compute EMIT data volume (GB) per date and product.')
     parser.add_argument("-e", "--env", default="ops", help="Where to run the report")
     parser.add_argument('-r', '--data_root', default=None, help='default: /store/emit/{env}/data')
     parser.add_argument('-w', '--workers', type=int, default=WORKERS, help=f'default: {WORKERS}')
-    parser.add_argument('-o', '--output', default='date_volume.csv', help='default: date_volume.csv')
+    parser.add_argument('-o', '--output_dir', default='.', help='default: .')
     return parser.parse_args()
 
 
@@ -165,7 +165,7 @@ def main():
 
     args = parse_args()
     DATA_ROOT = args.data_root or f'/store/emit/{args.env}/data'
-    WORKERS = args.WORKERS
+    WORKERS = args.workers
 
     config_path = f"/store/emit/{args.env}/repos/emit-main/emit_main/config/{args.env}_sds_config.json"
     print(f"Using config_path {config_path}")
@@ -174,7 +174,8 @@ def main():
     dcid_coll = dm.db.data_collections
 
     date_volume = collect(dcid_coll)
-    save(date_volume, args.output)
+    output = os.path.join(args.output_dir, f'metrics_data_volumes_{min(date_volume)}_{max(date_volume)}.csv')
+    save(date_volume, output)
 
 if __name__ == '__main__':
     main()
