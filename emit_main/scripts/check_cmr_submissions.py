@@ -6,11 +6,13 @@ import requests
 from tqdm import tqdm
 from emit_main.database.database_manager import DatabaseManager
 
-collection_concept_ids = { '01' : {'l1b':'C2408009906-LPCLOUD',
+collection_concept_ids = { '01' : {'l1b_att':'C2408031090-LPCLOUD',
+                                   'l1b':'C2408009906-LPCLOUD',
                                    'l2a':'C2408750690-LPCLOUD',
                                    'l2b':'C2408034484-LPCLOUD',
                                    'frcov':'C3911089796-LPCLOUD'},
-                           '02' : {'l1b':'C4079829720-LPCLOUD',
+                           '02' : {'l1b_att':'C4079607609-LPCLOUD',
+                                   'l1b':'C4079829720-LPCLOUD',
                                    'l2a':'C4079844428-LPCLOUD',
                                    'ch4':'C3242680113-LPCLOUD',
                                    'co2':'C3243477145-LPCLOUD',
@@ -23,6 +25,7 @@ collection_concept_ids = { '01' : {'l1b':'C2408009906-LPCLOUD',
                                    'co2':'C4303752974-LPCLOUD'}}
 
 daac_submissions = {'l1b':'rdn',
+                    'l1b_att':'att',
                     'l2a':'rfl',
                     'ch4':'ch4',
                     'co2':'co2',
@@ -124,7 +127,7 @@ def parallel_granules(concept_id, start_time=None, end_time=None, n_ranges=50, w
     response = requests.get(url, params={"collection_concept_id": concept_id, "temporal": temporal, "page_size": 0})
     response.raise_for_status()
     hits = response.headers.get("CMR-Hits")
-    progress = {"bar": tqdm(total=int(hits) if hits else None, desc="Retrieving granules", unit="granule"), "lock": Lock()}
+    progress = {"bar": tqdm(total=int(hits) if hits else None, desc="Retrieving granules", unit=" granules"), "lock": Lock()}
 
     temporals = get_temporal_ranges(concept_id, n_ranges, start_time, end_time)
     with ThreadPoolExecutor(max_workers=workers) as executor:
@@ -137,7 +140,7 @@ def parallel_granules(concept_id, start_time=None, end_time=None, n_ranges=50, w
 
 def main():
 
-    description = "List acquisitions submitted to the DAAC that are missing from CMR"
+    description = "List granules submitted to the DAAC that are missing from CMR"
 
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("product")
@@ -145,17 +148,23 @@ def main():
     parser.add_argument("--start_time", default=None)
     parser.add_argument("--end_time", default=None)
     parser.add_argument("-e", "--env", default="ops", help="Where to run the report")
-    parser.add_argument('-o', '--output', default=None, help='optional output file, prints missing if not provided')
-
+    parser.add_argument('-o', '--output', default=None, help='optional output file')
+    parser.add_argument("-v","--verbose", action="store_true")
     args = parser.parse_args()
     
     config_path = f"/store/emit/{args.env}/repos/emit-main/emit_main/config/{args.env}_sds_config.json"
     print(f"Using config_path {config_path}")
 
     dm = DatabaseManager(config_path)
-    acq_coll = dm.db.acquisitions
-
-    query = {f"products.{args.product}.{args.version}.{daac_submissions[args.product]}_daac_submissions": {"$exists": True}}
+    
+    if args.product == 'l1b_att':
+        coll = dm.db.orbits
+        identifier = "orbit_id"
+    else:
+        coll = dm.db.acquisitions
+        identifier = "acquisition_id"
+        
+    query = {f"products.{args.product.split('_')[0]}.{args.version}.{daac_submissions[args.product]}_daac_submissions": {"$exists": True}}
 
     time_filter = {}
     if args.start_time:
@@ -165,33 +174,38 @@ def main():
     if time_filter:
         query["start_time"] = time_filter
 
-    records = acq_coll.find(
+    records = coll.find(
         query,
-        {"acquisition_id": 1, "_id": 0}
+        {identifier: 1, "_id": 0}
         )
-    acq = [x["acquisition_id"] for x in records]
+    ids = [x[identifier] for x in records]
 
-    if len(acq) == 0:
+    if len(ids) == 0:
         print(f"No delivered {args.version} products found in database.")
         return
 
     concept_id = collection_concept_ids[args.version][args.product]
 
     granules = parallel_granules(concept_id, start_time=args.start_time, end_time=args.end_time)
-    granules_acq_ids = {f'emit{x.split("_")[4].lower()}' for x in granules}
+    
+    if args.product == 'l1b_att':
+        granule_ids = {x.split("_")[-1] for x in granules}
+    else:
+        granule_ids = {f'emit{x.split("_")[4].lower()}' for x in granules}
 
-    missing = [a for a in acq if a not in granules_acq_ids]
+    missing = [i for i in ids if i not in granule_ids]
 
     if args.output:
-        print(f"{len(missing)}/{len(acq)} v{args.version} {args.product} acquisitions missing from CMR, written to {args.output}")
+        print(f"{len(missing)}/{len(ids)} v{args.version} {args.product} granules missing from CMR, written to {args.output}")
         
         with open(args.output, "w") as f:
             f.writelines(f"{a}\n" for a in missing)
     else:
-        print(f"{len(missing)}/{len(acq)} v{args.version} {args.product} acquisitions missing from CMR")
+        print(f"{len(missing)}/{len(ids)} v{args.version} {args.product} granules missing from CMR")
         
-        for a in missing:
-            print(a)
+        if args.verbose:
+            for a in missing:
+                print(a)
 
 
 if __name__ == "__main__":
