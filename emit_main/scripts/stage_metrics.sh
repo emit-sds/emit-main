@@ -21,3 +21,6 @@ python scripts/compile_metrics.py --dates $(date -u -d "$3 days ago" "+%Y%m%d"),
 python scripts/compile_metrics.py --dates $(date -u -d "$3 days ago" "+%Y%m%d"),$(date -u "+%Y%m%d") --export_to_dir /store/emit/$1/reports/grafana/
 # Generate task runtime CSV (just get last 7 days)
 python scripts/slurm_metrics.py --dates $(date -u -d "7 days ago" "+%Y-%m-%d"),$(date -u "+%Y-%m-%d") --out_dir /store/emit/$1/reports/grafana/
+# Create data volume report
+sbatch -p emit -J emit_${1}_data_volume -o /dev/null -c 16 --mem=32G -t 01:00:00 \
+--wrap="$CONDA_PREFIX/bin/python scripts/data_volume_report.py -e $1 -o /store/emit/$1/reports/grafana/ -w 16"
