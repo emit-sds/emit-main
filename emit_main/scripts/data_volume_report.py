@@ -1,8 +1,3 @@
-"""
-sbatch -p standard -J data_volume -o /dev/null -c 16 --mem=32G -t 04:00:00 \
---wrap="/store/local/miniforge3/envs/emit-main-20260901-ops/bin/python /store/emit/dev/repos/emit-main/emit_main/scripts/data_volume_report.py \
--e ops -o /store/emit/ops/reports/grafana/ -w 16"
-"""
 import argparse
 import csv
 import glob

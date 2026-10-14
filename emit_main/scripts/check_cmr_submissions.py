@@ -30,7 +30,7 @@ daac_submissions = {'l1b':'rdn',
                     'ch4':'ch4',
                     'co2':'co2',
                     'mask':'maskTf',
-                    'frcov':'frc',
+                    'frcov':'frcov',
                     'l3rfl':'rfl',
                     'l2b':'min'}
 
@@ -181,8 +181,10 @@ def main():
     ids = [x[identifier] for x in records]
 
     if len(ids) == 0:
-        print(f"No delivered {args.version} products found in database.")
+        print(f"No delivered v{args.version} {args.product} products found in database.")
         return
+    else:
+        print(f"{len(ids)} delivered v{args.version} {args.product} products found in database.")
 
     concept_id = collection_concept_ids[args.version][args.product]
 
