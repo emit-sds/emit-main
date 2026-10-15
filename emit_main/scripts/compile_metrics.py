@@ -12,9 +12,12 @@ import json
 import os
 import requests
 import sys
+import threading
 
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning, message=".*utcnow.*")
+
+from concurrent.futures import ThreadPoolExecutor
 
 from netCDF4 import Dataset
 import numpy as np
@@ -99,6 +102,9 @@ def main():
     parser.add_argument("--month", help="Start date of month - YYYYMMDD")
     parser.add_argument("--metrics", default="streams,scenes,cmr", help="Which metrics to collect (streams,scenes,cmr)")
     parser.add_argument("--export_to_dir", "--export-to-dir", default=None, dest="export_to_dir")
+    parser.add_argument("--workers", type=int, default=8, help="Number of threads for stream and scene metrics")
+    parser.add_argument("--cmr_workers", type=int, default=4, help="Number of threads to query CMR")
+
     args = parser.parse_args()
 
     env = args.env
@@ -169,7 +175,7 @@ def main():
 
             for dir in date_dirs:
                 l0_reports = glob.glob(f"{dir}/l0/*report.txt")
-                for report in l0_reports:
+                def process_report(dir: str, apid: str, report: str) -> None:
                     packet_count, missing_packets, psc_gaps, duplicate_packets, timing_errors = 0, 0, 0, 0, 0
                     with open(report, "r") as f:
                         for line in f.readlines():
@@ -211,6 +217,9 @@ def main():
                     query = {"timestamp": timestamp}
                     update_collection(apid_coll, query, df)
 
+                with ThreadPoolExecutor(max_workers=args.workers) as executor:
+                    list(executor.map(lambda r: process_report(dir, apid, r), l0_reports))
+
     if "scenes" in metrics_flags:
         # Collect metrics on acquisitions/scenes
         print(f"Collecting metrics on acquisitions/scenes")
@@ -228,12 +237,13 @@ def main():
         dcid_coll = dm.db.data_collections
         stream_coll = dm.db.streams
         orbit_coll = dm.db.orbits
+        nc_lock = threading.Lock()
         
         for dir in date_dirs:
             acqs = [os.path.basename(a) for a in glob.glob(f"{dir}/*")]
             # print(f"Found acqs: {acqs}")
             
-            for acq in acqs:
+            def process_acq(dir: str, acq: str) -> None:
                 timestamp_str = os.path.basename(acq).split("_")[0][4:]
                 timestamp = dt.datetime.strptime(timestamp_str, "%Y%m%dt%H%M%S")
                 df = {
@@ -374,6 +384,7 @@ def main():
                     lines_per_frame = 32  # default it but also get it below
                     missing_frames, corrupt_frames, decompression_errors = 0, 0, 0
                     submode = ""
+                    instrument_mode = ""
                     with open(reassembly_reports[0], "r") as f:
                         for line in f.readlines():
                             if "Submode:" in line:
@@ -443,7 +454,7 @@ def main():
                     geo_qc_nc = os.path.join(eph_dir,geo_qc_subdir, geo_qc_base)
 
                     if os.path.isfile(geo_qc_nc):
-                        with Dataset(geo_qc_nc, "r") as ds:
+                        with nc_lock, Dataset(geo_qc_nc, "r") as ds:
                             g = ds.groups["Accuracy Estimate"]
                             scenes = g["Scenes"][:]
                             idx = np.where(scenes == acq[4:])[0]
@@ -555,6 +566,9 @@ def main():
                 query = {"timestamp": timestamp}
                 update_collection(trending_acqs_coll, query, df)
 
+            with ThreadPoolExecutor(max_workers=args.workers) as executor:
+                list(executor.map(lambda a: process_acq(dir, a), acqs))
+
     if "cmr" in metrics_flags:
         CMR_OPS = 'https://cmr.earthdata.nasa.gov/search'  # CMR API Endpoint
         url = f'{CMR_OPS}/granules.umm_json'
@@ -571,52 +585,67 @@ def main():
         }
 
         trending_acqs_coll = dm.db.trending_acquisitions
-        cur_date = start_date
-        while cur_date < stop_date:
+
+        acq_date_dirs = glob.glob(f"/store/emit/{env}/data/acquisitions/*")
+        start_dir = f"/store/emit/{env}/data/acquisitions/{start}"
+        stop_dir = f"/store/emit/{env}/data/acquisitions/{stop}"
+        cmr_dates = sorted(dt.datetime.strptime(os.path.basename(d), "%Y%m%d")
+                           for d in acq_date_dirs if start_dir <= d < stop_dir)
+        if cmr_dates:
+            print(f"Querying CMR for {len(cmr_dates)} dates, first {cmr_dates[0]:%Y%m%d}, last {cmr_dates[-1]:%Y%m%d}")
+        else:
+            print("No dates to query CMR for")
+
+        def fetch_cmr(cur_date: dt.datetime, level: str, coll: str) -> list:
             cur_plus_one = cur_date + datetime.timedelta(days=1)
             prod_range = f"{cur_date.strftime('%Y-%m-%dT%H:%M:%SZ')},{cur_plus_one.strftime('%Y-%m-%dT%H:%M:%SZ')}"
-            print(f"### CMR prod_range: {prod_range}")
-            # Loop through collections
-            for level, coll in collections.items():
-                
-                level_pub_date = f"{level}_publish_date"
-                level_delivery_date = f"{level}_delivery_date"
-                acq_to_level_pub_seconds = f"acquisition_to_{level}_publish_seconds"
-                deliver_to_level_pub_seconds = f"deliver_to_{level}_publish_seconds"
-                    
-                response = requests.get(url, params={'concept_id': coll, 'page_size': 500, 'temporal': prod_range},
-                                        headers={'Accept': 'application/json'
-                                                 #'Authorization':f'Bearer {token}'
-                                                 })
-                out_json_dir = f"/store/emit/{env}/reports/cmr/{cur_date.strftime('%Y%m%d')}"
-                out_json_path = f"{out_json_dir}/cmr_{cur_date.strftime('%Y%m%d')}_{level}.json"
-                if not os.path.exists(out_json_dir):
-                    os.makedirs(out_json_dir)
-                with open(out_json_path, "w") as f:
-                    f.write(json.dumps(response.json(), indent=4))
+            print(f"### CMR prod_range: {prod_range}, level: {level}")
+            response = requests.get(url, params={'concept_id': coll, 'page_size': 500, 'temporal': prod_range},
+                                    headers={'Accept': 'application/json'
+                                             #'Authorization':f'Bearer {token}'
+                                             })
+            if response.status_code in (429, 502, 503, 504):
+                msg = f"CMR error {response.status_code} for {prod_range}, level: {level}"
+                print(msg)
+                raise RuntimeError(msg)
+            out_json_dir = f"/store/emit/{env}/reports/cmr/{cur_date.strftime('%Y%m%d')}"
+            out_json_path = f"{out_json_dir}/cmr_{cur_date.strftime('%Y%m%d')}_{level}.json"
+            os.makedirs(out_json_dir, exist_ok=True)
+            with open(out_json_path, "w") as f:
+                f.write(json.dumps(response.json(), indent=4))
+            return response.json()["items"]
 
-                # Loop through json and get granules
-                for g in response.json()["items"]:
-                                        
-                    timestamp = dt.datetime.strptime(g["meta"]["native-id"].split("_")[4], "%Y%m%dT%H%M%S")
-                    last_publish_date = dt.datetime.strptime(g["meta"]["revision-date"], "%Y-%m-%dT%H:%M:%S.%fZ")
+        cmr_tasks = [(d, level, coll) for d in cmr_dates for level, coll in collections.items()]
+        with ThreadPoolExecutor(max_workers=args.cmr_workers) as executor:
+            cmr_items = list(executor.map(lambda t: fetch_cmr(*t), cmr_tasks))
 
-                    query = {"timestamp": timestamp}
-                                       
-                    df = {
-                        "timestamp": timestamp,
-                        level_pub_date: last_publish_date,
-                        acq_to_level_pub_seconds: (last_publish_date - timestamp).total_seconds(),
-                    }
-                    
-                    doc = trending_acqs_coll.find_one(query, {level_delivery_date: 1, "_id": 0})
-                    delivery_date = doc.get(level_delivery_date)
-                    if delivery_date: # Not needed for ops, but keeping in place for dev/test where delivery may not have occured
-                        df[deliver_to_level_pub_seconds] = (last_publish_date - delivery_date).total_seconds()                   
-                    
-                    update_collection(trending_acqs_coll, query, df)
+        for (cur_date, level, coll), items in zip(cmr_tasks, cmr_items):
 
-            cur_date = cur_plus_one
+            level_pub_date = f"{level}_publish_date"
+            level_delivery_date = f"{level}_delivery_date"
+            acq_to_level_pub_seconds = f"acquisition_to_{level}_publish_seconds"
+            deliver_to_level_pub_seconds = f"deliver_to_{level}_publish_seconds"
+
+            # Loop through json and get granules
+            for g in items:
+
+                timestamp = dt.datetime.strptime(g["meta"]["native-id"].split("_")[4], "%Y%m%dT%H%M%S")
+                last_publish_date = dt.datetime.strptime(g["meta"]["revision-date"], "%Y-%m-%dT%H:%M:%S.%fZ")
+
+                query = {"timestamp": timestamp}
+
+                df = {
+                    "timestamp": timestamp,
+                    level_pub_date: last_publish_date,
+                    acq_to_level_pub_seconds: (last_publish_date - timestamp).total_seconds(),
+                }
+
+                doc = trending_acqs_coll.find_one(query, {level_delivery_date: 1, "_id": 0}) or {}
+                delivery_date = doc.get(level_delivery_date)
+                if delivery_date: # Not needed for ops, but keeping in place for dev/test where delivery may not have occured
+                    df[deliver_to_level_pub_seconds] = (last_publish_date - delivery_date).total_seconds()
+
+                update_collection(trending_acqs_coll, query, df)
 
 if __name__ == '__main__':
     main()
