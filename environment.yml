@@ -24,3 +24,4 @@ dependencies:
   - scipy=1.16.3
   - setuptools=80.9.0
   - spectral=0.24
+  - tqdm=4.70.1
