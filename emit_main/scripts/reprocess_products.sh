@@ -3,27 +3,29 @@
 # $1 is start time YYYY-MM-DDT00:00:00
 # $2 is stop time YYYY-MM-DDT00:00:00
 # $3 is step to begin on
-# $4 is the slurm partition
-# $5 is --dry-run flag (optional)
+# $4 is step to end before, exclusive (optional, defaults to running through the last step)
+# $5 is the slurm partition
+# $6 is --dry-run flag (optional)
 
 T=$(date)
 START=$1
 STOP=$2
 STEP=${3:-1}
-PARTITION=$4
+END_STEP=${4:-13}
+PARTITION=$5
 
 DRYRUN=""
-if [ "$5" == "--dry-run" ]; then
+if [ "$6" == "--dry-run" ]; then
   DRYRUN="--dry-run | grep -A3 flag"
 fi
 
-echo -e "\n$T: Executing reprocess_products.sh with start '$START' and stop '$STOP' on partition '$PARTITION' beginning with step '$STEP'\n"
+echo -e "\n$T: Executing reprocess_products.sh with start '$START' and stop '$STOP' on partition '$PARTITION' beginning with step '$STEP' and ending before step '$END_STEP'\n"
 
 cd /store/emit/ops/repos/emit-main/emit_main
 
 export PYTHONUNBUFFERED=1
 
-if [ "$STEP" -le 1 ]; then
+if [ "$STEP" -le 1 ] && [ 1 -lt "$END_STEP" ]; then
   CUR_DAY=$(date -d "$START" +%Y-%m-%d)
   STOP_DAY=$(date -d "$STOP" +%Y-%m-%d)
   while [ "$(date -d "$CUR_DAY" +%s)" -lt "$(date -d "$STOP_DAY" +%s)" ]; do
@@ -41,57 +43,52 @@ if [ "$STEP" -le 1 ]; then
   done
 fi
 
-# if [ "$STEP" -le 2 ]; then
-#   echo -e "\n### 2 - Starting geo at $(date)\n"
-#   eval "python run_workflow.py -c config/ops_sds_config.json --date_field start_time --start_time $START --stop_time $STOP -m geo -w 57 --retry-failed --partition $PARTITION $DRYRUN"
-# fi
-
-if [ "$STEP" -le 3 ]; then
+if [ "$STEP" -le 3 ] && [ 3 -lt "$END_STEP" ]; then
   echo -e "\n### 3 - Starting l2 at $(date)\n"
   eval "python run_workflow.py -c config/ops_sds_config.json --date_field start_time --start_time $START --stop_time $STOP -m l2 -w 57 --retry-failed --partition $PARTITION $DRYRUN"
 fi
 
-if [ "$STEP" -le 4 ]; then
+if [ "$STEP" -le 4 ] && [ 4 -lt "$END_STEP" ]; then
   echo -e "\n### 4 - Starting maskTf at $(date)\n"
   eval "python run_workflow.py -c config/ops_sds_config.json --date_field start_time --start_time $START --stop_time $STOP -m maskTf -w 57 --retry-failed --partition $PARTITION $DRYRUN"
 fi
 
-if [ "$STEP" -le 5 ]; then
+if [ "$STEP" -le 5 ] && [ 5 -lt "$END_STEP" ]; then
   echo -e "\n### 5 - Starting frcov at $(date)\n"
   eval "python run_workflow.py -c config/ops_sds_config.json --date_field start_time --start_time $START --stop_time $STOP -m frcov -w 57 --retry-failed --partition $PARTITION $DRYRUN"
 fi
 
-if [ "$STEP" -le 6 ]; then
+if [ "$STEP" -le 6 ] && [ 6 -lt "$END_STEP" ]; then
   echo -e "\n### 6 - Starting l2b at $(date)\n"
   eval "python run_workflow.py -c config/ops_sds_config.json --date_field start_time --start_time $START --stop_time $STOP -m l2b -w 570 --retry-failed --partition $PARTITION $DRYRUN"
 fi
 
-if [ "$STEP" -le 7 ]; then
+if [ "$STEP" -le 7 ] && [ 7 -lt "$END_STEP" ]; then
   echo -e "\n### 7 - Starting l3rfl at $(date)\n"
   eval "python run_workflow.py -c config/ops_sds_config.json --date_field start_time --start_time $START --stop_time $STOP -m l3rfl -w 228 --retry-failed --partition $PARTITION $DRYRUN"
 fi
 
-if [ "$STEP" -le 8 ]; then
+if [ "$STEP" -le 8 ] && [ 8 -lt "$END_STEP" ]; then
   echo -e "\n### 8 - Starting ch4 at $(date)\n"
   eval "python run_workflow.py -c config/ops_sds_config.json --date_field start_time --start_time $START --stop_time $STOP -m ch4 -w 570 --retry-failed --partition $PARTITION $DRYRUN"
 fi
 
-if [ "$STEP" -le 9 ]; then
+if [ "$STEP" -le 9 ] && [ 9 -lt "$END_STEP" ]; then
   echo -e "\n### 9 - Starting co2 at $(date)\n"
   eval "python run_workflow.py -c config/ops_sds_config.json --date_field start_time --start_time $START --stop_time $STOP -m co2 -w 570 --retry-failed --partition $PARTITION $DRYRUN"
 fi
 
-if [ "$STEP" -le 10 ]; then
+if [ "$STEP" -le 10 ] && [ 10 -lt "$END_STEP" ]; then
   echo -e "\n### 10 - Starting mch4 at $(date)\n"
   eval "python run_workflow.py -c config/ops_sds_config.json --date_field start_time --start_time $START --stop_time $STOP -m mch4 -w 65 --retry-failed --partition $PARTITION $DRYRUN"
 fi
 
-if [ "$STEP" -le 11 ]; then
+if [ "$STEP" -le 11 ] && [ 11 -lt "$END_STEP" ]; then
   echo -e "\n### 11 - Starting mco2 at $(date)\n"
   eval "python run_workflow.py -c config/ops_sds_config.json --date_field start_time --start_time $START --stop_time $STOP -m mco2 -w 65 --retry-failed --partition $PARTITION $DRYRUN"
 fi
 
-if [ "$STEP" -le 12 ]; then
+if [ "$STEP" -le 12 ] && [ 12 -lt "$END_STEP" ]; then
   echo -e "\n### 12 - Starting ml1b at $(date)\n"
   eval "python run_workflow.py -c config/ops_sds_config.json --date_field start_time --start_time $START --stop_time $STOP -m ml1b -w 65 --retry-failed --partition $PARTITION $DRYRUN"
 fi
