@@ -12,9 +12,12 @@ import json
 import os
 import requests
 import sys
+import threading
 
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning, message=".*utcnow.*")
+
+from concurrent.futures import ThreadPoolExecutor
 
 from netCDF4 import Dataset
 import numpy as np
@@ -90,6 +93,399 @@ def export_scene(dm, query, out_dir, start, stop):
         df.to_csv(outfile, sep=",", index=False)
 
 
+def process_report(dm, dir, apid, report):
+    packet_count, missing_packets, psc_gaps, duplicate_packets, timing_errors = 0, 0, 0, 0, 0
+    with open(report, "r") as f:
+        for line in f.readlines():
+            if "Packet Count" in line and "Duplicate" not in line:
+                packet_count = int(line.rstrip("\n").split(" ")[-1])
+            if "Missing PSC Count" in line:
+                missing_packets = int(line.rstrip("\n").split(" ")[-1])
+            if "PSC Errors" in line:
+                psc_gaps = int(line.rstrip("\n").split(" ")[-1])
+            if "Duplicate Packet Count" in line:
+                duplicate_packets = int(line.rstrip("\n").split(" ")[-1])
+            if "Timing Errors Count" in line:
+                timing_errors = int(line.rstrip("\n").split(" ")[-1])
+    timestamp_str = os.path.basename(report).split("_")[2]
+    timestamp = dt.datetime.strptime(timestamp_str, "%Y%m%dt%H%M%S")
+    # timestamp_utc = timestamp.strftime("%Y-%m-%dT%H:%M:%SZ")
+    df = {
+        "timestamp": timestamp,
+        f"{apid}_packets": packet_count,
+        f"{apid}_psc_gaps": psc_gaps,
+        f"{apid}_missing_packets": missing_packets,
+        f"{apid}_duplicate_packets": duplicate_packets,
+        f"{apid}_timing_errors": timing_errors
+    }
+    ccsds_file = report.replace("_report.txt", ".bin")
+    start_time = os.path.basename(ccsds_file).split("_")[2].upper()
+    hosc_files = glob.glob(f"{dir}/raw/{apid}_{start_time}_*hsc.bin")
+    if os.path.exists(ccsds_file):
+        df[f"{apid}_ccsds_size_bytes"] = os.path.getsize(ccsds_file)
+    if len(hosc_files) > 0:
+        df[f"{apid}_hosc_size_bytes"] = os.path.getsize(hosc_files[0])
+
+    if apid == "1674":
+        apid_coll = dm.db.trending_1674
+    elif apid == "1675":
+        apid_coll = dm.db.trending_1675
+    elif apid == "1676":
+        apid_coll = dm.db.trending_1676
+    query = {"timestamp": timestamp}
+    update_collection(apid_coll, query, df)
+
+
+def process_acq(dm, wm, nc_lock, dir, acq):
+    acq_coll = dm.db.acquisitions
+    dcid_coll = dm.db.data_collections
+    stream_coll = dm.db.streams
+    orbit_coll = dm.db.orbits
+
+    timestamp_str = os.path.basename(acq).split("_")[0][4:]
+    timestamp = dt.datetime.strptime(timestamp_str, "%Y%m%dt%H%M%S")
+    df = {
+        "timestamp": timestamp,
+        "acquisition_id": acq
+    }
+    raw_img_files = glob.glob(f"{dir}/{acq}/l1a/{acq}*_raw_*img")
+    reassembly_reports = glob.glob(f"{dir}/{acq}/l1a/{acq}*_raw_*report.txt")
+    rdn_img_files = glob.glob(f"{dir}/{acq}/l1b/{acq}*_rdn_*img")
+    rdn_hdr_files = glob.glob(f"{dir}/{acq}/l1b/{acq}*_rdn_*hdr")
+    rdn_nc_files = glob.glob(f"{dir}/{acq}/l1b/{acq}*_rdn_*nc")
+    glt_img_files = glob.glob(f"{dir}/{acq}/l1b/{acq}*_glt_*img")
+    loc_img_files = glob.glob(f"{dir}/{acq}/l1b/{acq}*_loc_*img")
+    obs_img_files = glob.glob(f"{dir}/{acq}/l1b/{acq}*_obs_*img")
+    obs_nc_files = glob.glob(f"{dir}/{acq}/l1b/{acq}*_obs_*nc")
+    rfl_img_files = glob.glob(f"{dir}/{acq}/l2a/{acq}*_rfl_*img")
+    rfl_nc_files = glob.glob(f"{dir}/{acq}/l2a/{acq}*_rfl_*nc")
+    rflunc_img_files = glob.glob(f"{dir}/{acq}/l2a/{acq}*_rfluncert_*img")
+    rflunc_nc_files = glob.glob(f"{dir}/{acq}/l2a/{acq}*_rfluncert_*nc")
+    min_nc_files = glob.glob(f"{dir}/{acq}/l2b/{acq}*_min_*nc")
+    minunc_nc_files = glob.glob(f"{dir}/{acq}/l2b/{acq}*_minuncert_*nc")
+    ch4_img_files = glob.glob(f"{dir}/{acq}/ch4/{acq}*_ch4_*img")
+    ch4_tif_files = glob.glob(f"{dir}/{acq}/ch4/{acq}*_ortch4_*tif")
+    sensch4_img_files = glob.glob(f"{dir}/{acq}/ch4/{acq}*_sensch4_*img")
+    sensch4_tif_files = glob.glob(f"{dir}/{acq}/ch4/{acq}*_ortsensch4_*tif")
+    uncertch4_img_files = glob.glob(f"{dir}/{acq}/ch4/{acq}*_uncertch4_*img")
+    uncertch4_tif_files = glob.glob(f"{dir}/{acq}/ch4/{acq}*_ortuncertch4_*tif")
+    ch4d1_tif_files = glob.glob(f"{dir}/{acq}/ch4/{acq}*_ortch4d1_*tif")
+    ch4d2_tif_files = glob.glob(f"{dir}/{acq}/ch4/{acq}*_ortch4d2_*tif")
+    co2_img_files = glob.glob(f"{dir}/{acq}/co2/{acq}*_co2_*img")
+    co2_tif_files = glob.glob(f"{dir}/{acq}/co2/{acq}*_ortco2_*tif")
+    sensco2_img_files = glob.glob(f"{dir}/{acq}/co2/{acq}*_sensco2_*img")
+    sensco2_tif_files = glob.glob(f"{dir}/{acq}/co2/{acq}*_ortsensco2_*tif")
+    uncertco2_img_files = glob.glob(f"{dir}/{acq}/co2/{acq}*_uncertco2_*img")
+    uncertco2_tif_files = glob.glob(f"{dir}/{acq}/co2/{acq}*_ortuncertco2_*tif")
+    co2d1_tif_files = glob.glob(f"{dir}/{acq}/co2/{acq}*_ortco2d1_*tif")
+    co2d2_tif_files = glob.glob(f"{dir}/{acq}/co2/{acq}*_ortco2d2_*tif")
+    frcovqc_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_frcovqc_*tif")
+    pv_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_frcovpv_*tif")
+    pvunc_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_frcovpvunc_*tif")
+    npv_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_frcovnpv_*tif")
+    npvunc_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_frcovnpvunc_*tif")
+    bare_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_frcovbare_*tif")
+    bareunc_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_frcovbareunc_*tif")
+    maskTf_img_files = glob.glob(f"{dir}/{acq}/mask/{acq}*_maskTf_*img")
+    maskTf_nc_files = glob.glob(f"{dir}/{acq}/mask/{acq}*_maskTf_*nc")
+    l3rfl_nc_files = glob.glob(f"{dir}/{acq}/l3rfl/{acq}*_rfl_*nc")
+    l3rflunc_nc_files = glob.glob(f"{dir}/{acq}/l3rfl/{acq}*_rfluncert_*nc")
+    l3obs_nc_files = glob.glob(f"{dir}/{acq}/l3rfl/{acq}*_obs_*nc")
+
+    
+    if len(raw_img_files) > 0:
+        df["raw_img_size_bytes"] = os.path.getsize(raw_img_files[0])
+    if len(rdn_img_files) > 0:
+        df["rdn_img_size_bytes"] = os.path.getsize(rdn_img_files[0])
+    if len(rdn_nc_files) > 0:
+        df["rdn_nc_size_bytes"] = os.path.getsize(rdn_nc_files[0])
+    if len(glt_img_files) > 0:
+        df["glt_img_size_bytes"] = os.path.getsize(glt_img_files[0])
+    if len(loc_img_files) > 0:
+        df["loc_img_size_bytes"] = os.path.getsize(loc_img_files[0])
+    if len(obs_img_files) > 0:
+        df["obs_img_size_bytes"] = os.path.getsize(obs_img_files[0])
+    if len(obs_nc_files) > 0:
+        df["obs_nc_size_bytes"] = os.path.getsize(obs_nc_files[0])
+    if len(rfl_img_files) > 0:
+        df["rfl_img_size_bytes"] = os.path.getsize(rfl_img_files[0])
+    if len(rfl_nc_files) > 0:
+        df["rfl_nc_size_bytes"] = os.path.getsize(rfl_nc_files[0])
+    if len(rflunc_img_files) > 0:
+        df["rflunc_img_size_bytes"] = os.path.getsize(rflunc_img_files[0])
+    if len(rflunc_nc_files) > 0:
+        df["rflunc_nc_size_bytes"] = os.path.getsize(rflunc_nc_files[0])
+    if len(min_nc_files) > 0:
+        df["min_nc_size_bytes"] = os.path.getsize(min_nc_files[0])
+    if len(minunc_nc_files) > 0:
+        df["minunc_nc_size_bytes"] = os.path.getsize(minunc_nc_files[0])
+    if len(ch4_img_files) > 0:
+        df["ch4_img_size_bytes"] = os.path.getsize(ch4_img_files[0])
+    if len(ch4_tif_files) > 0:
+        df["ch4_tif_size_bytes"] = os.path.getsize(ch4_tif_files[0])
+    if len(sensch4_img_files) > 0:
+        df["sensch4_img_size_bytes"] = os.path.getsize(sensch4_img_files[0])
+    if len(sensch4_tif_files) > 0:
+        df["sensch4_tif_size_bytes"] = os.path.getsize(sensch4_tif_files[0])
+    if len(uncertch4_img_files) > 0:
+        df["uncertch4_img_size_bytes"] = os.path.getsize(uncertch4_img_files[0])
+    if len(uncertch4_tif_files) > 0:
+        df["uncertch4_tif_size_bytes"] = os.path.getsize(uncertch4_tif_files[0])
+    if len(ch4d1_tif_files) > 0:
+        df["ch4d1_tif_size_bytes"] = os.path.getsize(ch4d1_tif_files[0])
+    if len(ch4d2_tif_files) > 0:
+        df["ch4d2_tif_size_bytes"] = os.path.getsize(ch4d2_tif_files[0])
+    if len(co2_img_files) > 0:
+        df["co2_img_size_bytes"] = os.path.getsize(co2_img_files[0])
+    if len(co2_tif_files) > 0:
+        df["co2_tif_size_bytes"] = os.path.getsize(co2_tif_files[0])
+    if len(sensco2_img_files) > 0:
+        df["sensco2_img_size_bytes"] = os.path.getsize(sensco2_img_files[0])
+    if len(sensco2_tif_files) > 0:
+        df["sensco2_tif_size_bytes"] = os.path.getsize(sensco2_tif_files[0])
+    if len(uncertco2_img_files) > 0:
+        df["uncertco2_img_size_bytes"] = os.path.getsize(uncertco2_img_files[0])
+    if len(uncertco2_tif_files) > 0:
+        df["uncertco2_tif_size_bytes"] = os.path.getsize(uncertco2_tif_files[0])
+    if len(co2d1_tif_files) > 0:
+        df["co2d1_tif_size_bytes"] = os.path.getsize(co2d1_tif_files[0])
+    if len(co2d2_tif_files) > 0:
+        df["co2d2_tif_size_bytes"] = os.path.getsize(co2d2_tif_files[0])
+    if len(frcovqc_tif_files) > 0:
+        df["frcovqc_tif_size_bytes"] = os.path.getsize(frcovqc_tif_files[0])
+    if len(pv_tif_files) > 0:
+        df["pv_tif_size_bytes"] = os.path.getsize(pv_tif_files[0])
+    if len(pvunc_tif_files) > 0:
+        df["pvunc_tif_size_bytes"] = os.path.getsize(pvunc_tif_files[0])
+    if len(npv_tif_files) > 0:
+        df["npv_tif_size_bytes"] = os.path.getsize(npv_tif_files[0])
+    if len(npvunc_tif_files) > 0:
+        df["npvunc_tif_size_bytes"] = os.path.getsize(npvunc_tif_files[0])
+    if len(bare_tif_files) > 0:
+        df["bare_tif_size_bytes"] = os.path.getsize(bare_tif_files[0])
+    if len(bareunc_tif_files) > 0:
+        df["bareunc_tif_size_bytes"] = os.path.getsize(bareunc_tif_files[0])
+    if len(maskTf_img_files) > 0:
+        df["maskTf_img_size_bytes"] = os.path.getsize(maskTf_img_files[0])
+    if len(maskTf_nc_files) > 0:
+        df["maskTf_nc_size_bytes"] = os.path.getsize(maskTf_nc_files[0])
+    if len(l3rfl_nc_files) > 0:
+        df["l3rfl_nc_size_bytes"] = os.path.getsize(l3rfl_nc_files[0])
+    if len(l3rflunc_nc_files) > 0:
+        df["l3rflunc_nc_size_bytes"] = os.path.getsize(l3rflunc_nc_files[0])
+    if len(l3obs_nc_files) > 0:
+        df["l3obs_nc_size_bytes"] = os.path.getsize(l3obs_nc_files[0])
+
+    # Get reassembly report info
+    if len(reassembly_reports) > 0:
+        num_lines, corrupt_lines, cloudy_frames = 0, 0, 0
+        lines_per_frame = 32  # default it but also get it below
+        missing_frames, corrupt_frames, decompression_errors = 0, 0, 0
+        submode = ""
+        instrument_mode = ""
+        with open(reassembly_reports[0], "r") as f:
+            for line in f.readlines():
+                if "Submode:" in line:
+                    submode = line.rstrip("\n").split(" ")[-1]
+                if "Instrument mode:" in line:
+                    instrument_mode = line.rstrip("\n").split(" ")[-1]
+                if "Number of lines:" in line:
+                    num_lines = int(line.rstrip("\n").split(" ")[-1])
+                if "Total corrupt lines" in line:
+                    corrupt_lines = int(line.rstrip("\n").split(" ")[-1])
+                if "Number of lines per frame" in line:
+                    lines_per_frame = int(line.rstrip("\n").split(" ")[-1])
+                if "Total cloudy frames" in line:
+                    cloudy_frames = int(line.rstrip("\n").split(" ")[-1])
+                if "Total missing frames" in line:
+                    missing_frames = int(line.rstrip("\n").split(" ")[-1])
+                if "Total corrupt frames" in line:
+                    corrupt_frames = int(line.rstrip("\n").split(" ")[-1])
+                if "Total decompression errors" in line:
+                    decompression_errors = int(line.rstrip("\n").split(" ")[-1])
+
+        df.update({
+            "submode": submode,
+            "instrument_mode": instrument_mode,
+            "lines": num_lines,
+            "corrupt_lines": corrupt_lines,
+            "frames": num_lines // lines_per_frame,
+            "cloudy_frames": cloudy_frames,
+            "missing_frames": missing_frames,
+            "corrupt_frames": corrupt_frames,
+            "decompression_errors": decompression_errors
+        })
+
+    # Get masked pixel noise from radiance header
+    if len(rdn_hdr_files) > 0:
+        hdr = envi.read_envi_header(rdn_hdr_files[0])
+        if "masked pixel noise" in hdr:
+            df["masked_pixel_noise"] = float(hdr["masked pixel noise"])
+    
+    # Get HOSC creation time
+    acq_doc = acq_coll.find_one({"acquisition_id": acq}, {"associated_dcid": 1, "orbit": 1, "products": 1, "_id": 0})
+    dcid = acq_doc["associated_dcid"]
+    orbit = acq_doc["orbit"]
+    dcid_doc = dcid_coll.find_one({"dcid": dcid}, {"associated_ccsds": 1, "_id": 0})
+    dcid_doc['associated_ccsds'].sort()
+    ccsds = os.path.basename(dcid_doc['associated_ccsds'][0])
+    stream_doc = stream_coll.find_one({"ccsds_name": ccsds}, {f"products.raw.{wm.config['prod_versions']['l0']}.created": 1, "_id": 0})
+    
+    hosc_date = stream_doc['products']['raw'][wm.config['prod_versions']['l0']]['created']
+
+    orbit_doc = orbit_coll.find_one(
+        {
+            "orbit_id": orbit, 
+            f"products.l1b.{wm.config['prod_versions']['l1b']}.corr_att_eph.nc_path": {"$exists": 1}
+        },
+        {
+            f"products.l1b.{wm.config['prod_versions']['l1b']}.corr_att_eph.nc_path": 1,
+            "_id": 0
+        }
+    )
+    
+    if orbit_doc:
+        eph_path =  orbit_doc["products"]["l1b"][wm.config['prod_versions']['l1b']]["corr_att_eph"]["nc_path"]
+        eph_dir, eph_base = os.path.split(eph_path)
+        geo_qc_base = eph_base.replace('att', 'geoqa')
+        geo_qc_subdir = f"o{orbit}_l1b_geo_v{wm.config['prod_versions']['l1b']}_work"
+        geo_qc_nc = os.path.join(eph_dir,geo_qc_subdir, geo_qc_base)
+
+        if os.path.isfile(geo_qc_nc):
+            with nc_lock, Dataset(geo_qc_nc, "r") as ds:
+                g = ds.groups["Accuracy Estimate"]
+                scenes = g["Scenes"][:]
+                idx = np.where(scenes == acq[4:])[0]
+
+                if idx.size == 1:
+                    i = idx[0]
+                    pre_error = g["Accuracy Before Correction"][i]
+                    post_error = g["Final Accuracy"][i]
+                    
+                    if pre_error != -9999:
+                        df["pre_geo_error_m"] = float(pre_error)
+                    if post_error != -9999:
+                        df["post_geo_error_m"] = float(post_error)
+        else:
+            print(f'{geo_qc_nc} not found')
+    
+    l1a_delivery_date = acq_doc.get('products',{}).get('l1a',{}).get(wm.config['prod_versions']['l1a'],{}).get('raw_ummg',{}).get('created',{})
+    l1b_delivery_date = acq_doc.get('products',{}).get('l1b',{}).get(wm.config['prod_versions']['l1b'],{}).get('rdn_ummg',{}).get('created',{})
+    l2a_delivery_date = acq_doc.get('products',{}).get('l2a',{}).get(wm.config['prod_versions']['l2a'],{}).get('rfl_ummg',{}).get('created',{})
+    co2_delivery_date = acq_doc.get('products',{}).get('co2',{}).get(wm.config['prod_versions']['co2'],{}).get('co2_ummg',{}).get('created',{})
+    ch4_delivery_date = acq_doc.get('products',{}).get('ch4',{}).get(wm.config['prod_versions']['ch4'],{}).get('ch4_ummg',{}).get('created',{})
+    l2b_delivery_date = acq_doc.get('products',{}).get('l2b',{}).get(wm.config['prod_versions']['l2b'],{}).get('abun_ummg',{}).get('created',{})
+    maskTf_delivery_date = acq_doc.get('products',{}).get('mask',{}).get(wm.config['prod_versions']['mask'],{}).get('maskTf_ummg',{}).get('created',{})
+    frcov_delivery_date = acq_doc.get('products',{}).get('frcov',{}).get(wm.config['prod_versions']['frcov'],{}).get('frcov_ummg',{}).get('created',{})
+    l3rfl_delivery_date = acq_doc.get('products',{}).get('l3rfl',{}).get(wm.config['prod_versions']['l3rfl'],{}).get('rfl_ummg',{}).get('created',{})
+
+    if l1a_delivery_date:
+        df["raw_to_l1a_deliver_seconds"] = (l1a_delivery_date - hosc_date).total_seconds()
+        df["l1a_delivery_date"] = l1a_delivery_date
+
+    if l1b_delivery_date:
+        df["raw_to_l1b_deliver_seconds"] = (l1b_delivery_date - hosc_date).total_seconds()
+        df["l1b_delivery_date"] = l1b_delivery_date
+
+    if l2a_delivery_date:
+        df["raw_to_l2a_deliver_seconds"] = (l2a_delivery_date - hosc_date).total_seconds()
+        df["l2a_delivery_date"] = l2a_delivery_date
+
+    if co2_delivery_date:
+        df["raw_to_co2_deliver_seconds"] = (co2_delivery_date - hosc_date).total_seconds()
+        df["co2_delivery_date"] = co2_delivery_date
+
+    if ch4_delivery_date:
+        df["raw_to_ch4_deliver_seconds"] = (ch4_delivery_date - hosc_date).total_seconds()
+        df["ch4_delivery_date"] = ch4_delivery_date
+
+    if l2b_delivery_date:
+        df["raw_to_l2b_deliver_seconds"] = (l2b_delivery_date - hosc_date).total_seconds()
+        df["l2b_delivery_date"] = l2b_delivery_date
+
+    if frcov_delivery_date:
+        df["raw_to_frcov_deliver_seconds"] = (frcov_delivery_date - hosc_date).total_seconds()
+        df["frcov_delivery_date"] = frcov_delivery_date
+
+    if maskTf_delivery_date:
+        df["raw_to_maskTf_deliver_seconds"] = (maskTf_delivery_date - hosc_date).total_seconds()
+        df["maskTf_delivery_date"] = maskTf_delivery_date
+
+    if l3rfl_delivery_date:
+        df["raw_to_l3rfl_deliver_seconds"] = (l3rfl_delivery_date - hosc_date).total_seconds()
+        df["l3rfl_delivery_date"] = l3rfl_delivery_date
+
+    # Get obs, state, and mask metrics from db products dict
+    obs_band_means = None
+    try:
+        obs_band_means = acq_doc["products"]["l1b"][wm.config['prod_versions']['l1b']]["obs"]["band_means"]
+    except KeyError:
+        pass # ignore the error
+
+    if obs_band_means:
+        df["aspect"] = obs_band_means["aspect"]
+        df["cosine_i"] = obs_band_means["cosine_i"]
+        df["earth_sun_distance"] = obs_band_means["earth_sun_dist"]
+        df["path_length"] = obs_band_means["path_length"]
+        df["slope"] = obs_band_means["slope"]
+        df["solar_phase"] = obs_band_means["solar_phase"]
+        df["to_sensor_azimuth"] = obs_band_means["sensor_azimuth"]
+        df["to_sensor_zenith"] = obs_band_means["sensor_zenith"]
+        df["to_sun_azimuth"] = obs_band_means["solar_azimuth"]
+        df["to_sun_zenith"] = obs_band_means["solar_zenith"]
+        df["utc_time_decimal_hours"] = obs_band_means["utc_time"]
+
+    state_band_medians = None
+    try:
+        state_band_medians = acq_doc["products"]["l2a"][wm.config['prod_versions']['l2a']]["state"]["band_medians"]
+    except KeyError:
+        pass # ignore the error
+
+    if state_band_medians:
+        df["retrieved_aot_median"] = state_band_medians["aot"]
+        df["retrieved_water_vapor_median"] = state_band_medians["h2o"]
+        df["retrieved_co2_median"] = state_band_medians["co2"]
+    
+    maskTf_doc = None
+    try:
+        maskTf_doc = acq_doc["products"]["mask"][wm.config['prod_versions']['mask']]["maskTf"]
+    except KeyError:
+        pass # ignore the error
+
+    if maskTf_doc:
+        df["cloud_fraction"] = maskTf_doc["cloud_fraction"]
+        df["cloudindex_fraction"] = maskTf_doc["cloudindex_fraction"]
+        df["cloudratio_fraction"] = maskTf_doc["cloudratio_fraction"]
+        df["cirrus_fraction"] = maskTf_doc["cirrus_fraction"]
+        df["nodata_fraction"] = maskTf_doc["nodata_fraction"]
+
+    # Update the DB
+    trending_acqs_coll = dm.db.trending_acquisitions
+    query = {"timestamp": timestamp}
+    update_collection(trending_acqs_coll, query, df)
+
+CMR_URL = 'https://cmr.earthdata.nasa.gov/search/granules.umm_json'  # CMR API Endpoint
+
+def fetch_cmr(env, cur_date, level, coll):
+    cur_plus_one = cur_date + datetime.timedelta(days=1)
+    prod_range = f"{cur_date.strftime('%Y-%m-%dT%H:%M:%SZ')},{cur_plus_one.strftime('%Y-%m-%dT%H:%M:%SZ')}"
+    print(f"### CMR prod_range: {prod_range}, level: {level}")
+    response = requests.get(CMR_URL, params={'concept_id': coll, 'page_size': 500, 'temporal': prod_range},
+                            headers={'Accept': 'application/json'
+                                     #'Authorization':f'Bearer {token}'
+                                     })
+    if response.status_code in (429, 502, 503, 504):
+        msg = f"CMR error {response.status_code} for {prod_range}, level: {level}"
+        print(msg)
+        raise RuntimeError(msg)
+    out_json_dir = f"/store/emit/{env}/reports/cmr/{cur_date.strftime('%Y%m%d')}"
+    out_json_path = f"{out_json_dir}/cmr_{cur_date.strftime('%Y%m%d')}_{level}.json"
+    os.makedirs(out_json_dir, exist_ok=True)
+    with open(out_json_path, "w") as f:
+        f.write(json.dumps(response.json(), indent=4))
+    return response.json()["items"]
+
+
 def main():
     # Set up args
     parser = argparse.ArgumentParser(description="Compile metrics for tracking")
@@ -99,6 +495,9 @@ def main():
     parser.add_argument("--month", help="Start date of month - YYYYMMDD")
     parser.add_argument("--metrics", default="streams,scenes,cmr", help="Which metrics to collect (streams,scenes,cmr)")
     parser.add_argument("--export_to_dir", "--export-to-dir", default=None, dest="export_to_dir")
+    parser.add_argument("--workers", type=int, default=8, help="Number of threads for stream and scene metrics")
+    parser.add_argument("--cmr_workers", type=int, default=4, help="Number of threads to query CMR")
+
     args = parser.parse_args()
 
     env = args.env
@@ -169,47 +568,9 @@ def main():
 
             for dir in date_dirs:
                 l0_reports = glob.glob(f"{dir}/l0/*report.txt")
-                for report in l0_reports:
-                    packet_count, missing_packets, psc_gaps, duplicate_packets, timing_errors = 0, 0, 0, 0, 0
-                    with open(report, "r") as f:
-                        for line in f.readlines():
-                            if "Packet Count" in line and "Duplicate" not in line:
-                                packet_count = int(line.rstrip("\n").split(" ")[-1])
-                            if "Missing PSC Count" in line:
-                                missing_packets = int(line.rstrip("\n").split(" ")[-1])
-                            if "PSC Errors" in line:
-                                psc_gaps = int(line.rstrip("\n").split(" ")[-1])
-                            if "Duplicate Packet Count" in line:
-                                duplicate_packets = int(line.rstrip("\n").split(" ")[-1])
-                            if "Timing Errors Count" in line:
-                                timing_errors = int(line.rstrip("\n").split(" ")[-1])
-                    timestamp_str = os.path.basename(report).split("_")[2]
-                    timestamp = dt.datetime.strptime(timestamp_str, "%Y%m%dt%H%M%S")
-                    # timestamp_utc = timestamp.strftime("%Y-%m-%dT%H:%M:%SZ")
-                    df = {
-                        "timestamp": timestamp,
-                        f"{apid}_packets": packet_count,
-                        f"{apid}_psc_gaps": psc_gaps,
-                        f"{apid}_missing_packets": missing_packets,
-                        f"{apid}_duplicate_packets": duplicate_packets,
-                        f"{apid}_timing_errors": timing_errors
-                    }
-                    ccsds_file = report.replace("_report.txt", ".bin")
-                    start_time = os.path.basename(ccsds_file).split("_")[2].upper()
-                    hosc_files = glob.glob(f"{dir}/raw/{apid}_{start_time}_*hsc.bin")
-                    if os.path.exists(ccsds_file):
-                        df[f"{apid}_ccsds_size_bytes"] = os.path.getsize(ccsds_file)
-                    if len(hosc_files) > 0:
-                        df[f"{apid}_hosc_size_bytes"] = os.path.getsize(hosc_files[0])
 
-                    if apid == "1674":
-                        apid_coll = dm.db.trending_1674
-                    elif apid == "1675":
-                        apid_coll = dm.db.trending_1675
-                    elif apid == "1676":
-                        apid_coll = dm.db.trending_1676
-                    query = {"timestamp": timestamp}
-                    update_collection(apid_coll, query, df)
+                with ThreadPoolExecutor(max_workers=args.workers) as executor:
+                    list(executor.map(lambda r: process_report(dm, dir, apid, r), l0_reports))
 
     if "scenes" in metrics_flags:
         # Collect metrics on acquisitions/scenes
@@ -224,340 +585,16 @@ def main():
         # First, get data from acquisition directories
         print("Checking acquisition directories")
         
-        acq_coll = dm.db.acquisitions
-        dcid_coll = dm.db.data_collections
-        stream_coll = dm.db.streams
-        orbit_coll = dm.db.orbits
+        nc_lock = threading.Lock()
         
         for dir in date_dirs:
             acqs = [os.path.basename(a) for a in glob.glob(f"{dir}/*")]
             # print(f"Found acqs: {acqs}")
             
-            for acq in acqs:
-                timestamp_str = os.path.basename(acq).split("_")[0][4:]
-                timestamp = dt.datetime.strptime(timestamp_str, "%Y%m%dt%H%M%S")
-                df = {
-                    "timestamp": timestamp,
-                    "acquisition_id": acq
-                }
-                raw_img_files = glob.glob(f"{dir}/{acq}/l1a/{acq}*_raw_*img")
-                reassembly_reports = glob.glob(f"{dir}/{acq}/l1a/{acq}*_raw_*report.txt")
-                rdn_img_files = glob.glob(f"{dir}/{acq}/l1b/{acq}*_rdn_*img")
-                rdn_hdr_files = glob.glob(f"{dir}/{acq}/l1b/{acq}*_rdn_*hdr")
-                rdn_nc_files = glob.glob(f"{dir}/{acq}/l1b/{acq}*_rdn_*nc")
-                glt_img_files = glob.glob(f"{dir}/{acq}/l1b/{acq}*_glt_*img")
-                loc_img_files = glob.glob(f"{dir}/{acq}/l1b/{acq}*_loc_*img")
-                obs_img_files = glob.glob(f"{dir}/{acq}/l1b/{acq}*_obs_*img")
-                obs_nc_files = glob.glob(f"{dir}/{acq}/l1b/{acq}*_obs_*nc")
-                rfl_img_files = glob.glob(f"{dir}/{acq}/l2a/{acq}*_rfl_*img")
-                rfl_nc_files = glob.glob(f"{dir}/{acq}/l2a/{acq}*_rfl_*nc")
-                rflunc_img_files = glob.glob(f"{dir}/{acq}/l2a/{acq}*_rfluncert_*img")
-                rflunc_nc_files = glob.glob(f"{dir}/{acq}/l2a/{acq}*_rfluncert_*nc")
-                min_nc_files = glob.glob(f"{dir}/{acq}/l2b/{acq}*_min_*nc")
-                minunc_nc_files = glob.glob(f"{dir}/{acq}/l2b/{acq}*_minuncert_*nc")
-                ch4_img_files = glob.glob(f"{dir}/{acq}/ch4/{acq}*_ch4_*img")
-                ch4_tif_files = glob.glob(f"{dir}/{acq}/ch4/{acq}*_ortch4_*tif")
-                sensch4_img_files = glob.glob(f"{dir}/{acq}/ch4/{acq}*_sensch4_*img")
-                sensch4_tif_files = glob.glob(f"{dir}/{acq}/ch4/{acq}*_ortsensch4_*tif")
-                uncertch4_img_files = glob.glob(f"{dir}/{acq}/ch4/{acq}*_uncertch4_*img")
-                uncertch4_tif_files = glob.glob(f"{dir}/{acq}/ch4/{acq}*_ortuncertch4_*tif")
-                ch4d1_tif_files = glob.glob(f"{dir}/{acq}/ch4/{acq}*_ortch4d1_*tif")
-                ch4d2_tif_files = glob.glob(f"{dir}/{acq}/ch4/{acq}*_ortch4d2_*tif")
-                co2_img_files = glob.glob(f"{dir}/{acq}/co2/{acq}*_co2_*img")
-                co2_tif_files = glob.glob(f"{dir}/{acq}/co2/{acq}*_ortco2_*tif")
-                sensco2_img_files = glob.glob(f"{dir}/{acq}/co2/{acq}*_sensco2_*img")
-                sensco2_tif_files = glob.glob(f"{dir}/{acq}/co2/{acq}*_ortsensco2_*tif")
-                uncertco2_img_files = glob.glob(f"{dir}/{acq}/co2/{acq}*_uncertco2_*img")
-                uncertco2_tif_files = glob.glob(f"{dir}/{acq}/co2/{acq}*_ortuncertco2_*tif")
-                co2d1_tif_files = glob.glob(f"{dir}/{acq}/co2/{acq}*_ortco2d1_*tif")
-                co2d2_tif_files = glob.glob(f"{dir}/{acq}/co2/{acq}*_ortco2d2_*tif")
-                frcovqc_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_frcovqc_*tif")
-                pv_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_frcovpv_*tif")
-                pvunc_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_frcovpvunc_*tif")
-                npv_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_frcovnpv_*tif")
-                npvunc_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_frcovnpvunc_*tif")
-                bare_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_frcovbare_*tif")
-                bareunc_tif_files = glob.glob(f"{dir}/{acq}/frcov/{acq}*_frcovbareunc_*tif")
-                maskTf_img_files = glob.glob(f"{dir}/{acq}/mask/{acq}*_maskTf_*img")
-                maskTf_nc_files = glob.glob(f"{dir}/{acq}/mask/{acq}*_maskTf_*nc")
-                l3rfl_nc_files = glob.glob(f"{dir}/{acq}/l3rfl/{acq}*_rfl_*nc")
-                l3rflunc_nc_files = glob.glob(f"{dir}/{acq}/l3rfl/{acq}*_rfluncert_*nc")
-                l3obs_nc_files = glob.glob(f"{dir}/{acq}/l3rfl/{acq}*_obs_*nc")
-
-                
-                if len(raw_img_files) > 0:
-                    df["raw_img_size_bytes"] = os.path.getsize(raw_img_files[0])
-                if len(rdn_img_files) > 0:
-                    df["rdn_img_size_bytes"] = os.path.getsize(rdn_img_files[0])
-                if len(rdn_nc_files) > 0:
-                    df["rdn_nc_size_bytes"] = os.path.getsize(rdn_nc_files[0])
-                if len(glt_img_files) > 0:
-                    df["glt_img_size_bytes"] = os.path.getsize(glt_img_files[0])
-                if len(loc_img_files) > 0:
-                    df["loc_img_size_bytes"] = os.path.getsize(loc_img_files[0])
-                if len(obs_img_files) > 0:
-                    df["obs_img_size_bytes"] = os.path.getsize(obs_img_files[0])
-                if len(obs_nc_files) > 0:
-                    df["obs_nc_size_bytes"] = os.path.getsize(obs_nc_files[0])
-                if len(rfl_img_files) > 0:
-                    df["rfl_img_size_bytes"] = os.path.getsize(rfl_img_files[0])
-                if len(rfl_nc_files) > 0:
-                    df["rfl_nc_size_bytes"] = os.path.getsize(rfl_nc_files[0])
-                if len(rflunc_img_files) > 0:
-                    df["rflunc_img_size_bytes"] = os.path.getsize(rflunc_img_files[0])
-                if len(rflunc_nc_files) > 0:
-                    df["rflunc_nc_size_bytes"] = os.path.getsize(rflunc_nc_files[0])
-                if len(min_nc_files) > 0:
-                    df["min_nc_size_bytes"] = os.path.getsize(min_nc_files[0])
-                if len(minunc_nc_files) > 0:
-                    df["minunc_nc_size_bytes"] = os.path.getsize(minunc_nc_files[0])
-                if len(ch4_img_files) > 0:
-                    df["ch4_img_size_bytes"] = os.path.getsize(ch4_img_files[0])
-                if len(ch4_tif_files) > 0:
-                    df["ch4_tif_size_bytes"] = os.path.getsize(ch4_tif_files[0])
-                if len(sensch4_img_files) > 0:
-                    df["sensch4_img_size_bytes"] = os.path.getsize(sensch4_img_files[0])
-                if len(sensch4_tif_files) > 0:
-                    df["sensch4_tif_size_bytes"] = os.path.getsize(sensch4_tif_files[0])
-                if len(uncertch4_img_files) > 0:
-                    df["uncertch4_img_size_bytes"] = os.path.getsize(uncertch4_img_files[0])
-                if len(uncertch4_tif_files) > 0:
-                    df["uncertch4_tif_size_bytes"] = os.path.getsize(uncertch4_tif_files[0])
-                if len(ch4d1_tif_files) > 0:
-                    df["ch4d1_tif_size_bytes"] = os.path.getsize(ch4d1_tif_files[0])
-                if len(ch4d2_tif_files) > 0:
-                    df["ch4d2_tif_size_bytes"] = os.path.getsize(ch4d2_tif_files[0])
-                if len(co2_img_files) > 0:
-                    df["co2_img_size_bytes"] = os.path.getsize(co2_img_files[0])
-                if len(co2_tif_files) > 0:
-                    df["co2_tif_size_bytes"] = os.path.getsize(co2_tif_files[0])
-                if len(sensco2_img_files) > 0:
-                    df["sensco2_img_size_bytes"] = os.path.getsize(sensco2_img_files[0])
-                if len(sensco2_tif_files) > 0:
-                    df["sensco2_tif_size_bytes"] = os.path.getsize(sensco2_tif_files[0])
-                if len(uncertco2_img_files) > 0:
-                    df["uncertco2_img_size_bytes"] = os.path.getsize(uncertco2_img_files[0])
-                if len(uncertco2_tif_files) > 0:
-                    df["uncertco2_tif_size_bytes"] = os.path.getsize(uncertco2_tif_files[0])
-                if len(co2d1_tif_files) > 0:
-                    df["co2d1_tif_size_bytes"] = os.path.getsize(co2d1_tif_files[0])
-                if len(co2d2_tif_files) > 0:
-                    df["co2d2_tif_size_bytes"] = os.path.getsize(co2d2_tif_files[0])
-                if len(frcovqc_tif_files) > 0:
-                    df["frcovqc_tif_size_bytes"] = os.path.getsize(frcovqc_tif_files[0])
-                if len(pv_tif_files) > 0:
-                    df["pv_tif_size_bytes"] = os.path.getsize(pv_tif_files[0])
-                if len(pvunc_tif_files) > 0:
-                    df["pvunc_tif_size_bytes"] = os.path.getsize(pvunc_tif_files[0])
-                if len(npv_tif_files) > 0:
-                    df["npv_tif_size_bytes"] = os.path.getsize(npv_tif_files[0])
-                if len(npvunc_tif_files) > 0:
-                    df["npvunc_tif_size_bytes"] = os.path.getsize(npvunc_tif_files[0])
-                if len(bare_tif_files) > 0:
-                    df["bare_tif_size_bytes"] = os.path.getsize(bare_tif_files[0])
-                if len(bareunc_tif_files) > 0:
-                    df["bareunc_tif_size_bytes"] = os.path.getsize(bareunc_tif_files[0])
-                if len(maskTf_img_files) > 0:
-                    df["maskTf_img_size_bytes"] = os.path.getsize(maskTf_img_files[0])
-                if len(maskTf_nc_files) > 0:
-                    df["maskTf_nc_size_bytes"] = os.path.getsize(maskTf_nc_files[0])
-                if len(l3rfl_nc_files) > 0:
-                    df["l3rfl_nc_size_bytes"] = os.path.getsize(l3rfl_nc_files[0])
-                if len(l3rflunc_nc_files) > 0:
-                    df["l3rflunc_nc_size_bytes"] = os.path.getsize(l3rflunc_nc_files[0])
-                if len(l3obs_nc_files) > 0:
-                    df["l3obs_nc_size_bytes"] = os.path.getsize(l3obs_nc_files[0])
-
-                # Get reassembly report info
-                if len(reassembly_reports) > 0:
-                    num_lines, corrupt_lines, cloudy_frames = 0, 0, 0
-                    lines_per_frame = 32  # default it but also get it below
-                    missing_frames, corrupt_frames, decompression_errors = 0, 0, 0
-                    submode = ""
-                    with open(reassembly_reports[0], "r") as f:
-                        for line in f.readlines():
-                            if "Submode:" in line:
-                                submode = line.rstrip("\n").split(" ")[-1]
-                            if "Instrument mode:" in line:
-                                instrument_mode = line.rstrip("\n").split(" ")[-1]
-                            if "Number of lines:" in line:
-                                num_lines = int(line.rstrip("\n").split(" ")[-1])
-                            if "Total corrupt lines" in line:
-                                corrupt_lines = int(line.rstrip("\n").split(" ")[-1])
-                            if "Number of lines per frame" in line:
-                                lines_per_frame = int(line.rstrip("\n").split(" ")[-1])
-                            if "Total cloudy frames" in line:
-                                cloudy_frames = int(line.rstrip("\n").split(" ")[-1])
-                            if "Total missing frames" in line:
-                                missing_frames = int(line.rstrip("\n").split(" ")[-1])
-                            if "Total corrupt frames" in line:
-                                corrupt_frames = int(line.rstrip("\n").split(" ")[-1])
-                            if "Total decompression errors" in line:
-                                decompression_errors = int(line.rstrip("\n").split(" ")[-1])
-
-                    df.update({
-                        "submode": submode,
-                        "instrument_mode": instrument_mode,
-                        "lines": num_lines,
-                        "corrupt_lines": corrupt_lines,
-                        "frames": num_lines // lines_per_frame,
-                        "cloudy_frames": cloudy_frames,
-                        "missing_frames": missing_frames,
-                        "corrupt_frames": corrupt_frames,
-                        "decompression_errors": decompression_errors
-                    })
-
-                # Get masked pixel noise from radiance header
-                if len(rdn_hdr_files) > 0:
-                    hdr = envi.read_envi_header(rdn_hdr_files[0])
-                    if "masked pixel noise" in hdr:
-                        df["masked_pixel_noise"] = float(hdr["masked pixel noise"])
-                
-                # Get HOSC creation time
-                acq_doc = acq_coll.find_one({"acquisition_id": acq}, {"associated_dcid": 1, "orbit": 1, "products": 1, "_id": 0})
-                dcid = acq_doc["associated_dcid"]
-                orbit = acq_doc["orbit"]
-                dcid_doc = dcid_coll.find_one({"dcid": dcid}, {"associated_ccsds": 1, "_id": 0})
-                dcid_doc['associated_ccsds'].sort()
-                ccsds = os.path.basename(dcid_doc['associated_ccsds'][0])
-                stream_doc = stream_coll.find_one({"ccsds_name": ccsds}, {f"products.raw.{wm.config['prod_versions']['l0']}.created": 1, "_id": 0})
-                
-                hosc_date = stream_doc['products']['raw'][wm.config['prod_versions']['l0']]['created']
-
-                orbit_doc = orbit_coll.find_one(
-                    {
-                        "orbit_id": orbit, 
-                        f"products.l1b.{wm.config['prod_versions']['l1b']}.corr_att_eph.nc_path": {"$exists": 1}
-                    },
-                    {
-                        f"products.l1b.{wm.config['prod_versions']['l1b']}.corr_att_eph.nc_path": 1,
-                        "_id": 0
-                    }
-                )
-                
-                if orbit_doc:
-                    eph_path =  orbit_doc["products"]["l1b"][wm.config['prod_versions']['l1b']]["corr_att_eph"]["nc_path"]
-                    eph_dir, eph_base = os.path.split(eph_path)
-                    geo_qc_base = eph_base.replace('att', 'geoqa')
-                    geo_qc_subdir = f"o{orbit}_l1b_geo_v{wm.config['prod_versions']['l1b']}_work"
-                    geo_qc_nc = os.path.join(eph_dir,geo_qc_subdir, geo_qc_base)
-
-                    if os.path.isfile(geo_qc_nc):
-                        with Dataset(geo_qc_nc, "r") as ds:
-                            g = ds.groups["Accuracy Estimate"]
-                            scenes = g["Scenes"][:]
-                            idx = np.where(scenes == acq[4:])[0]
-
-                            if idx.size == 1:
-                                i = idx[0]
-                                pre_error = g["Accuracy Before Correction"][i]
-                                post_error = g["Final Accuracy"][i]
-                                
-                                if pre_error != -9999:
-                                    df["pre_geo_error_m"] = float(pre_error)
-                                if post_error != -9999:
-                                    df["post_geo_error_m"] = float(post_error)
-                    else:
-                        print(f'{geo_qc_nc} not found')
-                
-                l1a_delivery_date = acq_doc.get('products',{}).get('l1a',{}).get(wm.config['prod_versions']['l1a'],{}).get('raw_ummg',{}).get('created',{})
-                l1b_delivery_date = acq_doc.get('products',{}).get('l1b',{}).get(wm.config['prod_versions']['l1b'],{}).get('rdn_ummg',{}).get('created',{})
-                l2a_delivery_date = acq_doc.get('products',{}).get('l2a',{}).get(wm.config['prod_versions']['l2a'],{}).get('rfl_ummg',{}).get('created',{})
-                co2_delivery_date = acq_doc.get('products',{}).get('co2',{}).get(wm.config['prod_versions']['co2'],{}).get('co2_ummg',{}).get('created',{})
-                ch4_delivery_date = acq_doc.get('products',{}).get('ch4',{}).get(wm.config['prod_versions']['ch4'],{}).get('ch4_ummg',{}).get('created',{})
-                l2b_delivery_date = acq_doc.get('products',{}).get('l2b',{}).get(wm.config['prod_versions']['l2b'],{}).get('abun_ummg',{}).get('created',{})
-                maskTf_delivery_date = acq_doc.get('products',{}).get('mask',{}).get(wm.config['prod_versions']['mask'],{}).get('maskTf_ummg',{}).get('created',{})
-                frcov_delivery_date = acq_doc.get('products',{}).get('frcov',{}).get(wm.config['prod_versions']['frcov'],{}).get('frcov_ummg',{}).get('created',{})
-                l3rfl_delivery_date = acq_doc.get('products',{}).get('l3rfl',{}).get(wm.config['prod_versions']['l3rfl'],{}).get('rfl_ummg',{}).get('created',{})
-       
-                if l1a_delivery_date:
-                    df["raw_to_l1a_deliver_seconds"] = (l1a_delivery_date - hosc_date).total_seconds()
-                    df["l1a_delivery_date"] = l1a_delivery_date
-
-                if l1b_delivery_date:
-                    df["raw_to_l1b_deliver_seconds"] = (l1b_delivery_date - hosc_date).total_seconds()
-                    df["l1b_delivery_date"] = l1b_delivery_date
-
-                if l2a_delivery_date:
-                    df["raw_to_l2a_deliver_seconds"] = (l2a_delivery_date - hosc_date).total_seconds()
-                    df["l2a_delivery_date"] = l2a_delivery_date
-
-                if co2_delivery_date:
-                    df["raw_to_co2_deliver_seconds"] = (co2_delivery_date - hosc_date).total_seconds()
-                    df["co2_delivery_date"] = co2_delivery_date
-
-                if ch4_delivery_date:
-                    df["raw_to_ch4_deliver_seconds"] = (ch4_delivery_date - hosc_date).total_seconds()
-                    df["ch4_delivery_date"] = ch4_delivery_date
-
-                if l2b_delivery_date:
-                    df["raw_to_l2b_deliver_seconds"] = (l2b_delivery_date - hosc_date).total_seconds()
-                    df["l2b_delivery_date"] = l2b_delivery_date
-
-                if frcov_delivery_date:
-                    df["raw_to_frcov_deliver_seconds"] = (frcov_delivery_date - hosc_date).total_seconds()
-                    df["frcov_delivery_date"] = frcov_delivery_date
-
-                if maskTf_delivery_date:
-                    df["raw_to_maskTf_deliver_seconds"] = (maskTf_delivery_date - hosc_date).total_seconds()
-                    df["maskTf_delivery_date"] = maskTf_delivery_date
-
-                if l3rfl_delivery_date:
-                    df["raw_to_l3rfl_deliver_seconds"] = (l3rfl_delivery_date - hosc_date).total_seconds()
-                    df["l3rfl_delivery_date"] = l3rfl_delivery_date
-
-                # Get obs, state, and mask metrics from db products dict
-                obs_band_means = None
-                try:
-                    obs_band_means = acq_doc["products"]["l1b"][wm.config['prod_versions']['l1b']]["obs"]["band_means"]
-                except KeyError:
-                    pass # ignore the error
-
-                if obs_band_means:
-                    df["aspect"] = obs_band_means["aspect"]
-                    df["cosine_i"] = obs_band_means["cosine_i"]
-                    df["earth_sun_distance"] = obs_band_means["earth_sun_dist"]
-                    df["path_length"] = obs_band_means["path_length"]
-                    df["slope"] = obs_band_means["slope"]
-                    df["solar_phase"] = obs_band_means["solar_phase"]
-                    df["to_sensor_azimuth"] = obs_band_means["sensor_azimuth"]
-                    df["to_sensor_zenith"] = obs_band_means["sensor_zenith"]
-                    df["to_sun_azimuth"] = obs_band_means["solar_azimuth"]
-                    df["to_sun_zenith"] = obs_band_means["solar_zenith"]
-                    df["utc_time_decimal_hours"] = obs_band_means["utc_time"]
-
-                state_band_medians = None
-                try:
-                    state_band_medians = acq_doc["products"]["l2a"][wm.config['prod_versions']['l2a']]["state"]["band_medians"]
-                except KeyError:
-                    pass # ignore the error
-
-                if state_band_medians:
-                    df["retrieved_aot_median"] = state_band_medians["aot"]
-                    df["retrieved_water_vapor_median"] = state_band_medians["h2o"]
-                    df["retrieved_co2_median"] = state_band_medians["co2"]
-                
-                maskTf_doc = None
-                try:
-                    maskTf_doc = acq_doc["products"]["mask"][wm.config['prod_versions']['mask']]["maskTf"]
-                except KeyError:
-                    pass # ignore the error
-
-                if maskTf_doc:
-                    df["cloud_fraction"] = maskTf_doc["cloud_fraction"]
-                    df["cloudindex_fraction"] = maskTf_doc["cloudindex_fraction"]
-                    df["cloudratio_fraction"] = maskTf_doc["cloudratio_fraction"]
-                    df["cirrus_fraction"] = maskTf_doc["cirrus_fraction"]
-                    df["nodata_fraction"] = maskTf_doc["nodata_fraction"]
-
-                # Update the DB
-                trending_acqs_coll = dm.db.trending_acquisitions
-                query = {"timestamp": timestamp}
-                update_collection(trending_acqs_coll, query, df)
+            with ThreadPoolExecutor(max_workers=args.workers) as executor:
+                list(executor.map(lambda a: process_acq(dm, wm, nc_lock, dir, a), acqs))
 
     if "cmr" in metrics_flags:
-        CMR_OPS = 'https://cmr.earthdata.nasa.gov/search'  # CMR API Endpoint
-        url = f'{CMR_OPS}/granules.umm_json'
         collections = {
             # "l1a": "C2407975601-LPCLOUD",
             "l1b": "C4079829720-LPCLOUD",
@@ -571,52 +608,48 @@ def main():
         }
 
         trending_acqs_coll = dm.db.trending_acquisitions
-        cur_date = start_date
-        while cur_date < stop_date:
-            cur_plus_one = cur_date + datetime.timedelta(days=1)
-            prod_range = f"{cur_date.strftime('%Y-%m-%dT%H:%M:%SZ')},{cur_plus_one.strftime('%Y-%m-%dT%H:%M:%SZ')}"
-            print(f"### CMR prod_range: {prod_range}")
-            # Loop through collections
-            for level, coll in collections.items():
-                
-                level_pub_date = f"{level}_publish_date"
-                level_delivery_date = f"{level}_delivery_date"
-                acq_to_level_pub_seconds = f"acquisition_to_{level}_publish_seconds"
-                deliver_to_level_pub_seconds = f"deliver_to_{level}_publish_seconds"
-                    
-                response = requests.get(url, params={'concept_id': coll, 'page_size': 500, 'temporal': prod_range},
-                                        headers={'Accept': 'application/json'
-                                                 #'Authorization':f'Bearer {token}'
-                                                 })
-                out_json_dir = f"/store/emit/{env}/reports/cmr/{cur_date.strftime('%Y%m%d')}"
-                out_json_path = f"{out_json_dir}/cmr_{cur_date.strftime('%Y%m%d')}_{level}.json"
-                if not os.path.exists(out_json_dir):
-                    os.makedirs(out_json_dir)
-                with open(out_json_path, "w") as f:
-                    f.write(json.dumps(response.json(), indent=4))
 
-                # Loop through json and get granules
-                for g in response.json()["items"]:
-                                        
-                    timestamp = dt.datetime.strptime(g["meta"]["native-id"].split("_")[4], "%Y%m%dT%H%M%S")
-                    last_publish_date = dt.datetime.strptime(g["meta"]["revision-date"], "%Y-%m-%dT%H:%M:%S.%fZ")
+        acq_date_dirs = glob.glob(f"/store/emit/{env}/data/acquisitions/*")
+        start_dir = f"/store/emit/{env}/data/acquisitions/{start}"
+        stop_dir = f"/store/emit/{env}/data/acquisitions/{stop}"
+        cmr_dates = sorted(dt.datetime.strptime(os.path.basename(d), "%Y%m%d")
+                           for d in acq_date_dirs if start_dir <= d < stop_dir)
+        if cmr_dates:
+            print(f"Querying CMR for {len(cmr_dates)} dates, first {cmr_dates[0]:%Y%m%d}, last {cmr_dates[-1]:%Y%m%d}")
+        else:
+            print("No dates to query CMR for")
 
-                    query = {"timestamp": timestamp}
-                                       
-                    df = {
-                        "timestamp": timestamp,
-                        level_pub_date: last_publish_date,
-                        acq_to_level_pub_seconds: (last_publish_date - timestamp).total_seconds(),
-                    }
-                    
-                    doc = trending_acqs_coll.find_one(query, {level_delivery_date: 1, "_id": 0})
-                    delivery_date = doc.get(level_delivery_date)
-                    if delivery_date: # Not needed for ops, but keeping in place for dev/test where delivery may not have occured
-                        df[deliver_to_level_pub_seconds] = (last_publish_date - delivery_date).total_seconds()                   
-                    
-                    update_collection(trending_acqs_coll, query, df)
+        cmr_tasks = [(d, level, coll) for d in cmr_dates for level, coll in collections.items()]
+        with ThreadPoolExecutor(max_workers=args.cmr_workers) as executor:
+            cmr_items = list(executor.map(lambda t: fetch_cmr(env, *t), cmr_tasks))
 
-            cur_date = cur_plus_one
+        for (cur_date, level, coll), items in zip(cmr_tasks, cmr_items):
+
+            level_pub_date = f"{level}_publish_date"
+            level_delivery_date = f"{level}_delivery_date"
+            acq_to_level_pub_seconds = f"acquisition_to_{level}_publish_seconds"
+            deliver_to_level_pub_seconds = f"deliver_to_{level}_publish_seconds"
+
+            # Loop through json and get granules
+            for g in items:
+
+                timestamp = dt.datetime.strptime(g["meta"]["native-id"].split("_")[4], "%Y%m%dT%H%M%S")
+                last_publish_date = dt.datetime.strptime(g["meta"]["revision-date"], "%Y-%m-%dT%H:%M:%S.%fZ")
+
+                query = {"timestamp": timestamp}
+
+                df = {
+                    "timestamp": timestamp,
+                    level_pub_date: last_publish_date,
+                    acq_to_level_pub_seconds: (last_publish_date - timestamp).total_seconds(),
+                }
+
+                doc = trending_acqs_coll.find_one(query, {level_delivery_date: 1, "_id": 0}) or {}
+                delivery_date = doc.get(level_delivery_date)
+                if delivery_date: # Not needed for ops, but keeping in place for dev/test where delivery may not have occured
+                    df[deliver_to_level_pub_seconds] = (last_publish_date - delivery_date).total_seconds()
+
+                update_collection(trending_acqs_coll, query, df)
 
 if __name__ == '__main__':
     main()
