@@ -263,9 +263,9 @@ class L0IngestBAD(SlurmJobTask):
         wm.makedirs(tmp_output_dir)
         cmd = [sto_to_csv_exe, self.stream_path, "--outpath", tmp_output_dir]
         env = os.environ.copy()
-        env["AIT_ROOT"] = pge.repo_dir
-        env["AIT_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "config.yaml")
-        env["AIT_ISS_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "sim.yaml")
+        # env["AIT_ROOT"] = pge.repo_dir
+        # env["AIT_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "config.yaml")
+        # env["AIT_ISS_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "sim.yaml")
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
         # Get tmp output path for CSV

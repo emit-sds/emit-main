@@ -126,9 +126,6 @@ class L1ADepacketizeScienceFrames(SlurmJobTask):
                 cmd.extend(["--prev_bytes_to_read", str(bytes_read)])
 
         env = os.environ.copy()
-        env["AIT_ROOT"] = wm.pges["emit-ios"].repo_dir
-        env["AIT_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "config.yaml")
-        env["AIT_ISS_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "sim.yaml")
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
         # Based on DCIDs, copy frames to appropriate acquisition l1a frames directory.
@@ -359,9 +356,6 @@ class L1AReassembleRaw(SlurmJobTask):
             cmd.append("--test_mode")
 
         env = os.environ.copy()
-        env["AIT_ROOT"] = wm.pges["emit-ios"].repo_dir
-        env["AIT_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "config.yaml")
-        env["AIT_ISS_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "sim.yaml")
         pge_reassemble.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
         # Now run the compute line stats script
@@ -1230,9 +1224,6 @@ class L1AReformatBAD(SlurmJobTask):
                "--level", self.level,
                "--log_path", tmp_log_path]
         env = os.environ.copy()
-        env["AIT_ROOT"] = wm.pges["emit-ios"].repo_dir
-        env["AIT_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "config.yaml")
-        env["AIT_ISS_CONFIG"] = os.path.join(env["AIT_ROOT"], "config", "sim.yaml")
         pge.run(cmd, tmp_dir=self.tmp_dir, env=env)
 
         # Copy output files back
