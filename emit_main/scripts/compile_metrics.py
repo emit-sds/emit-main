@@ -496,7 +496,7 @@ def main():
     parser.add_argument("--metrics", default="streams,scenes,cmr", help="Which metrics to collect (streams,scenes,cmr)")
     parser.add_argument("--export_to_dir", "--export-to-dir", default=None, dest="export_to_dir")
     parser.add_argument("--workers", type=int, default=8, help="Number of threads for stream and scene metrics")
-    parser.add_argument("--cmr_workers", type=int, default=4, help="Number of threads to query CMR")
+    parser.add_argument("--cmr_workers", type=int, default=2, help="Number of threads to query CMR")
 
     args = parser.parse_args()
 

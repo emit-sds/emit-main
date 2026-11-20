@@ -337,20 +337,20 @@ def main():
                     # Copy the cloud fraction values to the new products dictionary
                     # Leave the old ones in place (instead of renaming to _bak).  I will delete them after
                     cloud_fraction_old = d.get("cloud_fraction")
-                    if p == "l2a" and cloud_fraction_old:
+                    if p == "l2a" and cloud_fraction_old is not None:
                         products_new[p][prod_versions_v1[p]]["mask"]["cloud_fraction"] = cloud_fraction_old
                     # cloud_fraction_02 and nodata_fraction are always together
                     # rename cloud_fraction_02 to cloud_fraction on copy
                     cloud_fraction_02_old = d.get("cloud_fraction_02")
                     nodata_fraction_old = d.get("nodata_fraction")
-                    if p == "mask" and cloud_fraction_02_old and nodata_fraction_old:
+                    if p == "mask" and cloud_fraction_02_old is not None and nodata_fraction_old is not None:
                         products_new[p][prod_versions_v1[p]]["maskTf"]["cloud_fraction"] = cloud_fraction_02_old
                         products_new[p][prod_versions_v1[p]]["maskTf"]["nodata_fraction"] = nodata_fraction_old
 
                     # Copy the mean_solar_azimuth and mean_solar_zenith values to the new products dictionary
                     mean_solar_azimuth_old = d.get("mean_solar_azimuth")
                     mean_solar_zenith_old = d.get("mean_solar_zenith")
-                    if p == "l1b" and mean_solar_azimuth_old and mean_solar_zenith_old:
+                    if p == "l1b" and mean_solar_azimuth_old is not None and mean_solar_zenith_old is not None:
                         products_new[p][prod_versions_v1[p]]["obs"]["band_means"] = {
                             "solar_azimuth": mean_solar_azimuth_old,
                             "solar_zenith": mean_solar_zenith_old

@@ -67,3 +67,16 @@ if [ "$STEP" -le 9 ]; then
   echo -e "\n### 9 - Starting dco2 at $(date)\n"
   eval "python run_workflow.py -c config/ops_sds_config.json --date_field start_time --start_time $START --stop_time $STOP -m dco2 -w 65 --retry-failed --daac-ingest-queue backward --partition $PARTITION $DRYRUN"
 fi
+
+if [ "$STEP" -le 10 ]; then
+  echo -e "\n### 10 - Compiling metrics at $(date)\n"
+  # Reformat YYYY-MM-DDT00:00:00 to YYYYMMDD
+  METRICS_START=$(echo "${START:0:10}" | tr -d '-')
+  METRICS_STOP=$(echo "${STOP:0:10}" | tr -d '-')
+  if [ -n "$DRYRUN" ]; then
+    echo "Dry run: would run compile_metrics_parallel.py and compile_metrics.py for dates $METRICS_START,$METRICS_STOP"
+  else
+    python scripts/compile_metrics_parallel.py --metrics scenes,cmr --dates $METRICS_START,$METRICS_STOP
+    python scripts/compile_metrics.py --metrics streams,scenes --dates $METRICS_START,$METRICS_STOP --export_to_dir /store/emit/ops/reports/grafana
+  fi
+fi
