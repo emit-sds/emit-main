@@ -76,7 +76,7 @@ if [ "$STEP" -le 10 ]; then
   if [ -n "$DRYRUN" ]; then
     echo "Dry run: would run compile_metrics_parallel.py and compile_metrics.py for dates $METRICS_START,$METRICS_STOP"
   else
-    python scripts/compile_metrics_parallel.py --metrics scenes,cmr --dates $METRICS_START,$METRICS_STOP
+    python scripts/compile_metrics.py --metrics scenes,cmr --dates $METRICS_START,$METRICS_STOP
     python scripts/compile_metrics.py --metrics streams,scenes --dates $METRICS_START,$METRICS_STOP --export_to_dir /store/emit/ops/reports/grafana
   fi
 fi
