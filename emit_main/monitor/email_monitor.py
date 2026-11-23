@@ -259,12 +259,12 @@ class EmailMonitor:
             for message in messages:
                 m = self.get_message_as_dict(message)
 
-                # Check that the subject includes "Rec-Report for lp-prod-reconciliation" or
-                # "Rec-Report for lp-uat-reconciliation"
-                if env == "ops" and "Rec-Report EMIT lp-prod" not in m["subject"]:
+                # Check that the subject includes "Rec-Report EMIT cnsld-cumulus-prod4" or
+                # "Rec-Report EMIT cnsld-cumulus-uat4"
+                if env == "ops" and "Rec-Report EMIT cnsld-cumulus-prod4" not in m["subject"]:
                     continue
 
-                if env == "test" and "Rec-Report EMIT lp-uat" not in m["subject"]:
+                if env == "test" and "Rec-Report EMIT cnsld-cumulus-uat4" not in m["subject"]:
                     continue
 
                 match = re.search("ER_.+rpt", m["subject"])
@@ -276,7 +276,7 @@ class EmailMonitor:
                 report = match.group()
                 # Find all files in this report
                 files = dm.find_files_by_last_reconciliation_report(report=report)
-                if m["body_text"].startswith("No"):
+                if "Ok" in m["subject"]:
                     logger.info(f"No discrepancies found in email with subject \"{m['subject']}\" dated {m['time_received']}. "
                                 f"Marking all files as reconciled.")
                     # Mark all files as reconciled
@@ -290,11 +290,11 @@ class EmailMonitor:
                     logger.info(f"Discrepancies found in email with subject \"{m['subject']}\" dated {m['time_received']}. "
                                 f"Downloading report file to {reconciliation_response_path}.")
                     pge = self.wm.pges["emit-main"]
-                    # cmd: aws s3 cp s3://lp-prod-reconciliation/reports/EMIT_RECON_PROD.json ./
+                    # cmd: aws s3 cp s3://cnsld-cumulus-prod4-reconciliation/reports/ER_20261107T010005_20261109T010005_v01.json ./
                     if env == "ops":
-                        s3_link = f"s3://lp-prod-reconciliation/reports/{report_response_name}"
+                        s3_link = f"s3://cnsld-cumulus-prod4-reconciliation/reports/{report_response_name}"
                     if env == "test":
-                        s3_link = f"s3://lp-prod-reconciliation/reports/{report_response_name}"
+                        s3_link = f"s3://cnsld-cumulus-uat4-reconciliation/reports/{report_response_name}"
                     cmd = [self.wm.config["aws_cli_exe"], "s3", "cp", s3_link, reconciliation_response_path,
                            "--profile", self.wm.config["aws_profile"]]
                     pge.run(cmd)
